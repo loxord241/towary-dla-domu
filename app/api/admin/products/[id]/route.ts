@@ -9,7 +9,7 @@ function isValidCurrency(value: unknown): boolean {
 }
 
 // GET /api/admin/products/<id> — full product data for the edit form:
-// scalar fields + images + variants + translations.
+// scalar fields + images + variants.
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await requireAdminApi();
   if (ctx instanceof NextResponse) return ctx;
@@ -21,7 +21,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   try {
-    const [productRes, imagesRes, variantsRes, translationsRes] = await Promise.all([
+    const [productRes, imagesRes, variantsRes] = await Promise.all([
       ctx.serviceClient.from('products').select('*').eq('id', id).maybeSingle(),
       ctx.serviceClient
         .from('product_images')
@@ -33,11 +33,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         .select('*')
         .eq('product_id', id)
         .order('created_at', { ascending: true }),
-      ctx.serviceClient
-        .from('products_translations')
-        .select('*')
-        .eq('product_id', id)
-        .order('language_code'),
     ]);
 
     if (productRes.error) {
@@ -52,15 +47,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (variantsRes.error) {
       return NextResponse.json({ error: variantsRes.error.message }, { status: 500 });
     }
-    if (translationsRes.error) {
-      return NextResponse.json({ error: translationsRes.error.message }, { status: 500 });
-    }
 
     return NextResponse.json({
       product: productRes.data,
       images: imagesRes.data ?? [],
       variants: variantsRes.data ?? [],
-      translations: translationsRes.data ?? [],
     });
   } catch (err) {
     console.error('Products API error:', err);

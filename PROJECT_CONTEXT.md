@@ -22,6 +22,7 @@ app/
 ├── checkout/                  # CheckoutForm (client) + success (HMAC-token view)
 ├── orders/lookup, [orderNumber]  # Гостевой просмотр заказа по паре номер+email / номер+token
 ├── admin/login + (dashboard)/ # Логин Supabase Auth; layout проверяет user + admin_users
+│   │   │                        # (страница /admin/translations и uk-блоки в формах УДАЛЕНЫ)
 ├── components/                # SiteHeader/Footer, ProductCard/Gallery, badges, EmptyState и др.
 ├── api/
 │   ├── cart-preview/route.ts  # POST: batch lookup товаров по id (anon + RLS, rate-limit 120/min)
@@ -51,7 +52,7 @@ database/migrations/           # SQL схемы; сверены с живой Б
 ## Существующие таблицы (проверено по живой БД)
 products (+brand_id), categories, brands, product_images,
 product_variants, attributes, attribute_values, product_attribute_values,
-products/categories/brands_translations, admin_users, customers, orders (+order_number,
+admin_users, customers, orders (+order_number,
 email, expires_at, payment_status), order_items (+variant_name/sku), product_stock_history
 
 ## Checkout / Orders (миграции 006–008)
@@ -78,8 +79,15 @@ email, expires_at, payment_status), order_items (+variant_name/sku), product_sto
   страница товара, корзина, избранное, checkout, success, guest order lookup/view
 - Корзина/избранное: localStorage хранит ТОЛЬКО productId+variantId+quantity (корзина);
   все цены/наличие — с сервера (/api/cart-preview). Финальный авторитет цен — place_order().
-- Admin: логин/логаут, товары (+изображения с загрузкой в Storage, варианты, uk-переводы),
+- Admin: логин/логаут, товары (+изображения с загрузкой в Storage, варианты),
   бренды, категории, заказы (список/детали/статусы/отмена/истечение)
+
+## Система uk-переводов (удалена из кода 2026-08)
+- Весь контент сайта и данные поставщика на украинском — переводы признаны избыточными.
+- Из кода удалены: overlay-запросы в catalog.ts (было +3 запроса на страницу),
+  поиск по translations, uk-блоки в формах админки, /admin/translations, /api/admin/translations.
+- ТАБЛИЦЫ products/categories/brands_translations ОСТАВЛЕНЫ в БД (пустые, не мешают).
+  Если когда-нибудь понадобится второй язык — восстановить по истории git.
 
 ## Известные ограничения (осознанные)
 - Оплата НЕ реализована (payment_status='unpaid'; менеджер согласует вручную)

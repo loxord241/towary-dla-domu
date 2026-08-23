@@ -101,12 +101,6 @@ interface ProductFormState {
   is_featured: boolean;
 }
 
-interface UkTranslationForm {
-  name_uk: string;
-  short_description_uk: string;
-  description_uk: string;
-}
-
 const EMPTY_FORM: ProductFormState = {
   sku: '',
   name: '',
@@ -124,12 +118,6 @@ const EMPTY_FORM: ProductFormState = {
   is_featured: false,
 };
 
-const EMPTY_UK: UkTranslationForm = {
-  name_uk: '',
-  short_description_uk: '',
-  description_uk: '',
-};
-
 export default function ProductsAdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
@@ -145,7 +133,6 @@ export default function ProductsAdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formData, setFormData] = useState<ProductFormState>(EMPTY_FORM);
-  const [ukForm, setUkForm] = useState<UkTranslationForm>(EMPTY_UK);
 
   const [imagesPanel, setImagesPanel] = useState<{
     product: Product;
@@ -231,7 +218,6 @@ export default function ProductsAdminPage() {
   const openCreate = () => {
     setEditingId(null);
     setFormData(EMPTY_FORM);
-    setUkForm(EMPTY_UK);
     setFormError(null);
     setStatus(null);
     setIsModalOpen(true);
@@ -266,15 +252,6 @@ export default function ProductsAdminPage() {
         is_featured: Boolean(p.is_featured),
       });
 
-      const uk = (data.translations as Array<Record<string, unknown>>).find(
-        (t) => t.language_code === 'uk'
-      );
-      setUkForm({
-        name_uk: uk && typeof uk.name === 'string' ? uk.name : '',
-        short_description_uk:
-          uk && typeof uk.short_description === 'string' ? uk.short_description : '',
-        description_uk: uk && typeof uk.description === 'string' ? uk.description : '',
-      });
       setFormError(null);
       setIsModalOpen(true);
     } catch (err) {
@@ -302,27 +279,6 @@ export default function ProductsAdminPage() {
       (!Number.isFinite(stock) || stock < 0 || !Number.isInteger(stock))
     ) {
       return 'Кількість на складі має бути невід’ємним цілим числом';
-    }
-    return null;
-  };
-
-  const saveTranslation = async (productId: string): Promise<string | null> => {
-    const nameUk = ukForm.name_uk.trim();
-    if (!nameUk) return null; // no translation provided
-
-    const response = await fetch(`/api/admin/translations/products/${productId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        language_code: 'uk',
-        name: nameUk,
-        short_description: ukForm.short_description_uk.trim(),
-        description: ukForm.description_uk.trim(),
-      }),
-    });
-    const data = await response.json().catch(() => null);
-    if (!response.ok) {
-      return data?.error || 'Не вдалося зберегти український переклад';
     }
     return null;
   };
@@ -375,11 +331,6 @@ export default function ProductsAdminPage() {
       const productId: string = editingId ?? data?.product?.id;
       if (!productId) {
         throw new Error('Сервер не повернув id товару');
-      }
-
-      const translationError = await saveTranslation(productId);
-      if (translationError) {
-        throw new Error(translationError);
       }
 
       setIsModalOpen(false);
@@ -728,32 +679,6 @@ export default function ProductsAdminPage() {
                 <label className="block text-sm font-medium text-gray-700">
                   Повний опис
                   <textarea name="description" rows={3} value={formData.description} onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
-                </label>
-              </fieldset>
-
-              <fieldset className="border border-blue-200 bg-blue-50 rounded-md p-4 mb-4">
-                <legend className="px-2 text-sm font-semibold text-blue-700">Український переклад</legend>
-                <p className="text-xs text-gray-500 mb-3">
-                  Якщо заповнити хоча б назву — переклад буде збережено та показано у storefront.
-                  Порожні поля залишать базові значення як fallback.
-                </p>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Назва (uk)
-                  <input type="text" name="name_uk" value={ukForm.name_uk}
-                    onChange={(e) => setUkForm((prev) => ({ ...prev, name_uk: e.target.value }))}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
-                </label>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Короткий опис (uk)
-                  <textarea name="short_description_uk" rows={2} value={ukForm.short_description_uk}
-                    onChange={(e) => setUkForm((prev) => ({ ...prev, short_description_uk: e.target.value }))}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
-                </label>
-                <label className="block text-sm font-medium text-gray-700">
-                  Повний опис (uk)
-                  <textarea name="description_uk" rows={3} value={ukForm.description_uk}
-                    onChange={(e) => setUkForm((prev) => ({ ...prev, description_uk: e.target.value }))}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
                 </label>
               </fieldset>

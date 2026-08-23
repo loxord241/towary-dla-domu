@@ -43,8 +43,6 @@ export default function BrandsAdminPage() {
     logo: '',
     is_active: true
   });
-  const [ukName, setUkName] = useState('');
-  const [ukDescription, setUkDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Stable refetch for handlers (create/edit/delete).
@@ -90,24 +88,13 @@ export default function BrandsAdminPage() {
       logo: '',
       is_active: true
     });
-    setUkName('');
-    setUkDescription('');
     setError(null);
     setStatus(null);
     setIsModalOpen(true);
   };
 
-  const handleEdit = async (brand: Brand) => {
-    try {
-      const response = await fetch(`/api/admin/translations/brands/${brand.id}`);
-      const data = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(data?.error || 'Не вдалося завантажити переклад');
-      }
-      const uk = (data?.translations as Array<Record<string, unknown>> | undefined)?.find(
-        (t) => t.language_code === 'uk'
-      );
-      setCurrentBrand(brand);
+  const handleEdit = (brand: Brand) => {
+    setCurrentBrand(brand);
       setIsEditing(true);
       setFormData({
         name: brand.name,
@@ -116,14 +103,9 @@ export default function BrandsAdminPage() {
         logo: brand.logo || '',
         is_active: brand.is_active
       });
-      setUkName(uk && typeof uk.name === 'string' ? uk.name : '');
-      setUkDescription(uk && typeof uk.description === 'string' ? uk.description : '');
-      setError(null);
-      setStatus(null);
-      setIsModalOpen(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Невідома помилка');
-    }
+    setError(null);
+    setStatus(null);
+    setIsModalOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -168,30 +150,6 @@ export default function BrandsAdminPage() {
 
       if (!response.ok) {
         throw new Error(data?.error || 'Не вдалося зберегти бренд');
-      }
-
-      // Save the uk translation when a name is provided.
-      if (ukName.trim()) {
-        const entityId = isEditing ? currentBrand?.id : data?.brand?.id;
-
-        if (entityId) {
-          const translationResponse = await fetch(
-            `/api/admin/translations/brands/${entityId}`,
-            {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                language_code: 'uk',
-                name: ukName.trim(),
-                description: ukDescription.trim()
-              })
-            }
-          );
-          if (!translationResponse.ok) {
-            const tData = await translationResponse.json().catch(() => null);
-            throw new Error(tData?.error || 'Не вдалося зберегти uk-переклад');
-          }
-        }
       }
 
       // Close modal and refresh list
@@ -388,30 +346,6 @@ export default function BrandsAdminPage() {
                     </label>
                   </div>
                 </div>
-
-                <fieldset className="border border-blue-200 bg-blue-50 rounded-md p-4 mt-4">
-                  <legend className="px-2 text-sm font-semibold text-blue-700">Український переклад</legend>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Назва (uk)</label>
-                      <input
-                        type="text"
-                        value={ukName}
-                        onChange={(e) => setUkName(e.target.value)}
-                        className="input"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Опис (uk)</label>
-                      <textarea
-                        value={ukDescription}
-                        onChange={(e) => setUkDescription(e.target.value)}
-                        rows={3}
-                        className="input"
-                      />
-                    </div>
-                  </div>
-                </fieldset>
 
                 <div className="mt-6 flex justify-end space-x-3">
                   <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">

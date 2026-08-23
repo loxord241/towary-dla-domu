@@ -54,19 +54,13 @@ export default async function AdminPage() {
       href: '/admin/categories',
       icon: '🗂️',
       title: 'Категорії',
-      description: 'Дерево категорій і переклади',
+      description: 'Дерево категорій',
     },
     {
       href: '/admin/brands',
       icon: '🏷️',
       title: 'Бренди',
-      description: 'Бренди та переклади',
-    },
-    {
-      href: '/admin/translations',
-      icon: '🌐',
-      title: 'Переклади',
-      description: 'Зведення uk-перекладів',
+      description: 'Довідник брендів',
     },
   ];
 

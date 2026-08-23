@@ -81,8 +81,6 @@ const supabase = createClient(
   { auth: { persistSession: false } }
 );
 
-const UK_LANGUAGE_CODE = 'uk';
-
 const PRODUCT_SELECT =
   '*, category:categories(*), brand:brands(*), images:product_images(*), variants:product_variants(*)';
 
@@ -99,25 +97,6 @@ type ProductJoinedRow = Omit<
   variants: ProductVariant[] | null;
 };
 
-interface ProductsTranslationRow {
-  product_id: string;
-  name: string | null;
-  short_description: string | null;
-  description: string | null;
-}
-
-interface CategoriesTranslationRow {
-  category_id: string;
-  name: string | null;
-  description: string | null;
-}
-
-interface BrandsTranslationRow {
-  brand_id: string;
-  name: string | null;
-  description: string | null;
-}
-
 function normalizeProduct(row: ProductJoinedRow): Product {
   const images = [...(row.images ?? [])].sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
@@ -130,128 +109,6 @@ function normalizeProduct(row: ProductJoinedRow): Product {
     images,
     variants: row.variants ?? [],
   };
-}
-
-async function getProductTranslationMap(
-  ids: string[]
-): Promise<Map<string, ProductsTranslationRow>> {
-  if (ids.length === 0) return new Map();
-
-  const { data, error } = await supabase
-    .from('products_translations')
-    .select('product_id, name, short_description, description')
-    .in('product_id', ids)
-    .eq('language_code', UK_LANGUAGE_CODE)
-    .returns<ProductsTranslationRow[]>();
-
-  if (error) {
-    console.error('Failed to load products_translations:', error.message);
-    return new Map();
-  }
-
-  return new Map((data ?? []).map((row) => [row.product_id, row]));
-}
-
-async function getCategoryTranslationMap(
-  ids: string[]
-): Promise<Map<string, CategoriesTranslationRow>> {
-  if (ids.length === 0) return new Map();
-
-  const { data, error } = await supabase
-    .from('categories_translations')
-    .select('category_id, name, description')
-    .in('category_id', ids)
-    .eq('language_code', UK_LANGUAGE_CODE)
-    .returns<CategoriesTranslationRow[]>();
-
-  if (error) {
-    console.error('Failed to load categories_translations:', error.message);
-    return new Map();
-  }
-
-  return new Map((data ?? []).map((row) => [row.category_id, row]));
-}
-
-async function getBrandTranslationMap(
-  ids: string[]
-): Promise<Map<string, BrandsTranslationRow>> {
-  if (ids.length === 0) return new Map();
-
-  const { data, error } = await supabase
-    .from('brands_translations')
-    .select('brand_id, name, description')
-    .in('brand_id', ids)
-    .eq('language_code', UK_LANGUAGE_CODE)
-    .returns<BrandsTranslationRow[]>();
-
-  if (error) {
-    console.error('Failed to load brands_translations:', error.message);
-    return new Map();
-  }
-
-  return new Map((data ?? []).map((row) => [row.brand_id, row]));
-}
-
-/** Overlay uk translations onto products; base columns stay as fallback. */
-function overlayProductTranslations(
-  products: Product[],
-  translations: Map<string, ProductsTranslationRow>
-): Product[] {
-  return products.map((product) => {
-    const t = translations.get(product.id);
-    if (!t) return product;
-    return {
-      ...product,
-      name: t.name ?? product.name,
-      short_description: t.short_description ?? product.short_description,
-      description: t.description ?? product.description,
-    };
-  });
-}
-
-/** Overlay uk translations onto embedded category/brand objects. */
-async function overlayRelationTranslations(products: Product[]): Promise<Product[]> {
-  const categoryIds = [
-    ...new Set(
-      products
-        .map((p) => p.category?.id)
-        .filter((id): id is string => Boolean(id))
-    ),
-  ];
-  const brandIds = [
-    ...new Set(
-      products.map((p) => p.brand?.id).filter((id): id is string => Boolean(id))
-    ),
-  ];
-
-  const [catMap, brandMap] = await Promise.all([
-    getCategoryTranslationMap(categoryIds),
-    getBrandTranslationMap(brandIds),
-  ]);
-
-  return products.map((product) => ({
-    ...product,
-    category:
-      product.category && catMap.has(product.category.id)
-        ? {
-            ...product.category,
-            name: catMap.get(product.category.id)?.name ?? product.category.name,
-            description:
-              catMap.get(product.category.id)?.description ??
-              product.category.description,
-          }
-        : (product.category ?? null),
-    brand:
-      product.brand && brandMap.has(product.brand.id)
-        ? {
-            ...product.brand,
-            name: brandMap.get(product.brand.id)?.name ?? product.brand.name,
-            description:
-              brandMap.get(product.brand.id)?.description ??
-              product.brand.description,
-          }
-        : (product.brand ?? null),
-  }));
 }
 
 async function fetchProducts(options: {
@@ -276,15 +133,7 @@ async function fetchProducts(options: {
 
   const products = (data ?? []).map(normalizeProduct);
 
-  const translationMap = await getProductTranslationMap(
-    products.map((p) => p.id)
-  );
-  const withTranslations = overlayProductTranslations(
-    products,
-    translationMap
-  );
-
-  return overlayRelationTranslations(withTranslations);
+  return products;
 }
 
 /** Sanitize a user-supplied search term for use inside a PostgREST `or` expression. */
@@ -311,38 +160,13 @@ export const CATALOG_PAGE_SIZE = 12;
 const CATALOG_MAX_PAGE_SIZE = 50;
 
 /**
- * Find product ids whose uk translation matches the search term. Used to
- * widen catalog search beyond the base columns: the storefront displays
- * translated names, so users search in uk as well.
- */
-async function getUkTranslatedProductIds(search: string): Promise<string[]> {
-  try {
-    const { data, error } = await supabase
-      .from('products_translations')
-      .select('product_id')
-      .eq('language_code', UK_LANGUAGE_CODE)
-      .or(
-        `name.ilike.%${search}%,short_description.ilike.%${search}%,description.ilike.%${search}%`
-      );
-
-    if (error) throw error;
-    return (data ?? []).map((row) => row.product_id);
-  } catch {
-    // On failure fall back to base-column search only.
-    return [];
-  }
-}
-
-/**
  * All active storefront products with category, brand, images and variants,
- * filtered/sorted for the catalog page. uk translations are applied when
- * available; base columns act as fallback.
+ * filtered/sorted for the catalog page.
  *
  * Category/brand filters use PostgREST embedded-resource filters
  * (`category.slug=eq...`), which act as inner joins — products with a
  * NULL category are naturally excluded when the filter is applied.
- * Search covers the base name/short description plus any uk translation
- * field (union), since visitors search using the displayed uk names.
+ * Search covers the base name/short description columns.
  */
 export interface CatalogPage {
   products: Product[];
@@ -366,17 +190,10 @@ export async function fetchCatalogProducts(
 
   // ---- shared filter inputs (computed once, reused by both queries) ----
   const search = sanitizeSearchTerm(filters.search ?? '');
-  let translatedIds: string[] = [];
-  if (search) {
-    translatedIds = await getUkTranslatedProductIds(search);
-  }
   const searchConditions = search
     ? [
         `name.ilike.%${search}%`,
         `short_description.ilike.%${search}%`,
-        ...(translatedIds.length > 0
-          ? [`id.in.(${translatedIds.join(',')})`]
-          : []),
       ]
     : null;
 
@@ -469,16 +286,8 @@ export async function fetchCatalogProducts(
 
   const products = (data ?? []).map(normalizeProduct);
 
-  const translationMap = await getProductTranslationMap(
-    products.map((p) => p.id)
-  );
-  const withTranslations = overlayProductTranslations(
-    products,
-    translationMap
-  );
-
   return {
-    products: await overlayRelationTranslations(withTranslations),
+    products,
     total,
     page,
     size,
@@ -493,8 +302,7 @@ export async function fetchFeaturedProducts(): Promise<Product[]> {
 }
 
 /**
- * Active categories ordered for navigation. uk translations are applied
- * when available; base columns act as fallback.
+ * Active categories ordered for navigation.
  */
 export async function fetchActiveCategories(): Promise<Category[]> {
   const { data, error } = await supabase
@@ -510,25 +318,11 @@ export async function fetchActiveCategories(): Promise<Category[]> {
     return [];
   }
 
-  const categories = data ?? [];
-  const translationMap = await getCategoryTranslationMap(
-    categories.map((c) => c.id)
-  );
-
-  return categories.map((category) => {
-    const t = translationMap.get(category.id);
-    if (!t) return category;
-    return {
-      ...category,
-      name: t.name ?? category.name,
-      description: t.description ?? category.description,
-    };
-  });
+  return data ?? [];
 }
 
 /**
- * Active brands. uk translations are applied when available; base columns
- * act as fallback.
+ * Active brands.
  */
 export async function fetchActiveBrands(): Promise<Brand[]> {
   const { data, error } = await supabase
@@ -543,18 +337,7 @@ export async function fetchActiveBrands(): Promise<Brand[]> {
     return [];
   }
 
-  const brands = data ?? [];
-  const translationMap = await getBrandTranslationMap(brands.map((b) => b.id));
-
-  return brands.map((brand) => {
-    const t = translationMap.get(brand.id);
-    if (!t) return brand;
-    return {
-      ...brand,
-      name: t.name ?? brand.name,
-      description: t.description ?? brand.description,
-    };
-  });
+  return data ?? [];
 }
 
 /**
@@ -579,41 +362,5 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
 
   if (!data) return null;
 
-  let product = normalizeProduct(data);
-
-  // Apply uk translation to the product and its embedded relations.
-  const productTranslations = await getProductTranslationMap([product.id]);
-  product = overlayProductTranslations([product], productTranslations)[0]!;
-
-  if (product.category) {
-    const catMap = await getCategoryTranslationMap([product.category.id]);
-    const t = catMap.get(product.category.id);
-    if (t) {
-      product = {
-        ...product,
-        category: {
-          ...product.category,
-          name: t.name ?? product.category.name,
-          description: t.description ?? product.category.description,
-        },
-      };
-    }
-  }
-
-  if (product.brand) {
-    const brandMap = await getBrandTranslationMap([product.brand.id]);
-    const t = brandMap.get(product.brand.id);
-    if (t) {
-      product = {
-        ...product,
-        brand: {
-          ...product.brand,
-          name: t.name ?? product.brand.name,
-          description: t.description ?? product.brand.description,
-        },
-      };
-    }
-  }
-
-  return product;
+  return normalizeProduct(data);
 }
