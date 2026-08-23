@@ -15,12 +15,11 @@ export default function SiteHeader() {
             <Link href="/" className="text-xl font-bold text-blue-600">
               E-Shop
             </Link>
+            {/* Избранное доступно через сердечко-бейдж справа (с живым
+                счётчиком) — отдельная текстовая ссылка дублировала бы его. */}
             <nav className="flex space-x-4" aria-label="Основна навігація">
               <Link href="/catalog" className="text-gray-600 hover:text-blue-600">
                 Каталог
-              </Link>
-              <Link href="/favorites" className="text-gray-600 hover:text-blue-600">
-                Обране
               </Link>
             </nav>
           </div>
