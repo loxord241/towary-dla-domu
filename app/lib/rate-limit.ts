@@ -98,6 +98,16 @@ export const RATE_RULES = {
   ],
   // read-only catalog preview: generous, abuse-only ceiling
   cartPreview: [{ max: 120, windowMs: 60_000 }],
+  // Yugcontract preview is admin-only, but every run downloads the FULL
+  // provider feed (~200k rows) and hits an external B2B API — hard ceiling
+  yugcontractPreview: [{ max: 3, windowMs: 10 * 60_000 }],
+  // Category tree is a much lighter payload than the price feed
+  yugcontractCategories: [{ max: 6, windowMs: 10 * 60_000 }],
+  // Import orchestration: start creates checkpoints, run executes exactly
+  // ONE batch per call, status is a cheap SELECT — all admin-only.
+  yugcontractImportStart: [{ max: 3, windowMs: 10 * 60_000 }],
+  yugcontractImportRun: [{ max: 30, windowMs: 10 * 60_000 }],
+  yugcontractImportStatus: [{ max: 60, windowMs: 10 * 60_000 }],
 } as const;
 
 /**

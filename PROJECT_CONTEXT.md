@@ -102,3 +102,58 @@ email, expires_at, payment_status), order_items (+variant_name/sku), product_sto
 - Для изображений использовать getPublicImageUrl(); пути в БД хранятся как относительные объектные пути
 - Клиентские fetch к /api/cart-preview — только через lib/cart-preview.ts (таймаут+dispose инвариант)
 - При добавлении таблиц вносить изменения в catalog.ts и соответствующие функции
+
+## Интеграция Yugcontract (этап 1: read-only preview, 2026-08)
+- app/lib/yugcontract/ — server-only клиент B2B API:
+  jwt.ts (HS256 через node:crypto, без зависимостей), client.ts
+  (authToken + memory-cache ~1ч с margin 5мин; при 401 — refresh + ОДИН retry;
+  429/5xx → типизированные ошибки без частичного результата),
+  normalize.ts (runtime-коэрция полей фида + статистика), types.ts.
+- Credentials YUGCONTRACT_USER_KEY / YUGCONTRACT_SECRET — server-side env only,
+  никогда не логируются и не попадают в ответы/бандл (проверено по .next/static).
+- GET /api/admin/yugcontract/preview — requireAdminApi() + rate-limit 3/10мин.
+  Читает полный get-price фид (~200k строк), считает статистику и сравнивает
+  с нашей БД (только SELECT). НИЧЕГО не пишет. maxDuration=60 на Vercel.
+- GET /api/admin/yugcontract/categories + страница /admin/yugcontract/categories —
+  read-only превью дерева get-categories: автоопределение формы ответа
+  (arrayPath + ключи id/name/parent), статистика уровней, поиск с сохранением
+  предков. rate-limit 6/10мин. НИЧЕГО не пишет.
+- scripts/yugcontract-categories-preview.ts — локальный CLI-вывод дерева
+  категорий (читает .env.local, печатает ID/названия, без секретов).
+- ПОДТВЕРЖДЕНО реальным вызовом (2026-08): get-categories отдаёт массив
+  прямо в content[]; ключи id/name/parent_id; 524 узла, корней 9,
+  глубина до L3 (L0:9 L1:59 L2:252 L3:204), сирот нет. ВАЖНО для импорта:
+  фид товаров содержит только cat_top/cat_2l/cat (+2 id), а дерево имеет
+  4 уровня — часть листьев живёт на L3.
+- Страница /admin/yugcontract — рендер статистики (укр. строки).
+- Импорт НЕ реализован: нужен migration products.yugcontract_id TEXT UNIQUE
+  (предложен, не применён), batch-based idempotent импортер. Сопоставление
+  товаров — ТОЛЬКО по внешнему id, не по name/slug/brand/price.
+
+## Интеграция Yugcontract (этап 2: импорт выбранного ассортимента, 2026-08)
+- Миграции применены (вручную через SQL Editor): 009 products.yugcontract_id
+  TEXT + partial unique idx; 010 categories.yugcontract_id TEXT + partial
+  unique idx + служебная таблица yc_import_batches (RLS on, без policies —
+  только service role). DDL недоступен из кода: psql/CLI/DATABASE_URL нет.
+- app/lib/yugcontract/import-plan.ts — pure планировщики (unit-tested):
+  категории (depth-sorted creates, minimal updates, конфликты slug),
+  бренды (exact normalized match; lookalikes НЕ сливаются — только отчёт),
+  товары (rrp>price→old_price, qty clamp ≥0, availability по stock).
+- app/lib/yugcontract/import-run.ts — исполнение: deps (live tree +
+  leaf-only cats батчи ≤40), checkpoint CRUD, executeBatch/runUntilDone,
+  buildFullPlan (read-only план перед записью). Идемпотентность:
+  identity=yugcontract_id, split insert/update по diff, slug/is_active
+  существующих не трогаются. Пустой фид батча → failed (не 'done').
+- API: /api/admin/yugcontract/import/{start,run,status} — requireAdminApi,
+  rate-limit, maxDuration=60; run выполняет РОВНО один батч за вызов.
+- scripts/yugcontract-import-run.ts --plan|--run[--resume ID] — тот же
+  код-путь локально (свежий deps на фазу исполнения!). 
+- scripts/yugcontract-verify.ts — регрессия: целостность БД + storefront
+  + cart-preview + реальный place_order→cancel (сток восстанавливается).
+- ФАКТ импорта 2026-08: 205 категорий (11 корней, depth≤3), 69 брендов,
+  4322 товара (все с price/brand/category; old_price у 4226). Run
+  yc-2026-08-24-11-26-25, все батчи done. Уроки: API get-price разворачивает
+  родительские cats в поддерево → запрашивать ТОЛЬКО листья; parent_id
+  категорий резолвить per-chunk после вставки родителей.
+- Будущие синки: повторный --run идемпотентен (обновит price/old_price/
+  stock/name; history source='yugcontract' при изменении стока).
