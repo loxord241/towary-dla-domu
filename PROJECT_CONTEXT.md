@@ -186,3 +186,153 @@ email, expires_at, payment_status), order_items (+variant_name/sku), product_sto
   (кандидат: products.specifications JSONB; EAV attributes/* уже есть,
   но тяжёлый; product_images хранит относительные Storage-пути —
   getPublicImageUrl не умеет внешние URL).
+
+## Этап 4: подготовка content import (2026-08-24, НЕ применено к production)
+- CONTENT DRY-RUN (реальный вызов 2026-08-24): dump 35.3 MB / ~75 с,
+  raw 9043 → unique 8824 (219 дублей-id, правило first-wins). Наши
+  товары: 4323 (4322 YC-linked + 1 manual); matched 4131 = 95.58%,
+  unmatched 191. Описания: у matched 3399 с описом/732 пустых, 99.99%
+  HTML, опасное: iframe=1, style=336, script/on*/javascript:/data:=0.
+  Params: 4082 товара, 46802 шт, avg 11.3, max 84, 639 уник. назв;
+  одинаковый name с разными values: 10 matched (115 в фиде) → формат
+  specifications = JSON ARRAY [{name,value}]. Картинки: у 100% goods,
+  matched 23863 URL, host только b2b.yugcontract.ua, .pdf внутри
+  pictures[] присутствуют; sample HEAD 20/20 OK, avg ≈1 MB, оценка
+  полного объёма ≈12–22 GB → hotlink вместо зеркалирования.
+- НАЙДЕН БАГ ПЕЙДЖИНГА: Supabase молча режет range до 1000 строк —
+  fetchAllRows(PAGE=5000) вернул 1000 из 4323. CLI content-dry-run
+  пейджит по 1000. ОТДЕЛЬНЫЙ будущий фикс: fetchAllRows в import-run.ts
+  (используют import/status), свой PAGE_SIZE=5000 в preview route.
+- РЕШЕНО: specifications JSONB array (не object, не EAV); описание →
+  products.description через allowlist sanitizer (sanitize-html,
+  content-sanitize.ts) НА ЭТАПЕ FETCH (raw HTML нигде не хранится);
+  картинки — HOTLINK внешних URL из существующей product_images
+  (getPublicImageUrl теперь пропускает http(s) как есть;
+  storagePathFromImageUrl/toStoragePath возвращают '' для внешних →
+  delete-flow пропускает Storage.remove; все <Image> unoptimized).
+  Валидация external URL (content-staging.ts): http/https + host
+  b2b.yugcontract.ua + расширение jpg/jpeg/png/webp/gif (pdf отклонён).
+- МИГРАЦИЯ database/migrations/011_content_import.sql СОЗДАНА, НЕ
+  ПРИМЕНЕНА: products.specifications JSONB + CHECK jsonb_typeof=array
+  (без GIN), staging yc_content_goods (description УЖЕ санitized,
+  pictures/params JSONB, PK=yugcontract_id), чекпоинты yc_content_batches
+  (phase description|images; независима от yc_import_batches; RLS on без
+  policies = только service role).
+- КОД: app/lib/yugcontract/content-{sanitize,staging,import}.ts (pure
+  планировщик diff-aware: пишет ТОЛЬКО description/specifications —
+  assertContentFields guard + тесты; second run no-op; идемпотентность;
+  stale-running recovery как в price import). CLI:
+  scripts/yugcontract-content-fetch.ts (--plan|--stage; 1 вызов API,
+  sanitize+validate→upsert staging) и scripts/yugcontract-content-apply.ts
+  (--plan|--run[--resume]; читает ТОЛЬКО staging, батчи ≤200 id).
+- ЗАПУЩЕНО ТОЛЬКО unit-тесты (119 pass): sanitize adversarial fixtures,
+  image URL validation/passthrough, planner idempotency/isolation/batches.
+  Реальные --stage/--run НЕ выполнялись; миграция не применялась;
+  production data не изменялись (0 записей). Фаза images в executor
+  пока явно падает 'failed: ще не реалізована'.
+
+## Этап 5: content import ПРИМЕНЁН к products (2026-08-24)
+- Миграция 011 применена вручную (SQL Editor); verification: 14 PASS /
+  0 FAIL (scripts/tmp-verify-011.ts — OpenAPI+head-count read-only).
+- --stage (15:50): 1 вызов API 35.4MB/79.7s → yc_content_goods 8827
+  строк (first-wins), sanitized desc 6796, отклонено 3×.pdf; верификация
+  staging FAIL=0 (нет опасного HTML/дублей/невалидных URL; сентинелы
+  ДО=ПОСЛЕ). scripts/tmp-verify-stage.ts (--sentinels для быстрой пробы).
+- apply --run (15:58, run=ycc-2026-08-24-15-58-40): 45/45 батчей done,
+  updated=4130, skipped=4697, errors=0, 396.7с. Записаны ТОЛЬКО
+  products.description (3399 заполнений) + products.specifications
+  (4081 товаров, JSON array). overwrite непустых описаний = 0.
+- ИЗОЛЯЦИЯ ДОКАЗАНА SHA-256 сентинелами (scripts/tmp-sentinel.ts):
+  fingerprint защищённых полей products (price/old_price/stock/name/
+  slug/is_active/is_featured/category_id/brand_id/sku/currency),
+  product_images, yc_import_batches, product_stock_history,
+  yc_content_goods(ids) и счётчики orders/order_items/customers —
+  НЕИЗМЕННЫ до/после; сдвинулся только products.max(updated_at) и
+  появился 45 чекпоинтов.
+- Пост-верификация (scripts/tmp-postverify-content.ts): YC-linked с
+  описанием 3399 / пустых 923 / со specifications 4081; manual товар
+  не тронут; спот-чеки A/B/C — sanitized HTML в БД, specifications
+  валидный JSON array, повторяющиеся name с разными values СОХРАНЕНЫ
+  (YC-6703075: "Рекомендована площа…" → ["20...25","25"]); глобальный
+  скан опасных конструкций по 3399 описаниям = 0.
+- Идемпотентность подтверждена живой БД: повторный apply --plan даёт
+  potential UPDATE = 0, no-op = 3399 (+731 без описа получают specs при
+  изменении фида), unmatched 4697.
+- Product page ПОКА рендерит description как plain text (без
+  dangerouslySetInnerHTML) — переключение отдельным GO. Images остаются
+  hotlink (products.specifications/pictures в staging готовы к будущему
+  images-этапу через product_images external URL passthrough).
+
+## Этап 6: HTML-рендер description на product page (2026-08-24)
+- app/components/ProductDescription.tsx — ЕДИНСТВЕННОЕ в проекте место
+  с dangerouslySetInnerHTML (инвариант закреплён тестом
+  tests/product-description.test.ts: ровно 1 usage во всём app/,
+  sanitize-html импортируется только content-sanitize.ts, компонент не
+  импортирует санитайзер). Pure-fallback в app/lib/product-description.ts:
+  description(HTML) → short_description(text) → «Опис відсутній».
+- Типографика scoped через Tailwind arbitrary variants (без глобального
+  CSS): таблицы border+collapse внутри overflow-x-auto обёртки,
+  img max-w-full h-auto, списки/заголовки/emphasis.
+- Реальная SSR-проверка на живых данных (next start + curl):
+  YC-40360 → <p>… отрендерен как HTML (&lt;p&gt; отсутствует);
+  YC-5969101 → «Опис відсутній»; manual fgdfgdfgdfdsa → plain text.
+  Визуальный browser-check НЕ выполнялся (нет браузера в среде).
+- Product page БОЛЬШЕ НЕ показывает теги как текст. Images/orders/
+  price-import/БД-схема не затронуты; записи products не менялись.
+
+## Этап 7: images hotlink — PLAN готов, --run ждёт GO (2026-08-24)
+- app/lib/yugcontract/content-images.ts — pure-планировщик: identity =
+  (product_id, image_url) БЕЗ unique index (diff-aware reconciliation,
+  single-runner); imported-vs-manual дискриминатор = absolute http(s)+
+  b2b host URL (admin upload всегда пишет относительный Storage путь);
+  DELETE свідомо не реализован (stale imported только отчёт).
+- Семантика: чистый товар → pictures[0] sort_order=0+is_main=true;
+  есть foreign(manual) изображения → hotlink аппендится после max
+  foreign sort_order, все is_main=false при чужом main; reorder в
+  pure-imported наборе каноничен (0..n-1) и переключает main корректно;
+  ревалидация URL на выходе из staging обязательна (executor flow).
+- executeImagesBatch встроен в runContentUntilDone (phase='images',
+  те же чекпоинты yc_content_batches). CLI:
+  scripts/yugcontract-content-images.ts --plan|--run[--resume].
+- --plan (16:45): matched 4130 (все с картинками), 45049 URL после
+  ревалидации (0 невалидных), product_images у matched сейчас 0
+  (единственная manual-картинка принадлежит manual-товару вне YC),
+  INSERT 23848 / UPDATE 0 / NOOP 0 / DELETE 0 / stale 0 / дубли 0 /
+  аномалий нет / батчей 45. Урок: .in() чанк ≤200 UUID (длинные GET
+  URL → PostgREST Bad Request). Production НЕ менялся; --run по GO.
+
+## Этап 7 (продолжение): images --run ВЫПОЛНЕН + верифицирован (2026-08-24)
+- run=ycci-2026-08-24-16-51-16: 45/45 done, вставлено 23848 external
+  URL в product_images, errors=0, 70.6с. products НЕ тронуты вообще
+  (max(updated_at) не сдвинулся); manual-строка байт-идентична;
+  yc_import_batches/stock/orders fingerprints неизменны.
+- Верификация FAIL=0: дубликатов (product_id,image_url)=0; все URL
+  http(s)+b2b host+image-ext; ≤1 main на товар; pure-imported наборы
+  каноничны 0..N-1 с main на 0; спот-чеки max-pictures(49)/one-picture.
+- SSR: карточка каталога, gallery (49 уникальных b2b URL на странице),
+  cart-preview imageUrl — работают через passthrough getPublicImageUrl.
+- НОВЫЙ УРОК 1000-CAP: лимит 1000 строк действует и на .in() запросы
+  БЕЗ явного .range() → loadProductImagesFor + images-CLI молча видели
+  20232/23848 строк (ложные 3616 INSERT при ре-плане). ФИКС: явная
+  пагинация внутри каждого .in чанка. Повторный --plan: INSERT=0,
+  NOOP=23848 — идемпотентность подтверждена живой БД.
+
+## Этап 8: hardening silent-truncation (2026-08-24)
+- P0: import-run.fetchAllRows PAGE 5000→1000 + .order('id'); preview
+  PAGE_SIZE 5000→1000 (+.order('id')); admin/products GET default ветка
+  больше НЕ unbounded — единая пагинация page/size (cap 100) с total/
+  page/size всегда в ответе; UI всегда шлёт ?page&size; маскирующий
+  fallback `total ?? rows.length` убран (throw при отсутствии total).
+- P1: tiebreaker .order('id') в paged admin products/orders; legacy
+  scripts/yugcontract-dry-run.ts PAGE_SIZE→1000; selectBatches/
+  selectContentBatches — защитная пагинация 1000 (семантика чекпоинтов
+  не изменена).
+- Тесты tests/pagination-hardening.test.ts: mock-Supabase с реальным
+  cap-поведением (2500→3 req, 1001→2 req, exactly-1000 требует холостой
+  probe-запрос следующей страницы), contiguous windows без off-by-one;
+  статические инварианты: ни одного объявления PAGE>1000 в app/+scripts/,
+  preview пагинируется, tiebreakers на месте, UI-fallback удалён.
+- Остаточные latent: verify.ts inline categories loop (4999 literals,
+  таблица 205 строк); admin products actions featured/active unbounded;
+  storefront categories/brands/featured unbounded; order_items.eq(order_id)
+  теоретический. Production data не менялись.

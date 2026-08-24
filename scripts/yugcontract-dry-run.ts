@@ -60,7 +60,8 @@ const {
 // --- tunables --------------------------------------------------------------
 const CATS_PER_BATCH = 40;
 const DELAY_BETWEEN_BATCHES_MS = 700;
-const PAGE_SIZE = 5000;
+// PostgREST caps any single response at 1000 rows — PAGE_SIZE must stay <= 1000.
+const PAGE_SIZE = 1000;
 
 function fmt(n: number | null | undefined): string {
   return n === null || n === undefined ? '—' : String(n);

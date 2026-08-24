@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { storagePathFromImageUrl } from './supabase-storage';
 
 export type AdminApiContext = {
   userId: string;
@@ -148,14 +149,9 @@ export function dbErrorResponse(
 
 /**
  * Normalize a product_images.image_url value into a storage object path.
- * Rows normally store a relative path ("products/<id>/file.png"), but full
- * public URLs are tolerated as well.
+ * Delegates to the pure, dependency-free implementation in
+ * supabase-storage.ts (external URLs → '' so delete flows skip Storage).
  */
 export function toStoragePath(imageUrl: string): string {
-  const marker = '/storage/v1/object/public/product_images/';
-  const index = imageUrl.indexOf(marker);
-  if (index !== -1) {
-    return decodeURIComponent(imageUrl.slice(index + marker.length));
-  }
-  return decodeURIComponent(imageUrl.replace(/^\/+/, ''));
+  return storagePathFromImageUrl(imageUrl);
 }

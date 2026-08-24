@@ -35,7 +35,9 @@ export default function SiteFooter({ categories }: SiteFooterProps) {
               </ul>
             ) : (
               <ul className="space-y-2 text-gray-300">
-                {categories.map((category) => (
+                {/* Only the first 5 categories: the full supplier list
+                    (~200 entries) made the footer endless. */}
+                {categories.slice(0, 5).map((category) => (
                   <li key={category.id}>
                     <Link
                       href={`/catalog?category=${encodeURIComponent(category.slug)}`}
@@ -45,6 +47,13 @@ export default function SiteFooter({ categories }: SiteFooterProps) {
                     </Link>
                   </li>
                 ))}
+                {categories.length > 5 && (
+                  <li>
+                    <Link href="/catalog" className="font-medium text-white hover:underline">
+                      Усі категорії →
+                    </Link>
+                  </li>
+                )}
               </ul>
             )}
           </div>

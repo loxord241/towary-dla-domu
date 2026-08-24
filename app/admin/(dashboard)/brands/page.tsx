@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Modal from '@/app/components/Modal';
 import { Brand } from '@/app/lib/catalog';
 
@@ -30,6 +30,30 @@ async function fetchBrandList(
 
 export default function BrandsAdminPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
+
+  // UI-only search & sort over the loaded list (full table, no server call).
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('default');
+  const visibleBrands = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = brands;
+    if (q !== '') {
+      list = list.filter(
+        (b) => b.name.toLowerCase().includes(q) || b.slug.toLowerCase().includes(q)
+      );
+    }
+    const byText = (a: string, b: string) => a.localeCompare(b, 'uk');
+    switch (sortBy) {
+      case 'name_asc':
+        return [...list].sort((a, b) => byText(a.name, b.name));
+      case 'name_desc':
+        return [...list].sort((a, b) => byText(b.name, a.name));
+      case 'slug':
+        return [...list].sort((a, b) => byText(a.slug, b.slug));
+      default:
+        return list;
+    }
+  }, [brands, search, sortBy]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -195,7 +219,7 @@ export default function BrandsAdminPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">Бренди</h1>
         <button
           onClick={handleCreate}
@@ -203,6 +227,28 @@ export default function BrandsAdminPage() {
         >
           Додати бренд
         </button>
+      </div>
+
+      {/* Search + sort (client-side over the full loaded list) */}
+      <div className="mb-4 flex gap-3 flex-wrap">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Пошук за назвою або slug…"
+          className="flex-1 min-w-[220px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          aria-label="Сортування"
+        >
+          <option value="default">За замовчуванням</option>
+          <option value="name_asc">Назва А→Я</option>
+          <option value="name_desc">Назва Я→А</option>
+          <option value="slug">Slug А→Я</option>
+        </select>
       </div>
 
       {status && !isModalOpen && (
@@ -228,7 +274,7 @@ export default function BrandsAdminPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {brands.map((brand) => (
+            {visibleBrands.map((brand) => (
               <tr key={brand.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">

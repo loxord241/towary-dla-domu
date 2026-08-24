@@ -7,6 +7,7 @@ import SiteFooter from '@/app/components/SiteFooter'
 import AddToCartButton from '@/app/components/AddToCartButton'
 import FavoriteButton from '@/app/components/FavoriteButton'
 import ProductGallery from '@/app/components/ProductGallery'
+import ProductDescription from '@/app/components/ProductDescription'
 
 function availabilityLabel(status: string): string {
   if (status === 'in_stock') return 'В наявності'
@@ -30,10 +31,10 @@ export default async function ProductPage({
   const galleryUrls = getPublicImageUrls(product.images)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       <SiteHeader />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto flex-1 px-4 py-8">
         <nav aria-label="Навігація" className="mb-5 text-sm text-gray-500">
           <Link href="/catalog" className="hover:text-blue-600 hover:underline">Каталог</Link>
           {product.category && (
@@ -111,12 +112,10 @@ export default async function ProductPage({
 
             <div className="mb-6">
               <h3 className="mb-2 font-semibold text-gray-900">Опис</h3>
-              <p className="text-gray-700 whitespace-pre-line">
-                {product.description || product.short_description || 'Опис відсутній'}
-              </p>
-              {product.short_description && product.description && (
-                <p className="text-gray-500 text-sm mt-2">{product.short_description}</p>
-              )}
+              <ProductDescription
+                description={product.description}
+                shortDescription={product.short_description}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -177,9 +176,10 @@ export default async function ProductPage({
           </div>
         )}
 
-        {/* Footer */}
-        <SiteFooter />
+        {/* Footer — full-bleed, outside the content container */}
       </div>
+
+      <SiteFooter />
     </div>
   )
 }

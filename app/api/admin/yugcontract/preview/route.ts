@@ -26,7 +26,9 @@ export const maxDuration = 60;
  * operations here are SELECTs through the admin service client.
  */
 
-const PAGE_SIZE = 5000;
+// PostgREST caps any single response at 1000 rows — PAGE_SIZE must stay
+// <= 1000 (5000 here silently read only the first 1000 products).
+const PAGE_SIZE = 1000;
 
 /** Fetch every row of a small admin table, page by page (read-only). */
 async function fetchAllRows<T>(
@@ -40,6 +42,7 @@ async function fetchAllRows<T>(
     const { data, error } = await client
       .from(table)
       .select(select)
+      .order('id')
       .range(from, from + PAGE_SIZE - 1)
       .returns<T[]>();
     if (error) throw new Error(error.message);

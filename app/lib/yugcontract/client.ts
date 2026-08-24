@@ -333,6 +333,44 @@ function categoriesUrl(): string {
   );
 }
 
+function contentUrl(): string {
+  return (
+    process.env.YUGCONTRACT_CONTENT_URL ??
+    'https://b2b.yugcontract.ua/api/catalog/get-content-goods'
+  );
+}
+
+export interface GetContentResultWithMeta {
+  parsed: unknown;
+  /** decompressed body size in bytes */
+  byteLength: number;
+}
+
+/**
+ * Fetch the get-content-goods catalog. The endpoint has NO server-side
+ * filtering: it always returns the FULL content dump (~9k goods, tens of
+ * MB, slow upstream assembly), so callers MUST invoke it at most once per
+ * refresh cycle and stage the result — never once per batch.
+ * Same transport guarantees as the other catalog endpoints.
+ */
+export async function getContentGoodsWithMeta(
+  fetchImpl: FetchLike = fetch
+): Promise<GetContentResultWithMeta> {
+  return postCatalogEndpoint(
+    contentUrl(),
+    { format: 'json', type: 'regular' },
+    'контенту товарів',
+    fetchImpl
+  );
+}
+
+export async function getContentGoods(
+  fetchImpl: FetchLike = fetch
+): Promise<unknown> {
+  const { parsed } = await getContentGoodsWithMeta(fetchImpl);
+  return parsed;
+}
+
 /**
  * Fetch the get-categories catalog (read-only preview support).
  * Minimal documented-generic body; the response envelope is intentionally

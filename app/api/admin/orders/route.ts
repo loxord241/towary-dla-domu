@@ -71,6 +71,9 @@ export async function GET(request: Request) {
         'id, order_number, email, status, payment_status, total_amount, currency, customer_info, created_at'
       )
       .order('created_at', { ascending: false })
+      // Stable offset pagination: created_at ties (bulk imports) must not
+      // shuffle rows across pages.
+      .order('id', { ascending: false })
       .range((safePage - 1) * size, safePage * size - 1);
     if (status) dataQuery = dataQuery.eq('status', status);
     if (orFilter) dataQuery = dataQuery.or(orFilter);

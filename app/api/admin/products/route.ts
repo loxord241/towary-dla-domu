@@ -99,32 +99,17 @@ export async function GET(request: Request) {
       }
 
       default: {
-        // Full admin listing (default when no action is provided).
-        // Additive pagination: ?page=&size= (size capped at 100). The total
-        // count lets the admin UI render real page controls.
+        // Listing is ALWAYS paginated (additive ?page=&size=, size capped
+        // at 100). The old "unbounded" mode was a silent-truncation bug:
+        // PostgREST capped it at 1000 rows and returned them as if complete.
         const sizeParam = Number(searchParams.get('size'));
         const pageParam = Number(searchParams.get('page'));
         // Integers only: a fractional size ("0.5") would truncate to 0 and
         // produce Infinity/NaN page math downstream.
-        const hasPaging =
-          Number.isInteger(sizeParam) && sizeParam > 0 && !action;
-        const size = hasPaging ? Math.min(sizeParam, 100) : 0;
+        const size =
+          Number.isInteger(sizeParam) && sizeParam > 0 ? Math.min(sizeParam, 100) : 50;
         const requestedPage =
-          hasPaging && Number.isInteger(pageParam) && pageParam > 0
-            ? pageParam
-            : 1;
-
-        if (!hasPaging) {
-          const { data, error } = await ctx.serviceClient
-            .from('products')
-            .select(SELECT)
-            .order('created_at', { ascending: false })
-            .returns<ProductJoinedRow[]>();
-          if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
-          }
-          return NextResponse.json({ products: (data ?? []).map(normalizeProduct) });
-        }
+          Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
 
         const countQuery = ctx.serviceClient
           .from('products')
@@ -141,6 +126,7 @@ export async function GET(request: Request) {
           .from('products')
           .select(SELECT)
           .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
           .range((safePage - 1) * size, safePage * size - 1)
           .returns<ProductJoinedRow[]>();
         if (error) {

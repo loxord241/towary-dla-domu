@@ -138,15 +138,25 @@ async function selectBatches(
   client: SupabaseClient,
   runId: string
 ): Promise<ImportBatchRow[]> {
-  const { data, error } = await client
-    .from('yc_import_batches')
-    .select('*')
-    .eq('run_id', runId)
-    .order('phase', { ascending: true })
-    .order('batch_no', { ascending: true })
-    .returns<ImportBatchRow[]>();
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  // Paged defensively: (run_id,phase,batch_no) is unique so the order is
+  // deterministic, but a mega-run could exceed the 1000-row response cap.
+  const rows: ImportBatchRow[] = [];
+  let from = 0;
+  for (;;) {
+    const PAGE = 1000;
+    const { data, error } = await client
+      .from('yc_import_batches')
+      .select('*')
+      .eq('run_id', runId)
+      .order('phase', { ascending: true })
+      .order('batch_no', { ascending: true })
+      .range(from, from + PAGE - 1)
+      .returns<ImportBatchRow[]>();
+    if (error) throw new Error(error.message);
+    rows.push(...(data ?? []));
+    if ((data ?? []).length < PAGE) return rows;
+    from += PAGE;
+  }
 }
 
 /** Insert planned batches that do not exist yet; never reset existing ones. */
@@ -239,7 +249,11 @@ async function finishBatch(
 // Shared DB readers (SELECT-only, paged)
 // ---------------------------------------------------------------------------
 
-const PAGE = 5000;
+// PostgREST caps ANY single response at 1000 rows regardless of the
+// requested window, so PAGE must stay <= 1000 or this loop silently
+// stops after the first page (observed live: PAGE=5000 returned 1000
+// of 4323 products). `.order('id')` keeps multi-page reads deterministic.
+const PAGE = 1000;
 
 export async function fetchAllRows<T>(
   client: SupabaseClient,
@@ -252,6 +266,7 @@ export async function fetchAllRows<T>(
     const { data, error } = await client
       .from(table)
       .select(select)
+      .order('id')
       .range(from, from + PAGE - 1)
       .returns<T[]>();
     if (error) throw new Error(error.message);

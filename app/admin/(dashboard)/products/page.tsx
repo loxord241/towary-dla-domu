@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Product, Category, Brand, ProductImage, ProductVariant } from '@/app/lib/catalog';
 import { getPublicImageUrl } from '@/app/lib/supabase-storage';
 import Modal from '@/app/components/Modal';
@@ -14,7 +14,9 @@ async function fetchProductList(
   page?: number
 ) {
   try {
-    const qs = page && page > 1 ? `?page=${page}&size=${PAGE_SIZE}` : '';
+    // ALWAYS page explicitly: the endpoint no longer offers an unbounded
+    // mode (it was a silent-truncation bug — PostgREST capped it at 1000).
+    const qs = `?page=${page ?? 1}&size=${PAGE_SIZE}`;
     const response = await fetch(`/api/admin/products${qs}`);
     const data = await response.json();
 
@@ -22,10 +24,13 @@ async function fetchProductList(
       throw new Error(data.error || 'Не вдалося завантажити товар');
     }
 
-    onSuccess(
-      data.products ?? [],
-      typeof data.total === 'number' ? data.total : (data.products ?? []).length
-    );
+    const total =
+      typeof data.total === 'number'
+        ? data.total
+        : (() => {
+            throw new Error('Сервер не повернув total — відмова від показу неповного списку');
+          })();
+    onSuccess(data.products ?? [], total);
   } catch (err) {
     console.error('Error fetching products:', err);
     onError(err instanceof Error ? err.message : 'Невідома помилка');
@@ -122,6 +127,38 @@ export default function ProductsAdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+
+  // UI-only search & sort over the CURRENTLY LOADED page (server pagination
+  // and API contract stay untouched).
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('default');
+  const visibleProducts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = products;
+    if (q !== '') {
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.sku.toLowerCase().includes(q) ||
+          (p.brand?.name ?? '').toLowerCase().includes(q)
+      );
+    }
+    const byText = (a: string, b: string) => a.localeCompare(b, 'uk');
+    switch (sortBy) {
+      case 'name_asc':
+        return [...list].sort((a, b) => byText(a.name, b.name));
+      case 'name_desc':
+        return [...list].sort((a, b) => byText(b.name, a.name));
+      case 'price_asc':
+        return [...list].sort((a, b) => a.price - b.price);
+      case 'price_desc':
+        return [...list].sort((a, b) => b.price - a.price);
+      case 'stock_desc':
+        return [...list].sort((a, b) => b.stock_quantity - a.stock_quantity);
+      default:
+        return list;
+    }
+  }, [products, search, sortBy]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
@@ -419,11 +456,35 @@ export default function ProductsAdminPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
         <h1 className="text-2xl font-bold">Товари</h1>
         <button onClick={openCreate} className="btn btn-primary">
           + Додати товар
         </button>
+      </div>
+
+      {/* Search + sort (client-side over the loaded page) */}
+      <div className="mb-4 flex gap-3 flex-wrap">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Пошук за назвою, SKU або брендом…"
+          className="flex-1 min-w-[220px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          aria-label="Сортування"
+        >
+          <option value="default">За замовчуванням</option>
+          <option value="name_asc">Назва А→Я</option>
+          <option value="name_desc">Назва Я→А</option>
+          <option value="price_asc">Ціна: спочатку дешевші</option>
+          <option value="price_desc">Ціна: спочатку дорожчі</option>
+          <option value="stock_desc">Залишок: більше → менше</option>
+        </select>
       </div>
 
       {error && (
@@ -452,7 +513,7 @@ export default function ProductsAdminPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {products.map((product) => {
+            {visibleProducts.map((product) => {
               // Defensive: the API embeds images as an array, but a missing
               // or malformed field must degrade to "no image", never throw.
               const productImages = product.images ?? [];

@@ -86,14 +86,26 @@ export default async function Home() {
       {/* Categories */}
       <section id="categories" className="scroll-mt-24 bg-gray-100/70 py-14">
         <div className="container mx-auto px-4">
-          <h2 className="mb-6 text-2xl font-bold tracking-tight text-gray-900">
-            Категорії
-          </h2>
+          <div className="mb-6 flex items-end justify-between">
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+              Категорії
+            </h2>
+            {categories.length > 5 && (
+              <Link
+                href="/catalog"
+                className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                Усі категорії →
+              </Link>
+            )}
+          </div>
           {categories.length === 0 ? (
             <p className="text-gray-500">Категорії відсутні</p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {categories.map((category) => (
+            // Only the first 5: the full supplier list (~200) made the home
+            // page an endless wall of cards. The rest lives in /catalog.
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
+              {categories.slice(0, 5).map((category) => (
                 <Link
                   key={category.id}
                   href={`/catalog?category=${encodeURIComponent(category.slug)}`}

@@ -41,7 +41,7 @@ export default function ProductCard({
       </div>
 
       <Link href={`/product/${product.slug}`} className="flex flex-1 flex-col">
-        <div className="relative overflow-hidden rounded-t-xl bg-gray-100">
+        <div className="relative overflow-hidden rounded-t-xl bg-white">
           {imageUrl ? (
             <Image
               src={imageUrl}
@@ -49,7 +49,9 @@ export default function ProductCard({
               width={400}
               height={300}
               unoptimized
-              className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              // object-contain: the WHOLE supplier photo must fit inside the
+              // card (object-cover was cropping product photos).
+              className="h-48 w-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.03]"
             />
           ) : (
             <div className="flex h-48 w-full items-center justify-center border-b border-gray-100">

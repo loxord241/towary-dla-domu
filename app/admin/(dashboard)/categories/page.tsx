@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Modal from '@/app/components/Modal';
 import { Category } from '@/app/lib/catalog';
 
@@ -30,6 +30,33 @@ async function fetchCategoryList(
 
 export default function CategoriesAdminPage() {
   const [categories, setCategories] = useState<Category[]>([]);
+
+  // UI-only search & sort over the loaded list (full table, no server call).
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('default');
+  const visibleCategories = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = categories;
+    if (q !== '') {
+      list = list.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q)
+      );
+    }
+    const byText = (a: string, b: string) => a.localeCompare(b, 'uk');
+    switch (sortBy) {
+      case 'name_asc':
+        return [...list].sort((a, b) => byText(a.name, b.name));
+      case 'name_desc':
+        return [...list].sort((a, b) => byText(b.name, a.name));
+      case 'sort_order':
+        return [...list].sort((a, b) => a.sort_order - b.sort_order);
+      case 'slug':
+        return [...list].sort((a, b) => byText(a.slug, b.slug));
+      default:
+        return list;
+    }
+  }, [categories, search, sortBy]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -195,7 +222,7 @@ export default function CategoriesAdminPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">Категорії</h1>
         <button
           onClick={handleCreate}
@@ -203,6 +230,29 @@ export default function CategoriesAdminPage() {
         >
           Додати категорію
         </button>
+      </div>
+
+      {/* Search + sort (client-side over the full loaded list) */}
+      <div className="mb-4 flex gap-3 flex-wrap">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Пошук за назвою або slug…"
+          className="flex-1 min-w-[220px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          aria-label="Сортування"
+        >
+          <option value="default">За замовчуванням</option>
+          <option value="name_asc">Назва А→Я</option>
+          <option value="name_desc">Назва Я→А</option>
+          <option value="slug">Slug А→Я</option>
+          <option value="sort_order">Порядок сортування</option>
+        </select>
       </div>
 
       {status && !isModalOpen && (
@@ -229,7 +279,7 @@ export default function CategoriesAdminPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {categories.map((category) => (
+            {visibleCategories.map((category) => (
               <tr key={category.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
