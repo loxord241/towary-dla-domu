@@ -153,6 +153,10 @@ async function main(): Promise<void> {
       const { data, error } = await dbClient
         .from(table)
         .select(select)
+        // Stable multi-page windows: OFFSET paging without ORDER BY can
+        // return overlapping/gapped pages (live-verified). All tables
+        // read here (products/brands/categories) have an `id` PK.
+        .order('id')
         .range(from, from + PAGE_SIZE - 1)
         .returns<T[]>();
       if (error) throw new Error(error.message);

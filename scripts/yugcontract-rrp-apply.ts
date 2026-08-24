@@ -68,6 +68,9 @@ const dbRows: DbRow[] = [];
       .from('products')
       .select('id,yugcontract_id,sku,price,old_price')
       .not('yugcontract_id', 'is', null)
+      // Stable multi-page windows: OFFSET paging without ORDER BY can
+      // return overlapping/gapped pages (live-verified). 'id' is unique.
+      .order('id')
       .range(from, from + PAGE - 1);
     if (error) throw new Error(error.message);
     dbRows.push(...(data ?? []));

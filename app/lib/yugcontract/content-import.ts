@@ -358,6 +358,11 @@ async function loadProductImagesFor(
         .from('product_images')
         .select('id,product_id,image_url,alt,sort_order,is_main')
         .in('product_id', part)
+        // Stable multi-page windows: PostgREST caps any response at 1000
+        // rows, and OFFSET paging without ORDER BY returns overlapping /
+        // gapped windows (observed live: 72 dups + 73 missed rows on a
+        // 23848-row read). 'id' is a unique stable key.
+        .order('id')
         .range(from, from + PAGE - 1)
         .returns<ProductImageRow[]>();
       if (error) throw new Error(error.message);

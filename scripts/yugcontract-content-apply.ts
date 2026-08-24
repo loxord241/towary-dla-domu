@@ -74,6 +74,9 @@ for (;;) {
   const { data, error } = await client
     .from('yc_content_goods')
     .select('yugcontract_id')
+    // Stable multi-page windows: OFFSET paging without ORDER BY can
+    // return overlapping/gapped pages (live-verified). PK is the key.
+    .order('yugcontract_id')
     .range(from, from + PAGE - 1);
   if (error) {
     console.error(`Помилка читання staging: ${error.message}`);

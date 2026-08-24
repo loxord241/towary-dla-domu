@@ -95,7 +95,13 @@ export interface ImagePlan {
   productsWithoutPictures: number;
   /** staged ids with no matching product row */
   unmatchedStaged: number;
-  /** importer-owned rows no longer present in staging (REPORT ONLY, v1 never deletes) */
+  /**
+   * importer-owned rows no longer present in staging (v1 never DELETES).
+   * F12 refinement: a stale row holding is_main=true additionally gets a
+   * flag-only demote UPDATE (it appears in `updates` too), because the
+   * partial unique main-per-product index would otherwise reject the new
+   * main with 23505.
+   */
   staleImported: { id: string; product_id: string; image_url: string }[];
   /** existing rows per product summary for reporting */
   productsWithManualImages: number;
@@ -203,17 +209,45 @@ export function planImageOps(
 
     // D) stale imported rows: owned by us but absent from current
     // staging.pictures. REPORT ONLY — deletion is intentionally NOT
-    // implemented in v1.
+    // implemented in v1. EXCEPTION (F12): a stale row holding the main
+    // flag would make the DB reject the new main with 23505 (partial
+    // unique (product_id) WHERE is_main = TRUE), so it receives a
+    // flag-only demote below. It is still never deleted and still
+    // reported here.
     for (const row of existingImported) {
       if (!desiredState.has(row.image_url)) {
         staleImported.push({ id: row.id, product_id: row.product_id, image_url: row.image_url });
+        if (row.is_main === true) {
+          // Clears an orphaned main so the canonical main can be promoted.
+          // Safe under a foreign main too: two mains would already be an
+          // anomaly, and this restores the ≤1-main invariant.
+          updates.push({
+            id: row.id,
+            product_id: row.product_id,
+            fields: { is_main: false },
+          });
+        }
       }
     }
   }
 
+  // Execution-order invariant (F12): the database enforces ≤1 main per
+  // product via a PARTIAL UNIQUE index on (product_id) WHERE is_main =
+  // TRUE. The executor applies updates strictly sequentially, so the plan
+  // itself must emit every demote (is_main → false) BEFORE any promote
+  // (is_main → true); otherwise a reorder of an already-imported set
+  // fails mid-batch with 23505. Stable three-phase partition preserves
+  // the deterministic per-product order while guaranteeing demote-first.
+  // A transient zero-main window between phases is legal (the unique
+  // index forbids >1, not 0) and lasts only for the remaining statements
+  // of this batch.
+  const demotes = updates.filter((u) => u.fields.is_main === false);
+  const neutral = updates.filter((u) => u.fields.is_main === undefined);
+  const promotes = updates.filter((u) => u.fields.is_main === true);
+
   return {
     inserts,
-    updates,
+    updates: [...demotes, ...neutral, ...promotes],
     noops,
     productsWithoutPictures,
     unmatchedStaged,

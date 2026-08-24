@@ -336,3 +336,119 @@ email, expires_at, payment_status), order_items (+variant_name/sku), product_sto
   таблица 205 строк); admin products actions featured/active unbounded;
   storefront categories/brands/featured unbounded; order_items.eq(order_id)
   теоретический. Production data не менялись.
+
+## Этап 9: P1/F1 stable pagination + F3 search sanitization (2026-08-24)
+- F1 ИСПРАВЛЕН: все multi-page `.range()` readers получили явный
+  `.order(<unique key>)` (content-import loadProductImagesFor;
+  content-images staging+existing; content-apply staging ids;
+  content-fetch products; legacy dry-run/rrp-*/verify pageAll+categories;
+  tmp-* верификаторы). Причина: OFFSET-пагинация без ORDER BY даёт
+  нестабильные окна — live-воспроизведение: 3 идентичных reada
+  23848 строк → (72 dup + 73 missed + 17 фантомных multi-main) ×1,
+  чисто ×2; images --plan выдавал ложные INSERT=163/21 multi-main.
+  Инвариант закреплён статическим тестом (каждый multi-page .range()
+  обязан иметь .order(); allowlist: catalog progressive builder,
+  verify pageAll с order от caller'ов). Повторные images --plan ×3:
+  байт-идентично INSERT=0/UPDATE=0/NOOP=23848/stale=0/аномалий нет.
+- F3 ИСПРАВЛЕН (с корректировкой аудита): запятая УЖЕ стрипалась
+  классом [%,()] — аудиторский тезис «comma не удаляется» был ошибкой
+  чтения regex. Реальный подтверждённый вред (live-пробы PostgREST):
+  `"` молча поглощается как value-quoting синтаксис и ИСКАЖАЕТ ilike-
+  паттерн — товар `Ніж … поварський6" (24010/106)` был ненайден по
+  собственному имени; `,` без санитайзера даёт жёсткий PGRST100.
+  FIX: sanitizeSearchTerm = replace(/[%,()"]/g,' ') + collapse
+  внутренних пробелов; экспортирован для тестов. Точка/дефис/апостроф/
+  кавычка-как-литерал в данных безопасны — НЕ тронуты. SSR-проверка
+  (next start): щітка,TEFAL≡щітка TEFAL (=5), "парова"≡парова (=28),
+  F3-товар найден (=1), все HTTP 200. Тесты tests/catalog-search.test.ts
+  (9). Итого 161 test pass; tsc/lint(2 pre-existing warnings)/build OK.
+  DB не менялась.
+- F4/F5 ИСПРАВЛЕНЫ: unbounded full-set SELECT'ы переведены на пагинацию
+  ≤1000 с tiebreaker .order('id' desc): admin products action=featured/
+  active (helper fetchAllJoined; ВЕТКИ МЕРТВЫЕ — UI зовёт только
+  ?page&size, но контракт «полный набор» сохранён; live-факт: active
+  возвращал 1000 из 4323!) и catalog fetchProducts/home featured
+  (единственный caller рендерит ВСЁ). Урок supabase-js: builder НЕЛЬЗЯ
+  переиспользовать между страницами — .order() аппендится в url, окна
+  ломаются; chain строится внутри каждой итерации. Инварианты в
+  pagination-hardening.test.ts + runtime-тест через реальный HTTP fake-
+  PostgREST (offset/limit query params — НЕ Range header): 2500 строк →
+  offsets [0,1000,2000], все получены. SSR до/после идентичен (home=1,
+  каталог=19); action=active теперь 4323/4323 детерминированно. Итого
+  164 test pass. DB не менялась.
+- F11 ЗАКРЫТ: categories-loop в verify.ts (окна range(from,+4999),
+  termination <5000, шаг +=5000 — при cap≤1000 loop всегда останавливался
+  после страницы 1 → тихая обрезка любой таблицы >1000 строк; сейчас
+  categories=205, потому баг не проявлялся) переведён на каноническую
+  форму PAGE=1000 + .order('id') + termination <PAGE. pageAll (уже
+  PAGE_WINDOW=1000) защищён regression-тестами; статический скан
+  запрещает литералы окон >1000 в verify.ts. Live: old/new формы дали
+  идентичные 205 строк/порядок; boundary-регресс 999/1000(probe)/1001/
+  2500 OK. Итого 166 test pass; tsc/lint/build OK. DB не менялась.
+  Pagination-рисков в проекте НЕ ОСТАЛОСЬ (F2/F6–F10 вне пагинации).
+- F12 ИСПРАВЛЕН (до F6-миграции): planImageOps теперь выдаёт updates в
+  фазовом порядке [demotes(is_main=false) → neutral(sort-only) →
+  promotes(is_main=true)] — частичный UNIQUE main-per-product больше не
+  даёт 23505 при reorder уже импортированного набора. Плюс: stale-строка
+  с is_main=true получает flag-only demote (deletion по-прежнему НЕ
+  реализована; иначе полный replacement фото падал на INSERT нового
+  main). Executor применяет строго последовательно — транзакционный
+  слой не нужен; transient zero-main окно легально. Тесты +7: симулятор
+  partial unique, sequence-regression demote-before-promote, zero-main,
+  manual-main, same-main NO-OP, stale-main, idempotency после reorder.
+  Итого 173 pass; tsc/lint/build OK; images --plan ×2 байт-идентичны
+  (INSERT=0/UPDATE=0/NOOP=23848/stale=0). DB не менялась.
+  F6 UNIQUE INDEX по-прежнему НЕ создан — отдельный GO.
+- F6 ПРИМЕНЁН (миграция 012, вручную через SQL Editor):
+  CREATE UNIQUE INDEX CONCURRENTLY idx_product_images_product_url
+  ON public.product_images(product_id, image_url). Pre-scan: dups=0,
+  baseline совпал. Post-verify ALL PASS: duplicate-INSERT отклоняется
+  23505 (constraint probe, net-zero), 23849/23849 unique pairs,
+  NULL/empty=0, external=23848/manual=1 (manual row intact),
+  multi-main=0; fingerprints products/orders/staging не сдвинулись.
+  images --plan ×2: INSERT=0/UPDATE=0/NOOP=23848/stale=0. Executor
+  ON CONFLICT не использует — 23505 → errors → batch failed → resume
+  NOOP-safe. Rollback: DROP INDEX CONCURRENTLY
+  idx_product_images_product_url.
+- F2 UX РЕШЁН (storefront-only): критерий eligible = «есть ≥1 фото»
+  через PRODUCT_SELECT с images:product_images!inner(*) — единая точка
+  для каталога/поиска/category/brand/featured/slug; count-запрос
+  каталога зеркалит join (ELIGIBLE_COUNT_SELECT). Проверено live:
+  PostgREST НЕ раздувает count на one-to-many inner join (4131 ==
+  distinct products-with-images). Скрыто ровно 192 placeholder-товара;
+  ~700 товаров без description, но с фото — ОСТАЮТСЯ видимыми (описание
+  — необязательное поле). Admin API (свой SELECT без !inner) видит всех;
+  cart-preview не фильтруется; importer/data layer не тронуты — при
+  будущих импортах товары появляются автоматически. Прямой slug скрытого
+  → not-found-страница (как у несуществующих; HTTP 200 вместо 404 —
+  pre-existing особенность Next, помечено F14, вне scope).
+  Live: /catalog 4323→4131, поиск 19→13, пагинация 345 стр., last page
+  3 карточки, home=1. Тесты tests/storefront-visibility.test.ts (+6):
+  границы admin/cart-preview/importer защищены. Итого 179 pass;
+  tsc/lint/build OK. products.is_active и все данные НЕ менялись.
+- F7 ЗАКРЫТ: блок «Характеристики товару» на странице товара.
+  app/components/ProductSpecifications.tsx (+ pure-хелпер
+  app/lib/product-specifications.ts): table-fixed w-full +
+  [overflow-wrap:anywhere]/break-words (без горизонтального overflow),
+  порядок поставщика сохранён, duplicate names НЕ схлопываются,
+  пустые/битые записи пропускаются, пустой set → блок не рендерится,
+  значения — React text children (никакого HTML-sink). В Product type
+  добавлено specifications?: {name,value}[] (select '*' уже отдавал
+  поле). Тесты tests/product-specifications.test.ts (+7: helper unit +
+  статические инварианты разметки/XSS; .tsx не импортируется в
+  node:test — JSX не стрипается). Live SSR: 6703075 рендерит блок с
+  дубликатом «Рекомендована площа», manual без specs — блока нет.
+  Итого 185 pass; tsc/lint/build OK. DB не менялась.
+- F13 ЗАКРЫТ: admin PUT make-main переведён на demote-before-promote
+  (partial UNIQUE main-per-product больше не отдаёт нерелевантную
+  ошибку про SKU/slug). app/lib/admin-image-main.ts — pure
+  planMainPromotion (already-main → no flag churn; иначе [demote old,
+  promote]); PUT: ownership+state одним guarded read, plain-patch путь
+  сохранён, все updates ограничены .eq(id)+.eq(product_id), promote
+  fields = whitelist baseFields + is_main, 23505 → 409 «У товарі вже є
+  головне зображення» (достижимо только при race двух параллельных
+  PUT). Тесты tests/admin-image-main.test.ts (+7: decision-матрица +
+  статические инварианты маршрута incl. запрет DELETE/INSERT в PUT).
+  Итого 192 pass; tsc/lint/build OK. Live endpoint-проверка с записью
+  не выполнялась (нужна admin-сессия + production mutation) — честно
+  отмечено. DB не менялась.

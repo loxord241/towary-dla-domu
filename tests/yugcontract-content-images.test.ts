@@ -203,3 +203,184 @@ test('REORDER within pure-imported set cannot end up with zero mains', () => {
     ['d2']
   );
 });
+
+// ---- F12: demote-before-promote ordering vs partial unique (product_id) WHERE is_main ----
+
+/**
+ * Simulates the LIVE database constraint during sequential executor
+ * application: at most ONE row per product may hold is_main=true.
+ * Throws 23505 exactly like PostgreSQL would.
+ */
+function applyWithPartialUnique(
+  rows: ReturnType<typeof img>[],
+  updates: { id: string; fields: Record<string, unknown> }[]
+): void {
+  const store = new Map(rows.map((r) => [r.id, { ...r }]));
+  const assertSingleMain = () => {
+    const mains = [...store.values()].filter((r) => r.is_main === true).length;
+    if (mains > 1) throw Object.assign(new Error('duplicate main'), { code: '23505' });
+  };
+  for (const u of updates) {
+    const row = store.get(u.id);
+    if (!row) throw new Error(`missing row ${u.id}`);
+    Object.assign(row, u.fields);
+    assertSingleMain();
+  }
+}
+
+/** Global sequence invariant: every demote precedes every promote. */
+function assertDemotesBeforePromotes(
+  plan: ReturnType<typeof planImageOps>
+): void {
+  let promoteSeen = false;
+  for (const u of plan.updates) {
+    if (u.fields.is_main === true) promoteSeen = true;
+    if (u.fields.is_main === false && promoteSeen) {
+      assert.fail(
+        `demote после promote: ${u.id} — partial unique даст 23505`
+      );
+    }
+  }
+}
+
+test('F12 SEQUENCE reorder main: old main demoted BEFORE new main promoted', () => {
+  // A(main,0) B(1) C(2) → staging [B,C,A]: B promoted, A demoted.
+  const existing = [
+    img('dA', 'p1', URL1, { sortOrder: 0, isMain: true }),
+    img('dB', 'p1', URL2, { sortOrder: 1 }),
+    img('dC', 'p1', URL3, { sortOrder: 2 }),
+  ];
+  const plan = planImageOps(
+    [product('p1', '101')],
+    new Map([['101', [URL2, URL3, URL1]]]),
+    existing
+  );
+  assert.equal(plan.inserts.length, 0);
+  const order = plan.updates.map((u) => u.id);
+  assert.ok(
+    order.indexOf('dA') < order.indexOf('dB'),
+    `ожидается dA(demote) раньше dB(promote), получено: ${order.join(',')}`
+  );
+  assert.doesNotThrow(() => applyWithPartialUnique(existing, plan.updates));
+  assertDemotesBeforePromotes(plan);
+});
+
+test('F12 PARTIAL UNIQUE: reordered plan applies cleanly under the constraint simulator', () => {
+  const existing = [
+    img('d1', 'p1', URL1, { sortOrder: 0, isMain: true }),
+    img('d2', 'p1', URL2, { sortOrder: 1 }),
+  ];
+  const plan = planImageOps(
+    [product('p1', '101')],
+    new Map([['101', [URL2, URL1]]]),
+    existing
+  );
+  // Pre-fix this exact sequence was [promote d2, demote d1] → 23505 live.
+  assert.doesNotThrow(() => applyWithPartialUnique(existing, plan.updates));
+});
+
+test('F12 ZERO-MAIN edge: vacant set gets a main without any demote', () => {
+  const existing = [
+    img('d1', 'p1', URL1, { sortOrder: 5 }), // admin cleared the flag
+    img('d2', 'p1', URL2, { sortOrder: 6 }),
+  ];
+  const plan = planImageOps(
+    [product('p1', '101')],
+    new Map([['101', [URL1, URL2]]]),
+    existing
+  );
+  // Phase order: neutral sort-only op first, then the promote.
+  assert.deepEqual(plan.updates, [
+    { id: 'd2', product_id: 'p1', fields: { sort_order: 1 } },
+    { id: 'd1', product_id: 'p1', fields: { sort_order: 0, is_main: true } },
+  ]);
+  assert.doesNotThrow(() => applyWithPartialUnique(existing, plan.updates));
+});
+
+test('F12 MANUAL MAIN: reorder of imported set never emits a promote next to manual main', () => {
+  const existing = [
+    img('m1', 'p1', 'products/p1/manual.jpg', { sortOrder: 9, isMain: true }),
+    img('d1', 'p1', URL1, { sortOrder: 10 }),
+    img('d2', 'p1', URL2, { sortOrder: 11 }),
+  ];
+  const plan = planImageOps(
+    [product('p1', '101')],
+    new Map([['101', [URL2, URL1]]]),
+    existing
+  );
+  assert.equal(plan.manualMainPreserved, 1);
+  assert.ok(
+    plan.updates.every((u) => u.fields.is_main !== true),
+    'imported image не должен претендовать на main при живом manual main'
+  );
+  assert.doesNotThrow(() => applyWithPartialUnique(existing, plan.updates));
+});
+
+test('F12 SAME-MAIN reorder: main unchanged → zero is_main ops, sort_order only', () => {
+  const existing = [
+    img('d1', 'p1', URL1, { sortOrder: 0, isMain: true }),
+    img('d2', 'p1', URL2, { sortOrder: 1 }),
+    img('d3', 'p1', URL3, { sortOrder: 2 }),
+  ];
+  const plan = planImageOps(
+    [product('p1', '101')],
+    new Map([['101', [URL1, URL3, URL2]]]), // main stays URL1
+    existing
+  );
+  assert.equal(plan.inserts.length, 0);
+  assert.ok(
+    plan.updates.every((u) => !('is_main' in u.fields)),
+    'main не менялся — is_main операций быть не должно'
+  );
+  assert.equal(plan.updates.length, 2); // d2↔d3 sort swap only
+});
+
+test('F12 STALE MAIN: full photo replacement demotes stale main before inserting new main', () => {
+  const OLD = 'https://b2b.yugcontract.ua/fileslibrary/products/1/old.gif';
+  const NEW = 'https://b2b.yugcontract.ua/fileslibrary/products/1/new.jpg';
+  const existing = [img('d-old', 'p1', OLD, { sortOrder: 0, isMain: true })];
+  const plan = planImageOps(
+    [product('p1', '101')],
+    new Map([['101', [NEW]]]),
+    existing
+  );
+  // stale reported AND flag-only demoted (never deleted)
+  assert.deepEqual(plan.staleImported.map((s) => s.id), ['d-old']);
+  assert.deepEqual(plan.updates, [
+    { id: 'd-old', product_id: 'p1', fields: { is_main: false } },
+  ]);
+  assert.deepEqual(plan.inserts, [
+    {
+      product_id: 'p1',
+      image_url: NEW,
+      alt: null,
+      sort_order: 0,
+      is_main: true,
+    },
+  ]);
+  // executor applies UPDATES before INSERTS → demote lands first
+  assert.doesNotThrow(() => applyWithPartialUnique(existing, plan.updates));
+});
+
+test('F12 IDEMPOTENCY after reorder: applying the plan makes the next plan a NO-OP', () => {
+  const existing = [
+    img('dA', 'p1', URL1, { sortOrder: 0, isMain: true }),
+    img('dB', 'p1', URL2, { sortOrder: 1 }),
+    img('dC', 'p1', URL3, { sortOrder: 2 }),
+  ];
+  const first = planImageOps(
+    [product('p1', '101')],
+    new Map([['101', [URL2, URL3, URL1]]]),
+    existing
+  );
+  const store = new Map(existing.map((r) => [{ ...r }.id, { ...r }]));
+  for (const u of first.updates) Object.assign(store.get(u.id)!, u.fields);
+  const second = planImageOps(
+    [product('p1', '101')],
+    new Map([['101', [URL2, URL3, URL1]]]),
+    [...store.values()]
+  );
+  assert.equal(second.inserts.length, 0);
+  assert.equal(second.updates.length, 0);
+  assert.equal(second.noops, 3);
+});

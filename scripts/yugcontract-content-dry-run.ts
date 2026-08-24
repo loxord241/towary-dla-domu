@@ -65,6 +65,9 @@ async function fetchAllProductsPaged(
     const { data, error } = await client
       .from('products')
       .select(select)
+      // Stable multi-page windows: OFFSET paging without ORDER BY can
+      // return overlapping/gapped pages (live-verified). 'id' is unique.
+      .order('id')
       .range(from, from + PAGE - 1);
     if (error) throw new Error(error.message);
     const batch = (data ?? []) as OurProductRow[];

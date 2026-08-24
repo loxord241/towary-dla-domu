@@ -33,6 +33,8 @@ export interface Product {
   slug: string;
   short_description?: string | null;
   description?: string | null;
+  /** Supplier characteristics as [{name,value}] pairs (JSONB array, order preserved). */
+  specifications?: { name: string; value: string }[] | null;
   price: number;
   old_price?: number | null;
   currency: string;
@@ -81,8 +83,28 @@ const supabase = createClient(
   { auth: { persistSession: false } }
 );
 
+/**
+ * Storefront eligibility policy (F2 UX): a product is shown only when it
+ * has at least one photo. Supplier imports that lack content arrive with
+ * zero product_images rows — exactly the cards that rendered
+ * «Фото відсутнє» / «Опис відсутній». Absence of images is the precise,
+ * durable proxy for "no imported content": it hides the 192 placeholder
+ * products without hiding the ~700 normal products whose supplier simply
+ * shipped no description text. When the importer later fills them, they
+ * reappear automatically.
+ *
+ * `!inner` turns the images embed into an inner join, excluding imageless
+ * products from every storefront read built on this constant (catalog,
+ * search, category/brand filters, featured, direct slug → 404).
+ * Verified live: PostgREST does NOT inflate count=exact for this join
+ * (4131 == distinct products-with-images), and pagination stays per
+ * top-level entity. Admin API keeps its own plain SELECT on purpose.
+ */
 const PRODUCT_SELECT =
-  '*, category:categories(*), brand:brands(*), images:product_images(*), variants:product_variants(*)';
+  '*, category:categories(*), brand:brands(*), images:product_images!inner(*), variants:product_variants(*)';
+
+/** Same eligibility join for head-count queries (no row multiplication). */
+const ELIGIBLE_COUNT_SELECT = 'id, images:product_images!inner(id)';
 
 // PostgREST embeds a many-to-one relation as an object (or null when the
 // FK is unset) and one-to-many relations as arrays — verified against the
@@ -114,31 +136,67 @@ function normalizeProduct(row: ProductJoinedRow): Product {
 async function fetchProducts(options: {
   featuredOnly?: boolean;
 }): Promise<Product[]> {
-  let query = supabase
-    .from('products')
-    .select(PRODUCT_SELECT)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false });
+  // Full read via paged windows: PostgREST caps ANY single response at
+  // 1000 rows, so the previous unbounded select would silently truncate
+  // the set once featured/active products exceed that cap. The home page
+  // renders the WHOLE returned array — the contract is "all of them".
+  // The query chain is rebuilt INSIDE the loop: supabase-js builders
+  // accumulate repeated .order() calls (url searchParams append), so a
+  // shared builder corrupts ordering on page 2+. `id desc` is a
+  // deterministic tiebreaker for bulk-imported rows sharing created_at.
+  const products: Product[] = [];
+  let from = 0;
+  for (;;) {
+    const PAGE = 1000; // PostgREST max_rows cap per response
+    let query = supabase
+      .from('products')
+      .select(PRODUCT_SELECT)
+      .eq('is_active', true);
+    if (options.featuredOnly) {
+      query = query.eq('is_featured', true);
+    }
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, from + PAGE - 1)
+      .returns<ProductJoinedRow[]>();
 
-  if (options.featuredOnly) {
-    query = query.eq('is_featured', true);
+    if (error) {
+      console.error('Failed to load products:', error.message);
+      // Never serve a partial set as if it were complete.
+      return [];
+    }
+
+    const rows = data ?? [];
+    products.push(...rows.map(normalizeProduct));
+    if (rows.length < PAGE) return products;
+    from += PAGE;
   }
-
-  const { data, error } = await query.returns<ProductJoinedRow[]>();
-
-  if (error) {
-    console.error('Failed to load products:', error.message);
-    return [];
-  }
-
-  const products = (data ?? []).map(normalizeProduct);
-
-  return products;
 }
 
-/** Sanitize a user-supplied search term for use inside a PostgREST `or` expression. */
-function sanitizeSearchTerm(term: string): string {
-  return term.replace(/[%,()]/g, ' ').trim();
+/**
+ * Sanitize a user-supplied search term for use inside a PostgREST `or`
+ * expression (`name.ilike.%term%,short_description.ilike.%term%`).
+ *
+ * Specials are REPLACED with a space (not removed) so word tokens stay
+ * separated: "foo,bar" stays searchable as two words. Reserved chars,
+ * verified against the LIVE PostgREST (2026-08):
+ *   ','  hard parse failure (PGRST100);
+ *   '"'  silently swallowed as value-quoting syntax and CORRUPTS the
+ *        ilike pattern — a product named `…поварський6" (24010/106)`
+ *        was unfindable by its own name;
+ *   '(' ')' same silent corruption class;
+ *   '%'  ILIKE wildcard — silently broadens matches (searching "100%"
+ *        matched everything containing "100").
+ * Dots, hyphens, apostrophes, colons and any letters/digits are proven
+ * safe literals and deliberately preserved. Interior whitespace runs are
+ * collapsed so adjacent specials don't leave unmatched gaps.
+ */
+export function sanitizeSearchTerm(term: string): string {
+  return term
+    .replace(/[%,()"]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export type CatalogSort = 'newest' | 'price_asc' | 'price_desc' | 'name_asc';
@@ -227,9 +285,11 @@ export async function fetchCatalogProducts(
   }
 
   // ---- total count with identical filters (no pagination) ----
+  // The eligibility join MUST mirror PRODUCT_SELECT, otherwise totals
+  // would count imageless products that the data query can never return.
   let countQuery = supabase
     .from('products')
-    .select('id', { count: 'exact', head: true })
+    .select(ELIGIBLE_COUNT_SELECT, { count: 'exact', head: true })
     .eq('is_active', true);
 
   if (categoryId) {

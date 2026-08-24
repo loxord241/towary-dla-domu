@@ -8,6 +8,7 @@ import AddToCartButton from '@/app/components/AddToCartButton'
 import FavoriteButton from '@/app/components/FavoriteButton'
 import ProductGallery from '@/app/components/ProductGallery'
 import ProductDescription from '@/app/components/ProductDescription'
+import ProductSpecifications from '@/app/components/ProductSpecifications'
 
 function availabilityLabel(status: string): string {
   if (status === 'in_stock') return 'В наявності'
@@ -148,6 +149,9 @@ export default async function ProductPage({
             />
           </div>
         </div>
+
+        {/* Product Specifications */}
+        <ProductSpecifications specifications={product.specifications} />
 
         {/* Product Variants */}
         {product.variants.length > 0 && (

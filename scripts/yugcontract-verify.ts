@@ -110,20 +110,22 @@ check('products.total', totalProducts === 4323, `${totalProducts} (очікув�
 check('products.ycCount', ycProducts === 4322, String(ycProducts));
 
 // uniqueness of yugcontract_id
+// (.order('id') on every paged read: OFFSET windows without ORDER BY are
+// unstable across requests — overlapping/gapped pages, live-verified.)
 const ycIdRows = await pageAll<{ yugcontract_id: string }>(() =>
-  client.from('products').select('yugcontract_id').not('yugcontract_id', 'is', null)
+  client.from('products').select('yugcontract_id').not('yugcontract_id', 'is', null).order('id')
 );
 const idSet = new Set(ycIdRows.map((r) => r.yugcontract_id));
 check('products.yugcontractIdUnique', idSet.size === ycProducts && ycIdRows.length === ycProducts, `${idSet.size}/${ycProducts}`);
 
 const skuSample = await pageAll<{ sku: string; yugcontract_id: string }>(() =>
-  client.from('products').select('sku,yugcontract_id').not('yugcontract_id', 'is', null)
+  client.from('products').select('sku,yugcontract_id').not('yugcontract_id', 'is', null).order('id')
 );
 const skuMismatched = skuSample.filter((r) => r.sku !== `YC-${r.yugcontract_id}`);
 check('products.skuPatternYC-id', skuMismatched.length === 0, `невідповідностей: ${skuMismatched.length}`);
 
 // slug uniqueness across ALL products
-const slugs = await pageAll<{ slug: string }>(() => client.from('products').select('slug'));
+const slugs = await pageAll<{ slug: string }>(() => client.from('products').select('slug').order('id'));
 check('products.slugUnique', new Set(slugs.map((s) => s.slug)).size === slugs.length, `${slugs.length} рядків`);
 
 // manual product untouched
@@ -150,6 +152,7 @@ const moneyRows = await pageAll<{
     .from('products')
     .select('id,price,old_price,stock_quantity')
     .not('yugcontract_id', 'is', null)
+    .order('id')
 );
 const moneyBad = moneyRows.filter(
   (r) =>
@@ -167,6 +170,7 @@ const availBad = await pageAll<{ id: string; stock_quantity: number; availabilit
     .from('products')
     .select('id,stock_quantity,availability_status')
     .not('yugcontract_id', 'is', null)
+    .order('id')
 );
 const availViolations = availBad.filter(
   (r) => (r.stock_quantity > 0) !== (r.availability_status === 'in_stock')
@@ -175,12 +179,12 @@ check('products.availabilityConsistent', availViolations.length === 0, `пору
 
 // orphan references
 const orphanCat = await pageAll<{ id: string }>(() =>
-  client.from('products').select('id').not('yugcontract_id', 'is', null).is('category_id', null)
+  client.from('products').select('id').not('yugcontract_id', 'is', null).is('category_id', null).order('id')
 );
 check('products.noOrphanCategory', orphanCat.length === 0, String(orphanCat.length));
 
 const orphanBrand = await pageAll<{ id: string }>(() =>
-  client.from('products').select('id').not('yugcontract_id', 'is', null).is('brand_id', null)
+  client.from('products').select('id').not('yugcontract_id', 'is', null).is('brand_id', null).order('id')
 );
 check('products.noOrphanBrand', orphanBrand.length === 0, String(orphanBrand.length));
 
@@ -189,15 +193,21 @@ const cats = await (async () => {
   const rows: { id: string; parent_id: string | null; name: string; slug: string; yugcontract_id: string | null }[] = [];
   let from = 0;
   for (;;) {
+    // PAGE must stay <=1000: PostgREST silently caps ANY response at
+    // max_rows, so a wider window stops the loop after page 1 (the old
+    // 4999/5000 literals truncated any table above 1000 rows). The chain
+    // is rebuilt each iteration and ordered by the unique `id`.
+    const PAGE = 1000;
     const { data, error } = await client
       .from('categories')
       .select('id,parent_id,name,slug,yugcontract_id')
-      .range(from, from + 4999)
+      .order('id')
+      .range(from, from + PAGE - 1)
       .returns<typeof rows>();
     if (error) throw new Error(error.message);
     rows.push(...(data ?? []));
-    if ((data ?? []).length < 5000) return rows;
-    from += 5000;
+    if ((data ?? []).length < PAGE) return rows;
+    from += PAGE;
   }
 })();
 const ycCats = cats.filter((c) => c.yugcontract_id !== null);

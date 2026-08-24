@@ -19,12 +19,17 @@ const client: any = createClient(
   { auth: { persistSession: false } }
 );
 
+/** Unique key per table: stable multi-page windows need ORDER BY. */
+function orderKey(table: string): string {
+  return table === 'yc_content_goods' ? 'yugcontract_id' : 'id';
+}
+
 async function selectAll(table: string, select: string): Promise<Record<string, unknown>[]> {
   const PAGE = 1000;
   const out: Record<string, unknown>[] = [];
   let from = 0;
   for (;;) {
-    const { data, error } = await client.from(table).select(select).range(from, from + PAGE - 1);
+    const { data, error } = await client.from(table).select(select).order(orderKey(table)).range(from, from + PAGE - 1);
     if (error) throw new Error(`${table}: ${error.message}`);
     out.push(...((data ?? []) as Record<string, unknown>[]));
     if ((data ?? []).length < PAGE) return out;

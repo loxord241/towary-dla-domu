@@ -26,6 +26,7 @@ for (;;) {
   const { data, error } = await client
     .from('product_images')
     .select('*')
+    .order('id')
     .range(from, from + PAGE - 1);
   if (error) throw new Error(error.message);
   for (const r of (data ?? []) as Record<string, unknown>[]) {

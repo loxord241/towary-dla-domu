@@ -79,6 +79,9 @@ const stagedAll: StagedContentRow[] = [];
     const { data, error } = await client
       .from('yc_content_goods')
       .select('yugcontract_id,category_id,name,description,pictures,params')
+      // Stable multi-page windows: OFFSET paging without ORDER BY can
+      // return overlapping/gapped pages (live-verified). PK is the key.
+      .order('yugcontract_id')
       .range(from, from + PAGE - 1);
     if (error) {
       console.error(`Помилка читання staging: ${error.message}`);
@@ -124,6 +127,11 @@ for (let i = 0; i < productDbIds.length; i += 200) {
       .from('product_images')
       .select('id,product_id,image_url,alt,sort_order,is_main')
       .in('product_id', part)
+      // Stable multi-page windows: OFFSET paging without ORDER BY can
+      // return overlapping/gapped windows (live-verified: 72 dups + 73
+      // missed rows on a 23848-row read → phantom INSERTs in --plan).
+      // 'id' is unique and stable.
+      .order('id')
       .range(from, from + PAGE - 1);
     if (error) {
       console.error(`Помилка читання product_images: ${error.message}`);

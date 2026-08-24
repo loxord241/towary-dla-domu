@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { requireAdminApi, strOrNull, uuidOrNull, nonNegNumOrNull, dbErrorResponse } from '@/app/lib/admin-api';
 import type {
   Product,
@@ -37,6 +38,39 @@ function normalizeProduct(row: ProductJoinedRow): Product {
   };
 }
 
+/**
+ * Full filtered read via paged windows. These branches promise the whole
+ * matching set in `{ products }`; an unbounded select silently truncated
+ * it at the PostgREST max_rows cap (live: action=active returned 1000 of
+ * 4323). `id desc` is the deterministic tiebreaker for bulk-imported rows
+ * sharing created_at.
+ */
+async function fetchAllJoined(
+  serviceClient: SupabaseClient,
+  filters: { featuredOnly?: boolean }
+): Promise<Product[]> {
+  const out: ProductJoinedRow[] = [];
+  let from = 0;
+  for (;;) {
+    const PAGE = 1000; // PostgREST max_rows cap per response
+    // The chain is rebuilt INSIDE the loop: supabase-js builders
+    // accumulate repeated .order() calls, so a shared builder corrupts
+    // ordering and window state on page 2+.
+    let query = serviceClient.from('products').select(SELECT).eq('is_active', true);
+    if (filters.featuredOnly) query = query.eq('is_featured', true);
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, from + PAGE - 1)
+      .returns<ProductJoinedRow[]>();
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+    out.push(...rows);
+    if (rows.length < PAGE) return out.map(normalizeProduct);
+    from += PAGE;
+  }
+}
+
 export async function GET(request: Request) {
   const ctx = await requireAdminApi();
   if (ctx instanceof NextResponse) return ctx;
@@ -47,34 +81,13 @@ export async function GET(request: Request) {
   try {
     switch (action) {
       case 'featured': {
-        const { data, error } = await ctx.serviceClient
-          .from('products')
-          .select(SELECT)
-          .eq('is_featured', true)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .returns<ProductJoinedRow[]>();
-
-        if (error) {
-          return NextResponse.json({ error: error.message }, { status: 500 });
-        }
-
-        return NextResponse.json({ products: (data ?? []).map(normalizeProduct) });
+        const products = await fetchAllJoined(ctx.serviceClient, { featuredOnly: true });
+        return NextResponse.json({ products });
       }
 
       case 'active': {
-        const { data, error } = await ctx.serviceClient
-          .from('products')
-          .select(SELECT)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .returns<ProductJoinedRow[]>();
-
-        if (error) {
-          return NextResponse.json({ error: error.message }, { status: 500 });
-        }
-
-        return NextResponse.json({ products: (data ?? []).map(normalizeProduct) });
+        const products = await fetchAllJoined(ctx.serviceClient, {});
+        return NextResponse.json({ products });
       }
 
       case 'by-slug': {

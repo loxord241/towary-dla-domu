@@ -30,6 +30,7 @@ const rows: Row[] = [];
       .from('products')
       .select('price,old_price,availability_status')
       .not('yugcontract_id', 'is', null)
+      .order('id')
       .range(from, from + 999);
     if (error) throw new Error(error.message);
     rows.push(...(data ?? []));
