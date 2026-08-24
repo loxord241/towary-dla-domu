@@ -160,14 +160,32 @@ export const CATALOG_PAGE_SIZE = 12;
 const CATALOG_MAX_PAGE_SIZE = 50;
 
 /**
- * All active storefront products with category, brand, images and variants,
- * filtered/sorted for the catalog page.
- *
- * Category/brand filters use PostgREST embedded-resource filters
- * (`category.slug=eq...`), which act as inner joins — products with a
- * NULL category are naturally excluded when the filter is applied.
- * Search covers the base name/short description columns.
+ * Resolve a category/brand slug to its UUID. Catalog filters target plain
+ * FK columns (category_id/brand_id) instead of PostgREST embedded-resource
+ * filters: embed filters require the embed in `select`, and without
+ * `!inner` they degrade to left-join semantics that keep non-matching
+ * rows (verified against the live database 2026-08). Returns null when
+ * the slug does not exist.
  */
+async function findCategoryIdBySlug(slug: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+async function findBrandIdBySlug(slug: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('brands')
+    .select('id')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .maybeSingle();
+  return data?.id ?? null;
+}
 export interface CatalogPage {
   products: Product[];
   total: number;
@@ -197,17 +215,28 @@ export async function fetchCatalogProducts(
       ]
     : null;
 
+  const [categoryId, brandId] = await Promise.all([
+    filters.categorySlug ? findCategoryIdBySlug(filters.categorySlug) : null,
+    filters.brandSlug ? findBrandIdBySlug(filters.brandSlug) : null,
+  ]);
+
+  // Unknown category/brand slug → nothing can match; skip the queries.
+  if ((filters.categorySlug && categoryId === null) ||
+      (filters.brandSlug && brandId === null)) {
+    return { products: [], total: 0, page: 1, size };
+  }
+
   // ---- total count with identical filters (no pagination) ----
   let countQuery = supabase
     .from('products')
     .select('id', { count: 'exact', head: true })
     .eq('is_active', true);
 
-  if (filters.categorySlug) {
-    countQuery = countQuery.eq('category.slug', filters.categorySlug);
+  if (categoryId) {
+    countQuery = countQuery.eq('category_id', categoryId);
   }
-  if (filters.brandSlug) {
-    countQuery = countQuery.eq('brand.slug', filters.brandSlug);
+  if (brandId) {
+    countQuery = countQuery.eq('brand_id', brandId);
   }
 
   if (searchConditions) {
@@ -240,11 +269,11 @@ export async function fetchCatalogProducts(
     .select(PRODUCT_SELECT)
     .eq('is_active', true);
 
-  if (filters.categorySlug) {
-    query = query.eq('category.slug', filters.categorySlug);
+  if (categoryId) {
+    query = query.eq('category_id', categoryId);
   }
-  if (filters.brandSlug) {
-    query = query.eq('brand.slug', filters.brandSlug);
+  if (brandId) {
+    query = query.eq('brand_id', brandId);
   }
 
   if (searchConditions) {
@@ -261,18 +290,22 @@ export async function fetchCatalogProducts(
     query = query.eq('availability_status', 'in_stock');
   }
 
+  // Every sort gets `id` as a deterministic tiebreaker: imported rows share
+  // created_at timestamps in bulk, and without a unique secondary key
+  // Postgres may return ties in different orders per request, which makes
+  // pagination overlap.
   switch (filters.sort) {
     case 'price_asc':
-      query = query.order('price', { ascending: true });
+      query = query.order('price', { ascending: true }).order('id', { ascending: true });
       break;
     case 'price_desc':
-      query = query.order('price', { ascending: false });
+      query = query.order('price', { ascending: false }).order('id', { ascending: false });
       break;
     case 'name_asc':
-      query = query.order('name', { ascending: true });
+      query = query.order('name', { ascending: true }).order('id', { ascending: true });
       break;
     default:
-      query = query.order('created_at', { ascending: false });
+      query = query.order('created_at', { ascending: false }).order('id', { ascending: false });
   }
 
   query = query.range((page - 1) * size, page * size - 1);

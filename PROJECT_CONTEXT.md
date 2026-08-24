@@ -157,3 +157,32 @@ email, expires_at, payment_status), order_items (+variant_name/sku), product_sto
   категорий резолвить per-chunk после вставки родителей.
 - Будущие синки: повторный --run идемпотентен (обновит price/old_price/
   stock/name; history source='yugcontract' при изменении стока).
+
+## Этап 3: фиксы каталога + цена=РРЦ + research get-content-goods (2026-08-24)
+- КАТАЛОГ ROOT CAUSE: фильтры `.eq('category.slug',…)`/`.eq('brand.slug',…)`
+  не работают в PostgREST: embed-фильтр требует embed в select, а без
+  `!inner` деградирует до left-join (все строки). Count-запрос падал
+  целиком → витрина показывала пустой результат. ФИКС (catalog.ts):
+  slug→UUID lookup + фильтры по FK-колонкам category_id/brand_id;
+  всем сортировкам добавлен tiebreaker `.order('id')` (у импорта
+  одинаковые created_at по 200 шт → страницы пересекались).
+- ЦЕНА=РРЦ: mapFeedProducts теперь price=round2(rrp), old_price ВСЕГДА
+  null (поставщицкий price — НЕ доказанная скидка; знижки не показуем).
+  Нет RRP: новые товары НЕ создаются (unresolvedRefs), у существующих
+  цена не трогается (stock/name синкаются). Массово применено
+  scripts/yugcontract-rrp-apply.ts (--yes): 4242 price→rrp,
+  old_price очищен у всех 4322 YC-товаров; 7 без RRP и 67 без фида
+  не тронуты. Dry-run: scripts/yugcontract-rrp-dry-run.ts.
+- get-content-goods РЕАЛЬНО: POST /api/catalog/get-content-goods
+  (тот же authToken; отдельного токена НЕТ). ФИЛЬТРАЦИИ НЕТ — всегда
+  полный дамп ~9k товаров, 28–37MB, сервер собирает ~70с.
+  content.goods[]: {id, categoryId, name, brand, EAN, artikul,
+  description(HTML, uk), pictures[](URL-строки), params[]({name,value,id,
+  rozetka_id}), foto[], video[], file_energy_label, file_info_list}.
+  Покрытие наших 4322: 4118 (95%); desc avg 1269 симв (82% HTML);
+  фото avg 5.8/товар; params avg 11.4/товар (~600 уник. имён).
+  Картинки ПУБЛИЧНЫ без auth (b2b.yugcontract.ua/fileslibrary/products/...).
+- Импорт контента НЕ реализован; миграций для контента НЕ делали
+  (кандидат: products.specifications JSONB; EAV attributes/* уже есть,
+  но тяжёлый; product_images хранит относительные Storage-пути —
+  getPublicImageUrl не умеет внешние URL).

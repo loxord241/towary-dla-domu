@@ -223,7 +223,13 @@ export interface MappedProductRow {
   sku: string;
   slug: string;
   name: string;
-  price: number;
+  /**
+   * Storefront price = supplier RRP (business rule 2026-08).
+   * null = feed has no valid RRP → never invent a value: new products are
+   * not created and existing prices are left untouched.
+   */
+  price: number | null;
+  /** Always null: the supplier `price` is NOT a proven store discount. */
   old_price: number | null;
   stock_quantity: number;
   availability_status: 'in_stock' | 'out_of_stock';
@@ -244,6 +250,10 @@ export function mapFeedProducts(
   const rows: MappedProductRow[] = [];
   const skipped: SkipEntry[] = [];
 
+  /** RRP is the only accepted storefront price source; must be positive. */
+  const validRrp = (v: number | null): v is number =>
+    v !== null && Number.isFinite(v) && v > 0;
+
   for (const p of products) {
     if (p.externalId === '') {
       skipped.push({ id: '(порожній id)', reason: 'немає external id' });
@@ -253,8 +263,11 @@ export function mapFeedProducts(
       skipped.push({ id: p.externalId, reason: 'порожня назва' });
       continue;
     }
-    if (p.price === null || p.price < 0) {
-      skipped.push({ id: p.externalId, reason: 'некоректна ціна' });
+    // NOTE: supplier `price` is no longer a price source — only RRP is.
+    // A missing RRP no longer skips the row: stock/name still sync, the
+    // price decision happens in splitProductWrites (insert vs update).
+    if (!validRrp(p.rrp) && p.price === null) {
+      skipped.push({ id: p.externalId, reason: 'немає ні RRP, ні ціни у фіді' });
       continue;
     }
     if (p.catId === null) {
@@ -268,8 +281,8 @@ export function mapFeedProducts(
       sku: `YC-${p.externalId}`,
       slug: slugWithId(p.nameUkr, p.externalId),
       name: p.nameUkr,
-      price: round2(p.price),
-      old_price: p.rrp !== null && p.rrp > p.price ? round2(p.rrp) : null,
+      price: validRrp(p.rrp) ? round2(p.rrp) : null,
+      old_price: null,
       stock_quantity: stock,
       availability_status: stock > 0 ? 'in_stock' : 'out_of_stock',
       brandKey: p.brand !== null ? normalizeBrandKey(p.brand) : null,
@@ -363,13 +376,25 @@ export function splitProductWrites(
     }
 
     const existing = existingByYc.get(row.yugcontract_id);
+
     if (!existing) {
+      // New rows need a price to be sellable; without RRP we refuse to
+      // invent one. (Existing rows keep flowing through updates below —
+      // stock/name still sync while the current price stays untouched.)
+      const insertPrice = row.price;
+      if (insertPrice === null) {
+        split.unresolvedRefs.push({
+          id: row.yugcontract_id,
+          reason: 'немає коректної RRP у фіді (новий товар не створено)',
+        });
+        continue;
+      }
       split.inserts.push({
         yugcontract_id: row.yugcontract_id,
         sku: row.sku,
         slug: row.slug,
         name: row.name,
-        price: row.price,
+        price: insertPrice,
         old_price: row.old_price,
         stock_quantity: row.stock_quantity,
         availability_status: row.availability_status,
@@ -385,8 +410,12 @@ export function splitProductWrites(
     // Slug is deliberately NEVER updated: stable URLs beat name churn.
     // is_active is never auto-touched (no automatic deactivation).
     if (existing.name !== row.name) fields.name = row.name;
-    if ((existing.price ?? null) !== row.price) fields.price = row.price;
-    if ((existing.old_price ?? null) !== row.old_price) fields.old_price = row.old_price;
+    // price=null (no valid RRP) → keep the existing correct price untouched.
+    if (row.price !== null && (existing.price ?? null) !== row.price) {
+      fields.price = row.price;
+    }
+    // No proven store discounts: old_price must stay empty for YC rows.
+    if ((existing.old_price ?? null) !== null) fields.old_price = null;
     const newStock = row.stock_quantity;
     const oldStock = existing.stock_quantity ?? 0;
     if (oldStock !== newStock) fields.stock_quantity = newStock;

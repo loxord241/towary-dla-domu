@@ -133,33 +133,90 @@ function ycProduct(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test('mapFeedProducts applies rrp/stock rules and skips broken rows', () => {
+test('mapFeedProducts applies rrp-as-price/stock rules and skips broken rows', () => {
   const rows = [
     ycProduct(),
-    ycProduct({ externalId: '101', rrp: 500 }), // rrp < price → old_price null
+    ycProduct({ externalId: '101', rrp: 500 }), // rrp valid → price=500 (rrp is THE price)
     ycProduct({ externalId: '102', qtyMain: -3 }), // clamped to 0
     ycProduct({ externalId: '103', brand: null }),
+    ycProduct({ externalId: '106', rrp: null }), // no RRP → price null, row kept
   ];
   const bad = [
     ycProduct({ externalId: '', }),
-    ycProduct({ externalId: '104', price: null }),
+    ycProduct({ externalId: '104', price: null, rrp: null }),
     ycProduct({ externalId: '105', catId: null }),
   ];
   const { rows: mapped, skipped } = mapFeedProducts([...rows, ...bad] as never[]);
-  assert.equal(mapped.length, 4);
+  assert.equal(mapped.length, 5);
   assert.equal(skipped.length, 3);
 
   const first = mapped[0];
-  assert.equal(first.price, 999.44);
-  assert.equal(first.old_price, 1200);
+  assert.equal(first.price, 1200); // price = rrp
+  assert.equal(first.old_price, null); // no proven discounts — always null
   assert.equal(first.availability_status, 'in_stock');
   assert.equal(first.sku, 'YC-100');
-  const noOld = mapped[1];
-  assert.equal(noOld.old_price, null);
+  const rrpWins = mapped[1];
+  assert.equal(rrpWins.price, 500);
+  assert.equal(rrpWins.old_price, null);
   const zeroStock = mapped[2];
   assert.equal(zeroStock.stock_quantity, 0);
   assert.equal(zeroStock.availability_status, 'out_of_stock');
   assert.equal(mapped[3].brandKey, null);
+  const noRrp = mapped[4];
+  assert.equal(noRrp.price, null);
+  assert.equal(noRrp.old_price, null);
+});
+
+test('splitProductWrites without RRP: inserts blocked, existing price untouched', () => {
+  const { rows } = mapFeedProducts([
+    ycProduct({ externalId: '400', rrp: null }), // new product without RRP
+    ycProduct({ externalId: '401', rrp: null }), // existing product without RRP
+    ycProduct({ externalId: '402' }), // existing with RRP → normal update
+  ] as never[]);
+  const existing = [
+    {
+      id: 'uuid-e1',
+      yugcontract_id: '401',
+      sku: 'YC-401',
+      name: 'Товар Тест',
+      slug: 'tovar-test-401',
+      price: 333,
+      old_price: 399,
+      stock_quantity: 5,
+      availability_status: 'in_stock',
+    },
+    {
+      id: 'uuid-e2',
+      yugcontract_id: '402',
+      sku: 'YC-402',
+      name: 'Товар Тест',
+      slug: 'tovar-test-402',
+      price: 999.44,
+      old_price: null,
+      stock_quantity: 5,
+      availability_status: 'in_stock',
+    },
+  ];
+  const split = splitProductWrites(rows as never[], existing, () => ({
+    brand_id: 'b',
+    category_id: 'c',
+  }));
+  // 400: cannot create a product without a price
+  assert.equal(split.inserts.length, 0);
+  assert.deepEqual(
+    split.unresolvedRefs.find((r) => r.id === '400')?.reason ?? '',
+    'немає коректної RRP у фіді (новий товар не створено)'
+  );
+  // 401: update exists but must NOT touch price; old_price cleared
+  const upd401 = split.updates.find((u) => u.id === 'uuid-e1');
+  assert.ok(upd401);
+  assert.equal(upd401.fields.price, undefined); // keep existing correct price
+  assert.equal(upd401.fields.old_price, null); // discount display removed
+  // 402: price follows new RRP mapping (1200), old_price already null → untouched
+  const upd402 = split.updates.find((u) => u.id === 'uuid-e2');
+  assert.ok(upd402);
+  assert.equal(upd402.fields.price, 1200);
+  assert.equal(upd402.fields.old_price, undefined);
 });
 
 const EXISTING_ROW = {
@@ -186,10 +243,10 @@ test('splitProductWrites: diff-only updates, stable slug, history flag', () => {
   assert.equal(upd.id, 'uuid-p1');
   assert.deepEqual(Object.keys(upd.fields).sort(), [
     'name',
-    'old_price',
     'price',
     'stock_quantity',
   ]);
+  assert.equal(upd.fields.price, 1200); // rrp becomes the storefront price
   assert.equal(upd.fields.slug, undefined); // slug frozen
   assert.equal(upd.fields.is_active, undefined); // never auto-deactivate
   assert.equal(upd.stockChanged, true);
