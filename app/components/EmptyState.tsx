@@ -1,18 +1,19 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { BoxIcon } from './icons';
 
 /**
  * Consistent empty-state block: icon, title, optional description and CTA.
  */
 export default function EmptyState({
-  icon = '📦',
+  icon = <BoxIcon className="h-10 w-10" />,
   title,
   description,
   ctaHref,
   ctaLabel,
   children,
 }: {
-  icon?: string;
+  icon?: ReactNode;
   title: string;
   description?: string;
   ctaHref?: string;
@@ -22,7 +23,7 @@ export default function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-6 py-14 text-center shadow-sm">
       {icon && (
-        <div aria-hidden className="mb-3 text-4xl opacity-70">
+        <div aria-hidden className="mb-3 opacity-70">
           {icon}
         </div>
       )}

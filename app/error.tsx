@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
+import { WarningIcon } from './components/icons';
 
 /**
  * Global runtime-error boundary. Users never see stack traces or
@@ -22,8 +23,8 @@ export default function GlobalError({
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="card max-w-md w-full p-8 text-center">
-        <p aria-hidden className="mb-3 text-4xl">
-          ⚠️
+        <p aria-hidden className="mb-3">
+          <WarningIcon className="h-10 w-10 mx-auto text-amber-500" />
         </p>
         <h1 className="text-xl font-semibold text-gray-900 mb-2">
           Щось пішло не так

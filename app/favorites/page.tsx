@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import SiteHeader from '@/app/components/SiteHeader';
 import SiteFooter from '@/app/components/SiteFooter';
 import EmptyState from '@/app/components/EmptyState';
+import { HeartIcon, TrashIcon } from '@/app/components/icons';
 import ProductCard from '@/app/components/ProductCard';
 import RemoveFavoriteButton from '@/app/components/RemoveFavoriteButton';
 import { useFavorites, MAX_FAVORITES } from '@/app/lib/favorites-context';
@@ -101,7 +102,7 @@ export default function FavoritesPage() {
 
         {ids.length === 0 ? (
           <EmptyState
-            icon="🤍"
+            icon={<HeartIcon className="h-10 w-10" />}
             title="В обраному поки що порожньо"
             description="Натисніть на сердечко на карточці товару, щоб зберегти його тут."
             ctaHref="/catalog"
@@ -130,8 +131,8 @@ export default function FavoritesPage() {
                   key={line.productId}
                   className="flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed border-red-200 bg-red-50/40 p-6 text-center"
                 >
-                  <p aria-hidden className="mb-2 text-2xl opacity-60">
-                    🗑️
+                  <p aria-hidden className="mb-2 opacity-60">
+                    <TrashIcon className="h-7 w-7 mx-auto" />
                   </p>
                   <p className="text-sm text-red-600">
                     Товар більше недоступний у каталозі

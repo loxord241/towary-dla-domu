@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import SiteHeader from '@/app/components/SiteHeader'
 import EmptyState from '@/app/components/EmptyState';
+import { CartIcon } from '@/app/components/icons';
 import SiteFooter from '@/app/components/SiteFooter';
 import { useCart, MAX_ITEM_QUANTITY } from '@/app/lib/cart-context';
 import {
@@ -117,7 +118,7 @@ export default function CartPage() {
 
         {items.length === 0 ? (
           <EmptyState
-            icon="🛒"
+            icon={<CartIcon className="h-10 w-10" />}
             title="Кошик порожній"
             description="Додайте товари з каталогу, щоб оформити замовлення."
             ctaHref="/catalog"

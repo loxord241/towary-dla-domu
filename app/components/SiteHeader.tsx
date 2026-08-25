@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import CartBadge from './CartBadge';
 import FavoritesBadge from './FavoritesBadge';
+import { SearchIcon } from './icons';
 
 /**
  * Shared storefront header. The search input is a plain GET form targeting
@@ -37,9 +38,9 @@ export default function SiteHeader() {
               <button
                 type="submit"
                 aria-label="Шукати"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center text-lg text-gray-400 hover:text-blue-600"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center text-gray-400 hover:text-blue-600"
               >
-                🔍
+                <SearchIcon className="h-5 w-5" />
               </button>
             </div>
           </form>

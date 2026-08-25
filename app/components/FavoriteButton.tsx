@@ -1,6 +1,7 @@
 'use client';
 
 import { useFavorites } from '@/app/lib/favorites-context';
+import { HeartIcon } from './icons';
 
 /**
  * Heart toggle. Stops propagation so it can sit inside clickable cards.
@@ -30,11 +31,11 @@ export default function FavoriteButton({
         e.stopPropagation();
         toggleFavorite(productId);
       }}
-      className={`inline-flex h-6 w-6 items-center justify-center text-xl leading-none transition ${
-        active ? 'opacity-100' : 'opacity-40 hover:opacity-80'
+      className={`inline-flex h-6 w-6 items-center justify-center transition ${
+        active ? 'text-red-500' : 'opacity-40 hover:opacity-80'
       }`}
     >
-      {active ? '❤️' : '🤍'}
+      <HeartIcon filled={active} className="h-5 w-5" />
     </button>
   );
 }

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useFavorites } from '@/app/lib/favorites-context';
+import { HeartIcon } from './icons';
 
 /**
  * Client island: header favorites link with live counter.
@@ -18,7 +19,7 @@ export default function FavoritesBadge() {
       aria-label={`Обране, товарів: ${count}`}
       className="p-2 text-gray-600 hover:text-blue-600 relative"
     >
-      ❤️
+      <HeartIcon filled className="h-5 w-5" />
       {count > 0 && (
         <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
           {count}

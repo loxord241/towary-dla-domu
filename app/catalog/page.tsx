@@ -18,6 +18,7 @@ import SortSelect from './SortSelect'
 import { CATALOG_PAGE_SIZE } from '@/app/lib/catalog'
 import ProductCard from '@/app/components/ProductCard'
 import EmptyState from '@/app/components/EmptyState'
+import { SearchIcon } from '@/app/components/icons'
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>
 
@@ -282,7 +283,7 @@ export default async function CatalogPage({
 
               {products.length === 0 ? (
                 <EmptyState
-                  icon="🔍"
+                  icon={<SearchIcon className="h-10 w-10" />}
                   title={
                     hasActiveFilters
                       ? 'Нічого не знайдено'
