@@ -182,7 +182,8 @@ test('INVARIANT: admin products UI no longer masks truncation via rows-length to
     'utf8'
   );
   assert.ok(!ui.includes('?? rows.length'));
-  assert.match(ui, /page=\$\{page \?\? 1\}/); // always sends explicit paging
+  // always sends explicit paging (server-side search+sort+pagination)
+  assert.match(ui, /page=\$\{params\.page\}&size=\$\{params\.size\}/);
 });
 
 // ---- F11: verify.ts categories loop must use the canonical ≤1000 shape ----

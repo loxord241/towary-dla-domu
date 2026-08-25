@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireAdminApi, strOrNull, uuidOrNull, numOrNull, dbErrorResponse } from '@/app/lib/admin-api';
-
-const FIELDS = [
-  'id', 'parent_id', 'name', 'slug', 'description', 'image', 'sort_order',
-  'is_active', 'created_at', 'updated_at',
-] as const;
+import {
+  CATEGORY_FIELDS_LIST,
+  CATEGORY_SORT_KEYS,
+  parseAdminListParams,
+  listAdminCategories,
+  fetchAllCategories,
+} from '@/app/lib/admin-list';
 
 export async function GET(request: Request) {
   const ctx = await requireAdminApi();
@@ -14,22 +16,36 @@ export async function GET(request: Request) {
   const action = searchParams.get('action');
 
   try {
-    let query = ctx.serviceClient.from('categories').select(FIELDS.join(', '));
-
     if (action === 'active') {
-      query = query.eq('is_active', true).order('sort_order').order('name');
-    } else {
-      // Full admin listing (default when no action is provided).
-      query = query.order('sort_order').order('created_at', { ascending: false });
+      // Legacy full active list (existing consumers).
+      const { data, error } = await ctx.serviceClient
+        .from('categories')
+        .select(CATEGORY_FIELDS_LIST)
+        .eq('is_active', true)
+        .order('sort_order')
+        .order('name');
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      return NextResponse.json({ categories: data ?? [] });
     }
 
-    const { data, error } = await query;
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (action === 'all') {
+      // Bounded full-set read for form dropdowns — the product form's
+      // category/brand pickers and the category parent picker need every
+      // row, not just the current page of the listing.
+      const categories = await fetchAllCategories(ctx.serviceClient);
+      return NextResponse.json({ categories });
     }
 
-    return NextResponse.json({ categories: data ?? [] });
+    // Default admin listing: server-side search + sort + pagination.
+    // Search runs BEFORE pagination — DB or= filter → COUNT(filtered) →
+    // range window; total/page/size describe the filtered set. Categories
+    // are the largest admin table after products (205 rows today), so the
+    // unbounded SELECT this branch used before is also gone.
+    const params = parseAdminListParams(searchParams, CATEGORY_SORT_KEYS);
+    const result = await listAdminCategories(ctx.serviceClient, params);
+    return NextResponse.json(result);
   } catch (err) {
     console.error('Categories API error:', err);
     return NextResponse.json({ error: 'Внутрішня помилка сервера' }, { status: 500 });
@@ -62,7 +78,7 @@ export async function POST(request: Request) {
         sort_order: sortOrder === null ? 0 : Math.trunc(sortOrder),
         is_active: body.is_active === undefined ? true : Boolean(body.is_active),
       })
-      .select(FIELDS.join(', '))
+      .select(CATEGORY_FIELDS_LIST)
       .single();
 
     if (error) {
@@ -75,4 +91,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Внутрішня помилка сервера' }, { status: 500 });
   }
 }
-

@@ -12,18 +12,30 @@ import { MenuIcon, XIcon } from './icons';
  * dictionaries endpoint on first open. Closes via: close button, hamburger
  * toggle, Escape, overlay click, and any link navigation.
  *
+ * Animation contract: pure CSS transitions — the panel slides in from the
+ * left (`transform: translateX`) and the overlay fades (`opacity`), both
+ * simultaneously (~200–280ms). On close the same transitions run in
+ * reverse: the panel stays mounted for DRAWER_CLOSE_MS before unmounting,
+ * so the exit is animated, never instant. Users with
+ * `prefers-reduced-motion` get instant show/hide without movement
+ * (`motion-reduce:transition-none`). Dialog semantics, all five close
+ * mechanisms, focus trap and scroll lock are unaffected.
+ *
  * The panel is portalled to <body> and sits at z-30 (below the header's
  * z-40): the header — including this hamburger — stays visible and
  * clickable above the overlay ("click hamburger again to close"), and the
- * panel starts below the header edge. Never render this drawer INSIDE the
- * header's stacking context: it would paint above the header content.
+ * panel starts below the header edge. Never render this drawer INSIDE
+ * the header's stacking context: it would paint above the header content.
  */
 
 const MAX_LIST_ITEMS = 8;
 
+/** Must cover the longest element transition (panel: 280ms). */
+const DRAWER_CLOSE_MS = 300;
+
 const SHOP_LINKS = [
   { href: '/about', label: 'Про нас' },
-  { href: '/delivery', label: 'Доставка і оплата' },
+  { href: '/delivery', label: 'Доставка та оплата' },
   { href: '/returns', label: 'Повернення' },
   { href: '/orders/lookup', label: 'Статус замовлення' },
 ];
@@ -38,6 +50,34 @@ const linkClass =
 
 export default function NavDrawer() {
   const [open, setOpen] = useState(false);
+  // `mounted` keeps the portal in the DOM while the exit transition plays;
+  // `shown` flips the CSS transform/opacity targets.
+  const [mounted, setMounted] = useState(false);
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    // All state flips run inside timers/rAF (never synchronously in the
+    // effect body) per the project-wide react-hooks rule.
+    if (!open) {
+      const flip = requestAnimationFrame(() => setShown(false));
+      const timer = setTimeout(() => setMounted(false), DRAWER_CLOSE_MS);
+      return () => {
+        cancelAnimationFrame(flip);
+        clearTimeout(timer);
+      };
+    }
+    // Double rAF: commit the off-screen initial styles first, then flip
+    // to the visible target so the CSS transition actually animates.
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      setMounted(true);
+      raf2 = requestAnimationFrame(() => setShown(true));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [open]);
 
   return (
     <>
@@ -51,12 +91,22 @@ export default function NavDrawer() {
       >
         <MenuIcon className="h-6 w-6" />
       </button>
-      {open && <DrawerPanel id="nav-drawer" onClose={() => setOpen(false)} />}
+      {mounted && (
+        <DrawerPanel id="nav-drawer" shown={shown} onClose={() => setOpen(false)} />
+      )}
     </>
   );
 }
 
-function DrawerPanel({ id, onClose }: { id: string; onClose: () => void }) {
+function DrawerPanel({
+  id,
+  shown,
+  onClose,
+}: {
+  id: string;
+  shown: boolean;
+  onClose: () => void;
+}) {
   const [dicts, setDicts] = useState<Dictionaries | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [headerH, setHeaderH] = useState(0);
@@ -151,7 +201,13 @@ function DrawerPanel({ id, onClose }: { id: string; onClose: () => void }) {
   return createPortal(
     <div className="fixed inset-0 z-30">
       {/* overlay */}
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
+      <div
+        className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ease-out motion-reduce:transition-none ${
+          shown ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        onClick={onClose}
+        aria-hidden
+      />
       <div
         id={id}
         ref={panelRef}
@@ -159,7 +215,9 @@ function DrawerPanel({ id, onClose }: { id: string; onClose: () => void }) {
         aria-modal="true"
         aria-label="Навігаційне меню"
         style={{ top: headerH, height: `calc(100% - ${headerH}px)` }}
-        className="absolute left-0 flex w-80 max-w-[85vw] flex-col bg-white shadow-xl"
+        className={`absolute left-0 flex w-80 max-w-[85vw] transform flex-col bg-white shadow-xl transition-transform duration-[280ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${
+          shown ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
         <div className="flex items-center justify-between border-b border-gray-200 p-3">
           <span className="text-lg font-bold text-blue-600">E-Shop</span>

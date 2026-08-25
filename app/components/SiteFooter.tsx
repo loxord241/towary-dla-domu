@@ -6,13 +6,13 @@ interface SiteFooterProps {
 }
 
 const INFO_LINKS = [
-  { href: '/about', label: 'Про нас' },
-  { href: '/delivery', label: 'Доставка і оплата' },
-  { href: '/returns', label: 'Повернення' },
   { href: '/contacts', label: 'Контакти' },
   { href: '/privacy', label: 'Політика конфіденційності' },
   { href: '/terms', label: 'Умови використання' },
 ];
+
+/** Public support e-mail shown in the footer (single source for mailto). */
+export const CONTACT_EMAIL = 'magazinujut@gmail.com';
 
 /**
  * Shared storefront footer. When `categories` is provided the footer lists
@@ -22,7 +22,7 @@ export default function SiteFooter({ categories }: SiteFooterProps) {
   return (
     <footer className="bg-gray-800 text-white py-12">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <h3 className="text-xl font-bold mb-4">E-Shop</h3>
             <p className="text-gray-300">Найкращі товари для вашого життя</p>
@@ -60,30 +60,25 @@ export default function SiteFooter({ categories }: SiteFooterProps) {
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Магазин</h4>
+            <h4 className="font-semibold mb-4">Інформація</h4>
             <ul className="space-y-2 text-gray-300">
-              {INFO_LINKS.slice(0, 3).map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href} className="hover:text-white">{link.label}</Link>
-                </li>
-              ))}
               <li>
                 <Link href="/orders/lookup" className="hover:text-white">
                   Статус замовлення
                 </Link>
               </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-semibold mb-4">Інформація</h4>
-            <ul className="space-y-2 text-gray-300">
-              {INFO_LINKS.slice(3).map((link) => (
+              {INFO_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="hover:text-white">{link.label}</Link>
                 </li>
               ))}
-              <li>email: info@eshop.ua</li>
+              <li>
+                {/* Public support e-mail — kept as a real mailto link so it
+                    stays one click away everywhere on the site. */}
+                <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-white underline decoration-gray-500 underline-offset-2">
+                  {CONTACT_EMAIL}
+                </a>
+              </li>
             </ul>
           </div>
         </div>

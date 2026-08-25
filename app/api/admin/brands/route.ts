@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireAdminApi, strOrNull, dbErrorResponse } from '@/app/lib/admin-api';
-
-const FIELDS = ['id', 'name', 'slug', 'description', 'logo', 'is_active', 'created_at', 'updated_at'] as const;
+import {
+  BRAND_FIELDS_LIST,
+  BRAND_SORT_KEYS,
+  parseAdminListParams,
+  listAdminBrands,
+  fetchAllBrands,
+} from '@/app/lib/admin-list';
 
 export async function GET(request: Request) {
   const ctx = await requireAdminApi();
@@ -11,22 +16,31 @@ export async function GET(request: Request) {
   const action = searchParams.get('action');
 
   try {
-    let query = ctx.serviceClient.from('brands').select(FIELDS.join(', '));
-
     if (action === 'active') {
-      query = query.eq('is_active', true).order('name');
-    } else {
-      // Full admin listing (default when no action is provided).
-      query = query.order('created_at', { ascending: false });
+      // Legacy full active list (existing consumers).
+      const { data, error } = await ctx.serviceClient
+        .from('brands')
+        .select(BRAND_FIELDS_LIST)
+        .eq('is_active', true)
+        .order('name');
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      return NextResponse.json({ brands: data ?? [] });
     }
 
-    const { data, error } = await query;
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (action === 'all') {
+      // Bounded full-set read for form dropdowns (paged windows ≤1000).
+      const brands = await fetchAllBrands(ctx.serviceClient);
+      return NextResponse.json({ brands });
     }
 
-    return NextResponse.json({ brands: data ?? [] });
+    // Default admin listing: server-side search + sort + pagination.
+    // Search runs BEFORE pagination — DB or= filter → COUNT(filtered) →
+    // range window; total/page/size describe the filtered set.
+    const params = parseAdminListParams(searchParams, BRAND_SORT_KEYS);
+    const result = await listAdminBrands(ctx.serviceClient, params);
+    return NextResponse.json(result);
   } catch (err) {
     console.error('Brands API error:', err);
     return NextResponse.json({ error: 'Внутрішня помилка сервера' }, { status: 500 });
@@ -55,7 +69,7 @@ export async function POST(request: Request) {
         logo: strOrNull(body.logo),
         is_active: body.is_active === undefined ? true : Boolean(body.is_active),
       })
-      .select(FIELDS.join(', '))
+      .select(BRAND_FIELDS_LIST)
       .single();
 
     if (error) {
@@ -68,4 +82,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Внутрішня помилка сервера' }, { status: 500 });
   }
 }
-

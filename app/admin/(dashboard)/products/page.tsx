@@ -1,27 +1,30 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Product, Category, Brand, ProductImage, ProductVariant } from '@/app/lib/catalog';
 import { getPublicImageUrl } from '@/app/lib/supabase-storage';
 import Modal from '@/app/components/Modal';
+import { useAdminListUrlState } from '@/app/lib/use-admin-list-state';
 
 // Module-scope loaders: receive state setters as arguments so that effects
 // never call setState synchronously (react-hooks rule).
 async function fetchProductList(
-  onSuccess: (products: Product[], total: number) => void,
+  params: { page: number; size: number; search: string; sort: string },
+  onSuccess: (products: Product[], total: number, page: number) => void,
   onError: (message: string) => void,
   onDone: () => void,
-  page?: number
-) {
+  isCancelled: () => boolean
+): Promise<void> {
   try {
-    // ALWAYS page explicitly: the endpoint no longer offers an unbounded
-    // mode (it was a silent-truncation bug — PostgREST capped it at 1000).
-    const qs = `?page=${page ?? 1}&size=${PAGE_SIZE}`;
+    // Search/sort/page are applied SERVER-SIDE (DB or= filter → COUNT →
+    // range window), so results cover the WHOLE table, never just the
+    // currently loaded page.
+    const qs = `?page=${params.page}&size=${params.size}&search=${encodeURIComponent(params.search)}&sort=${params.sort}`;
     const response = await fetch(`/api/admin/products${qs}`);
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Не вдалося завантажити товар');
+      throw new Error(data.error || 'Не вдалося завантажити товари');
     }
 
     const total =
@@ -30,10 +33,10 @@ async function fetchProductList(
         : (() => {
             throw new Error('Сервер не повернув total — відмова від показу неповного списку');
           })();
-    onSuccess(data.products ?? [], total);
+    if (!isCancelled()) onSuccess(data.products ?? [], total, typeof data.page === 'number' ? data.page : params.page);
   } catch (err) {
     console.error('Error fetching products:', err);
-    onError(err instanceof Error ? err.message : 'Невідома помилка');
+    if (!isCancelled()) onError(err instanceof Error ? err.message : 'Невідома помилка');
   } finally {
     onDone();
   }
@@ -50,7 +53,9 @@ async function fetchCategoryList(
   onError: (message: string) => void
 ) {
   try {
-    const response = await fetch('/api/admin/categories');
+    // Form pickers need EVERY row, not just page 1 of the listing —
+    // action=all is the bounded full-set mode (paged ≤1000 windows).
+    const response = await fetch('/api/admin/categories?action=all');
     const data = await response.json();
 
     if (!response.ok) {
@@ -69,7 +74,8 @@ async function fetchBrandList(
   onError: (message: string) => void
 ) {
   try {
-    const response = await fetch('/api/admin/brands');
+    // See fetchCategoryList — bounded full-set mode for form pickers.
+    const response = await fetch('/api/admin/brands?action=all');
     const data = await response.json();
 
     if (!response.ok) {
@@ -87,6 +93,17 @@ const AVAILABILITY_OPTIONS = [
   { value: 'in_stock', label: 'В наявності' },
   { value: 'out_of_stock', label: 'Немає в наявності' },
   { value: 'limited_availability', label: 'Обмежена наявність' },
+];
+
+// Server-side sort keys (must match PRODUCT_SORTS in app/lib/admin-list.ts).
+const PRODUCT_SORT_KEYS = ['default', 'name_asc', 'name_desc', 'price_asc', 'price_desc', 'stock_desc'];
+const SORT_OPTIONS = [
+  { value: 'default', label: 'За замовчуванням' },
+  { value: 'name_asc', label: 'Назва А→Я' },
+  { value: 'name_desc', label: 'Назва Я→А' },
+  { value: 'price_asc', label: 'Ціна: спочатку дешевші' },
+  { value: 'price_desc', label: 'Ціна: спочатку дорожчі' },
+  { value: 'stock_desc', label: 'Залишок: більше → менше' },
 ];
 
 interface ProductFormState {
@@ -126,39 +143,12 @@ const EMPTY_FORM: ProductFormState = {
 export default function ProductsAdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
 
-  // UI-only search & sort over the CURRENTLY LOADED page (server pagination
-  // and API contract stay untouched).
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('default');
-  const visibleProducts = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let list = products;
-    if (q !== '') {
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q) ||
-          (p.brand?.name ?? '').toLowerCase().includes(q)
-      );
-    }
-    const byText = (a: string, b: string) => a.localeCompare(b, 'uk');
-    switch (sortBy) {
-      case 'name_asc':
-        return [...list].sort((a, b) => byText(a.name, b.name));
-      case 'name_desc':
-        return [...list].sort((a, b) => byText(b.name, a.name));
-      case 'price_asc':
-        return [...list].sort((a, b) => a.price - b.price);
-      case 'price_desc':
-        return [...list].sort((a, b) => b.price - a.price);
-      case 'stock_desc':
-        return [...list].sort((a, b) => b.stock_quantity - a.stock_quantity);
-      default:
-        return list;
-    }
-  }, [products, search, sortBy]);
+  // Search/sort/page live in the URL (server-side semantics): refresh,
+  // Back/Forward and shareable links all preserve the filtered view.
+  const { ready, urlState, patchUrlState, searchInput, setSearchInput } =
+    useAdminListUrlState(PRODUCT_SORT_KEYS);
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,40 +170,37 @@ export default function ProductsAdminPage() {
     variants: ProductVariant[];
   } | null>(null);
 
-  // Stable refetch for handlers.
+  // Single refetch path for both the URL-driven effect and post-mutation
+  // refreshes; `cancelled` drops stale out-of-order responses.
+  const cancelledRef = useRef(false);
   const fetchProducts = useCallback(
-    (targetPage?: number) =>
+    () =>
       fetchProductList(
-        (rows, totalCount) => {
+        { page: urlState.page, size: PAGE_SIZE, search: urlState.search, sort: urlState.sort },
+        (rows, totalCount, serverPage) => {
           setProducts(rows);
           setTotal(totalCount);
-          setPage(targetPage ?? page);
+          setError(null);
+          if (serverPage !== urlState.page) patchUrlState({ page: serverPage });
         },
         (message) => setError(message),
         () => setLoading(false),
-        targetPage ?? page
+        () => cancelledRef.current
       ),
-    [page]
+    [urlState.page, urlState.search, urlState.sort, patchUrlState]
   );
 
   useEffect(() => {
+    if (!ready) return;
+    cancelledRef.current = false;
+    fetchProducts();
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [ready, fetchProducts]);
+
+  useEffect(() => {
     let cancelled = false;
-    fetchProductList(
-      (data, totalCount) => {
-        if (!cancelled) {
-          setProducts(data);
-          setTotal(totalCount);
-          setError(null);
-        }
-      },
-      (message) => {
-        if (!cancelled) setError(message);
-      },
-      () => {
-        if (!cancelled) setLoading(false);
-      },
-      1
-    );
     fetchCategoryList(
       (data) => {
         if (!cancelled) setCategories(data);
@@ -463,27 +450,24 @@ export default function ProductsAdminPage() {
         </button>
       </div>
 
-      {/* Search + sort (client-side over the loaded page) */}
+      {/* Search + sort — server-side (DB filter → COUNT → pagination) */}
       <div className="mb-4 flex gap-3 flex-wrap">
         <input
           type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Пошук за назвою, SKU або брендом…"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Пошук за назвою, SKU, slug, yc-id, брендом або категорією…"
           className="flex-1 min-w-[220px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
+          value={urlState.sort}
+          onChange={(e) => patchUrlState({ sort: e.target.value, page: 1 })}
           className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           aria-label="Сортування"
         >
-          <option value="default">За замовчуванням</option>
-          <option value="name_asc">Назва А→Я</option>
-          <option value="name_desc">Назва Я→А</option>
-          <option value="price_asc">Ціна: спочатку дешевші</option>
-          <option value="price_desc">Ціна: спочатку дорожчі</option>
-          <option value="stock_desc">Залишок: більше → менше</option>
+          {SORT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
         </select>
       </div>
 
@@ -513,7 +497,7 @@ export default function ProductsAdminPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {visibleProducts.map((product) => {
+            {products.map((product) => {
               // Defensive: the API embeds images as an array, but a missing
               // or malformed field must degrade to "no image", never throw.
               const productImages = product.images ?? [];
@@ -593,40 +577,48 @@ export default function ProductsAdminPage() {
           </tbody>
         </table>
 
-        {products.length === 0 && (
+        {total === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">Товари відсутні</p>
+            <p className="text-gray-500">
+              {urlState.search !== ''
+                ? `Нічого не знайдено за запитом «${urlState.search}»`
+                : 'Товари відсутні'}
+            </p>
           </div>
         )}
       </div>
 
 
-        {/* Pagination */}
-        {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
-            <span className="text-sm text-gray-500">
-              Сторінка {page} з {totalPagesFor(total)} · усього {total}
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={page <= 1 || loading}
-                onClick={() => fetchProducts(page - 1)}
-              >
-                ← Назад
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={page >= totalPagesFor(total) || loading}
-                onClick={() => fetchProducts(page + 1)}
-              >
-                Далі →
-              </button>
+        {/* Pagination — windows are cut from the FILTERED set server-side */}
+        {totalPagesFor(total) > 1 && (() => {
+          const effectivePage = Math.min(urlState.page, totalPagesFor(total));
+          return (
+            <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
+              <span className="text-sm text-gray-500">
+                {urlState.search !== '' ? `Знайдено: ${total} · ` : ''}
+                Сторінка {effectivePage} з {totalPagesFor(total)} · усього {total}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={effectivePage <= 1}
+                  onClick={() => patchUrlState({ page: effectivePage - 1 })}
+                >
+                  ← Назад
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={effectivePage >= totalPagesFor(total)}
+                  onClick={() => patchUrlState({ page: effectivePage + 1 })}
+                >
+                  Далі →
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
       {/* Create / Edit modal */}
       {isModalOpen && (

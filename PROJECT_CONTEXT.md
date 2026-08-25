@@ -452,3 +452,48 @@ email, expires_at, payment_status), order_items (+variant_name/sku), product_sto
   Итого 192 pass; tsc/lint/build OK. Live endpoint-проверка с записью
   не выполнялась (нужна admin-сессия + production mutation) — честно
   отмечено. DB не менялась.
+
+## Этап 10: admin search ДО пагинации — товары/бренды/категории (2026-08-25)
+- ROOT CAUSE: поиск в админке был client-side по УЖЕ загруженным 20 строкам
+  (products/page.tsx visibleProducts-memo); бренды/категории грузились целиком
+  unbounded SELECT'ом и фильтровались на клиенте (нарушение F-инвариантов,
+  нет total/pagination). Товар на позиции 1500 был ненайден.
+- LIVE-ПРОБА PostgREST (scripts/tmp-probe-admin-search.ts, read-only):
+  embed-пути ВНУТРИ or= (`brands.name.ilike`) НЕ ПАРСЯТСЯ живым сервисом
+  («failed to parse logic tree»); рабочий шейп = резолв UUID заранее +
+  `or=(name|sku|slug|yugcontract_id.ilike.%tok%, brand_id.in.(…),
+  category_id.in.(…))` — подтверждено с COUNT(head)+range, большими in()
+  (34 uuid), мульти-токеном AND (два .or()), пустыми ветками.
+- app/lib/admin-list.ts (единый пайплайн для 3 списков):
+  sanitizeSearchTerm РЕИСПОЛЬЗОВАН из catalog.ts (F3 не тронут);
+  parseAdminListParams (page/size int-only, size≤100 default 20, sort-
+  whitelist); search→DB or=→COUNT(filtered)→clamp page→range; все сортировки
+  серверные с id-tiebreaker (products: name/price/stock+default created_at;
+  brands: name/slug; categories: name/slug/sort_order). fetchAll{Brands,
+  Categories} — bounded full-set (?action=all) для дропдаунов форм.
+- Роуты: products/brands/categories GET default → lib (ответ {items,total,
+  page,size}); action=active НЕ тронуты; brands/categories получили новый
+  action=all. Products UI dropdown loaders + parent-picker категорий
+  переключены на action=all (иначе селекты видели бы только страницу 1).
+- UI (3 страницы): клиентский фильтр/сортировку УДАЛЕНЫ; поиск/sort/page в
+  URL через app/lib/use-admin-list-state.ts (pushState/popstate, debounce
+  300мс, НОВЫЙ поиск сбрасывает page=1, refresh/Back/Forward сохраняют
+  состояние, stale-response guard); empty state различает «ничего не найдено
+  по запросу»; пагинация считается от filtered total; PAGE_SIZE=20 сохранён;
+  storefront/catalog pagination НЕ тронуты.
+- Тесты tests/admin-search-pagination.test.ts (+18): runtime fake-PostgREST
+  (реальный supabase-js) доказывает ПОИСК ДО ПАГИНАЦИИ — товар на позиции 33
+  находится на странице 1 поиска, count-запрос несёт тот же or=, окна
+  offset/limit режут отфильтрованный набор; санитайзер не пускает ,"( )%
+  в паттерны; clamp/zero-match/no-filter/multi-token; статические инварианты.
+- LIVE READ-ONLY верификация production БД (scripts/tmp-verify-admin-search-
+  live.ts, service-client SELECT only): 19/19 PASS — «Мультипіч TEFAL
+  EY501A10» (вне первых 20) найден поиском на странице 1, total=106 ==
+  независимый COUNT; бренд TIKI (позиция ≥41) и категория blendery-1402
+  аналогично; страница 2 без дублей; page=9999→6; очистка→4322/71/205.
+- Playwright browser-верификация НЕВОЗМОЖНА в среде: нет chrome-канала
+  (sudo недоступен) и системных libs для chromium; HTTP-проверки next start:
+  /admin/* → 307 login (guard цел), новые query params доходят до роутов
+  (401 pre-auth), /catalog 200. Auth не обходился; DB writes = 0.
+- Итого 278 test pass (было 260); tsc/lint(2 pre-existing warnings)/build OK.
+

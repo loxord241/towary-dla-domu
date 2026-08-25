@@ -94,10 +94,14 @@ test('DRAWER: dictionary endpoint serves existing catalog data read-only', () =>
 test('DRAWER: header catalog link and footer info block are not removed', () => {
   const header = src('app/components/SiteHeader.tsx');
   assert.match(header, /href="\/catalog"/, 'header «Каталог» link missing');
+  // The footer «Магазин» column was intentionally removed (it duplicated
+  // the drawer's SHOP_LINKS); the footer keeps order status + contacts/legal.
   const footer = src('app/components/SiteFooter.tsx');
-  assert.match(footer, /Доставка і оплата/);
   assert.match(footer, /Статус замовлення/);
   assert.match(footer, /Політика конфіденційності/);
+  // Shop info links stay reachable through the drawer with the current label.
+  const drawer = src('app/components/NavDrawer.tsx');
+  assert.match(drawer, /Доставка та оплата/);
 });
 
 // ---- touch-friendly targets
@@ -105,4 +109,50 @@ test('DRAWER: header catalog link and footer info block are not removed', () => 
 test('DRAWER: nav links have touch-friendly sizing', () => {
   const drawer = src('app/components/NavDrawer.tsx');
   assert.match(drawer, /min-h-\[44px\]|min-h-11|py-3/, 'links must have >=44px touch targets');
+});
+
+// ---- open/close animation (2026-08 UX)
+
+test('DRAWER: panel slides via CSS transform transition with a sane duration', () => {
+  const drawer = src('app/components/NavDrawer.tsx');
+  assert.match(drawer, /transition-transform/, 'panel must animate transform');
+  assert.match(drawer, /-translate-x-full/, 'closed state parks the panel off-screen (left)');
+  assert.match(drawer, /translate-x-0/, 'open state slides the panel in');
+  // 200–300ms window
+  assert.match(drawer, /duration-\[(2|3)\d{2}ms\]/, 'duration must be 200–300ms range');
+});
+
+test('DRAWER: overlay fades simultaneously via CSS opacity transition', () => {
+  const drawer = src('app/components/NavDrawer.tsx');
+  assert.match(drawer, /transition-opacity/, 'overlay must fade via opacity');
+  assert.match(drawer, /'opacity-100'/, 'visible overlay target missing');
+  assert.match(drawer, /opacity-0/, 'hidden overlay target missing');
+});
+
+test('DRAWER: closing plays the reverse animation (deferred unmount)', () => {
+  const drawer = src('app/components/NavDrawer.tsx');
+  assert.ok(
+    !drawer.includes('{open && <DrawerPanel'),
+    'instant conditional render would skip the exit animation'
+  );
+  assert.match(drawer, /setMounted\(false\)/, 'unmount must be state-driven');
+  assert.match(drawer, /setTimeout\(/, 'unmount must be deferred so the exit can play');
+  assert.match(drawer, /setShown\(false\)/, 'close must flip the animated target first');
+});
+
+test('DRAWER: animation respects prefers-reduced-motion', () => {
+  const drawer = src('app/components/NavDrawer.tsx');
+  const fallbacks = (drawer.match(/motion-reduce:/g) ?? []).length;
+  assert.ok(fallbacks >= 2, `panel AND overlay need motion-reduce fallbacks, found ${fallbacks}`);
+});
+
+test('DRAWER: animation does not remove any of the five close mechanisms', () => {
+  const drawer = src('app/components/NavDrawer.tsx');
+  // Escape + overlay + X button are re-asserted here because the refactor
+  // touched the render output they live in.
+  assert.match(drawer, /Escape/);
+  assert.match(drawer, /onClick=\{onClose\}/);
+  assert.match(drawer, /aria-label="Закрити меню"/);
+  assert.match(drawer, /setOpen\(\(o\) => !o\)/);
+  assert.match(drawer, /onClick=\{closeAfterNavigate\}/);
 });

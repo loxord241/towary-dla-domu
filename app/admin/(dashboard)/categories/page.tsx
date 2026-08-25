@@ -1,18 +1,52 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Modal from '@/app/components/Modal';
 import { Category } from '@/app/lib/catalog';
+import { useAdminListUrlState } from '@/app/lib/use-admin-list-state';
 
 // Module-scope loader: receives state setters as arguments so that the
 // effect below never calls setState synchronously (react-hooks rule).
 async function fetchCategoryList(
-  onSuccess: (categories: Category[]) => void,
+  params: { page: number; size: number; search: string; sort: string },
+  onSuccess: (categories: Category[], total: number, page: number) => void,
   onError: (message: string) => void,
-  onDone: () => void
+  onDone: () => void,
+  isCancelled: () => boolean
 ) {
   try {
-    const response = await fetch('/api/admin/categories');
+    // Server-side pipeline: DB or= filter → COUNT(filtered) → range window.
+    const qs = `?page=${params.page}&size=${params.size}&search=${encodeURIComponent(params.search)}&sort=${params.sort}`;
+    const response = await fetch(`/api/admin/categories${qs}`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Не вдалося завантажити категорії');
+    }
+
+    if (!isCancelled()) {
+      onSuccess(
+        data.categories ?? [],
+        typeof data.total === 'number' ? data.total : 0,
+        typeof data.page === 'number' ? data.page : params.page
+      );
+    }
+  } catch (err) {
+    console.error('Error fetching categories:', err);
+    if (!isCancelled()) onError(err instanceof Error ? err.message : 'Невідома помилка');
+  } finally {
+    onDone();
+  }
+}
+
+// The parent-category picker needs EVERY row (a parent may live on any
+// page of the listing), so it uses the bounded full-set mode.
+async function fetchAllCategoriesForPicker(
+  onSuccess: (categories: Category[]) => void,
+  onError: (message: string) => void
+) {
+  try {
+    const response = await fetch('/api/admin/categories?action=all');
     const data = await response.json();
 
     if (!response.ok) {
@@ -21,42 +55,37 @@ async function fetchCategoryList(
 
     onSuccess(data.categories ?? []);
   } catch (err) {
-    console.error('Error fetching categories:', err);
+    console.error('Error fetching category picker list:', err);
     onError(err instanceof Error ? err.message : 'Невідома помилка');
-  } finally {
-    onDone();
   }
 }
 
+const PAGE_SIZE = 20;
+
+function totalPagesFor(total: number): number {
+  return Math.max(1, Math.ceil(total / PAGE_SIZE));
+}
+
+// Server-side sort keys (must match CATEGORY_SORTS in app/lib/admin-list.ts).
+const CATEGORY_SORT_KEYS = ['default', 'name_asc', 'name_desc', 'slug', 'sort_order'];
+const SORT_OPTIONS = [
+  { value: 'default', label: 'За замовчуванням' },
+  { value: 'name_asc', label: 'Назва А→Я' },
+  { value: 'name_desc', label: 'Назва Я→А' },
+  { value: 'slug', label: 'Slug А→Я' },
+  { value: 'sort_order', label: 'Порядок сортування' },
+];
+
 export default function CategoriesAdminPage() {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pickerCategories, setPickerCategories] = useState<Category[]>([]);
 
-  // UI-only search & sort over the loaded list (full table, no server call).
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('default');
-  const visibleCategories = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let list = categories;
-    if (q !== '') {
-      list = list.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q)
-      );
-    }
-    const byText = (a: string, b: string) => a.localeCompare(b, 'uk');
-    switch (sortBy) {
-      case 'name_asc':
-        return [...list].sort((a, b) => byText(a.name, b.name));
-      case 'name_desc':
-        return [...list].sort((a, b) => byText(b.name, a.name));
-      case 'sort_order':
-        return [...list].sort((a, b) => a.sort_order - b.sort_order);
-      case 'slug':
-        return [...list].sort((a, b) => byText(a.slug, b.slug));
-      default:
-        return list;
-    }
-  }, [categories, search, sortBy]);
+  // Search/sort/page live in the URL (server-side semantics): refresh,
+  // Back/Forward and shareable links all preserve the filtered view.
+  const { ready, urlState, patchUrlState, searchInput, setSearchInput } =
+    useAdminListUrlState(CATEGORY_SORT_KEYS);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -74,32 +103,43 @@ export default function CategoriesAdminPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Stable refetch for handlers (create/edit/delete).
+  // Single refetch path for both the URL-driven effect and post-mutation
+  // refreshes; `cancelled` drops stale out-of-order responses.
+  const cancelledRef = useRef(false);
   const fetchCategories = useCallback(
     () =>
       fetchCategoryList(
-        setCategories,
+        { page: urlState.page, size: PAGE_SIZE, search: urlState.search, sort: urlState.sort },
+        (rows, totalCount, serverPage) => {
+          setCategories(rows);
+          setTotal(totalCount);
+          setError(null);
+          if (serverPage !== urlState.page) patchUrlState({ page: serverPage });
+        },
         (message) => setError(message),
-        () => setLoading(false)
+        () => setLoading(false),
+        () => cancelledRef.current
       ),
-    []
+    [urlState.page, urlState.search, urlState.sort, patchUrlState]
   );
 
-  // Fetch categories on component mount
+  useEffect(() => {
+    if (!ready) return;
+    cancelledRef.current = false;
+    fetchCategories();
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [ready, fetchCategories]);
+
   useEffect(() => {
     let cancelled = false;
-    fetchCategoryList(
+    fetchAllCategoriesForPicker(
       (data) => {
-        if (!cancelled) {
-          setCategories(data);
-          setError(null);
-        }
+        if (!cancelled) setPickerCategories(data);
       },
       (message) => {
         if (!cancelled) setError(message);
-      },
-      () => {
-        if (!cancelled) setLoading(false);
       }
     );
     return () => {
@@ -155,7 +195,11 @@ export default function CategoriesAdminPage() {
         throw new Error(data.error || 'Не вдалося видалити категорію');
       }
       
-      // Refresh the list
+      // Refresh the list and the parent picker
+      fetchAllCategoriesForPicker(
+        (data) => setPickerCategories(data),
+        (message) => setError(message)
+      );
       await fetchCategories();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Невідома помилка');
@@ -188,9 +232,13 @@ export default function CategoriesAdminPage() {
         throw new Error(data?.error || 'Не вдалося зберегти категорію');
       }
 
-      // Close modal and refresh list
+      // Close modal and refresh list + parent picker
       setIsModalOpen(false);
       setStatus(isEditing ? 'Категорію оновлено' : 'Категорію створено');
+      fetchAllCategoriesForPicker(
+        (data) => setPickerCategories(data),
+        (message) => setError(message)
+      );
       await fetchCategories();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Невідома помилка');
@@ -232,26 +280,24 @@ export default function CategoriesAdminPage() {
         </button>
       </div>
 
-      {/* Search + sort (client-side over the full loaded list) */}
+      {/* Search + sort — server-side (DB filter → COUNT → pagination) */}
       <div className="mb-4 flex gap-3 flex-wrap">
         <input
           type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Пошук за назвою або slug…"
           className="flex-1 min-w-[220px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
+          value={urlState.sort}
+          onChange={(e) => patchUrlState({ sort: e.target.value, page: 1 })}
           className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           aria-label="Сортування"
         >
-          <option value="default">За замовчуванням</option>
-          <option value="name_asc">Назва А→Я</option>
-          <option value="name_desc">Назва Я→А</option>
-          <option value="slug">Slug А→Я</option>
-          <option value="sort_order">Порядок сортування</option>
+          {SORT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
         </select>
       </div>
 
@@ -279,7 +325,7 @@ export default function CategoriesAdminPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {visibleCategories.map((category) => (
+            {categories.map((category) => (
               <tr key={category.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
@@ -321,12 +367,47 @@ export default function CategoriesAdminPage() {
           </tbody>
         </table>
 
-        {categories.length === 0 && !loading && (
+        {total === 0 && !loading && (
           <div className="text-center py-12">
-            <p className="text-gray-500">Категорій не знайдено</p>
+            <p className="text-gray-500">
+              {urlState.search !== ''
+                ? `Нічого не знайдено за запитом «${urlState.search}»`
+                : 'Категорій не знайдено'}
+            </p>
           </div>
         )}
       </div>
+
+      {/* Pagination — windows are cut from the FILTERED set server-side */}
+      {totalPagesFor(total) > 1 && (() => {
+        const effectivePage = Math.min(urlState.page, totalPagesFor(total));
+        return (
+          <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
+            <span className="text-sm text-gray-500">
+              {urlState.search !== '' ? `Знайдено: ${total} · ` : ''}
+              Сторінка {effectivePage} з {totalPagesFor(total)} · усього {total}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={effectivePage <= 1}
+                onClick={() => patchUrlState({ page: effectivePage - 1 })}
+              >
+                ← Назад
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={effectivePage >= totalPagesFor(total)}
+                onClick={() => patchUrlState({ page: effectivePage + 1 })}
+              >
+                Далі →
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal for create/edit form */}
       {isModalOpen && (
@@ -380,7 +461,7 @@ export default function CategoriesAdminPage() {
                       className="input"
                     >
                       <option value="">None (Top-level)</option>
-                      {categories.filter(cat => cat.id !== currentCategory?.id).map(category => (
+                      {pickerCategories.filter(cat => cat.id !== currentCategory?.id).map(category => (
                         <option key={category.id} value={category.id}>{category.name}</option>
                       ))}
                     </select>
