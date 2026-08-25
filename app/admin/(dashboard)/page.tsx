@@ -62,6 +62,12 @@ export default async function AdminPage() {
       title: 'Бренди',
       description: 'Довідник брендів',
     },
+    {
+      href: '/admin/feedback',
+      icon: '💬',
+      title: "Зворотний зв'язок",
+      description: 'Анонімні пропозиції відвідувачів',
+    },
   ];
 
   return (
