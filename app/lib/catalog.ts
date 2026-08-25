@@ -162,9 +162,10 @@ async function fetchProducts(options: {
       .returns<ProductJoinedRow[]>();
 
     if (error) {
-      console.error('Failed to load products:', error.message);
-      // Never serve a partial set as if it were complete.
-      return [];
+      // Never serve a partial set as if it were complete — and never serve
+      // an empty set as if the catalog were empty: a data error must reach
+      // app/error.tsx (honest failure), not masquerade as "no products".
+      throw new Error(`Failed to load products: ${error.message}`);
     }
 
     const rows = data ?? [];
@@ -431,8 +432,9 @@ export async function fetchCatalogProducts(
   const { data, error } = await query.returns<ProductJoinedRow[]>();
 
   if (error) {
-    console.error('Failed to load catalog products:', error.message);
-    return { products: [], total, page: 1, size };
+    // A data error must reach app/error.tsx (honest failure) — an empty
+    // catalog page would read as "the shop has no products".
+    throw new Error(`Failed to load catalog products: ${error.message}`);
   }
 
   const products = (data ?? []).map(normalizeProduct);
@@ -465,8 +467,7 @@ export async function fetchActiveCategories(): Promise<Category[]> {
     .returns<Category[]>();
 
   if (error) {
-    console.error('Failed to load categories:', error.message);
-    return [];
+    throw new Error(`Failed to load categories: ${error.message}`);
   }
 
   return data ?? [];
@@ -484,8 +485,7 @@ export async function fetchActiveBrands(): Promise<Brand[]> {
     .returns<Brand[]>();
 
   if (error) {
-    console.error('Failed to load brands:', error.message);
-    return [];
+    throw new Error(`Failed to load brands: ${error.message}`);
   }
 
   return data ?? [];
@@ -507,8 +507,9 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
     .maybeSingle();
 
   if (error) {
-    console.error(`Failed to load product by slug "${slug}":`, error.message);
-    return null;
+    // A data error is not a missing product: rethrow so the route renders
+    // the error boundary instead of a misleading 404.
+    throw new Error(`Failed to load product by slug "${slug}": ${error.message}`);
   }
 
   if (!data) return null;

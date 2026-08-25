@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import FeedbackModal from './FeedbackModal';
 
 interface SiteFooterProps {
   categories?: { id: string; name: string; slug: string }[];
@@ -87,6 +88,9 @@ export default function SiteFooter({ categories }: SiteFooterProps) {
           </div>
         </div>
         <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
+          <p className="mb-3">
+            <FeedbackModal label="Як покращити сайт?" />
+          </p>
           <p>&copy; {new Date().getFullYear()} E-Shop. Всі права захищені.</p>
         </div>
       </div>

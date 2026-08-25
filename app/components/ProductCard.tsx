@@ -42,6 +42,11 @@ export default function ProductCard({
 
       <Link href={`/product/${product.slug}`} className="flex flex-1 flex-col">
         <div className="relative overflow-hidden rounded-t-xl bg-white">
+          {hasDiscount && (
+            <span className="absolute left-2 top-2 z-10 rounded-md bg-red-600 px-2 py-1 text-xs font-bold text-white shadow-sm">
+              −{Math.round((1 - product.price / product.old_price!) * 100)}%
+            </span>
+          )}
           {imageUrl ? (
             <Image
               src={imageUrl}
@@ -73,19 +78,20 @@ export default function ProductCard({
             <p className="mb-2 text-sm text-gray-500">{product.brand.name}</p>
           )}
 
-          <div className="mt-auto flex flex-wrap items-baseline gap-x-2 pt-2">
-            <span className="text-lg font-bold text-blue-700">
-              {product.price} {product.currency}
-            </span>
-            {hasDiscount && (
+          <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1 pt-2">
+            {hasDiscount ? (
               <>
-                <span className="text-xs text-gray-400 line-through">
+                <span className="text-xl font-extrabold text-red-600">
+                  {product.price} {product.currency}
+                </span>
+                <span className="text-sm text-gray-400 line-through">
                   {product.old_price} {product.currency}
                 </span>
-                <span className="rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-semibold text-red-600">
-                  −{Math.round((1 - product.price / product.old_price!) * 100)}%
-                </span>
               </>
+            ) : (
+              <span className="text-lg font-bold text-blue-700">
+                {product.price} {product.currency}
+              </span>
             )}
           </div>
           {!outOfStock && (

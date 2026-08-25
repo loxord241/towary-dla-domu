@@ -4,10 +4,14 @@ import { NextResponse } from 'next/server';
  * In-process sliding-window rate limiter for public sensitive endpoints.
  *
  * Scope & honest limitations:
- *  - State lives in this Node process: it protects a single-server
- *    deployment (the current architecture) and resets on restart.
- *    Multi-instance deployments would need a shared store (DB/Redis) —
- *    tracked in REMAINING ISSUES, not silently assumed away.
+ *  - Per-IP state lives in this Node process BY DESIGN: it never persists
+ *    identifiers, which keeps anonymous endpoints (feedback) truly
+ *    anonymous. It protects a single-server deployment and resets on
+ *    restart. Cross-instance protection is provided separately where it
+ *    matters: the feedback endpoint additionally enforces a shared daily
+ *    cap counted in the DB (identifier-free) — see app/api/feedback/route.ts.
+ *    Future sensitive features (e.g. promo validation) should use the same
+ *    shared-cap pattern instead of persisting IPs.
  *  - Buckets are keyed by client IP + route name; IP comes from
  *    x-forwarded-for / x-real-ip set by the upstream proxy.
  *  - Only ACCEPTED requests count toward limits; rejected ones neither
@@ -95,6 +99,11 @@ export const RATE_RULES = {
   lookup: [
     { max: 5, windowMs: 60_000 },
     { max: 20, windowMs: 60 * 60_000 },
+  ],
+  // anonymous feedback: strict anti-spam (no auth, no persistence yet)
+  feedback: [
+    { max: 3, windowMs: 60_000 },
+    { max: 5, windowMs: 60 * 60_000 },
   ],
   // read-only catalog preview: generous, abuse-only ceiling
   cartPreview: [{ max: 120, windowMs: 60_000 }],
