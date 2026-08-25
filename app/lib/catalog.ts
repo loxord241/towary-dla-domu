@@ -199,6 +199,35 @@ export function sanitizeSearchTerm(term: string): string {
     .trim();
 }
 
+/**
+ * Build the search filter for /catalog from a raw user query.
+ *
+ * UX contract (2026-08 audit fix): word ORDER must not matter. Every
+ * non-empty sanitized token becomes its own PostgREST `or` expression —
+ * `name.ilike.%tok%,short_description.ilike.%tok%` — and the caller ANDs
+ * the expressions by chaining `.or()` once per token (supabase-js appends
+ * a separate `or` query param per call; separate filters intersect).
+ *
+ * «мультипіч TEFAL» and «TEFAL мультипіч» therefore yield the same
+ * condition SET. A single token keeps the legacy single-`or` shape, and an
+ * empty/specials-only query yields null (no search filter at all).
+ *
+ * Injection safety is inherited from sanitizeSearchTerm: no reserved
+ * or= grammar character (`,` `"` `(` `)` `%`) can survive inside a
+ * pattern value, verified by tests/catalog-search.test.ts.
+ */
+export function buildSearchConditions(search: string): string[] | null {
+  const sanitized = sanitizeSearchTerm(search);
+  if (!sanitized) return null;
+  // Cap the fan-out: each token becomes an `or` expression on the count AND
+  // the data query, so an absurdly long `q=` must not multiply ILIKE cost
+  // without bound. Ten tokens is far beyond any meaningful storefront query.
+  const tokens = [...new Set(sanitized.split(' ').filter(Boolean))].slice(0, 10);
+  return tokens.map(
+    (token) => `name.ilike.%${token}%,short_description.ilike.%${token}%`
+  );
+}
+
 export type CatalogSort = 'newest' | 'price_asc' | 'price_desc' | 'name_asc';
 
 export interface CatalogFilters {
@@ -244,6 +273,35 @@ async function findBrandIdBySlug(slug: string): Promise<string | null> {
     .maybeSingle();
   return data?.id ?? null;
 }
+
+/**
+ * Light slug → display-name lookups for UI chrome (filter chips, H1,
+ * generateMetadata). Single indexed selects; return null for unknown or
+ * inactive slugs.
+ */
+export async function fetchCategoryBySlug(
+  slug: string
+): Promise<{ id: string; name: string; slug: string } | null> {
+  const { data } = await supabase
+    .from('categories')
+    .select('id, name, slug')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .maybeSingle();
+  return data ?? null;
+}
+
+export async function fetchBrandBySlug(
+  slug: string
+): Promise<{ id: string; name: string; slug: string } | null> {
+  const { data } = await supabase
+    .from('brands')
+    .select('id, name, slug')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .maybeSingle();
+  return data ?? null;
+}
 export interface CatalogPage {
   products: Product[];
   total: number;
@@ -265,13 +323,9 @@ export async function fetchCatalogProducts(
   );
 
   // ---- shared filter inputs (computed once, reused by both queries) ----
-  const search = sanitizeSearchTerm(filters.search ?? '');
-  const searchConditions = search
-    ? [
-        `name.ilike.%${search}%`,
-        `short_description.ilike.%${search}%`,
-      ]
-    : null;
+  // One `or` expression per token; the caller chains .or() per item so the
+  // tokens AND together (word-order-independent search, see the helper).
+  const searchConditions = buildSearchConditions(filters.search ?? '');
 
   const [categoryId, brandId] = await Promise.all([
     filters.categorySlug ? findCategoryIdBySlug(filters.categorySlug) : null,
@@ -300,7 +354,9 @@ export async function fetchCatalogProducts(
   }
 
   if (searchConditions) {
-    countQuery = countQuery.or(searchConditions.join(','));
+    for (const condition of searchConditions) {
+      countQuery = countQuery.or(condition);
+    }
   }
 
   if (filters.minPrice !== undefined) {
@@ -337,7 +393,9 @@ export async function fetchCatalogProducts(
   }
 
   if (searchConditions) {
-    query = query.or(searchConditions.join(','));
+    for (const condition of searchConditions) {
+      query = query.or(condition);
+    }
   }
 
   if (filters.minPrice !== undefined) {

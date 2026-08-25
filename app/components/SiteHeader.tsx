@@ -30,13 +30,14 @@ export default function SiteHeader() {
               <input
                 type="search"
                 name="q"
+                aria-label="Пошук"
                 placeholder="Пошук товарів..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <button
                 type="submit"
                 aria-label="Шукати"
-                className="absolute right-2 top-2 text-gray-400 hover:text-blue-600"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center text-lg text-gray-400 hover:text-blue-600"
               >
                 🔍
               </button>

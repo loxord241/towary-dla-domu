@@ -4,7 +4,6 @@ import { getMainPublicImageUrl } from '@/app/lib/supabase-storage'
 import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
 import ProductCard from '@/app/components/ProductCard'
-import EmptyState from '@/app/components/EmptyState'
 
 // Without this the home page would be prerendered once at build time and
 // featured products/categories would freeze until the next deploy.
@@ -63,13 +62,23 @@ export default async function Home() {
         </div>
 
         {featuredProducts.length === 0 ? (
-          <EmptyState
-            icon="🛍️"
-            title="Вибраних товарів поки що немає"
-            description="Загляньте в каталог — там точно є що цікаве."
-            ctaHref="/catalog"
-            ctaLabel="До каталогу"
-          />
+          // Intentional promo banner, not an empty-state box: the section must
+          // look designed while no product is flagged is_featured yet (admins
+          // flag them via /admin/products). The grid below activates
+          // automatically as soon as featured data exists.
+          <div className="flex flex-col items-start justify-between gap-4 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 px-6 py-8 sm:flex-row sm:items-center">
+            <div>
+              <p className="text-lg font-semibold text-gray-900">
+                Добірка найкращих товарів з’явиться тут незабаром
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                Ми готуємо для вас вибрані позиції — а в каталозі вже чекає великий асортимент.
+              </p>
+            </div>
+            <Link href="/catalog" className="btn btn-primary shrink-0">
+              Переглянути каталог
+            </Link>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {featuredProducts.map((product) => (

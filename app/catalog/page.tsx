@@ -1,9 +1,12 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
+import type { Metadata } from 'next'
 import {
   fetchCatalogProducts,
   fetchActiveCategories,
   fetchActiveBrands,
+  fetchCategoryBySlug,
+  fetchBrandBySlug,
   type CatalogFilters as CatalogFilterOptions,
   type CatalogSort,
 } from '@/app/lib/catalog'
@@ -35,16 +38,68 @@ interface ActiveChip {
 }
 
 function buildActiveChips(
-  filters: CatalogFilterOptions
+  filters: CatalogFilterOptions,
+  names: { categoryName?: string; brandName?: string }
 ): ActiveChip[] {
   const chips: ActiveChip[] = [];
   if (filters.search) chips.push({ label: `«${filters.search}»`, removeKey: 'q' });
-  if (filters.categorySlug) chips.push({ label: `Категорія: ${filters.categorySlug}`, removeKey: 'category' });
-  if (filters.brandSlug) chips.push({ label: `Бренд: ${filters.brandSlug}`, removeKey: 'brand' });
+  if (filters.categorySlug) {
+    chips.push({
+      label: `Категорія: ${names.categoryName ?? filters.categorySlug}`,
+      removeKey: 'category',
+    });
+  }
+  if (filters.brandSlug) {
+    chips.push({
+      label: `Бренд: ${names.brandName ?? filters.brandSlug}`,
+      removeKey: 'brand',
+    });
+  }
   if (filters.minPrice !== undefined) chips.push({ label: `від ${filters.minPrice} ₴`, removeKey: 'min' });
   if (filters.maxPrice !== undefined) chips.push({ label: `до ${filters.maxPrice} ₴`, removeKey: 'max' });
   if (filters.inStockOnly) chips.push({ label: 'Тільки в наявності', removeKey: 'stock' });
   return chips;
+}
+
+/** H1 for the current catalog view (exactly one h1 per page). */
+function catalogHeading(
+  filters: CatalogFilterOptions,
+  names: { categoryName?: string; brandName?: string }
+): string {
+  if (filters.search) return `Пошук: «${filters.search}»`;
+  if (filters.categorySlug && names.categoryName) return names.categoryName;
+  if (filters.brandSlug && names.brandName) return `Бренд ${names.brandName}`;
+  return 'Каталог товарів';
+}
+
+/** Unique per-view metadata built from real page data (no invented SEO copy). */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams
+}): Promise<Metadata> {
+  const rawParams = await searchParams;
+  const { filters } = parseCatalogSearchParams(rawParams);
+
+  const [category, brand] = await Promise.all([
+    filters.categorySlug ? fetchCategoryBySlug(filters.categorySlug) : null,
+    filters.brandSlug ? fetchBrandBySlug(filters.brandSlug) : null,
+  ]);
+
+  let title = 'Каталог товарів | E-Shop';
+  let description = 'Каталог товарів інтернет-магазину E-Shop з фільтрами та сортуванням.';
+  if (filters.search) {
+    title = `Пошук: «${filters.search}» | E-Shop`;
+    description = `Результати пошуку за запитом «${filters.search}» в інтернет-магазині E-Shop.`;
+  } else if (filters.categorySlug && category) {
+    title = `${category.name} — Каталог | E-Shop`;
+    description = `Товари у категорії «${category.name}» в інтернет-магазині E-Shop.`;
+  } else if (filters.brandSlug && brand) {
+    title = `${brand.name} — Каталог | E-Shop`;
+    description = `Товари бренду ${brand.name} в інтернет-магазині E-Shop.`;
+  }
+
+  return { title, description };
 }
 
 function removeParamUrl(
@@ -150,20 +205,27 @@ export default async function CatalogPage({
   const page = catalog.page
   const maxPage = Math.max(1, Math.ceil(total / catalog.size))
 
+  // Display names resolved from the same dictionaries that feed the filter
+  // dropdowns — chips and H1 must show «Склокерамічні», not a raw slug.
+  const categoryName = filters.categorySlug
+    ? categories.find((c) => c.slug === filters.categorySlug)?.name
+    : undefined;
+  const brandName = filters.brandSlug
+    ? brands.find((b) => b.slug === filters.brandSlug)?.name
+    : undefined;
+  const names = { categoryName, brandName };
+  const chips = buildActiveChips(filters, names);
+  const heading = catalogHeading(filters, names);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <SiteHeader />
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
-          {/* Filters Sidebar */}
+          {/* Filters Sidebar — collapsed by default on mobile (P7), always
+              open on desktop; the client component owns the toggle state */}
           <aside className="md:w-1/4 lg:sticky lg:top-24 lg:self-start">
-            <details open className="group md:open">
-              <summary className="card mb-4 flex cursor-pointer select-none items-center justify-between px-5 py-4 font-semibold text-gray-900 md:hidden">
-                Фільтри
-                <span className="text-blue-600 transition-transform group-open:rotate-180">▾</span>
-              </summary>
-              <div className="hidden md:block mb-4" aria-hidden="true"></div>
             <CatalogFilters
               categories={categories}
               brands={brands}
@@ -174,15 +236,16 @@ export default async function CatalogPage({
                 maxPrice: filters.maxPrice,
                 inStockOnly: filters.inStockOnly,
               }}
+              defaultOpen={hasActiveFilters}
+              activeCount={chips.length}
             />
-            </details>
           </aside>
 
           {/* Products Grid */}
           <main className="md:w-3/4">
             <div className="bg-white rounded-lg shadow p-6 mb-6">
               <div className="mb-2 flex items-baseline justify-between gap-4 flex-wrap">
-                <h2 className="text-xl font-bold">Каталог товарів</h2>
+                <h1 className="text-xl font-bold">{heading}</h1>
                 <span className="text-sm text-gray-500">
                   Знайдено: {total}
                 </span>
@@ -193,7 +256,7 @@ export default async function CatalogPage({
                     <span className="text-xs uppercase tracking-wide text-gray-400">
                       Фільтри:
                     </span>
-                    {buildActiveChips(filters).map((chip) => (
+                    {chips.map((chip) => (
                       <Link
                         key={chip.removeKey}
                         href={removeParamUrl(rawParams, chip.removeKey)}
@@ -261,8 +324,8 @@ export default async function CatalogPage({
                     </span>
                   )}
                   <span className="text-sm text-gray-600">
-                    Страница {page} из {maxPage}
-                    <span className="text-gray-400"> · найдено {total}</span>
+                    Сторінка {page} із {maxPage}
+                    <span className="text-gray-400"> · знайдено {total}</span>
                   </span>
                   {page < maxPage ? (
                     <Link

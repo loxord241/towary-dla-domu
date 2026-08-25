@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { cache } from 'react'
+import type { Metadata } from 'next'
 import { fetchProductBySlug } from '@/app/lib/catalog'
 import { getPublicImageUrls } from '@/app/lib/supabase-storage'
 import SiteHeader from '@/app/components/SiteHeader'
@@ -9,6 +11,41 @@ import FavoriteButton from '@/app/components/FavoriteButton'
 import ProductGallery from '@/app/components/ProductGallery'
 import ProductDescription from '@/app/components/ProductDescription'
 import ProductSpecifications from '@/app/components/ProductSpecifications'
+
+// React cache(): generateMetadata and the page component share ONE
+// fetchProductBySlug execution per request instead of two.
+const getProduct = cache(fetchProductBySlug)
+
+/** Plain-text excerpt for meta description (description is sanitized HTML). */
+function metaDescription(text: string | null | undefined): string | undefined {
+  const plain = (text ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return plain ? plain.slice(0, 160) : undefined;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const product = await getProduct(slug)
+  if (!product) return { title: 'Сторінку не знайдено | E-Shop' }
+
+  const description =
+    metaDescription(product.short_description) ??
+    metaDescription(product.description) ??
+    `Купити ${product.name} в інтернет-магазині E-Shop.`
+
+  return {
+    title: `${product.name} — E-Shop`,
+    description,
+    openGraph: {
+      title: `${product.name} — E-Shop`,
+      description,
+      type: 'website',
+    },
+  }
+}
 
 function availabilityLabel(status: string): string {
   if (status === 'in_stock') return 'В наявності'
@@ -22,7 +59,7 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const product = await fetchProductBySlug(slug)
+  const product = await getProduct(slug)
 
   // Unknown or inactive slug must be a real HTTP 404, not a rendered error box.
   if (!product) {
@@ -35,7 +72,7 @@ export default async function ProductPage({
     <div className="flex min-h-screen flex-col bg-gray-50">
       <SiteHeader />
 
-      <div className="container mx-auto flex-1 px-4 py-8">
+      <main className="container mx-auto flex-1 px-4 py-8">
         <nav aria-label="Навігація" className="mb-5 text-sm text-gray-500">
           <Link href="/catalog" className="hover:text-blue-600 hover:underline">Каталог</Link>
           {product.category && (
@@ -123,14 +160,28 @@ export default async function ProductPage({
               {product.brand && (
                 <div>
                   <h4 className="font-semibold">Бренд:</h4>
-                  <p>{product.brand.name}</p>
+                  <p>
+                    <Link
+                      href={`/catalog?brand=${encodeURIComponent(product.brand.slug)}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      {product.brand.name}
+                    </Link>
+                  </p>
                 </div>
               )}
 
               {product.category && (
                 <div>
                   <h4 className="font-semibold">Категорія:</h4>
-                  <p>{product.category.name}</p>
+                  <p>
+                    <Link
+                      href={`/catalog?category=${encodeURIComponent(product.category.slug)}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      {product.category.name}
+                    </Link>
+                  </p>
                 </div>
               )}
             </div>
@@ -181,7 +232,7 @@ export default async function ProductPage({
         )}
 
         {/* Footer — full-bleed, outside the content container */}
-      </div>
+      </main>
 
       <SiteFooter />
     </div>

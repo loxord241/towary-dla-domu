@@ -8,11 +8,18 @@ import type { Brand, Category } from '@/app/lib/catalog';
  * Catalog sidebar filters. All state is mirrored into the /catalog query
  * string (category, brand, min, max, stock), so filtered views are
  * shareable URLs rendered server-side.
+ *
+ * Mobile: the panel is collapsed behind a toggle so product cards start
+ * above the fold (2026-08 UX audit). Desktop (md+) keeps it always open.
+ * `defaultOpen` auto-expands when filters are active; `activeCount` is
+ * shown as a badge on the collapsed toggle.
  */
 export default function CatalogFilters({
   categories,
   brands,
   initial,
+  defaultOpen = false,
+  activeCount = 0,
 }: {
   categories: Category[];
   brands: Brand[];
@@ -24,8 +31,13 @@ export default function CatalogFilters({
     maxPrice?: number;
     inStockOnly?: boolean;
   };
+  /** initial expanded state on mobile (true when filters are active) */
+  defaultOpen?: boolean;
+  /** number of currently applied filters, for the toggle badge */
+  activeCount?: number;
 }) {
   const router = useRouter();
+  const [open, setOpen] = useState(defaultOpen);
 
   const [category, setCategory] = useState(initial?.categorySlug ?? '');
   const [brand, setBrand] = useState(initial?.brandSlug ?? '');
@@ -61,8 +73,32 @@ export default function CatalogFilters({
   };
 
   return (
-    <div className="card p-5 md:p-6">
-      <h3 className="font-bold text-lg mb-4">Фільтри</h3>
+    <div>
+      {/* Mobile toggle — hidden on desktop where the panel is always open */}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="card mb-4 flex w-full cursor-pointer select-none items-center justify-between px-5 py-4 font-semibold text-gray-900 md:hidden"
+      >
+        <span className="flex items-center gap-2">
+          Фільтри
+          {activeCount > 0 && (
+            <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-semibold text-white">
+              {activeCount}
+            </span>
+          )}
+        </span>
+        <span
+          aria-hidden
+          className={`text-blue-600 transition-transform ${open ? 'rotate-180' : ''}`}
+        >
+          ▾
+        </span>
+      </button>
+
+      <div className={`card p-5 md:p-6 ${open ? 'block' : 'hidden'} md:block`}>
+        <h3 className="mb-4 hidden font-bold text-lg md:block">Фільтри</h3>
 
       <form
         onSubmit={(e) => {
@@ -161,6 +197,7 @@ export default function CatalogFilters({
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

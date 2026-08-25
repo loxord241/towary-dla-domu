@@ -11,6 +11,7 @@ import {
   fetchCartPreview,
   type CartPreviewLine,
 } from '@/app/lib/cart-preview';
+import { formatPrice } from '@/app/lib/format';
 
 function availabilityLabel(status: string | null): string {
   if (status === 'in_stock') return 'В наявності';
@@ -169,7 +170,7 @@ export default function CartPage() {
                           )}
                           {!unavailable ? (
                             <p className="text-sm text-gray-600 mt-1">
-                              {(preview.unitPrice ?? 0).toFixed(2)} {preview.currency} / шт ·{' '}
+                              {formatPrice(preview.unitPrice ?? 0, preview.currency)} / шт ·{' '}
                               {availabilityLabel(preview.availabilityStatus)}
                             </p>
                           ) : (
@@ -215,8 +216,7 @@ export default function CartPage() {
 
                     {!unavailable && preview?.unitPrice != null && (
                       <div className="w-28 text-right font-semibold whitespace-nowrap">
-                        {(preview.unitPrice * item.quantity).toFixed(2)}{' '}
-                        {preview.currency}
+                        {formatPrice(preview.unitPrice * item.quantity, preview.currency)}
                       </div>
                     )}
 
@@ -252,7 +252,7 @@ export default function CartPage() {
                 <div className="flex justify-between font-semibold text-lg mb-1">
                   <span>До сплати</span>
                   <span>
-                    {subtotal.toFixed(2)} {currency}
+                    {formatPrice(subtotal, currency)}
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mb-4">

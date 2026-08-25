@@ -28,14 +28,22 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
   return (
     <div>
       <div className="relative">
+        {/* Above-the-fold LCP image: priority disables the default lazy-load
+            and adds fetchpriority=high (2026-08 UX audit). */}
         <Image
           src={main.url}
           alt={main.alt}
           width={960}
           height={768}
+          priority
           unoptimized
           className="w-full h-96 object-contain"
         />
+        {images.length > 1 && (
+          <span className="absolute bottom-2 right-2 rounded-full bg-black/50 px-2.5 py-1 text-xs font-medium text-white">
+            {Math.min(selected, images.length - 1) + 1} / {images.length}
+          </span>
+        )}
         {images.length > 1 && (
           <>
             <button
