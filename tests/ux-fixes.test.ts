@@ -93,16 +93,17 @@ test('product: above-the-fold gallery image is not lazy (priority/eager)', () =>
   assert.match(gallery, /priority|loading="eager"/);
 });
 
-// ---- P7: mobile collapsible filters
+// ---- P7: mobile collapsible filters (2026-08: superseded by the sheet)
 
-test('catalog: filters collapsed by default on mobile, toggle shows active count', () => {
+test('catalog: mobile filters live behind a toggle; desktop sidebar stays open', () => {
   const catalog = src('app/catalog/page.tsx');
   const filters = src('app/catalog/CatalogFilters.tsx');
-  // the client component owns the collapsed state
+  // the client component owns the open state
   assert.match(filters, /useState/);
-  assert.match(filters, /defaultOpen|defaultCollapsed|open/);
-  // page passes whether filters are active so the panel can auto-open
-  assert.match(catalog, /defaultOpen=\{hasActiveFilters\}/);
+  assert.match(filters, /md:hidden/, 'mobile trigger exists');
+  assert.match(filters, /md:block/, 'desktop panel always visible');
+  // the page no longer auto-expands anything on mobile — the sheet replaces it
+  assert.ok(!catalog.includes('defaultOpen='), 'defaultOpen prop retired');
 });
 
 // ---- P8: cosmetics

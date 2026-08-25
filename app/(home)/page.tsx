@@ -1,5 +1,9 @@
 import Link from 'next/link'
-import { fetchFeaturedProducts, fetchActiveCategories } from '@/app/lib/catalog'
+import {
+  fetchFeaturedProducts,
+  fetchPopularProducts,
+  fetchActiveCategories,
+} from '@/app/lib/catalog'
 import { getMainPublicImageUrl } from '@/app/lib/supabase-storage'
 import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
@@ -10,8 +14,9 @@ import ProductCard from '@/app/components/ProductCard'
 export const revalidate = 60
 
 export default async function Home() {
-  const [featuredProducts, categories] = await Promise.all([
+  const [featuredProducts, popularProducts, categories] = await Promise.all([
     fetchFeaturedProducts(),
+    fetchPopularProducts(),
     fetchActiveCategories(),
   ])
 
@@ -82,6 +87,38 @@ export default async function Home() {
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {featuredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                imageUrl={getMainPublicImageUrl(product.images)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Popular Products — featured first, topped up with the newest
+          arrivals (no popularity signal exists yet, see fetchPopularProducts) */}
+      <section className="container mx-auto px-4 py-12">
+        <div className="mb-6 flex items-end justify-between">
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+            Популярні товари
+          </h2>
+          <Link
+            href="/catalog"
+            className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+          >
+            Усі товари →
+          </Link>
+        </div>
+
+        {popularProducts.length === 0 ? (
+          // Only possible when the whole catalog is empty: the shelf falls
+          // back to newest products whenever any eligible product exists.
+          <p className="text-gray-500">Товари з’являться незабаром</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
+            {popularProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}

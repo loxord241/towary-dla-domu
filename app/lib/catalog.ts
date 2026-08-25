@@ -454,6 +454,70 @@ export async function fetchFeaturedProducts(): Promise<Product[]> {
   return fetchProducts({ featuredOnly: true });
 }
 
+/** Hard cap for the home «Популярні товари» shelf — bounded by design. */
+const POPULAR_LIMIT = 8;
+
+/**
+ * Products for the home «Популярні товари» section.
+ *
+ * HONEST DATA NOTE (approved 2026-08): no real popularity/sales signal is
+ * readable by the storefront today — order_items has no rows yet and
+ * product_stock_history is RLS-blocked for the anonymous role — so this
+ * shelf is NOT popularity-derived data. It is:
+ *   1. curated products (is_featured=true), newest first;
+ *   2. topped up to POPULAR_LIMIT with the newest non-featured products
+ *      (created_at desc) purely as a visual fallback.
+ * "Популярність" is presentational wording; when a real sales signal
+ * becomes available, only this function's ordering should change.
+ *
+ * Both legs are single bounded windows (.range(0, n-1) ≤ POPULAR_LIMIT
+ * rows each) — never a paged full scan. The legs are disjoint by
+ * construction (featured flag true vs false), so no product can appear
+ * twice. A data error throws: an empty shelf must not masquerade as
+ * "nothing to show" when the database actually failed.
+ */
+export async function fetchPopularProducts(
+  limit: number = POPULAR_LIMIT
+): Promise<Product[]> {
+  const take = Math.min(Math.max(limit, 1), POPULAR_LIMIT);
+
+  const { data: featuredRows, error: featuredError } = await supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .eq('is_active', true)
+    .eq('is_featured', true)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(0, take - 1)
+    .returns<ProductJoinedRow[]>();
+
+  if (featuredError) {
+    throw new Error(`Failed to load featured products: ${featuredError.message}`);
+  }
+
+  const featured = (featuredRows ?? []).map(normalizeProduct);
+  const remaining = take - featured.length;
+  if (remaining <= 0) return featured;
+
+  // Newest non-featured products fill the rest of the shelf (fallback,
+  // not popularity). Disjoint filter guarantees zero duplicates.
+  const { data: newestRows, error: newestError } = await supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .eq('is_active', true)
+    .eq('is_featured', false)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(0, remaining - 1)
+    .returns<ProductJoinedRow[]>();
+
+  if (newestError) {
+    throw new Error(`Failed to load newest products: ${newestError.message}`);
+  }
+
+  return [...featured, ...(newestRows ?? []).map(normalizeProduct)];
+}
+
 /**
  * Active categories ordered for navigation.
  */

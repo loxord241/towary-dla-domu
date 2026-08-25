@@ -224,22 +224,23 @@ export default async function CatalogPage({
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
-          {/* Filters Sidebar — collapsed by default on mobile (P7), always
-              open on desktop; the client component owns the toggle state */}
+          {/* Filters Sidebar — mobile opens it as a sheet behind a
+              «Фільтри» button; desktop (md+) keeps it always open */}
           <aside className="md:w-1/4 lg:sticky lg:top-24 lg:self-start">
-            <CatalogFilters
-              categories={categories}
-              brands={brands}
-              initial={{
-                categorySlug: filters.categorySlug,
-                brandSlug: filters.brandSlug,
-                minPrice: filters.minPrice,
-                maxPrice: filters.maxPrice,
-                inStockOnly: filters.inStockOnly,
-              }}
-              defaultOpen={hasActiveFilters}
-              activeCount={chips.length}
-            />
+            <Suspense fallback={<div className="card mb-4 h-14 md:h-40" aria-hidden />}>
+              <CatalogFilters
+                categories={categories}
+                brands={brands}
+                initial={{
+                  categorySlug: filters.categorySlug,
+                  brandSlug: filters.brandSlug,
+                  minPrice: filters.minPrice,
+                  maxPrice: filters.maxPrice,
+                  inStockOnly: filters.inStockOnly,
+                }}
+                activeCount={chips.length}
+              />
+            </Suspense>
           </aside>
 
           {/* Products Grid */}
