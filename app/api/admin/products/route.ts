@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { requireAdminApi, strOrNull, uuidOrNull, nonNegNumOrNull, dbErrorResponse } from '@/app/lib/admin-api';
+import { requireAdminApi, strOrNull, uuidOrNull, nonNegNumOrNull, parseCategoryIds, dbErrorResponse } from '@/app/lib/admin-api';
 import {
   MAX_FEATURED_PRODUCTS,
   FEATURED_LIMIT_MESSAGE,
@@ -167,6 +167,18 @@ export async function POST(request: Request) {
       }
     }
 
+    // Multi-category (2026-08-26): category_ids wins over legacy
+    // category_id when present; the legacy column keeps the FIRST selected
+    // category as the transition default.
+    let categoryIds: string[] | null = null;
+    if ('category_ids' in body) {
+      const parsed = parseCategoryIds(body.category_ids);
+      if (parsed === null) {
+        return NextResponse.json({ error: 'Некоректний id категорії' }, { status: 400 });
+      }
+      categoryIds = parsed;
+    }
+
     const { data, error } = await ctx.serviceClient
       .from('products')
       .insert({
@@ -180,7 +192,10 @@ export async function POST(request: Request) {
         currency: currency === null ? 'UAH' : currency.toUpperCase(),
         stock_quantity: nonNegNumOrNull(body.stock_quantity) ?? 0,
         availability_status: availability,
-        category_id: uuidOrNull(body.category_id),
+        category_id:
+          categoryIds !== null
+            ? (categoryIds[0] ?? null)
+            : uuidOrNull(body.category_id),
         brand_id: uuidOrNull(body.brand_id),
         is_active: body.is_active === undefined ? true : Boolean(body.is_active),
         is_featured: wantsFeatured,
@@ -191,6 +206,20 @@ export async function POST(request: Request) {
 
     if (error) {
       return dbErrorResponse(error, 'Не вдалося створити товар');
+    }
+
+    if (categoryIds && categoryIds.length > 0) {
+      const links = categoryIds.map((c) => ({ product_id: data.id, category_id: c }));
+      const { error: linkError } = await ctx.serviceClient
+        .from('product_categories')
+        .insert(links);
+      if (linkError) {
+        console.error('Failed to save product categories:', linkError.message);
+        return NextResponse.json(
+          { error: 'Не вдалося зберегти категорії товару' },
+          { status: 500 }
+        );
+      }
     }
 
     // Race guard: a parallel enable could have consumed the last slot

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdminApi, strOrNull, uuidOrNull, numOrNull, isUuid, dbErrorResponse, toStoragePath } from '@/app/lib/admin-api';
+import { requireAdminApi, strOrNull, uuidOrNull, numOrNull, isUuid, parseCategoryIds, dbErrorResponse, toStoragePath } from '@/app/lib/admin-api';
 import {
   MAX_FEATURED_PRODUCTS,
   FEATURED_LIMIT_MESSAGE,
@@ -27,7 +27,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   try {
-    const [productRes, imagesRes, variantsRes] = await Promise.all([
+    const [productRes, imagesRes, variantsRes, categoryLinksRes] = await Promise.all([
       ctx.serviceClient.from('products').select('*').eq('id', id).maybeSingle(),
       ctx.serviceClient
         .from('product_images')
@@ -39,6 +39,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         .select('*')
         .eq('product_id', id)
         .order('created_at', { ascending: true }),
+      ctx.serviceClient
+        .from('product_categories')
+        .select('category_id')
+        .eq('product_id', id),
     ]);
 
     if (productRes.error) {
@@ -53,11 +57,20 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (variantsRes.error) {
       return NextResponse.json({ error: variantsRes.error.message }, { status: 500 });
     }
+    if (categoryLinksRes.error) {
+      return NextResponse.json({ error: categoryLinksRes.error.message }, { status: 500 });
+    }
+
+    // Direct assignments only; deterministic order for the form.
+    const categoryIds = ((categoryLinksRes.data ?? []) as { category_id: string }[])
+      .map((r) => r.category_id)
+      .sort();
 
     return NextResponse.json({
       product: productRes.data,
       images: imagesRes.data ?? [],
       variants: variantsRes.data ?? [],
+      category_ids: categoryIds,
     });
   } catch (err) {
     console.error('Products API error:', err);
@@ -154,6 +167,18 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       patch.availability_status = status;
     }
     if ('category_id' in body) patch.category_id = uuidOrNull(body.category_id);
+    // Multi-category payload: strict validation BEFORE any db touch;
+    // the legacy column gets the FIRST selected category (transition
+    // default) or null when the set is emptied.
+    let categoryIds: string[] | null = null;
+    if ('category_ids' in body) {
+      const parsed = parseCategoryIds(body.category_ids);
+      if (parsed === null) {
+        return NextResponse.json({ error: 'Некоректний id категорії' }, { status: 400 });
+      }
+      categoryIds = parsed;
+      patch.category_id = categoryIds[0] ?? null; // overrides legacy field
+    }
     if ('brand_id' in body) patch.brand_id = uuidOrNull(body.brand_id);
     if ('is_active' in body) patch.is_active = Boolean(body.is_active);
     if ('is_featured' in body) {
@@ -202,6 +227,55 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
     if (!data) {
       return NextResponse.json({ error: 'Товар не знайдено' }, { status: 404 });
+    }
+
+    // Replace-all junction sync (only when the payload carries category_ids):
+    // delete everything not wanted, insert what is missing. Empty array
+    // clears every link (patch.category_id already null).
+    if (categoryIds !== null) {
+      const want = new Set(categoryIds);
+      const { data: current, error: readErr } = await ctx.serviceClient
+        .from('product_categories')
+        .select('category_id')
+        .eq('product_id', id);
+      if (readErr) {
+        console.error('Failed to read product category links:', readErr.message);
+        return NextResponse.json({ error: 'Не вдалося зберегти категорії товару' }, { status: 500 });
+      }
+      const have = new Set(((current ?? []) as { category_id: string }[]).map((r) => r.category_id));
+      const toInsert = [...want].filter((c) => !have.has(c)).map((c) => ({ product_id: id, category_id: c }));
+      if (toInsert.length > 0) {
+        const { error: insErr } = await ctx.serviceClient
+          .from('product_categories')
+          .insert(toInsert);
+        if (insErr) {
+          console.error('Failed to insert product category links:', insErr.message);
+          return NextResponse.json({ error: 'Не вдалося зберегти категорії товару' }, { status: 500 });
+        }
+      }
+      if (want.size === 0 && have.size > 0) {
+        const { error: delErr } = await ctx.serviceClient
+          .from('product_categories')
+          .delete()
+          .eq('product_id', id);
+        if (delErr) {
+          console.error('Failed to clear product category links:', delErr.message);
+          return NextResponse.json({ error: 'Не вдалося зберегти категорії товару' }, { status: 500 });
+        }
+      } else if (have.size > 0) {
+        const toRemove = [...have].filter((c) => !want.has(c));
+        if (toRemove.length > 0) {
+          const { error: delErr } = await ctx.serviceClient
+            .from('product_categories')
+            .delete()
+            .eq('product_id', id)
+            .in('category_id', toRemove);
+          if (delErr) {
+            console.error('Failed to remove product category links:', delErr.message);
+            return NextResponse.json({ error: 'Не вдалося зберегти категорії товару' }, { status: 500 });
+          }
+        }
+      }
     }
 
     // Race guard: parallel admins could both pass the pre-check. Whoever

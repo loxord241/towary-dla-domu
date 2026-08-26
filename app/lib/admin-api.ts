@@ -91,6 +91,22 @@ export function uuidOrNull(value: unknown): string | null {
   return v && isUuid(v) ? v : null;
 }
 
+/**
+ * Strict array-of-uuids validation for multi-category payloads:
+ * every element must be a well-formed UUID; null signals invalid input
+ * (the caller answers 400). Duplicates collapse. [] = clear all links.
+ */
+export function parseCategoryIds(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const ids: string[] = [];
+  for (const raw of value) {
+    const id = typeof raw === 'string' ? raw.trim() : '';
+    if (!isUuid(id)) return null;
+    ids.push(id);
+  }
+  return [...new Set(ids)];
+}
+
 /** Check whether a route parameter is a well-formed UUID. */
 export function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
