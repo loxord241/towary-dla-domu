@@ -138,6 +138,11 @@ export function buildCategoryOptions(
   };
 
   for (const root of roots) walk(root, []);
+  if (expanded) {
+    // Collapsible mode: unvisited nodes here are INTENTIONALLY hidden
+    // (collapsed parents), not lost — the fallback below must not run.
+    return options;
+  }
   // Nodes unreachable from any root (e.g. parent/child cycles among
   // themselves) must not disappear: surface them as pseudo-roots.
   for (const node of categories) {
