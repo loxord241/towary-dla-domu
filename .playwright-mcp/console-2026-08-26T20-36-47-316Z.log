@@ -1,0 +1,5 @@
+[    8914ms] Uncaught TypeError: Cannot read properties of undefined (reading 'constructor')
+    at u (https://matomo.privatbank.ua/matomo.js:297:626)
+    at V (https://matomo.privatbank.ua/matomo.js:305:172)
+[    8914ms] undefined
+[   10079ms] [WARNING] [.WebGL-0xbe4001ac200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ https://www.liqpay.ua/uk/checkout/card/checkout_1787776615246995_29844867_fxyoj7oL7i4XceiGjN8Y:0

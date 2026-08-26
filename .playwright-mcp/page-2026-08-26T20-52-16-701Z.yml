@@ -1,0 +1,48 @@
+- generic [active] [ref=f7e1]:
+  - generic [ref=f7e3]:
+    - generic [ref=f7e4]:
+      - generic [ref=f7e5]: ✓
+      - heading "Замовлення прийнято!" [level=1] [ref=f7e6]
+      - paragraph [ref=f7e7]: "Номер замовлення: ORD-20260826-E5C0D5"
+      - paragraph [ref=f7e8]:
+        - text: Збережіть номер — статус можна перевірити
+        - link "за номером та email" [ref=f7e9] [cursor=pointer]:
+          - /url: /orders/lookup
+        - text: .
+    - generic [ref=f7e10]:
+      - table [ref=f7e11]:
+        - rowgroup [ref=f7e12]:
+          - row [ref=f7e13]:
+            - 'cell "Столові прилади RINGEL Mira коктейльна ложка 1 шт на блістері (RG-3117-1/5) SKU: YC-6853528 · 1 шт × 40" [ref=f7e14]':
+              - text: Столові прилади RINGEL Mira коктейльна ложка 1 шт на блістері (RG-3117-1/5)
+              - generic [ref=f7e15]: "SKU: YC-6853528 · 1 шт × 40"
+            - cell "40 UAH" [ref=f7e16]
+      - generic [ref=f7e17]:
+        - generic [ref=f7e18]:
+          - term [ref=f7e19]: Товари
+          - definition [ref=f7e20]: 40 UAH
+        - generic [ref=f7e21]:
+          - term [ref=f7e22]: Доставка
+          - definition [ref=f7e23]: 0 UAH
+        - generic [ref=f7e24]:
+          - term [ref=f7e25]: Разом до сплати
+          - definition [ref=f7e26]: 40 UAH
+      - paragraph [ref=f7e27]: "Статус: pending · оплата: pending"
+    - generic [ref=f7e28]:
+      - generic [ref=f7e29]: Очікує підтвердження
+      - generic [ref=f7e30]: Очікує оплату
+    - generic [ref=f7e31]:
+      - generic [ref=f7e32]:
+        - paragraph [ref=f7e33]: Оплату обробляється
+        - paragraph [ref=f7e34]: Ми чекаємо підтвердження від платіжної системи. Якщо оплата вже здійснена, статус оновиться найближчим часом.
+        - link "Оновити статус" [ref=f7e35] [cursor=pointer]:
+          - /url: /checkout/success?order=ORD-20260826-E5C0D5&t=cf63eb52217f238b988985ffa78ffaa0
+      - generic [ref=f7e36]:
+        - paragraph [ref=f7e37]: Що далі?
+        - list [ref=f7e38]:
+          - listitem [ref=f7e39]: Менеджер зв’яжеться з вами для підтвердження.
+          - listitem [ref=f7e40]: Після підтвердження узгодимо доставку та оплату.
+          - listitem [ref=f7e41]: Статус можна перевірити за номером замовлення.
+    - link "Продовжити покупки" [ref=f7e43] [cursor=pointer]:
+      - /url: /catalog
+  - alert [ref=f7e44]
