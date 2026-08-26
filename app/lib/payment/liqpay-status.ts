@@ -7,6 +7,11 @@
  * Mapping policy — only LiqPay TERMINAL statuses ever move the order out of
  * `pending`:
  *   success        → paid      (terminal; guarded downstream as idempotent)
+ *   sandbox        → paid      (terminal; a successful TEST payment — docs
+ *                              /en/doc/api/testing: "успішний тестовий
+ *                              платіж". Only occurs with sandbox keys /
+ *                              sandbox=1 payload, still signature-verified
+ *                              and amount/currency-checked downstream)
  *   failure, error → failed    (terminal)
  *   reversed       → refunded  (exists in CHECK; semantic match: payment
  *                              reversed after settlement)
@@ -17,7 +22,7 @@
 
 export type PaymentStatus = 'unpaid' | 'pending' | 'paid' | 'failed' | 'refunded';
 
-const FINAL_PAID = new Set(['success']);
+const FINAL_PAID = new Set(['success', 'sandbox']);
 const FINAL_FAILED = new Set(['failure', 'error']);
 const FINAL_REFUNDED = new Set(['reversed']);
 

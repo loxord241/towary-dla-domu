@@ -23,6 +23,15 @@ test('STATUS: success maps to paid', () => {
   assert.equal(mapLiqPayStatus('success'), 'paid');
 });
 
+// LiqPay sandbox mode: a successful TEST payment is terminal status
+// "sandbox" (docs: https://www.liqpay.ua/en/doc/api/testing — "Всі тестові
+// платежі будуть мати статус sandbox - успішний тестовий платіж"). Real
+// payments never carry this status; signature + amount/currency checks in
+// the callback still gate everything.
+test('STATUS: terminal sandbox status maps to paid', () => {
+  assert.equal(mapLiqPayStatus('sandbox'), 'paid');
+});
+
 test('STATUS: failure and error map to failed', () => {
   assert.equal(mapLiqPayStatus('failure'), 'failed');
   assert.equal(mapLiqPayStatus('error'), 'failed');
