@@ -302,6 +302,8 @@ export interface ExistingProductRow {
   old_price: number | null;
   stock_quantity: number | null;
   availability_status: string | null;
+  /** current default category — required for recategorization decisions */
+  category_id: string | null;
 }
 
 export interface ResolvedInsert {
@@ -334,6 +336,12 @@ export interface ProductWriteSplit {
   /** manual rows squatting a stable YC-<id> sku — MUST block the batch */
   hardConflicts: string[];
   unresolvedRefs: SkipEntry[];
+  /**
+   * EXISTING products whose feed category could not be resolved to a DB
+   * row. Field updates still flow (never lose price/stock sync because of
+   * category trouble); only the category decision is deferred and logged.
+   */
+  unresolvedCategoryUpdates: SkipEntry[];
 }
 
 export function splitProductWrites(
@@ -351,6 +359,7 @@ export function splitProductWrites(
     updates: [],
     hardConflicts: [],
     unresolvedRefs: [],
+    unresolvedCategoryUpdates: [],
   };
 
   for (const row of rows) {
@@ -367,17 +376,18 @@ export function splitProductWrites(
     }
 
     const refs = resolveRefs(row);
-    if (refs.category_id === null) {
-      split.unresolvedRefs.push({
-        id: row.yugcontract_id,
-        reason: `категорію ${row.catYcId ?? '—'} не знайдено в БД`,
-      });
-      continue;
-    }
-
     const existing = existingByYc.get(row.yugcontract_id);
 
     if (!existing) {
+      // New products need a resolvable category to be created at all;
+      // price/stock of EXISTING products never depend on it (below).
+      if (refs.category_id === null) {
+        split.unresolvedRefs.push({
+          id: row.yugcontract_id,
+          reason: `новий товар не створено: категорію ${row.catYcId ?? '—'} не знайдено в БД`,
+        });
+        continue;
+      }
       // New rows need a price to be sellable; without RRP we refuse to
       // invent one. (Existing rows keep flowing through updates below —
       // stock/name still sync while the current price stays untouched.)
@@ -404,6 +414,15 @@ export function splitProductWrites(
         is_active: true,
       });
       continue;
+    }
+
+    if (refs.category_id === null) {
+      // Never lose the price/stock sync because of a category problem:
+      // fields keep updating; the existing category is left untouched.
+      split.unresolvedCategoryUpdates.push({
+        id: row.yugcontract_id,
+        reason: `категорію ${row.catYcId ?? '—'} не знайдено в БД — поля оновлено без зміни категорії`,
+      });
     }
 
     const fields: Record<string, unknown> = {};
