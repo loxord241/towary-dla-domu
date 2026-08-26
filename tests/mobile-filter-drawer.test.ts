@@ -83,7 +83,7 @@ test('FILTERS: every existing filter survives in the shared form', () => {
   const f = filters();
   assert.match(f, /Категорії/);
   assert.match(f, /Бренди/);
-  assert.match(f, /Ціна \(₴\)/);
+  assert.match(f, /Ціна \(UAH\)/);
   assert.match(f, /Тільки в наявності/);
   assert.match(f, /Застосувати/);
   assert.match(f, /Скинути/);

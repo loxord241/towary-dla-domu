@@ -447,6 +447,130 @@ export async function fetchCatalogProducts(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Product reviews (Відгуки) — public READS only.
+//
+// Writes never go through this file: submissions land as status='pending'
+// via app/api/reviews/route.ts (service role) and are published/rejected in
+// the admin API. The queries below run on the ANONYMOUS client, so RLS
+// already restricts rows to status='published'; the .eq('status') filters
+// stay as defense-in-depth so the contract survives even a future policy
+// regression.
+// ---------------------------------------------------------------------------
+
+export interface ProductReview {
+  id: string;
+  product_id: string;
+  rating: number;
+  text: string;
+  display_name: string | null;
+  created_at: string;
+}
+
+export interface ReviewsPageData {
+  reviews: ProductReview[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** Hard cap for one rendered page of reviews — bounded by design. */
+export const REVIEWS_PAGE_SIZE = 10;
+
+/** Column whitelist — never select('*') on user-generated content. */
+const REVIEW_COLUMNS =
+  'id, product_id, rating, text, display_name, created_at';
+
+export async function fetchPublishedReviews(
+  productId: string,
+  page = 1
+): Promise<ReviewsPageData> {
+  const { count, error: countError } = await supabase
+    .from('product_reviews')
+    .select('id', { count: 'exact', head: true })
+    .eq('product_id', productId)
+    .eq('status', 'published');
+  if (countError) {
+    throw new Error(`Failed to count reviews: ${countError.message}`);
+  }
+
+  const total = count ?? 0;
+  const maxPage = Math.max(1, Math.ceil(total / REVIEWS_PAGE_SIZE));
+  const safePage = Math.min(Math.max(page, 1), maxPage);
+
+  const { data, error } = await supabase
+    .from('product_reviews')
+    .select(REVIEW_COLUMNS)
+    .eq('product_id', productId)
+    .eq('status', 'published')
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range((safePage - 1) * REVIEWS_PAGE_SIZE, safePage * REVIEWS_PAGE_SIZE - 1);
+
+  if (error) {
+    throw new Error(`Failed to load reviews: ${error.message}`);
+  }
+
+  return {
+    reviews: data ?? [],
+    total,
+    page: safePage,
+    pageSize: REVIEWS_PAGE_SIZE,
+  };
+}
+
+export interface ReviewSummary {
+  total: number;
+  /** Arithmetic mean rounded to 1 decimal; null when no published reviews. */
+  average: number | null;
+  /** Index 0 = ★1 … index 4 = ★5. */
+  distribution: [number, number, number, number, number];
+}
+
+/**
+ * Average + star distribution via five indexed head-counts (no review rows
+ * cross the wire regardless of how many exist).
+ */
+export async function fetchReviewSummary(
+  productId: string
+): Promise<ReviewSummary> {
+  const results = await Promise.all(
+    ([1, 2, 3, 4, 5] as const).map(async (rating) => {
+      const { count, error } = await supabase
+        .from('product_reviews')
+        .select('id', { count: 'exact', head: true })
+        .eq('product_id', productId)
+        .eq('status', 'published')
+        .eq('rating', rating);
+      if (error) {
+        throw new Error(`Failed to summarize rating ${rating}: ${error.message}`);
+      }
+      return count ?? 0;
+    })
+  );
+
+  const distribution: ReviewSummary['distribution'] = [
+    results[0],
+    results[1],
+    results[2],
+    results[3],
+    results[4],
+  ];
+  const total = distribution.reduce((sum, n) => sum + n, 0);
+  const weighted =
+    distribution[0] * 1 +
+    distribution[1] * 2 +
+    distribution[2] * 3 +
+    distribution[3] * 4 +
+    distribution[4] * 5;
+
+  return {
+    total,
+    average: total > 0 ? Math.round((weighted / total) * 10) / 10 : null,
+    distribution,
+  };
+}
+
 /**
  * Active products marked as featured for the home page.
  */
@@ -458,30 +582,24 @@ export async function fetchFeaturedProducts(): Promise<Product[]> {
 const POPULAR_LIMIT = 8;
 
 /**
- * Products for the home «Популярні товари» section.
+ * Products for the home «Популярні товари» section — PURELY admin-curated.
  *
- * HONEST DATA NOTE (approved 2026-08): no real popularity/sales signal is
- * readable by the storefront today — order_items has no rows yet and
- * product_stock_history is RLS-blocked for the anonymous role — so this
- * shelf is NOT popularity-derived data. It is:
- *   1. curated products (is_featured=true), newest first;
- *   2. topped up to POPULAR_LIMIT with the newest non-featured products
- *      (created_at desc) purely as a visual fallback.
- * "Популярність" is presentational wording; when a real sales signal
- * becomes available, only this function's ordering should change.
- *
- * Both legs are single bounded windows (.range(0, n-1) ≤ POPULAR_LIMIT
- * rows each) — never a paged full scan. The legs are disjoint by
- * construction (featured flag true vs false), so no product can appear
- * twice. A data error throws: an empty shelf must not masquerade as
- * "nothing to show" when the database actually failed.
+ * DECISION 2026-08-26 (supersedes the Stage-11 newest-arrivals fallback):
+ * popularity has no real sales signal yet, and padding the shelf with
+ * newest arrivals blurred who controls the block. It now shows EXACTLY the
+ * active products flagged is_featured — newest first with an id tiebreaker,
+ * hard-capped at 8. If an admin flags more than 8, the first 8 in this
+ * deterministic order win and DATA IS NEVER CHANGED AUTOMATICALLY (the
+ * max-8 business rule lives in the admin API/UI, see featured-limit.ts).
+ * Zero featured ⇒ the home page skips the section entirely.
  */
 export async function fetchPopularProducts(
   limit: number = POPULAR_LIMIT
 ): Promise<Product[]> {
   const take = Math.min(Math.max(limit, 1), POPULAR_LIMIT);
 
-  const { data: featuredRows, error: featuredError } = await supabase
+  // Single bounded window (rows 0..take-1, at most 8) — never a paged scan.
+  const { data, error } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
     .eq('is_active', true)
@@ -491,36 +609,13 @@ export async function fetchPopularProducts(
     .range(0, take - 1)
     .returns<ProductJoinedRow[]>();
 
-  if (featuredError) {
-    throw new Error(`Failed to load featured products: ${featuredError.message}`);
+  if (error) {
+    throw new Error(`Failed to load popular products: ${error.message}`);
   }
 
-  const featured = (featuredRows ?? []).map(normalizeProduct);
-  const remaining = take - featured.length;
-  if (remaining <= 0) return featured;
-
-  // Newest non-featured products fill the rest of the shelf (fallback,
-  // not popularity). Disjoint filter guarantees zero duplicates.
-  const { data: newestRows, error: newestError } = await supabase
-    .from('products')
-    .select(PRODUCT_SELECT)
-    .eq('is_active', true)
-    .eq('is_featured', false)
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .range(0, remaining - 1)
-    .returns<ProductJoinedRow[]>();
-
-  if (newestError) {
-    throw new Error(`Failed to load newest products: ${newestError.message}`);
-  }
-
-  return [...featured, ...(newestRows ?? []).map(normalizeProduct)];
+  return (data ?? []).map(normalizeProduct);
 }
 
-/**
- * Active categories ordered for navigation.
- */
 export async function fetchActiveCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from('categories')
@@ -580,3 +675,76 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
 
   return normalizeProduct(data);
 }
+// ---------------------------------------------------------------------------
+// «Схожі товари» (related products) — read-only discovery shelf for the
+// product page. Up to THREE bounded reads (one window ≤limit each), merged
+// by the PURE collectRelated: same category first, then same brand, then
+// newest. Eligibility mirrors the storefront exactly (PRODUCT_SELECT ⇒
+// is_active + ≥1 photo); the current product is excluded in SQL. No RPC,
+// no new tables (spec A 2026-08-26).
+// ---------------------------------------------------------------------------
+
+/** Hard cap for «Схожі товари» — bounded by design. */
+export const RELATED_LIMIT = 8;
+
+/**
+ * PURE merge of pre-fetched candidate groups into the final related list.
+ * Group order IS the priority; within a group the DB already returned
+ * created_at desc → id desc. Dedupes by id, skips currentId, caps at `cap`.
+ */
+export function collectRelated(
+  groups: Product[][],
+  currentId: string,
+  cap: number = RELATED_LIMIT
+): Product[] {
+  const seen = new Set<string>([currentId]);
+  const collected: Product[] = [];
+  for (const group of groups) {
+    for (const row of group) {
+      if (collected.length >= cap) return collected;
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      collected.push(row);
+    }
+  }
+  return collected;
+}
+
+async function fetchRelatedStage(
+  filter: { field: 'category_id' | 'brand_id'; id: string } | null,
+  currentId: string,
+  limit: number
+): Promise<Product[]> {
+  let query = supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .eq('is_active', true)
+    .neq('id', currentId);
+  if (filter) query = query.eq(filter.field, filter.id);
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(0, limit - 1)
+    .returns<ProductJoinedRow[]>();
+  if (error) {
+    throw new Error(`Failed to load related products: ${error.message}`);
+  }
+  return (data ?? []).map(normalizeProduct);
+}
+
+export async function fetchRelatedProducts(
+  product: Pick<Product, 'id' | 'category_id' | 'brand_id'>,
+  limit: number = RELATED_LIMIT
+): Promise<Product[]> {
+  const [sameCategory, sameBrand, newest] = await Promise.all([
+    product.category_id
+      ? fetchRelatedStage({ field: 'category_id', id: product.category_id }, product.id, limit)
+      : Promise.resolve<Product[]>([]),
+    product.brand_id
+      ? fetchRelatedStage({ field: 'brand_id', id: product.brand_id }, product.id, limit)
+      : Promise.resolve<Product[]>([]),
+    fetchRelatedStage(null, product.id, limit),
+  ]);
+  return collectRelated([sameCategory, sameBrand, newest], product.id, limit);
+}
+

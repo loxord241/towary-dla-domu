@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Product, Category, Brand, ProductImage, ProductVariant } from '@/app/lib/catalog';
 import { getPublicImageUrl } from '@/app/lib/supabase-storage';
+import { MAX_FEATURED_PRODUCTS } from '@/app/lib/featured-limit';
 import Modal from '@/app/components/Modal';
 import { useAdminListUrlState } from '@/app/lib/use-admin-list-state';
 
@@ -89,6 +90,25 @@ async function fetchBrandList(
   }
 }
 
+async function fetchFeaturedCount(
+  onSuccess: (count: number) => void,
+  onError: (message: string) => void
+) {
+  try {
+    const response = await fetch('/api/admin/products?action=featured-count');
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Не вдалося завантажити кількість обраних');
+    }
+
+    onSuccess(typeof data.count === 'number' ? data.count : 0);
+  } catch (err) {
+    console.error('Error fetching featured count:', err);
+    onError(err instanceof Error ? err.message : 'Невідома помилка');
+  }
+}
+
 const AVAILABILITY_OPTIONS = [
   { value: 'in_stock', label: 'В наявності' },
   { value: 'out_of_stock', label: 'Немає в наявності' },
@@ -151,6 +171,7 @@ export default function ProductsAdminPage() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [featuredCount, setFeaturedCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -199,6 +220,14 @@ export default function ProductsAdminPage() {
     };
   }, [ready, fetchProducts]);
 
+  // Featured counter feeds the modal limit UI; refreshed after mutations.
+  const refreshFeaturedCount = useCallback(() => {
+    fetchFeaturedCount(
+      (count) => setFeaturedCount(count),
+      (message) => setError(message)
+    );
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     fetchCategoryList(
@@ -212,6 +241,14 @@ export default function ProductsAdminPage() {
     fetchBrandList(
       (data) => {
         if (!cancelled) setBrands(data);
+      },
+      (message) => {
+        if (!cancelled) setError(message);
+      }
+    );
+    fetchFeaturedCount(
+      (count) => {
+        if (!cancelled) setFeaturedCount(count);
       },
       (message) => {
         if (!cancelled) setError(message);
@@ -358,7 +395,13 @@ export default function ProductsAdminPage() {
       }
 
       setIsModalOpen(false);
-      setStatus(editingId ? 'Товар оновлено' : 'Товар створено');
+      // A race-loser create keeps the product but drops its featured flag —
+      // surface the server's warning honestly instead of hiding it.
+      setStatus(
+        (editingId ? 'Товар оновлено' : 'Товар створено') +
+          (typeof data?.warning === 'string' ? ` (${data.warning})` : '')
+      );
+      refreshFeaturedCount();
       await fetchProducts();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Невідома помилка');
@@ -381,6 +424,7 @@ export default function ProductsAdminPage() {
       }
 
       setStatus('Товар видалено');
+      refreshFeaturedCount();
       await fetchProducts();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Невідома помилка');
@@ -714,11 +758,34 @@ export default function ProductsAdminPage() {
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
                     <span className="ml-2">Активний</span>
                   </label>
+                </div>
+                <div className="mt-4 flex flex-col gap-1.5">
                   <label className="inline-flex items-center text-sm font-medium text-gray-700">
-                    <input type="checkbox" name="is_featured" checked={formData.is_featured} onChange={handleCheckbox}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                    <span className="ml-2">Вибраний (на головній)</span>
+                    <input
+                      type="checkbox"
+                      name="is_featured"
+                      checked={formData.is_featured}
+                      disabled={
+                        !formData.is_featured &&
+                        (featuredCount ?? 0) >= MAX_FEATURED_PRODUCTS
+                      }
+                      onChange={handleCheckbox}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2">Популярні товари</span>
                   </label>
+                  <p className="text-xs text-gray-500">
+                    Обрано: {featuredCount ?? '…'} / {MAX_FEATURED_PRODUCTS} · блок
+                    «Популярні товари» на головній сторінці (макс.{' '}
+                    {MAX_FEATURED_PRODUCTS})
+                  </p>
+                  {!formData.is_featured &&
+                    (featuredCount ?? 0) >= MAX_FEATURED_PRODUCTS && (
+                      <p className="text-xs text-red-600">
+                        Ліміт досягнуто — зніміть позначку з іншого товару, щоб
+                        обрати цей.
+                      </p>
+                    )}
                 </div>
               </fieldset>
 

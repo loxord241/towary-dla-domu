@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import FavoriteButton from './FavoriteButton';
+import { formatPrice } from '@/app/lib/format';
 
 function availabilityLabel(status: string): string {
   if (status === 'in_stock') return 'В наявності';
@@ -26,9 +27,13 @@ export interface ProductCardData {
 export default function ProductCard({
   product,
   imageUrl,
+  priority = false,
 }: {
   product: ProductCardData;
   imageUrl?: string | null;
+  /** Above-the-fold boost for the first grid row(s) only; every other card
+   *  keeps next/image native lazy-loading. */
+  priority?: boolean;
 }) {
   const outOfStock = product.availability_status === 'out_of_stock';
   const hasDiscount =
@@ -53,6 +58,7 @@ export default function ProductCard({
               alt={product.name}
               width={400}
               height={300}
+              priority={priority}
               unoptimized
               // object-contain: the WHOLE supplier photo must fit inside the
               // card (object-cover was cropping product photos).
@@ -82,15 +88,15 @@ export default function ProductCard({
             {hasDiscount ? (
               <>
                 <span className="text-xl font-extrabold text-red-600">
-                  {product.price} {product.currency}
+                  {formatPrice(product.price, product.currency)}
                 </span>
                 <span className="text-sm text-gray-400 line-through">
-                  {product.old_price} {product.currency}
+                  {formatPrice(product.old_price!, product.currency)}
                 </span>
               </>
             ) : (
               <span className="text-lg font-bold text-blue-700">
-                {product.price} {product.currency}
+                {formatPrice(product.price, product.currency)}
               </span>
             )}
           </div>

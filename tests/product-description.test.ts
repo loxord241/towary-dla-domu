@@ -72,14 +72,26 @@ test('resolveProductDescription: plain manual text still takes the html path (re
 
 // ---- project-wide source invariants -------------------------------------------
 
-test('INVARIANT: exactly one dangerouslySetInnerHTML in app/, inside ProductDescription.tsx', () => {
+test('INVARIANT: exactly two sanctioned dangerouslySetInnerHTML sinks in app/', () => {
+  // Allowlist (SEO package 2026-08-26): 1) ProductDescription — sanitized
+  // supplier HTML; 2) ProductJsonLd — JSON-LD built by schema-org.ts and
+  // serialized with '<'-escaping (see tests/seo-jsonld.test.ts).
+  const ALLOWED = [/ProductDescription\.tsx$/, /ProductJsonLd\.tsx$/];
   const files = walkApp(path.join(root, 'app'));
   const hits = files.filter((f) => readFileSync(f, 'utf8').includes('dangerouslySetInnerHTML'));
-  assert.equal(hits.length, 1, `очікується 1 файл, знайдено: ${hits.map((h) => path.relative(root, h)).join(', ')}`);
-  assert.match(hits[0], /ProductDescription\.tsx$/);
-  // exactly one ACTUAL usage (attribute), comments may mention the term
-  const usages = readFileSync(hits[0], 'utf8').match(/dangerouslySetInnerHTML\s*=\s*\{\{/g);
-  assert.equal(usages?.length ?? 0, 1, 'лише один виклик dangerouslySetInnerHTML');
+  assert.equal(hits.length, ALLOWED.length, `очікується рівно ${ALLOWED.length} файл(и), знайдено: ${hits.map((h) => path.relative(root, h)).join(', ')}`);
+  for (const pattern of ALLOWED) {
+    assert.ok(
+      hits.some((h) => pattern.test(h)),
+      `не вистачає санкціонованого sink'у: ${pattern}`
+    );
+  }
+  // each sanctioned file holds exactly ONE actual usage (attribute);
+  // comments may mention the term without counting
+  for (const hit of hits) {
+    const usages = readFileSync(hit, 'utf8').match(/dangerouslySetInnerHTML\s*=\s*\{\{/g);
+    assert.equal(usages?.length ?? 0, 1, `лише один виклик у ${path.relative(root, hit)}`);
+  }
 });
 
 test('INVARIANT: sanitize-html is imported only by content-sanitize.ts (import/staging layer)', () => {

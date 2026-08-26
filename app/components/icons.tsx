@@ -117,3 +117,14 @@ export function ChevronDownIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function StarIcon({
+  className,
+  filled = false,
+}: IconProps & { filled?: boolean }) {
+  return (
+    <svg {...base(className)} fill={filled ? 'currentColor' : 'none'}>
+      <path d="M11.5 3.1a.55.55 0 0 1 1 0l2.3 4.9 5.2.7c.5.06.68.68.32 1l-3.85 3.66.95 5.25a.55.55 0 0 1-.82.58L12 16.62l-4.6 2.57a.55.55 0 0 1-.82-.58l.95-5.25L3.68 9.7c-.36-.32-.18-.94.32-1l5.2-.7Z" />
+    </svg>
+  );
+}

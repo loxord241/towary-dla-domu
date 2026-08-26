@@ -11,6 +11,7 @@ import {
   type CatalogSort,
 } from '@/app/lib/catalog'
 import { getMainPublicImageUrl } from '@/app/lib/supabase-storage'
+import { buildCatalogViewMetadata } from '@/app/lib/seo'
 import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
 import CatalogFilters from './CatalogFilters'
@@ -37,6 +38,10 @@ interface ActiveChip {
   label: string;
   removeKey: string;
 }
+
+/** Shared geometry for prev/next; the disabled span only drops hover. */
+const paginationControlClass =
+  'px-4 py-2 rounded-md border border-gray-300 text-sm text-gray-700 transition-colors aria-disabled:border-gray-200 aria-disabled:text-gray-400 aria-disabled:cursor-not-allowed';
 
 function buildActiveChips(
   filters: CatalogFilterOptions,
@@ -73,7 +78,8 @@ function catalogHeading(
   return 'Каталог товарів';
 }
 
-/** Unique per-view metadata built from real page data (no invented SEO copy). */
+/** Unique per-view metadata built from real page data (no invented SEO copy).
+ *  Canonical/noindex decisions live in lib/seo.ts (single tested policy). */
 export async function generateMetadata({
   searchParams,
 }: {
@@ -87,20 +93,22 @@ export async function generateMetadata({
     filters.brandSlug ? fetchBrandBySlug(filters.brandSlug) : null,
   ]);
 
-  let title = 'Каталог товарів | E-Shop';
-  let description = 'Каталог товарів інтернет-магазину E-Shop з фільтрами та сортуванням.';
-  if (filters.search) {
-    title = `Пошук: «${filters.search}» | E-Shop`;
-    description = `Результати пошуку за запитом «${filters.search}» в інтернет-магазині E-Shop.`;
-  } else if (filters.categorySlug && category) {
-    title = `${category.name} — Каталог | E-Shop`;
-    description = `Товари у категорії «${category.name}» в інтернет-магазині E-Shop.`;
-  } else if (filters.brandSlug && brand) {
-    title = `${brand.name} — Каталог | E-Shop`;
-    description = `Товари бренду ${brand.name} в інтернет-магазині E-Shop.`;
-  }
-
-  return { title, description };
+  return buildCatalogViewMetadata({
+    input: {
+      search: filters.search,
+      categorySlug: filters.categorySlug,
+      brandSlug: filters.brandSlug,
+      categoryFound: category !== null,
+      brandFound: brand !== null,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      inStockOnly: filters.inStockOnly,
+      sort: filters.sort,
+      page: filters.page,
+    },
+    categoryName: category?.name,
+    brandName: brand?.name,
+  });
 }
 
 function removeParamUrl(
@@ -300,28 +308,32 @@ export default async function CatalogPage({
                 />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                  {products.map((product) => (
+                  {products.map((product, idx) => (
                     <ProductCard
                       key={product.id}
                       product={product}
                       imageUrl={getMainPublicImageUrl(product.images)}
+                      priority={idx < 6}
                     />
                   ))}
                 </div>
               )}
 
-              {/* Pagination */}
+              {/* Pagination — both controls share one geometry; the inactive
+                  side is a span with aria-disabled (not focusable, announced
+                  as unavailable) so keyboard order and semantics stay correct
+                  without touching URL/clamp logic (P3-R2). */}
               {maxPage > 1 && (
                 <nav className="mt-6 flex items-center justify-center gap-3">
                   {page > 1 ? (
                     <Link
                       href={catalogPageUrl(rawParams, page - 1)}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                      className={paginationControlClass}
                     >
                       ← Назад
                     </Link>
                   ) : (
-                    <span className="px-4 py-2 border border-gray-200 rounded-md text-sm text-gray-300 cursor-not-allowed">
+                    <span aria-disabled="true" className={paginationControlClass}>
                       ← Назад
                     </span>
                   )}
@@ -332,12 +344,12 @@ export default async function CatalogPage({
                   {page < maxPage ? (
                     <Link
                       href={catalogPageUrl(rawParams, page + 1)}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                      className={paginationControlClass}
                     >
                       Далі →
                     </Link>
                   ) : (
-                    <span className="px-4 py-2 border border-gray-200 rounded-md text-sm text-gray-300 cursor-not-allowed">
+                    <span aria-disabled="true" className={paginationControlClass}>
                       Далі →
                     </span>
                   )}

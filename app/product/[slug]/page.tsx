@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { cache } from 'react'
 import type { Metadata } from 'next'
-import { fetchProductBySlug } from '@/app/lib/catalog'
+import { fetchProductBySlug, fetchPublishedReviews, fetchReviewSummary, fetchRelatedProducts, type ReviewsPageData, type ReviewSummary, type Product } from '@/app/lib/catalog'
 import { getPublicImageUrls } from '@/app/lib/supabase-storage'
 import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
@@ -11,6 +11,13 @@ import FavoriteButton from '@/app/components/FavoriteButton'
 import ProductGallery from '@/app/components/ProductGallery'
 import ProductDescription from '@/app/components/ProductDescription'
 import ProductSpecifications from '@/app/components/ProductSpecifications'
+import ProductReviews from '@/app/components/ProductReviews'
+import RecentProducts from '@/app/components/RecentProducts'
+import RecentlyViewedTracker from '@/app/components/RecentlyViewedTracker'
+import RelatedProducts from '@/app/components/RelatedProducts'
+import ProductJsonLd from '@/app/components/ProductJsonLd'
+import { buildProductJsonLd } from '@/app/lib/schema-org'
+import { formatPrice } from '@/app/lib/format'
 
 // React cache(): generateMetadata and the page component share ONE
 // fetchProductBySlug execution per request instead of two.
@@ -36,13 +43,20 @@ export async function generateMetadata({
     metaDescription(product.description) ??
     `Купити ${product.name} в інтернет-магазині E-Shop.`
 
+  // Self-canonical plus full OG fields: page-level openGraph REPLACES the
+  // layout's (shallow merge), so locale/siteName must be repeated here.
+  const canonical = `/product/${slug}`
   return {
     title: `${product.name} — E-Shop`,
     description,
+    alternates: { canonical },
     openGraph: {
       title: `${product.name} — E-Shop`,
       description,
+      url: canonical,
+      locale: 'uk_UA',
       type: 'website',
+      siteName: 'E-Shop',
     },
   }
 }
@@ -55,8 +69,10 @@ function availabilityLabel(status: string): string {
 
 export default async function ProductPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const { slug } = await params
   const product = await getProduct(slug)
@@ -66,7 +82,43 @@ export default async function ProductPage({
     notFound()
   }
 
+  // Reviews page comes from the URL (?reviews_page=N); clamping happens
+  // inside fetchPublishedReviews.
+  const rawReviewsPage = Number((await searchParams).reviews_page)
+  const reviewsPage =
+    Number.isInteger(rawReviewsPage) && rawReviewsPage > 0 ? rawReviewsPage : 1
+
+  // Reviews are supplementary content: until migration 015 is applied (or
+  // during a storage hiccup) the reads fail — degrade to an empty state and
+  // log honestly instead of breaking the whole product page.
+  let reviewSummary: ReviewSummary
+  let reviewsData: ReviewsPageData
+  try {
+    ;[reviewSummary, reviewsData] = await Promise.all([
+      fetchReviewSummary(product.id),
+      fetchPublishedReviews(product.id, reviewsPage),
+    ])
+  } catch (err) {
+    console.error('reviews unavailable:', err)
+    reviewSummary = { total: 0, average: null, distribution: [0, 0, 0, 0, 0] }
+    reviewsData = { reviews: [], total: 0, page: 1, pageSize: 10 }
+  }
+
+  // Related products are supplementary content: a failed read degrades to a
+  // hidden block instead of failing the whole page (same contract as reviews).
+  let relatedProducts: Product[] = []
+  try {
+    relatedProducts = await fetchRelatedProducts(product)
+  } catch (err) {
+    console.error('related products unavailable:', err)
+  }
+
   const galleryUrls = getPublicImageUrls(product.images)
+
+  // Structured data from REAL fields only; review summary is the try/catch
+  // fallback (total=0) when reviews are unavailable → aggregateRating drops.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+  const productJsonLd = buildProductJsonLd(product, reviewSummary, siteUrl)
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
@@ -89,6 +141,9 @@ export default async function ProductPage({
           <span className="mx-1.5 text-gray-300">/</span>
           <span className="text-gray-900">{product.name}</span>
         </nav>
+
+        {/* Structured data: real DB fields only (see schema-org.ts honesty rules) */}
+        <ProductJsonLd data={productJsonLd} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {/* Product Images */}
@@ -119,12 +174,12 @@ export default async function ProductPage({
 
             <div className="mb-6 flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-lg bg-gray-50 px-4 py-3">
               <span className="text-3xl font-extrabold tracking-tight text-blue-700">
-                {product.price} {product.currency}
+                {formatPrice(product.price, product.currency)}
               </span>
               {product.old_price && product.old_price > product.price && (
                 <>
                   <span className="text-lg text-gray-400 line-through">
-                    {product.old_price} {product.currency}
+                    {formatPrice(product.old_price, product.currency)}
                   </span>
                   <span className="rounded bg-red-50 px-2 py-0.5 text-sm font-semibold text-red-600">
                     −{Math.round((1 - product.price / product.old_price) * 100)}%
@@ -190,7 +245,7 @@ export default async function ProductPage({
               productId={product.id}
               productName={product.name}
               stockQuantity={product.stock_quantity}
-              availabilityStatus={product.availability_status}
+                availabilityStatus={product.availability_status}
               variants={product.variants.map((v) => ({
                 id: v.id,
                 name: v.name,
@@ -198,6 +253,19 @@ export default async function ProductPage({
                 availabilityStatus: v.availability_status,
               }))}
             />
+
+            {/* Компактний вказівник на повну політику: деталі живуть на
+                /delivery — тут нічого не дублюємо і не вигадуємо. */}
+            <div className="mt-6 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm">
+              <p className="font-semibold text-gray-900">Доставка та оплата</p>
+              <p className="mt-1 text-gray-600">
+                Умови доставки та оплати — на сторінці{' '}
+                <Link href="/delivery" className="text-blue-600 hover:underline">
+                  «Доставка та оплата»
+                </Link>
+                .
+              </p>
+            </div>
           </div>
         </div>
 
@@ -214,11 +282,11 @@ export default async function ProductPage({
                   <h3 className="font-semibold">{variant.name}</h3>
                   <div className="flex items-baseline mt-2 gap-2">
                     <span className="text-lg font-bold text-blue-600">
-                      {variant.price} ₴
+                      {formatPrice(variant.price, product.currency)}
                     </span>
                     {variant.old_price && variant.old_price > variant.price && (
                       <span className="text-sm text-gray-500 line-through">
-                        {variant.old_price} ₴
+                        {formatPrice(variant.old_price, product.currency)}
                       </span>
                     )}
                   </div>
@@ -231,8 +299,26 @@ export default async function ProductPage({
           </div>
         )}
 
+        {/* Схожі товари — bounded discovery shelf; hidden when empty. */}
+        <RelatedProducts products={relatedProducts} />
+
+        {/* Відгуки (published only, moderated) */}
+        <ProductReviews
+          productId={product.id}
+          summary={reviewSummary}
+          data={reviewsData}
+          productSlug={product.slug}
+        />
+
+        {/* Нещодавно переглянуті (localStorage-only, hides itself when empty).
+            Renders null until the post-mount read → no hydration mismatch. */}
+        <RecentProducts excludeProductId={product.id} />
+
         {/* Footer — full-bleed, outside the content container */}
       </main>
+
+      {/* Invisible recorder: client-only effect, renders nothing. */}
+      <RecentlyViewedTracker productId={product.id} />
 
       <SiteFooter />
     </div>

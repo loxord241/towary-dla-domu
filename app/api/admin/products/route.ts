@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { requireAdminApi, strOrNull, uuidOrNull, nonNegNumOrNull, dbErrorResponse } from '@/app/lib/admin-api';
 import {
+  MAX_FEATURED_PRODUCTS,
+  FEATURED_LIMIT_MESSAGE,
+  countFeaturedProducts,
+  decideFeaturedToggle,
+} from '@/app/lib/featured-limit';
+import {
   PRODUCT_SELECT,
   PRODUCT_SORT_KEYS,
   parseAdminListParams,
@@ -52,6 +58,12 @@ export async function GET(request: Request) {
 
   try {
     switch (action) {
+      case 'featured-count': {
+        // Cheap indexed head-count powering the «Обрано: X / 8» admin UI.
+        const count = await countFeaturedProducts(ctx.serviceClient);
+        return NextResponse.json({ count });
+      }
+
       case 'featured': {
         const products = await fetchAllJoined(ctx.serviceClient, { featuredOnly: true });
         return NextResponse.json({ products });
@@ -140,6 +152,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // Max-8 business rule BEFORE the insert (a new product is never
+    // currently featured, so currentlyFeatured is false by definition).
+    const wantsFeatured = Boolean(body.is_featured);
+    if (wantsFeatured) {
+      const featuredCountBefore = await countFeaturedProducts(ctx.serviceClient);
+      const decision = decideFeaturedToggle({
+        currentlyFeatured: false,
+        requestedFeatured: true,
+        featuredCount: featuredCountBefore,
+      });
+      if (!decision.allowed) {
+        return NextResponse.json({ error: FEATURED_LIMIT_MESSAGE }, { status: 409 });
+      }
+    }
+
     const { data, error } = await ctx.serviceClient
       .from('products')
       .insert({
@@ -156,7 +183,7 @@ export async function POST(request: Request) {
         category_id: uuidOrNull(body.category_id),
         brand_id: uuidOrNull(body.brand_id),
         is_active: body.is_active === undefined ? true : Boolean(body.is_active),
-        is_featured: Boolean(body.is_featured),
+        is_featured: wantsFeatured,
       })
       .select(PRODUCT_SELECT)
       .returns<ProductJoinedRow[]>()
@@ -164,6 +191,26 @@ export async function POST(request: Request) {
 
     if (error) {
       return dbErrorResponse(error, 'Не вдалося створити товар');
+    }
+
+    // Race guard: a parallel enable could have consumed the last slot
+    // between the pre-check and this insert. The loser keeps its NEW product
+    // but drops the featured flag — no silent removal of anyone else's pick.
+    if (wantsFeatured) {
+      const featuredCountAfter = await countFeaturedProducts(ctx.serviceClient);
+      if (featuredCountAfter > MAX_FEATURED_PRODUCTS) {
+        await ctx.serviceClient
+          .from('products')
+          .update({ is_featured: false })
+          .eq('id', data.id);
+        return NextResponse.json(
+          {
+            product: { ...normalizeProduct(data), is_featured: false },
+            warning: FEATURED_LIMIT_MESSAGE,
+          },
+          { status: 201 }
+        );
+      }
     }
 
     return NextResponse.json({ product: normalizeProduct(data) }, { status: 201 });

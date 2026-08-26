@@ -1,7 +1,14 @@
+import type { Metadata } from 'next';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+
+// Admin entry point is a private surface: never index it
+// (SEO package 2026-08-26, spec E).
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 async function handleLogin(formData: FormData) {
   'use server';

@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
 import { requireAdminApi, strOrNull, uuidOrNull, numOrNull, isUuid, dbErrorResponse, toStoragePath } from '@/app/lib/admin-api';
+import {
+  MAX_FEATURED_PRODUCTS,
+  FEATURED_LIMIT_MESSAGE,
+  countFeaturedProducts,
+  decideFeaturedToggle,
+} from '@/app/lib/featured-limit';
 
 /** Single source of truth mirrors catalog.ts usage across the storefront. */
 const ALLOWED_AVAILABILITY = ['in_stock', 'limited_availability', 'out_of_stock'];
@@ -150,7 +156,35 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if ('category_id' in body) patch.category_id = uuidOrNull(body.category_id);
     if ('brand_id' in body) patch.brand_id = uuidOrNull(body.brand_id);
     if ('is_active' in body) patch.is_active = Boolean(body.is_active);
-    if ('is_featured' in body) patch.is_featured = Boolean(body.is_featured);
+    if ('is_featured' in body) {
+      const requested = Boolean(body.is_featured);
+      patch.is_featured = requested;
+
+      if (requested) {
+        // Pre-check against the max-8 business rule BEFORE the update.
+        // Current state matters: an already-featured product staying on is
+        // a no-op, not a new slot.
+        const [currentRes, featuredCountBefore] = await Promise.all([
+          ctx.serviceClient
+            .from('products')
+            .select('id, is_featured')
+            .eq('id', id)
+            .maybeSingle(),
+          countFeaturedProducts(ctx.serviceClient),
+        ]);
+        if (currentRes.error || !currentRes.data) {
+          return NextResponse.json({ error: 'Товар не знайдено' }, { status: 404 });
+        }
+        const decision = decideFeaturedToggle({
+          currentlyFeatured: Boolean(currentRes.data.is_featured),
+          requestedFeatured: true,
+          featuredCount: featuredCountBefore,
+        });
+        if (!decision.allowed) {
+          return NextResponse.json({ error: FEATURED_LIMIT_MESSAGE }, { status: 409 });
+        }
+      }
+    }
 
     if (Object.keys(patch).length === 0) {
       return NextResponse.json({ error: 'Немає полів для оновлення' }, { status: 400 });
@@ -168,6 +202,23 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
     if (!data) {
       return NextResponse.json({ error: 'Товар не знайдено' }, { status: 404 });
+    }
+
+    // Race guard: parallel admins could both pass the pre-check. Whoever
+    // pushes the count OVER the cap reverts THEIR OWN toggle — the state
+    // converges back to ≤8 and nobody else's product is silently removed.
+    // Honest residual: a sub-second transient window above the cap is
+    // possible between UPDATE and this recount; full serialization would
+    // need an RPC/advisory-lock migration (separate GO).
+    if (patch.is_featured === true) {
+      const featuredCountAfter = await countFeaturedProducts(ctx.serviceClient);
+      if (featuredCountAfter > MAX_FEATURED_PRODUCTS) {
+        await ctx.serviceClient
+          .from('products')
+          .update({ is_featured: false })
+          .eq('id', id);
+        return NextResponse.json({ error: FEATURED_LIMIT_MESSAGE }, { status: 409 });
+      }
     }
 
     return NextResponse.json({ id: data.id });

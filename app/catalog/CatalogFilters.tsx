@@ -162,7 +162,7 @@ export default function CatalogFilters({
 
   const priceField = (
     <div className="mb-6">
-      <h4 className="font-semibold mb-2">Ціна (₴)</h4>
+      <h4 className="font-semibold mb-2">Ціна (UAH)</h4>
       <div className="flex items-center gap-2">
         <input
           type="number"

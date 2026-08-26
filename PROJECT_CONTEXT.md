@@ -497,3 +497,179 @@ email, expires_at, payment_status), order_items (+variant_name/sku), product_sto
   (401 pre-auth), /catalog 200. Auth не обходился; DB writes = 0.
 - Итого 278 test pass (было 260); tsc/lint(2 pre-existing warnings)/build OK.
 
+## Этап 11: storefront UI/UX — популярные товары + mobile-фильтры + категории (2026-08-25)
+- «Популярні товари» на главной: fetchPopularProducts(limit=8) в catalog.ts —
+  featured-first (is_featured=true, created_at desc/id desc) + добор новейших
+  is_featured=false до лимита; оба чтения bounded range(0..n-1). Честная
+  семантика: реального сигнала продаж нет (order_items пуст/недоступен,
+  stock_history RLS-blocked), «популярність» — презентационная формулировка.
+- Каталог mobile: фильтры вынесены в правый sheet за кнопкой «Фільтри»
+  (+badge активных) по механике NavDrawer (portal, transition, focus trap,
+  scroll lock, motion-reduce); desktop sidebar md:block не изменён;
+  закрытие ✕/overlay/Escape/успешный «Застосувати». ФИКС latent-бага:
+  «Застосувати» теперь СОХРАНЯЕТ q+sort и сбрасывает page (раньше теряла).
+  Pure-модуль app/lib/filter-url.ts (unit-tested).
+- Категории: native select (205 опций, 7 дублей имён) заменён на
+  CategorySelect (поиск по полному набору + дерево путей «Корень → …»);
+  pure app/lib/category-tree.ts: buildCategoryOptions (DFS из parent_id,
+  сироты→корни, циклы безопасны) + filterCategoryOptions. URL contract
+  category=slug не тронут; 0 новых DB reads.
+- Тесты +43: filter-url(7), category-tree(7), popular-products(9),
+  category-select(10), mobile-filter-drawer(10); ux-fixes P7 обновлён под
+  sheet-контракт. Playwright недоступен в среде (нет chrome/libnspr4.so,
+  sudo нет) — SSR-проверки next start вместо браузера, честно помечено.
+  DB writes = 0.
+
+## Этап 12: READ-ONLY RLS/security аудит заказов + P2 hardening (2026-08-26)
+- РАЗРЕШЕНИЕ АНОМАЛИИ: «anon SELECT order_items → success, rows=0» — это НЕ
+  пустая таблица и НЕ утечка, а invisible-table семантика RLS: в БД ЕСТЬ
+  данные (service-counts: orders=4, order_items=4, customers=5), но anon не
+  видит ни строки, ни count (head-count → 0). product_stock_history даёт
+  42501 потому, что у него явно отозвана GRANT SELECT (006) — другой механизм.
+- Эмпирика anon: все проекции/embeds/enumeration (ilike ORD-%, range-окна,
+  fake-id фильтры) → 0 строк; кардинальность не утекает. RPC: place_order
+  доступен anon (по дизайну; probe невалидным payload → собственная P0400),
+  admin_set_order_status/admin_cancel_order/expire_pending_orders → 42501.
+  OpenAPI-introspection /rest/v1/ для anon → 401 (surface не перечисляется).
+- Код: lookup API — POST-only, rate-limit 5/min+20/h, generic-404 без
+  оракула, проекция только order_number; view-страницы проверяют HMAC токен
+  ДО любого чтения, белые списки колонок; service-role не попадает ни в один
+  'use client' файл; admin routes — requireAdminApi на каждый handler.
+- НАЙДЕНО P2: на orders/order_items/customers осталась GRANT SELECT для
+  anon/authenticated — единственный слой защиты это RLS-without-policy;
+  случайное DISABLE RLS или широкая политика молча открыли бы весь PII.
+  МИГРАЦИЯ 014_orders_revoke_anon_select.sql ПОДГОТОВЛЕНА, НЕ ПРИМЕНЕНА
+  (DDL из кода недоступен): revoke select on orders/order_items/customers
+  from anon, authenticated. Безопасно: place_order SECURITY DEFINER,
+  lookup/view через service-role. После применения: anon SELECT на этих
+  таблицах должен стать 42501 (как stock_history). Верификатор:
+  scripts/tmp-verify-orders-revoke.mts (read-only; сейчас честно FAIL
+  до применения). Статические инварианты миграции: tests/
+  orders-revoke-migration.test.ts. Footgun задокументирован в самой
+  миграции: final_001 содержит ALTER DEFAULT PRIVILEGES ... GRANT SELECT
+  ON TABLES TO public (авто-грант на будущие таблицы postgres).
+- Аудит выполнен БЕЗ единой записи: 0 INSERT/UPDATE/DELETE/migrations/policy
+  changes; RPC-пробы — только с невалидными аргументами (fail до данных).
+  Итого 341 test pass; tsc/lint/build OK.
+- ПРИМЕНЕНО (вручную SQL Editor, 2026-08-26): миграция 014. Верификация
+  scripts/tmp-verify-orders-revoke.mts → ALL CHECKS PASSED: anon SELECT на
+  orders/order_items/customers теперь 42501 (как stock_history), baselines
+  не тронуты (products читаем), place_order EXECUTE жив, service-counts
+  4/4/5 без изменений (0 записей). P2 ЗАКРЫТ. Напоминание на будущее:
+  новые PII-таблицы — сразу RLS + явные гранты, не полагаться на
+  DEFAULT PRIVILEGES GRANT SELECT TO public из final_001.
+
+## Этап 13: SEO-пакет storefront (2026-08-26)
+- F14 ФАКТ (live curl production-build): /product/[несуществующий] уже
+  отдает НАСТОЯЩИЙ HTTP 404 — у сегмента нет loading/Suspense, рендер
+  блокирующий, notFound() успевает выставить статус. Заметка этапа 9
+  «HTTP 200» устарела. Механика по докам этой версии Next: notFound()
+  дает 200+noindex ТОЛЬКО если стриминг уже начался (loading.tsx /
+  Suspense-fallback) — см. node_modules/next/dist/docs (loading.md,
+  Status Codes). /catalog?category=bogus СОЗНАТЕЛЬНО остается 200
+  empty-state: это фильтр существующего ресурса (отдельных маршрутов
+  нет), а loading.tsx каталога делает честный 404 невозможным без
+  DB-проверки в proxy (отказ по latency).
+- CANONICAL/NOINDEX ПОЛИТИКА — pure-слой app/lib/seo.ts (unit-tested):
+  индексируемый набор ≡ sitemap: / , /catalog , /catalog?category=X ,
+  /catalog?brand=Y (валидный slug, page=1, sort=default, без др.
+  фильтров). Все остальные комбинации + ?q= + невалидный slug →
+  noindex,follow БЕЗ canonical (на noindex страницах canonical
+  игнорируется — не эмитим противоречивые сигналы). Search query в
+  metadata: truncateQuery (контрол-символы/PostgREST-спецы стрипаются,
+  cap 50) — XSS проверен live (<script> приходит &lt;-escaped от React).
+- HOME получил собственные metadata (раньше наследовал общий layout-title);
+  category/brand titles по паттерну «X — купити в E-Shop»; product:
+  +self-canonical + og:url/locale/site_name (shallow merge терял их).
+- ROBOTS.TXT: +Disallow /cart, /favorites. SITEMAP РАСШИРЕН до 4414 URL:
+  static(8) + категории(205) + бренды(71) + товары(4130 = точный eligible-
+  набор storefront: is_active + ≥1 фото через images!inner, whitelist
+  slug/updated_at, окна ≤1000 c .order('id') через seo-sitemap.collectPaged
+  (inject-fetcher, unit-tested; maxRows cap 100k). Приватных URL в
+  выдаче 0 (проверено grep). Категории/бренды в sitemap → их /catalog?
+  view'ы каноничны сами на себя.
+- NOINDEX ТЕХНИЧЕСКИХ МАРШРУТОВ: новые segment-layouts cart/favorites/
+  orders (один на lookup+[orderNumber])/checkout (один на flow+success) с
+  robots index:false; + metadata в admin/(dashboard)/layout и admin/login.
+  Live: все отдают <meta name="robots" content="noindex, nofollow"/>.
+- PRODUCT JSON-LD: app/lib/schema-org.ts (pure, type-only импорт типов —
+  node:test грузит без Supabase) + components/ProductJsonLd.tsx — ВТОРОЙ
+  санкционированный dangerouslySetInnerHTML (инвариант-тест обновлен:
+  ровно 2 sink'а allowlist'ом). Честность: только реальные поля БД;
+  offers при price>0 (price/currency→ISO4217/availability-маппинг трех
+  реальных статусов); aggregateRating ТОЛЬКО при total>0 опубликованных
+  отзывов (fallback summary total=0 сам снимает его); сериализация
+  JSON.stringify().replace(/</g,'\\u003c') — </script>-breakout исключен.
+- H1-invariants закреплены статически: ровно один <h1> в home/catalog/
+  product/not-found (+ InfoPage для info-страниц); catalog heading через
+  единственную переменную catalogHeading.
+- Тесты +34 (389→423): seo-metadata(14), seo-robots+noindex(3),
+  seo-jsonld(8), seo-sitemap(5), h1-invariants(6)... npm test/tsc/lint
+  (2 pre-existing warnings)/build OK. Live-матрица next start: все
+  статусы/metadata/canonical/H1/JSON-LD подтверждены (см. этап выше).
+  Playwright недоступен в среде (нет chrome/system libs) — браузерная
+  проверка НЕ выполнялась, консольные ошибки клиента не снимались.
+- DB: 0 INSERT/UPDATE/DELETE/migrations; только read-only SELECT anon.
+  Бизнес-логика/importer/checkout/orders/auth/cart/RLS не тронуты.
+
+## Этап 14: Priority 2 UX/UI — mobile catalog + product page (2026-08-26)
+- ПРОВЕРКА GO-ПУНКТОВ: mobile sheet-фильтры (этап 11) и CategorySelect
+  уже реализованы — НЕ тронуты. Ссылки бренд/категория на product page
+  уже были; gallery main image уже priority (ux-fixes тест).
+- «СХОЖІ ТОВАРИ»: catalog.ts → RELATED_LIMIT=8 + collectRelated (PURE
+  слияние групп: категория → бренд → новейшие; dedupe по id; пропуск
+  текущего) + fetchRelatedProducts (до 3 ПАРАЛЛЕЛЬНЫХ bounded-чтений,
+  окно range(0,limit-1) каждое, PRODUCT_SELECT зеркало eligibility,
+  neq id в SQL, tiebreaker created_at desc/id desc). Размещение блока —
+  В КОНЦЕ catalog.ts: существующий popular-products тест режет файл
+  по границе fetchPopularProducts→fetchActiveCategories и считает
+  .range( — вставка между ними ломала его счётчик (перенос = фикс без
+  правки чужого теста). RelatedProducts.tsx (server, h2, grid-cols-2
+  lg:4, return null при пустом). Product page: try/catch деградация
+  (паттерн отзывов), блок между «Варіанти» и «Відгуки».
+- DELIVERY-CTA: компактный блок под AddToCartButton со ссылкой /delivery;
+  никаких выдуманных фактов об оплате (тест инспектирует ТОЛЬКО наш блок,
+  не весь HTML — supplier-описания могут содержать любые слова).
+- LCP КАРТОЧЕК: ProductCard + опциональный priority=false prop;
+  home featured idx<4, каталог idx<6. Live-факт этой версии next/image:
+  unoptimized+priority рендерится БЕЗ loading/fetchpriority атрибутов
+  на img, но добавляет <link rel="preload" as="image"> в head (6 шт на
+  /catalog) и ОТСУТСТВИЕ loading == eager по HTML-спеке; остальные
+  карточки loading="lazy". Миниатюры галереи lazy.
+- LANDMARK-пины: product page ровно один <main>; header/footer без main.
+- Тесты 423→437 (+14: related-data 6, related-component/page 2,
+  delivery-CTA 1, LCP/landmark 5). npm test/tsc/lint(2 pre-existing)/
+  build OK. Live: related=8 карточек category-first, CTA, main×1,
+  preloads/eager/lazy распределение. Playwright недоступен в среде
+  (нет chrome/system libs).
+- DB: 0 writes; только read-only SELECT (3 окна ≤8 строк на товар).
+  SEO/checkout/orders/auth/importer/reviews/recently-viewed не тронуты.
+
+## Этап 15: Priority 3 UX fixes (2026-08-26)
+- R1 ЦЕНЫ: format.ts — единственная точка рендера цен; Intl.NumberFormat
+  uk-UA: целые с NBSP-группировкой («17 599 UAH»), дробные РОВНО 2 знака
+  через запятую («99,50» — прежний cart-контракт сохранён; первый вариант
+  min/max=0 давал «99,5» — поймано тестом). Переведены ProductCard,
+  product page (main/old price + варианты → product.currency вместо ₴),
+  label фильтра «Ціна (UAH)». Related/Recent наследуют через ProductCard.
+  Расчёты скидок/корзины/заказов не тронуты (old_price! как в формуле %).
+- N1 RecentProducts: внешний container mx-auto px-4 wrapper УДАЛЕН —
+  секция выровнена с соседями внутри main.container (данные/localStorage
+  не тронуты).
+- R2 ПАГИНАЦИЯ каталога: общий класс geometry для prev/next; disabled —
+  span aria-disabled="true" (единый стиль aria-disabled:* вариантами);
+  URL/clamp/logic без изменений. Live: page=1 → ровно 1 aria-disabled.
+- R3 КАТЕГОРИИ ГЛАВНОЙ: подпись «Переглянути товари →» всегда видима
+  (hover-only удалён); 5-я карточка col-span-2 sm:col-span-1 — без сироты
+  в mobile grid. Кол-во категорий (5) и ссылки не менялись.
+- N2 СЕТКИ: Related/Recent/Popular получили md:grid-cols-3 между
+  grid-cols-2 и lg:grid-cols-4. Максимумы (8) и порядок данных не тронуты.
+- R4 THUMBNAILS: Playwright недоступен (браузер скачан, но нет системных
+  libs/sudo) — clipping НЕ подтверждён и НЕ исправлен (честно, по GO).
+- Тесты 437→446 (+9 p3-ux pins; format-price переписан под uk-UA;
+  mobile-filter-drawer: label-regex обновлён на «Ціна (UAH)» — интент
+  теста «поле цены живёт в shared form» сохранён). tsc/lint(2 pre-
+  existing)/build OK. Live: «17 599 UAH» c NBSP, ₴=0 на catalog/product,
+  hover-only=0, col-span фикс, md-ступень в HTML, aria-disabled работает.
+  DB: 0 writes.
+

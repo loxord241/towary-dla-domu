@@ -1,8 +1,15 @@
+import type { Metadata } from 'next';
 import { ReactNode } from 'react';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+
+// The whole admin dashboard is a private surface: never index it
+// (SEO package 2026-08-26, spec E). Access is additionally guarded by proxy.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 async function createAuthClient() {
   const cookieStore = await cookies();

@@ -105,6 +105,11 @@ export const RATE_RULES = {
     { max: 3, windowMs: 60_000 },
     { max: 5, windowMs: 60 * 60_000 },
   ],
+  // product reviews: strict anti-spam (anonymous submission, pre-moderation)
+  reviews: [
+    { max: 3, windowMs: 60_000 },
+    { max: 10, windowMs: 60 * 60_000 },
+  ],
   // read-only catalog preview: generous, abuse-only ceiling
   cartPreview: [{ max: 120, windowMs: 60_000 }],
   // Yugcontract preview is admin-only, but every run downloads the FULL

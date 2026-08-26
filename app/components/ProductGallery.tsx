@@ -69,7 +69,12 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
       </div>
 
       {images.length > 1 && (
-        <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
+        <div className="flex gap-2 mt-3 p-1 -mx-1 overflow-x-auto">
+          {/* p-1 gives the selected ring room inside the scroll clip box on
+              all sides (ring is a 1px box-shadow OUTSIDE the border-box; with
+              zero padding overflow-x:auto clipped its top/left/right lines).
+              mt-3+pt-1 keep the previous 16px top gap; -mx-1 keeps the
+              strip's outer edges aligned with the main image. */}
           {images.map((img, idx) => (
             <button
               key={img.url}
