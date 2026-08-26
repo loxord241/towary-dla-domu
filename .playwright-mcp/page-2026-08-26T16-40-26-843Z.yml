@@ -1,0 +1,12 @@
+- generic [active] [ref=f10e1]:
+  - generic [ref=f10e2]:
+    - banner [ref=f10e3]:
+      - generic [ref=f10e4]:
+        - heading "Адмін-панель" [level=1] [ref=f10e5]
+        - generic [ref=f10e6]:
+          - generic [ref=f10e7]: Вітаємо, staslaba30032010@gmail.com
+          - button "Logout" [ref=f10e9]
+    - main [ref=f10e10]:
+      - heading "Категорії" [level=1] [ref=f10e12]
+  - button "Open Next.js Dev Tools" [ref=f10e20] [cursor=pointer]
+  - alert [ref=f10e24]

@@ -1,0 +1,317 @@
+- generic [active] [ref=f3e1]:
+  - button "Open Next.js Dev Tools" [ref=f3e7] [cursor=pointer]
+  - alert [ref=f3e11]
+  - generic [ref=f3e12]:
+    - banner [ref=f3e13]:
+      - generic [ref=f3e15]:
+        - generic [ref=f3e16]:
+          - button "Відкрити меню" [ref=f3e17]
+          - link "E-Shop" [ref=f3e19] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f3e20]:
+            - link "Каталог" [ref=f3e21] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f3e23]:
+          - searchbox "Пошук" [ref=f3e24]
+          - button "Шукати" [ref=f3e25]
+        - generic [ref=f3e29]:
+          - 'link "Обране, товарів: 0" [ref=f3e30] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 0" [ref=f3e33] [cursor=pointer]':
+            - /url: /cart
+    - generic [ref=f3e39]:
+      - complementary [ref=f3e40]:
+        - generic [ref=f3e42]:
+          - heading "Фільтри" [level=3] [ref=f3e43]
+          - generic [ref=f3e44]:
+            - generic [ref=f3e45]:
+              - heading "Категорії" [level=4] [ref=f3e46]
+              - 'button "Категорія: ПОБУТОВА ТЕХНІКА" [ref=f3e48] [cursor=pointer]':
+                - generic [ref=f3e49]: ПОБУТОВА ТЕХНІКА
+            - generic [ref=f3e52]:
+              - heading "Бренди" [level=4] [ref=f3e53]
+              - combobox "Бренд" [ref=f3e54]:
+                - option "Всі бренди" [selected]
+                - option "AMICA"
+                - option "ANKER"
+                - option "ARCOROC"
+                - option "ARIETE"
+                - option "BAGER"
+                - option "BEKO"
+                - option "BLACK&DECKER"
+                - option "BRAVO CHEF"
+                - option "C&S"
+                - option "CD'A"
+                - option "DELFA"
+                - option "DREAME"
+                - option "ECOMO"
+                - option "ELECTROLUX"
+                - option "ELEYUS"
+                - option "ERGO"
+                - option "ESTRADA"
+                - option "EVG"
+                - option "GLASSET"
+                - option "GORENJE"
+                - option "GRETA"
+                - option "HAIER"
+                - option "HANSA"
+                - option "HAUSMARK"
+                - option "HEREVIN"
+                - option "HISENSE"
+                - option "HOOVER"
+                - option "IDEA HOME"
+                - option "INDESIT"
+                - option "IPEC"
+                - option "IQ"
+                - option "JANTAR"
+                - option "KRUPS"
+                - option "LA-"
+                - option "LED"
+                - option "LG"
+                - option "LIMITED EDITION"
+                - option "LONGEVITA"
+                - option "LUMINARC"
+                - option "MOULINEX"
+                - option "MOVA"
+                - option "NOVA TEC"
+                - option "O CUISINE"
+                - option "OSCAR"
+                - option "PHILCO"
+                - option "PHILIPS"
+                - option "POLARIS"
+                - option "PYRAMIDA"
+                - option "PYREX"
+                - option "QUTU"
+                - option "REMINGTON"
+                - option "RINGEL"
+                - option "rotex"
+                - option "ROWENTA"
+                - option "RUSSELL HOBBS"
+                - option "SAMSUNG"
+                - option "SENCOR"
+                - option "SHARP"
+                - option "SOHO"
+                - option "TEFAL"
+                - option "TESY"
+                - option "THOMAS"
+                - option "TIKI"
+                - option "TRAMONTINA"
+                - option "TRENDGLASS"
+                - option "UFO"
+                - option "UP!"
+                - option "VIOLET HOUSE"
+                - option "VIVA"
+                - option "WHIRLPOOL"
+                - option "ximix"
+            - generic [ref=f3e55]:
+              - heading "Ціна (UAH)" [level=4] [ref=f3e56]
+              - generic [ref=f3e57]:
+                - spinbutton "Ціна від" [ref=f3e58]
+                - generic [ref=f3e59]: —
+                - spinbutton "Ціна до" [ref=f3e60]
+            - generic [ref=f3e61]:
+              - heading "Наявність" [level=4] [ref=f3e62]
+              - generic [ref=f3e63] [cursor=pointer]:
+                - checkbox "Тільки в наявності" [ref=f3e64]
+                - generic [ref=f3e65]: Тільки в наявності
+            - generic [ref=f3e66]:
+              - button "Застосувати" [ref=f3e67]
+              - button "Скинути" [ref=f3e68]
+      - main [ref=f3e69]:
+        - generic [ref=f3e70]:
+          - generic [ref=f3e71]:
+            - heading "ПОБУТОВА ТЕХНІКА" [level=1] [ref=f3e72]
+            - generic [ref=f3e73]: "Знайдено: 1717"
+          - generic [ref=f3e74]:
+            - generic [ref=f3e75]:
+              - generic [ref=f3e76]: "Фільтри:"
+              - 'link "Прибрати фільтр Категорія: ПОБУТОВА ТЕХНІКА" [ref=f3e77] [cursor=pointer]':
+                - /url: /catalog
+                - text: "Категорія: ПОБУТОВА ТЕХНІКА"
+                - generic [ref=f3e78]: ×
+              - link "Скинути всі" [ref=f3e79] [cursor=pointer]:
+                - /url: /catalog
+            - combobox "Сортування" [ref=f3e80]:
+              - option "Спочатку нові" [selected]
+              - option "Ціна ▲"
+              - option "Ціна ▼"
+              - option "Назва А–Я"
+          - generic [ref=f3e81]:
+            - generic [ref=f3e82]:
+              - button "Додати до обраного" [ref=f3e84]
+              - link "Плита комбінована ELECTROLUX LKK660220X Плита комбінована ELECTROLUX LKK660220X ELECTROLUX 23 599 UAH В наявності" [ref=f3e87] [cursor=pointer]:
+                - /url: /product/plyta-kombinovana-electrolux-lkk660220x-7025242
+                - img "Плита комбінована ELECTROLUX LKK660220X" [ref=f3e89]
+                - generic [ref=f3e90]:
+                  - heading "Плита комбінована ELECTROLUX LKK660220X" [level=3] [ref=f3e91]
+                  - paragraph [ref=f3e92]: ELECTROLUX
+                  - generic [ref=f3e93]: 23 599 UAH
+                  - paragraph [ref=f3e95]: В наявності
+            - generic [ref=f3e96]:
+              - button "Додати до обраного" [ref=f3e98]
+              - link "Плита комбінована GORENJE GK5C42BF (FM513D-FPD4B) Плита комбінована GORENJE GK5C42BF (FM513D-FPD4B) GORENJE 19 399 UAH В наявності" [ref=f3e101] [cursor=pointer]:
+                - /url: /product/plyta-kombinovana-gorenje-gk5c42bf-fm513d-fpd4b-7083203
+                - img "Плита комбінована GORENJE GK5C42BF (FM513D-FPD4B)" [ref=f3e103]
+                - generic [ref=f3e104]:
+                  - heading "Плита комбінована GORENJE GK5C42BF (FM513D-FPD4B)" [level=3] [ref=f3e105]
+                  - paragraph [ref=f3e106]: GORENJE
+                  - generic [ref=f3e107]: 19 399 UAH
+                  - paragraph [ref=f3e109]: В наявності
+            - generic [ref=f3e110]:
+              - button "Додати до обраного" [ref=f3e112]
+              - link "Плита комбінована BEKO FBM62320SDS Плита комбінована BEKO FBM62320SDS BEKO 18 899 UAH В наявності" [ref=f3e115] [cursor=pointer]:
+                - /url: /product/plyta-kombinovana-beko-fbm62320sds-7081969
+                - img "Плита комбінована BEKO FBM62320SDS" [ref=f3e117]
+                - generic [ref=f3e118]:
+                  - heading "Плита комбінована BEKO FBM62320SDS" [level=3] [ref=f3e119]
+                  - paragraph [ref=f3e120]: BEKO
+                  - generic [ref=f3e121]: 18 899 UAH
+                  - paragraph [ref=f3e123]: В наявності
+            - generic [ref=f3e124]:
+              - button "Додати до обраного" [ref=f3e126]
+              - link "вбуд. компл. GORENJE духова шафа BO6737E02X + вар. поверхня ECT41SC Немає в наявності вбуд. компл. GORENJE духова шафа BO6737E02X + вар. поверхня ECT41SC GORENJE 25 499 UAH" [ref=f3e129] [cursor=pointer]:
+                - /url: /product/vbud-kompl-gorenje-dukhova-shafa-bo6737e02x-var-poverkhnia-ect41sc-7082436
+                - generic [ref=f3e130]:
+                  - img "вбуд. компл. GORENJE духова шафа BO6737E02X + вар. поверхня ECT41SC" [ref=f3e131]
+                  - generic [ref=f3e132]: Немає в наявності
+                - generic [ref=f3e133]:
+                  - heading "вбуд. компл. GORENJE духова шафа BO6737E02X + вар. поверхня ECT41SC" [level=3] [ref=f3e134]
+                  - paragraph [ref=f3e135]: GORENJE
+                  - generic [ref=f3e136]: 25 499 UAH
+            - generic [ref=f3e138]:
+              - button "Додати до обраного" [ref=f3e140]
+              - link "вбуд. компл. GORENJE BUILT IN SET духова шафа BO6737E02XK + вар. поверхня G642ABX вбуд. компл. GORENJE BUILT IN SET духова шафа BO6737E02XK + вар. поверхня G642ABX GORENJE 23 299 UAH В наявності" [ref=f3e143] [cursor=pointer]:
+                - /url: /product/vbud-kompl-gorenje-built-in-set-dukhova-shafa-bo6737e02xk-var-poverkhnia-g642abx-7083977
+                - img "вбуд. компл. GORENJE BUILT IN SET духова шафа BO6737E02XK + вар. поверхня G642ABX" [ref=f3e145]
+                - generic [ref=f3e146]:
+                  - heading "вбуд. компл. GORENJE BUILT IN SET духова шафа BO6737E02XK + вар. поверхня G642ABX" [level=3] [ref=f3e147]
+                  - paragraph [ref=f3e148]: GORENJE
+                  - generic [ref=f3e149]: 23 299 UAH
+                  - paragraph [ref=f3e151]: В наявності
+            - generic [ref=f3e152]:
+              - button "Додати до обраного" [ref=f3e154]
+              - link "Мультипіч HISENSE HAF2900D (AF-D5502AS) Мультипіч HISENSE HAF2900D (AF-D5502AS) HISENSE 5 599 UAH В наявності" [ref=f3e157] [cursor=pointer]:
+                - /url: /product/multypich-hisense-haf2900d-af-d5502as-6924828
+                - img "Мультипіч HISENSE HAF2900D (AF-D5502AS)" [ref=f3e159]
+                - generic [ref=f3e160]:
+                  - heading "Мультипіч HISENSE HAF2900D (AF-D5502AS)" [level=3] [ref=f3e161]
+                  - paragraph [ref=f3e162]: HISENSE
+                  - generic [ref=f3e163]: 5 599 UAH
+                  - paragraph [ref=f3e165]: В наявності
+            - generic [ref=f3e166]:
+              - button "Додати до обраного" [ref=f3e168]
+              - link "Плита комбінована GORENJE GKS5C70HXF Плита комбінована GORENJE GKS5C70HXF GORENJE 20 099 UAH В наявності" [ref=f3e171] [cursor=pointer]:
+                - /url: /product/plyta-kombinovana-gorenje-gks5c70hxf-6996882
+                - img "Плита комбінована GORENJE GKS5C70HXF" [ref=f3e173]
+                - generic [ref=f3e174]:
+                  - heading "Плита комбінована GORENJE GKS5C70HXF" [level=3] [ref=f3e175]
+                  - paragraph [ref=f3e176]: GORENJE
+                  - generic [ref=f3e177]: 20 099 UAH
+                  - paragraph [ref=f3e179]: В наявності
+            - generic [ref=f3e180]:
+              - button "Додати до обраного" [ref=f3e182]
+              - link "Плита комбінована HANSA FCMS582254 Плита комбінована HANSA FCMS582254 HANSA 15 555 UAH В наявності" [ref=f3e185] [cursor=pointer]:
+                - /url: /product/plyta-kombinovana-hansa-fcms582254-6811830
+                - img "Плита комбінована HANSA FCMS582254" [ref=f3e187]
+                - generic [ref=f3e188]:
+                  - heading "Плита комбінована HANSA FCMS582254" [level=3] [ref=f3e189]
+                  - paragraph [ref=f3e190]: HANSA
+                  - generic [ref=f3e191]: 15 555 UAH
+                  - paragraph [ref=f3e193]: В наявності
+            - generic [ref=f3e194]:
+              - button "Додати до обраного" [ref=f3e196]
+              - link "Плита комбінована GORENJE GK5A22WH Плита комбінована GORENJE GK5A22WH GORENJE 14 999 UAH В наявності" [ref=f3e199] [cursor=pointer]:
+                - /url: /product/plyta-kombinovana-gorenje-gk5a22wh-7076252
+                - img "Плита комбінована GORENJE GK5A22WH" [ref=f3e201]
+                - generic [ref=f3e202]:
+                  - heading "Плита комбінована GORENJE GK5A22WH" [level=3] [ref=f3e203]
+                  - paragraph [ref=f3e204]: GORENJE
+                  - generic [ref=f3e205]: 14 999 UAH
+                  - paragraph [ref=f3e207]: В наявності
+            - generic [ref=f3e208]:
+              - button "Додати до обраного" [ref=f3e210]
+              - link "Плита комбінована HANSA FCMX59229 Плита комбінована HANSA FCMX59229 HANSA 20 249 UAH В наявності" [ref=f3e213] [cursor=pointer]:
+                - /url: /product/plyta-kombinovana-hansa-fcmx59229-6614988
+                - img "Плита комбінована HANSA FCMX59229" [ref=f3e215]
+                - generic [ref=f3e216]:
+                  - heading "Плита комбінована HANSA FCMX59229" [level=3] [ref=f3e217]
+                  - paragraph [ref=f3e218]: HANSA
+                  - generic [ref=f3e219]: 20 249 UAH
+                  - paragraph [ref=f3e221]: В наявності
+            - generic [ref=f3e222]:
+              - button "Додати до обраного" [ref=f3e224]
+              - link "Мультипіч RUSSELL HOBBS 27630-56/RH Satisfry Air Fryer 8.3L Мультипіч RUSSELL HOBBS 27630-56/RH Satisfry Air Fryer 8.3L RUSSELL HOBBS 7 719 UAH В наявності" [ref=f3e227] [cursor=pointer]:
+                - /url: /product/multypich-russell-hobbs-27630-56-rh-satisfry-air-fryer-8-3l-7192252
+                - img "Мультипіч RUSSELL HOBBS 27630-56/RH Satisfry Air Fryer 8.3L" [ref=f3e229]
+                - generic [ref=f3e230]:
+                  - heading "Мультипіч RUSSELL HOBBS 27630-56/RH Satisfry Air Fryer 8.3L" [level=3] [ref=f3e231]
+                  - paragraph [ref=f3e232]: RUSSELL HOBBS
+                  - generic [ref=f3e233]: 7 719 UAH
+                  - paragraph [ref=f3e235]: В наявності
+            - generic [ref=f3e236]:
+              - button "Додати до обраного" [ref=f3e238]
+              - link "Плита комбінована GORENJE GK5C43SH (FM513D-HPD4B) Плита комбінована GORENJE GK5C43SH (FM513D-HPD4B) GORENJE 19 099 UAH В наявності" [ref=f3e241] [cursor=pointer]:
+                - /url: /product/plyta-kombinovana-gorenje-gk5c43sh-fm513d-hpd4b-7083199
+                - img "Плита комбінована GORENJE GK5C43SH (FM513D-HPD4B)" [ref=f3e243]
+                - generic [ref=f3e244]:
+                  - heading "Плита комбінована GORENJE GK5C43SH (FM513D-HPD4B)" [level=3] [ref=f3e245]
+                  - paragraph [ref=f3e246]: GORENJE
+                  - generic [ref=f3e247]: 19 099 UAH
+                  - paragraph [ref=f3e249]: В наявності
+          - navigation [ref=f3e250]:
+            - link "← Назад" [ref=f3e251] [cursor=pointer]:
+              - /url: /catalog?category=pobutova-tekhnika-1186
+            - generic [ref=f3e252]:
+              - text: Сторінка 2 із 144
+              - generic [ref=f3e253]: · знайдено 1717
+            - link "Далі →" [ref=f3e254] [cursor=pointer]:
+              - /url: /catalog?category=pobutova-tekhnika-1186&page=3
+    - contentinfo [ref=f3e255]:
+      - generic [ref=f3e256]:
+        - generic [ref=f3e257]:
+          - generic [ref=f3e258]:
+            - heading "E-Shop" [level=3] [ref=f3e259]
+            - paragraph [ref=f3e260]: Найкращі товари для вашого життя
+          - generic [ref=f3e261]:
+            - heading "Категорії" [level=4] [ref=f3e262]
+            - list [ref=f3e263]:
+              - listitem [ref=f3e264]:
+                - link "Електричні" [ref=f3e265] [cursor=pointer]:
+                  - /url: /catalog?category=elektrychni-1538
+              - listitem [ref=f3e266]:
+                - link "Електропечі" [ref=f3e267] [cursor=pointer]:
+                  - /url: /catalog?category=elektropechi-1419
+              - listitem [ref=f3e268]:
+                - link "Комплекти" [ref=f3e269] [cursor=pointer]:
+                  - /url: /catalog?category=komplekty-1646
+              - listitem [ref=f3e270]:
+                - link "Мірні склянки й кухлі" [ref=f3e271] [cursor=pointer]:
+                  - /url: /catalog?category=mirni-sklianky-i-kukhli-1349
+              - listitem [ref=f3e272]:
+                - link "Кухонне приладдя" [ref=f3e273] [cursor=pointer]:
+                  - /url: /catalog?category=kukhonne-pryladdia-884
+              - listitem [ref=f3e274]:
+                - link "Усі категорії →" [ref=f3e275] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=f3e276]:
+            - heading "Інформація" [level=4] [ref=f3e277]
+            - list [ref=f3e278]:
+              - listitem [ref=f3e279]:
+                - link "Статус замовлення" [ref=f3e280] [cursor=pointer]:
+                  - /url: /orders/lookup
+              - listitem [ref=f3e281]:
+                - link "Контакти" [ref=f3e282] [cursor=pointer]:
+                  - /url: /contacts
+              - listitem [ref=f3e283]:
+                - link "Політика конфіденційності" [ref=f3e284] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=f3e285]:
+                - link "Умови використання" [ref=f3e286] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=f3e287]:
+                - link "magazinujut@gmail.com" [ref=f3e288] [cursor=pointer]:
+                  - /url: mailto:magazinujut@gmail.com
+        - generic [ref=f3e289]:
+          - paragraph [ref=f3e290]:
+            - button "Як покращити сайт?" [ref=f3e291]
+          - paragraph [ref=f3e292]: © 2026 E-Shop. Всі права захищені.

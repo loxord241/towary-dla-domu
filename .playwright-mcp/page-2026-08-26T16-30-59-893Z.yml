@@ -1,0 +1,317 @@
+- generic [active] [ref=f4e1]:
+  - button "Open Next.js Dev Tools" [ref=f4e7] [cursor=pointer]
+  - alert [ref=f4e11]
+  - generic [ref=f4e12]:
+    - banner [ref=f4e13]:
+      - generic [ref=f4e15]:
+        - generic [ref=f4e16]:
+          - button "Відкрити меню" [ref=f4e17]
+          - link "E-Shop" [ref=f4e19] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f4e20]:
+            - link "Каталог" [ref=f4e21] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f4e23]:
+          - searchbox "Пошук" [ref=f4e24]
+          - button "Шукати" [ref=f4e25]
+        - generic [ref=f4e29]:
+          - 'link "Обране, товарів: 0" [ref=f4e30] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 0" [ref=f4e33] [cursor=pointer]':
+            - /url: /cart
+    - generic [ref=f4e39]:
+      - complementary [ref=f4e40]:
+        - generic [ref=f4e42]:
+          - heading "Фільтри" [level=3] [ref=f4e43]
+          - generic [ref=f4e44]:
+            - generic [ref=f4e45]:
+              - heading "Категорії" [level=4] [ref=f4e46]
+              - 'button "Категорія: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Праски, парові системи" [ref=f4e48] [cursor=pointer]':
+                - generic [ref=f4e49]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Праски, парові системи
+            - generic [ref=f4e52]:
+              - heading "Бренди" [level=4] [ref=f4e53]
+              - combobox "Бренд" [ref=f4e54]:
+                - option "Всі бренди" [selected]
+                - option "AMICA"
+                - option "ANKER"
+                - option "ARCOROC"
+                - option "ARIETE"
+                - option "BAGER"
+                - option "BEKO"
+                - option "BLACK&DECKER"
+                - option "BRAVO CHEF"
+                - option "C&S"
+                - option "CD'A"
+                - option "DELFA"
+                - option "DREAME"
+                - option "ECOMO"
+                - option "ELECTROLUX"
+                - option "ELEYUS"
+                - option "ERGO"
+                - option "ESTRADA"
+                - option "EVG"
+                - option "GLASSET"
+                - option "GORENJE"
+                - option "GRETA"
+                - option "HAIER"
+                - option "HANSA"
+                - option "HAUSMARK"
+                - option "HEREVIN"
+                - option "HISENSE"
+                - option "HOOVER"
+                - option "IDEA HOME"
+                - option "INDESIT"
+                - option "IPEC"
+                - option "IQ"
+                - option "JANTAR"
+                - option "KRUPS"
+                - option "LA-"
+                - option "LED"
+                - option "LG"
+                - option "LIMITED EDITION"
+                - option "LONGEVITA"
+                - option "LUMINARC"
+                - option "MOULINEX"
+                - option "MOVA"
+                - option "NOVA TEC"
+                - option "O CUISINE"
+                - option "OSCAR"
+                - option "PHILCO"
+                - option "PHILIPS"
+                - option "POLARIS"
+                - option "PYRAMIDA"
+                - option "PYREX"
+                - option "QUTU"
+                - option "REMINGTON"
+                - option "RINGEL"
+                - option "rotex"
+                - option "ROWENTA"
+                - option "RUSSELL HOBBS"
+                - option "SAMSUNG"
+                - option "SENCOR"
+                - option "SHARP"
+                - option "SOHO"
+                - option "TEFAL"
+                - option "TESY"
+                - option "THOMAS"
+                - option "TIKI"
+                - option "TRAMONTINA"
+                - option "TRENDGLASS"
+                - option "UFO"
+                - option "UP!"
+                - option "VIOLET HOUSE"
+                - option "VIVA"
+                - option "WHIRLPOOL"
+                - option "ximix"
+            - generic [ref=f4e55]:
+              - heading "Ціна (UAH)" [level=4] [ref=f4e56]
+              - generic [ref=f4e57]:
+                - spinbutton "Ціна від" [ref=f4e58]
+                - generic [ref=f4e59]: —
+                - spinbutton "Ціна до" [ref=f4e60]
+            - generic [ref=f4e61]:
+              - heading "Наявність" [level=4] [ref=f4e62]
+              - generic [ref=f4e63] [cursor=pointer]:
+                - checkbox "Тільки в наявності" [ref=f4e64]
+                - generic [ref=f4e65]: Тільки в наявності
+            - generic [ref=f4e66]:
+              - button "Застосувати" [ref=f4e67]
+              - button "Скинути" [ref=f4e68]
+      - main [ref=f4e69]:
+        - generic [ref=f4e70]:
+          - generic [ref=f4e71]:
+            - heading "Праски, парові системи" [level=1] [ref=f4e72]
+            - generic [ref=f4e73]: "Знайдено: 49"
+          - generic [ref=f4e74]:
+            - generic [ref=f4e75]:
+              - generic [ref=f4e76]: "Фільтри:"
+              - 'link "Прибрати фільтр Категорія: Праски, парові системи" [ref=f4e77] [cursor=pointer]':
+                - /url: /catalog
+                - text: "Категорія: Праски, парові системи"
+                - generic [ref=f4e78]: ×
+              - link "Скинути всі" [ref=f4e79] [cursor=pointer]:
+                - /url: /catalog
+            - combobox "Сортування" [ref=f4e80]:
+              - option "Спочатку нові" [selected]
+              - option "Ціна ▲"
+              - option "Ціна ▼"
+              - option "Назва А–Я"
+          - generic [ref=f4e81]:
+            - generic [ref=f4e82]:
+              - button "Додати до обраного" [ref=f4e84]
+              - link "Парова система TEFAL GV9920E0 Парова система TEFAL GV9920E0 TEFAL 20 999 UAH В наявності" [ref=f4e87] [cursor=pointer]:
+                - /url: /product/parova-systema-tefal-gv9920e0-7262655
+                - img "Парова система TEFAL GV9920E0" [ref=f4e89]
+                - generic [ref=f4e90]:
+                  - heading "Парова система TEFAL GV9920E0" [level=3] [ref=f4e91]
+                  - paragraph [ref=f4e92]: TEFAL
+                  - generic [ref=f4e93]: 20 999 UAH
+                  - paragraph [ref=f4e95]: В наявності
+            - generic [ref=f4e96]:
+              - button "Додати до обраного" [ref=f4e98]
+              - link "Праска GORENJE SIH3200DR Немає в наявності Праска GORENJE SIH3200DR GORENJE 2 299 UAH" [ref=f4e101] [cursor=pointer]:
+                - /url: /product/praska-gorenje-sih3200dr-7278767
+                - generic [ref=f4e102]:
+                  - img "Праска GORENJE SIH3200DR" [ref=f4e103]
+                  - generic [ref=f4e104]: Немає в наявності
+                - generic [ref=f4e105]:
+                  - heading "Праска GORENJE SIH3200DR" [level=3] [ref=f4e106]
+                  - paragraph [ref=f4e107]: GORENJE
+                  - generic [ref=f4e108]: 2 299 UAH
+            - generic [ref=f4e110]:
+              - button "Додати до обраного" [ref=f4e112]
+              - link "Відпарювач TEFAL QT1214E0 Відпарювач TEFAL QT1214E0 TEFAL 10 999 UAH В наявності" [ref=f4e115] [cursor=pointer]:
+                - /url: /product/vidpariuvach-tefal-qt1214e0-7262706
+                - img "Відпарювач TEFAL QT1214E0" [ref=f4e117]
+                - generic [ref=f4e118]:
+                  - heading "Відпарювач TEFAL QT1214E0" [level=3] [ref=f4e119]
+                  - paragraph [ref=f4e120]: TEFAL
+                  - generic [ref=f4e121]: 10 999 UAH
+                  - paragraph [ref=f4e123]: В наявності
+            - generic [ref=f4e124]:
+              - button "Додати до обраного" [ref=f4e126]
+              - link "Праска GORENJE SIH3200BB Немає в наявності Праска GORENJE SIH3200BB GORENJE 2 299 UAH" [ref=f4e129] [cursor=pointer]:
+                - /url: /product/praska-gorenje-sih3200bb-7278766
+                - generic [ref=f4e130]:
+                  - img "Праска GORENJE SIH3200BB" [ref=f4e131]
+                  - generic [ref=f4e132]: Немає в наявності
+                - generic [ref=f4e133]:
+                  - heading "Праска GORENJE SIH3200BB" [level=3] [ref=f4e134]
+                  - paragraph [ref=f4e135]: GORENJE
+                  - generic [ref=f4e136]: 2 299 UAH
+            - generic [ref=f4e138]:
+              - button "Додати до обраного" [ref=f4e140]
+              - link "Праска ERGO DES 2090 Праска ERGO DES 2090 ERGO 999 UAH В наявності" [ref=f4e143] [cursor=pointer]:
+                - /url: /product/praska-ergo-des-2090-7204416
+                - img "Праска ERGO DES 2090" [ref=f4e145]
+                - generic [ref=f4e146]:
+                  - heading "Праска ERGO DES 2090" [level=3] [ref=f4e147]
+                  - paragraph [ref=f4e148]: ERGO
+                  - generic [ref=f4e149]: 999 UAH
+                  - paragraph [ref=f4e151]: В наявності
+            - generic [ref=f4e152]:
+              - button "Додати до обраного" [ref=f4e154]
+              - link "Праска RUSSELL HOBBS 25090-56/RH One Temperature Праска RUSSELL HOBBS 25090-56/RH One Temperature RUSSELL HOBBS 3 069 UAH В наявності" [ref=f4e157] [cursor=pointer]:
+                - /url: /product/praska-russell-hobbs-25090-56-rh-one-temperature-7224536
+                - img "Праска RUSSELL HOBBS 25090-56/RH One Temperature" [ref=f4e159]
+                - generic [ref=f4e160]:
+                  - heading "Праска RUSSELL HOBBS 25090-56/RH One Temperature" [level=3] [ref=f4e161]
+                  - paragraph [ref=f4e162]: RUSSELL HOBBS
+                  - generic [ref=f4e163]: 3 069 UAH
+                  - paragraph [ref=f4e165]: В наявності
+            - generic [ref=f4e166]:
+              - button "Додати до обраного" [ref=f4e168]
+              - link "Праска ERGO DES 2070 Праска ERGO DES 2070 ERGO 599 UAH В наявності" [ref=f4e171] [cursor=pointer]:
+                - /url: /product/praska-ergo-des-2070-7204417
+                - img "Праска ERGO DES 2070" [ref=f4e173]
+                - generic [ref=f4e174]:
+                  - heading "Праска ERGO DES 2070" [level=3] [ref=f4e175]
+                  - paragraph [ref=f4e176]: ERGO
+                  - generic [ref=f4e177]: 599 UAH
+                  - paragraph [ref=f4e179]: В наявності
+            - generic [ref=f4e180]:
+              - button "Додати до обраного" [ref=f4e182]
+              - link "Відпарювач TEFAL QT1811E0 Відпарювач TEFAL QT1811E0 TEFAL 12 879 UAH В наявності" [ref=f4e185] [cursor=pointer]:
+                - /url: /product/vidpariuvach-tefal-qt1811e0-7204300
+                - img "Відпарювач TEFAL QT1811E0" [ref=f4e187]
+                - generic [ref=f4e188]:
+                  - heading "Відпарювач TEFAL QT1811E0" [level=3] [ref=f4e189]
+                  - paragraph [ref=f4e190]: TEFAL
+                  - generic [ref=f4e191]: 12 879 UAH
+                  - paragraph [ref=f4e193]: В наявності
+            - generic [ref=f4e194]:
+              - button "Додати до обраного" [ref=f4e196]
+              - link "Праска GORENJE SIK2600WB (KB-973) Праска GORENJE SIK2600WB (KB-973) GORENJE 1 859 UAH В наявності" [ref=f4e199] [cursor=pointer]:
+                - /url: /product/praska-gorenje-sik2600wb-kb-973-7196147
+                - img "Праска GORENJE SIK2600WB (KB-973)" [ref=f4e201]
+                - generic [ref=f4e202]:
+                  - heading "Праска GORENJE SIK2600WB (KB-973)" [level=3] [ref=f4e203]
+                  - paragraph [ref=f4e204]: GORENJE
+                  - generic [ref=f4e205]: 1 859 UAH
+                  - paragraph [ref=f4e207]: В наявності
+            - generic [ref=f4e208]:
+              - button "Додати до обраного" [ref=f4e210]
+              - link "Праска GORENJE SIK2200WB (KB-936) Праска GORENJE SIK2200WB (KB-936) GORENJE 1 549 UAH В наявності" [ref=f4e213] [cursor=pointer]:
+                - /url: /product/praska-gorenje-sik2200wb-kb-936-7193446
+                - img "Праска GORENJE SIK2200WB (KB-936)" [ref=f4e215]
+                - generic [ref=f4e216]:
+                  - heading "Праска GORENJE SIK2200WB (KB-936)" [level=3] [ref=f4e217]
+                  - paragraph [ref=f4e218]: GORENJE
+                  - generic [ref=f4e219]: 1 549 UAH
+                  - paragraph [ref=f4e221]: В наявності
+            - generic [ref=f4e222]:
+              - button "Додати до обраного" [ref=f4e224]
+              - link "Праска GORENJE SIK2400BKV (KB-936) Праска GORENJE SIK2400BKV (KB-936) GORENJE 1 549 UAH В наявності" [ref=f4e227] [cursor=pointer]:
+                - /url: /product/praska-gorenje-sik2400bkv-kb-936-7193447
+                - img "Праска GORENJE SIK2400BKV (KB-936)" [ref=f4e229]
+                - generic [ref=f4e230]:
+                  - heading "Праска GORENJE SIK2400BKV (KB-936)" [level=3] [ref=f4e231]
+                  - paragraph [ref=f4e232]: GORENJE
+                  - generic [ref=f4e233]: 1 549 UAH
+                  - paragraph [ref=f4e235]: В наявності
+            - generic [ref=f4e236]:
+              - button "Додати до обраного" [ref=f4e238]
+              - link "Праска RUSSELL HOBBS 26020-56/RH Cordless OneTemperature Праска RUSSELL HOBBS 26020-56/RH Cordless OneTemperature RUSSELL HOBBS 3 459 UAH В наявності" [ref=f4e241] [cursor=pointer]:
+                - /url: /product/praska-russell-hobbs-26020-56-rh-cordless-onetemperature-7224538
+                - img "Праска RUSSELL HOBBS 26020-56/RH Cordless OneTemperature" [ref=f4e243]
+                - generic [ref=f4e244]:
+                  - heading "Праска RUSSELL HOBBS 26020-56/RH Cordless OneTemperature" [level=3] [ref=f4e245]
+                  - paragraph [ref=f4e246]: RUSSELL HOBBS
+                  - generic [ref=f4e247]: 3 459 UAH
+                  - paragraph [ref=f4e249]: В наявності
+          - navigation [ref=f4e250]:
+            - generic [ref=f4e251]: ← Назад
+            - generic [ref=f4e252]:
+              - text: Сторінка 1 із 5
+              - generic [ref=f4e253]: · знайдено 49
+            - link "Далі →" [ref=f4e254] [cursor=pointer]:
+              - /url: /catalog?category=prasky-parovi-systemy-103&page=2
+    - contentinfo [ref=f4e255]:
+      - generic [ref=f4e256]:
+        - generic [ref=f4e257]:
+          - generic [ref=f4e258]:
+            - heading "E-Shop" [level=3] [ref=f4e259]
+            - paragraph [ref=f4e260]: Найкращі товари для вашого життя
+          - generic [ref=f4e261]:
+            - heading "Категорії" [level=4] [ref=f4e262]
+            - list [ref=f4e263]:
+              - listitem [ref=f4e264]:
+                - link "Електричні" [ref=f4e265] [cursor=pointer]:
+                  - /url: /catalog?category=elektrychni-1538
+              - listitem [ref=f4e266]:
+                - link "Електропечі" [ref=f4e267] [cursor=pointer]:
+                  - /url: /catalog?category=elektropechi-1419
+              - listitem [ref=f4e268]:
+                - link "Комплекти" [ref=f4e269] [cursor=pointer]:
+                  - /url: /catalog?category=komplekty-1646
+              - listitem [ref=f4e270]:
+                - link "Мірні склянки й кухлі" [ref=f4e271] [cursor=pointer]:
+                  - /url: /catalog?category=mirni-sklianky-i-kukhli-1349
+              - listitem [ref=f4e272]:
+                - link "Кухонне приладдя" [ref=f4e273] [cursor=pointer]:
+                  - /url: /catalog?category=kukhonne-pryladdia-884
+              - listitem [ref=f4e274]:
+                - link "Усі категорії →" [ref=f4e275] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=f4e276]:
+            - heading "Інформація" [level=4] [ref=f4e277]
+            - list [ref=f4e278]:
+              - listitem [ref=f4e279]:
+                - link "Статус замовлення" [ref=f4e280] [cursor=pointer]:
+                  - /url: /orders/lookup
+              - listitem [ref=f4e281]:
+                - link "Контакти" [ref=f4e282] [cursor=pointer]:
+                  - /url: /contacts
+              - listitem [ref=f4e283]:
+                - link "Політика конфіденційності" [ref=f4e284] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=f4e285]:
+                - link "Умови використання" [ref=f4e286] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=f4e287]:
+                - link "magazinujut@gmail.com" [ref=f4e288] [cursor=pointer]:
+                  - /url: mailto:magazinujut@gmail.com
+        - generic [ref=f4e289]:
+          - paragraph [ref=f4e290]:
+            - button "Як покращити сайт?" [ref=f4e291]
+          - paragraph [ref=f4e292]: © 2026 E-Shop. Всі права захищені.

@@ -1,0 +1,257 @@
+- generic [active] [ref=f6e1]:
+  - generic [ref=f6e2]:
+    - banner [ref=f6e3]:
+      - generic [ref=f6e5]:
+        - generic [ref=f6e6]:
+          - button "Відкрити меню" [ref=f6e7]
+          - link "E-Shop" [ref=f6e9] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f6e10]:
+            - link "Каталог" [ref=f6e11] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f6e13]:
+          - searchbox "Пошук" [ref=f6e14]
+          - button "Шукати" [ref=f6e15]
+        - generic [ref=f6e19]:
+          - 'link "Обране, товарів: 0" [ref=f6e20] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 0" [ref=f6e23] [cursor=pointer]':
+            - /url: /cart
+    - main [ref=f6e28]:
+      - navigation "Навігація" [ref=f6e29]:
+        - link "Каталог" [ref=f6e30] [cursor=pointer]:
+          - /url: /catalog
+        - text: /
+        - link "Праски, парові системи" [ref=f6e31] [cursor=pointer]:
+          - /url: /catalog?category=prasky-parovi-systemy-103
+        - text: /Парова щітка TEFAL DT2026E1
+      - generic [ref=f6e32]:
+        - generic [ref=f6e34]:
+          - generic [ref=f6e35]:
+            - img "Парова щітка TEFAL DT2026E1" [ref=f6e36]
+            - generic [ref=f6e37]: 1 / 12
+            - button "Попереднє фото" [ref=f6e38]: ‹
+            - button "Наступне фото" [ref=f6e39]: ›
+          - generic [ref=f6e40]:
+            - button "Фото 1" [ref=f6e41]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f6e42]
+            - button "Фото 2" [ref=f6e43]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f6e44]
+            - button "Фото 3" [ref=f6e45]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f6e46]
+            - button "Фото 4" [ref=f6e47]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f6e48]
+            - button "Фото 5" [ref=f6e49]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f6e50]
+            - button "Фото 6" [ref=f6e51]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f6e52]
+            - button "Фото 7" [ref=f6e53]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f6e54]
+            - button "Фото 8" [ref=f6e55]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f6e56]
+            - button "Фото 9" [ref=f6e57]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f6e58]
+            - button "Фото 10" [ref=f6e59]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f6e60]
+            - button "Фото 11" [ref=f6e61]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f6e62]
+            - button "Фото 12" [ref=f6e63]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f6e64]
+        - generic [ref=f6e65]:
+          - generic [ref=f6e66]:
+            - heading "Парова щітка TEFAL DT2026E1" [level=1] [ref=f6e67]
+            - 'button "Додати до обраного: Парова щітка TEFAL DT2026E1" [ref=f6e68]'
+          - generic [ref=f6e71]:
+            - generic [ref=f6e72]: "Артикул:"
+            - generic [ref=f6e73]: YC-6873343
+          - generic [ref=f6e74]: 1 839 UAH
+          - generic [ref=f6e76]:
+            - generic [ref=f6e77]: В наявності
+            - generic [ref=f6e78]: "на складі: 2 шт"
+          - generic [ref=f6e79]:
+            - heading "Опис" [level=3] [ref=f6e80]
+            - paragraph [ref=f6e82]: Опис відсутній
+          - generic [ref=f6e83]:
+            - generic [ref=f6e84]:
+              - heading "Бренд:" [level=4] [ref=f6e85]
+              - paragraph [ref=f6e86]:
+                - link "TEFAL" [ref=f6e87] [cursor=pointer]:
+                  - /url: /catalog?brand=tefal
+            - generic [ref=f6e88]:
+              - heading "Категорія:" [level=4] [ref=f6e89]
+              - paragraph [ref=f6e90]:
+                - link "Праски, парові системи" [ref=f6e91] [cursor=pointer]:
+                  - /url: /catalog?category=prasky-parovi-systemy-103
+          - generic [ref=f6e92]:
+            - generic [ref=f6e93]:
+              - generic [ref=f6e94]: "Кількість:"
+              - spinbutton [ref=f6e95]: "1"
+              - generic [ref=f6e96]: макс. 2
+            - button "Додати в кошик" [ref=f6e97]
+          - generic [ref=f6e98]:
+            - paragraph [ref=f6e99]: Доставка та оплата
+            - paragraph [ref=f6e100]:
+              - text: Умови доставки та оплати — на сторінці
+              - link "«Доставка та оплата»" [ref=f6e101] [cursor=pointer]:
+                - /url: /delivery
+              - text: .
+      - generic [ref=f6e102]:
+        - heading "Характеристики товару" [level=2] [ref=f6e103]
+        - table [ref=f6e104]:
+          - rowgroup [ref=f6e105]:
+            - row [ref=f6e106]:
+              - rowheader "Тип" [ref=f6e107]
+              - cell "Відпарювач" [ref=f6e108]
+            - row [ref=f6e109]:
+              - rowheader "Потужність, Вт" [ref=f6e110]
+              - cell "1300.00" [ref=f6e111]
+            - row [ref=f6e112]:
+              - rowheader "Подача пари, г/хв" [ref=f6e113]
+              - cell "20" [ref=f6e114]
+            - row [ref=f6e115]:
+              - rowheader "Об'єм резервуара для води, мл" [ref=f6e116]
+              - cell "70.00" [ref=f6e117]
+            - row [ref=f6e118]:
+              - rowheader "Функції" [ref=f6e119]
+              - cell "Вертикальне відпарювання" [ref=f6e120]
+            - row [ref=f6e121]:
+              - rowheader "Тип підключення" [ref=f6e122]
+              - cell "Дротове" [ref=f6e123]
+            - row [ref=f6e124]:
+              - rowheader "Довжина кабелю, м" [ref=f6e125]
+              - cell "2" [ref=f6e126]
+            - row [ref=f6e127]:
+              - rowheader "Розміри, см" [ref=f6e128]
+              - cell "14.1 х 5.7 х 31.8" [ref=f6e129]
+            - row [ref=f6e130]:
+              - rowheader "Вага, кг" [ref=f6e131]
+              - cell "1.09" [ref=f6e132]
+            - row [ref=f6e133]:
+              - rowheader "Колір" [ref=f6e134]
+              - cell "Жовтий" [ref=f6e135]
+      - generic [ref=f6e136]:
+        - heading "Схожі товари" [level=2] [ref=f6e137]
+        - generic [ref=f6e138]:
+          - generic [ref=f6e139]:
+            - button "Додати до обраного" [ref=f6e141]
+            - link "Парова система TEFAL GV9920E0 Парова система TEFAL GV9920E0 TEFAL 20 999 UAH В наявності" [ref=f6e144] [cursor=pointer]:
+              - /url: /product/parova-systema-tefal-gv9920e0-7262655
+              - img "Парова система TEFAL GV9920E0" [ref=f6e146]
+              - generic [ref=f6e147]:
+                - heading "Парова система TEFAL GV9920E0" [level=3] [ref=f6e148]
+                - paragraph [ref=f6e149]: TEFAL
+                - generic [ref=f6e150]: 20 999 UAH
+                - paragraph [ref=f6e152]: В наявності
+          - generic [ref=f6e153]:
+            - button "Додати до обраного" [ref=f6e155]
+            - link "Праска GORENJE SIH3200DR Немає в наявності Праска GORENJE SIH3200DR GORENJE 2 299 UAH" [ref=f6e158] [cursor=pointer]:
+              - /url: /product/praska-gorenje-sih3200dr-7278767
+              - generic [ref=f6e159]:
+                - img "Праска GORENJE SIH3200DR" [ref=f6e160]
+                - generic [ref=f6e161]: Немає в наявності
+              - generic [ref=f6e162]:
+                - heading "Праска GORENJE SIH3200DR" [level=3] [ref=f6e163]
+                - paragraph [ref=f6e164]: GORENJE
+                - generic [ref=f6e165]: 2 299 UAH
+          - generic [ref=f6e167]:
+            - button "Додати до обраного" [ref=f6e169]
+            - link "Відпарювач TEFAL QT1214E0 Відпарювач TEFAL QT1214E0 TEFAL 10 999 UAH В наявності" [ref=f6e172] [cursor=pointer]:
+              - /url: /product/vidpariuvach-tefal-qt1214e0-7262706
+              - img "Відпарювач TEFAL QT1214E0" [ref=f6e174]
+              - generic [ref=f6e175]:
+                - heading "Відпарювач TEFAL QT1214E0" [level=3] [ref=f6e176]
+                - paragraph [ref=f6e177]: TEFAL
+                - generic [ref=f6e178]: 10 999 UAH
+                - paragraph [ref=f6e180]: В наявності
+          - generic [ref=f6e181]:
+            - button "Додати до обраного" [ref=f6e183]
+            - link "Праска GORENJE SIH3200BB Немає в наявності Праска GORENJE SIH3200BB GORENJE 2 299 UAH" [ref=f6e186] [cursor=pointer]:
+              - /url: /product/praska-gorenje-sih3200bb-7278766
+              - generic [ref=f6e187]:
+                - img "Праска GORENJE SIH3200BB" [ref=f6e188]
+                - generic [ref=f6e189]: Немає в наявності
+              - generic [ref=f6e190]:
+                - heading "Праска GORENJE SIH3200BB" [level=3] [ref=f6e191]
+                - paragraph [ref=f6e192]: GORENJE
+                - generic [ref=f6e193]: 2 299 UAH
+          - generic [ref=f6e195]:
+            - button "Додати до обраного" [ref=f6e197]
+            - link "Праска ERGO DES 2090 Праска ERGO DES 2090 ERGO 999 UAH В наявності" [ref=f6e200] [cursor=pointer]:
+              - /url: /product/praska-ergo-des-2090-7204416
+              - img "Праска ERGO DES 2090" [ref=f6e202]
+              - generic [ref=f6e203]:
+                - heading "Праска ERGO DES 2090" [level=3] [ref=f6e204]
+                - paragraph [ref=f6e205]: ERGO
+                - generic [ref=f6e206]: 999 UAH
+                - paragraph [ref=f6e208]: В наявності
+          - generic [ref=f6e209]:
+            - button "Додати до обраного" [ref=f6e211]
+            - link "Праска RUSSELL HOBBS 25090-56/RH One Temperature Праска RUSSELL HOBBS 25090-56/RH One Temperature RUSSELL HOBBS 3 069 UAH В наявності" [ref=f6e214] [cursor=pointer]:
+              - /url: /product/praska-russell-hobbs-25090-56-rh-one-temperature-7224536
+              - img "Праска RUSSELL HOBBS 25090-56/RH One Temperature" [ref=f6e216]
+              - generic [ref=f6e217]:
+                - heading "Праска RUSSELL HOBBS 25090-56/RH One Temperature" [level=3] [ref=f6e218]
+                - paragraph [ref=f6e219]: RUSSELL HOBBS
+                - generic [ref=f6e220]: 3 069 UAH
+                - paragraph [ref=f6e222]: В наявності
+          - generic [ref=f6e223]:
+            - button "Додати до обраного" [ref=f6e225]
+            - link "Праска ERGO DES 2070 Праска ERGO DES 2070 ERGO 599 UAH В наявності" [ref=f6e228] [cursor=pointer]:
+              - /url: /product/praska-ergo-des-2070-7204417
+              - img "Праска ERGO DES 2070" [ref=f6e230]
+              - generic [ref=f6e231]:
+                - heading "Праска ERGO DES 2070" [level=3] [ref=f6e232]
+                - paragraph [ref=f6e233]: ERGO
+                - generic [ref=f6e234]: 599 UAH
+                - paragraph [ref=f6e236]: В наявності
+          - generic [ref=f6e237]:
+            - button "Додати до обраного" [ref=f6e239]
+            - link "Відпарювач TEFAL QT1811E0 Відпарювач TEFAL QT1811E0 TEFAL 12 879 UAH В наявності" [ref=f6e242] [cursor=pointer]:
+              - /url: /product/vidpariuvach-tefal-qt1811e0-7204300
+              - img "Відпарювач TEFAL QT1811E0" [ref=f6e244]
+              - generic [ref=f6e245]:
+                - heading "Відпарювач TEFAL QT1811E0" [level=3] [ref=f6e246]
+                - paragraph [ref=f6e247]: TEFAL
+                - generic [ref=f6e248]: 12 879 UAH
+                - paragraph [ref=f6e250]: В наявності
+      - generic [ref=f6e251]:
+        - generic [ref=f6e252]:
+          - heading "Відгуки" [level=2] [ref=f6e253]
+          - button "Залишити відгук" [ref=f6e254]
+        - paragraph [ref=f6e255]: Ще немає відгуків — станьте першим, хто залишить відгук про цей товар.
+    - contentinfo [ref=f6e256]:
+      - generic [ref=f6e257]:
+        - generic [ref=f6e258]:
+          - generic [ref=f6e259]:
+            - heading "E-Shop" [level=3] [ref=f6e260]
+            - paragraph [ref=f6e261]: Найкращі товари для вашого життя
+          - generic [ref=f6e262]:
+            - heading "Категорії" [level=4] [ref=f6e263]
+            - list [ref=f6e264]:
+              - listitem [ref=f6e265]:
+                - link "Каталог" [ref=f6e266] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=f6e267]:
+            - heading "Інформація" [level=4] [ref=f6e268]
+            - list [ref=f6e269]:
+              - listitem [ref=f6e270]:
+                - link "Статус замовлення" [ref=f6e271] [cursor=pointer]:
+                  - /url: /orders/lookup
+              - listitem [ref=f6e272]:
+                - link "Контакти" [ref=f6e273] [cursor=pointer]:
+                  - /url: /contacts
+              - listitem [ref=f6e274]:
+                - link "Політика конфіденційності" [ref=f6e275] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=f6e276]:
+                - link "Умови використання" [ref=f6e277] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=f6e278]:
+                - link "magazinujut@gmail.com" [ref=f6e279] [cursor=pointer]:
+                  - /url: mailto:magazinujut@gmail.com
+        - generic [ref=f6e280]:
+          - paragraph [ref=f6e281]:
+            - button "Як покращити сайт?" [ref=f6e282]
+          - paragraph [ref=f6e283]: © 2026 E-Shop. Всі права захищені.
+  - button "Open Next.js Dev Tools" [ref=f6e289] [cursor=pointer]
+  - alert [ref=f6e293]

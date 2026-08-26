@@ -1,0 +1,400 @@
+- generic [ref=f13e1]:
+  - button "Open Next.js Dev Tools" [ref=f13e7] [cursor=pointer]
+  - alert [ref=f13e11]
+  - generic [ref=f13e12]:
+    - banner [ref=f13e13]:
+      - generic [ref=f13e15]:
+        - generic [ref=f13e16]:
+          - button "Відкрити меню" [ref=f13e17]
+          - link "E-Shop" [ref=f13e19] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f13e20]:
+            - link "Каталог" [ref=f13e21] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f13e23]:
+          - searchbox "Пошук" [ref=f13e24]
+          - button "Шукати" [ref=f13e25]
+        - generic [ref=f13e29]:
+          - 'link "Обране, товарів: 0" [ref=f13e30] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 0" [ref=f13e33] [cursor=pointer]':
+            - /url: /cart
+    - generic [ref=f13e39]:
+      - complementary [ref=f13e40]:
+        - button "Фільтри" [expanded] [ref=f13e42] [cursor=pointer]
+      - main [ref=f13e48]:
+        - generic [ref=f13e49]:
+          - generic [ref=f13e50]:
+            - heading "Каталог товарів" [level=1] [ref=f13e51]
+            - generic [ref=f13e52]: "Знайдено: 4130"
+          - combobox "Сортування" [ref=f13e54]:
+            - option "Спочатку нові" [selected]
+            - option "Ціна ▲"
+            - option "Ціна ▼"
+            - option "Назва А–Я"
+          - generic [ref=f13e55]:
+            - generic [ref=f13e56]:
+              - button "Додати до обраного" [ref=f13e58]
+              - link "−0% Плита комбінована BEKO FSM52334DAO Плита комбінована BEKO FSM52334DAO BEKO 17 599 UAH 17 600 UAH В наявності" [ref=f13e61] [cursor=pointer]:
+                - /url: /product/plyta-kombinovana-beko-fsm52334dao-7081966
+                - generic [ref=f13e62]:
+                  - generic [ref=f13e63]: −0%
+                  - img "Плита комбінована BEKO FSM52334DAO" [ref=f13e64]
+                - generic [ref=f13e65]:
+                  - heading "Плита комбінована BEKO FSM52334DAO" [level=3] [ref=f13e66]
+                  - paragraph [ref=f13e67]: BEKO
+                  - generic [ref=f13e68]:
+                    - generic [ref=f13e69]: 17 599 UAH
+                    - generic [ref=f13e70]: 17 600 UAH
+                  - paragraph [ref=f13e71]: В наявності
+            - generic [ref=f13e72]:
+              - button "Додати до обраного" [ref=f13e74]
+              - link "Мультипіч GORENJE AF1409DW (AF-350A) Мультипіч GORENJE AF1409DW (AF-350A) GORENJE 2 899 UAH В наявності" [ref=f13e77] [cursor=pointer]:
+                - /url: /product/multypich-gorenje-af1409dw-af-350a-7019432
+                - img "Мультипіч GORENJE AF1409DW (AF-350A)" [ref=f13e79]
+                - generic [ref=f13e80]:
+                  - heading "Мультипіч GORENJE AF1409DW (AF-350A)" [level=3] [ref=f13e81]
+                  - paragraph [ref=f13e82]: GORENJE
+                  - generic [ref=f13e83]: 2 899 UAH
+                  - paragraph [ref=f13e85]: В наявності
+            - generic [ref=f13e86]:
+              - button "Додати до обраного" [ref=f13e88]
+              - link "Порт холод ELECTROLUX E3FVTRA1 Форма для льоду Порт холод ELECTROLUX E3FVTRA1 Форма для льоду ELECTROLUX 99 UAH В наявності" [ref=f13e91] [cursor=pointer]:
+                - /url: /product/port-kholod-electrolux-e3fvtra1-forma-dlia-lodu-7130656
+                - img "Порт холод ELECTROLUX E3FVTRA1 Форма для льоду" [ref=f13e93]
+                - generic [ref=f13e94]:
+                  - heading "Порт холод ELECTROLUX E3FVTRA1 Форма для льоду" [level=3] [ref=f13e95]
+                  - paragraph [ref=f13e96]: ELECTROLUX
+                  - generic [ref=f13e97]: 99 UAH
+                  - paragraph [ref=f13e99]: В наявності
+            - generic [ref=f13e100]:
+              - button "Додати до обраного" [ref=f13e102]
+              - link "LONGEVITA Апарат для Дарсонвалізації PREMIUM JHM-08B LONGEVITA Апарат для Дарсонвалізації PREMIUM JHM-08B LONGEVITA 3 000 UAH В наявності" [ref=f13e105] [cursor=pointer]:
+                - /url: /product/longevita-aparat-dlia-darsonvalizatsii-premium-jhm-08b-6767745
+                - img "LONGEVITA Апарат для Дарсонвалізації PREMIUM JHM-08B" [ref=f13e107]
+                - generic [ref=f13e108]:
+                  - heading "LONGEVITA Апарат для Дарсонвалізації PREMIUM JHM-08B" [level=3] [ref=f13e109]
+                  - paragraph [ref=f13e110]: LONGEVITA
+                  - generic [ref=f13e111]: 3 000 UAH
+                  - paragraph [ref=f13e113]: В наявності
+            - generic [ref=f13e114]:
+              - button "Додати до обраного" [ref=f13e116]
+              - link "Мультипіч PHILIPS HD9285/00 Мультипіч PHILIPS HD9285/00 PHILIPS 5 999 UAH В наявності" [ref=f13e119] [cursor=pointer]:
+                - /url: /product/multypich-philips-hd9285-00-7046132
+                - img "Мультипіч PHILIPS HD9285/00" [ref=f13e121]
+                - generic [ref=f13e122]:
+                  - heading "Мультипіч PHILIPS HD9285/00" [level=3] [ref=f13e123]
+                  - paragraph [ref=f13e124]: PHILIPS
+                  - generic [ref=f13e125]: 5 999 UAH
+                  - paragraph [ref=f13e127]: В наявності
+            - generic [ref=f13e128]:
+              - button "Додати до обраного" [ref=f13e130]
+              - link "Пилосос ручний ROWENTA IN7021F0 Пилосос ручний ROWENTA IN7021F0 ROWENTA 14 999 UAH В наявності" [ref=f13e133] [cursor=pointer]:
+                - /url: /product/pylosos-ruchnyi-rowenta-in7021f0-7274062
+                - img "Пилосос ручний ROWENTA IN7021F0" [ref=f13e135]
+                - generic [ref=f13e136]:
+                  - heading "Пилосос ручний ROWENTA IN7021F0" [level=3] [ref=f13e137]
+                  - paragraph [ref=f13e138]: ROWENTA
+                  - generic [ref=f13e139]: 14 999 UAH
+                  - paragraph [ref=f13e141]: В наявності
+            - generic [ref=f13e142]:
+              - button "Додати до обраного" [ref=f13e144]
+              - link "Мультипіч TEFAL EY876DE1 Мультипіч TEFAL EY876DE1 TEFAL 10 999 UAH В наявності" [ref=f13e147] [cursor=pointer]:
+                - /url: /product/multypich-tefal-ey876de1-7224276
+                - img "Мультипіч TEFAL EY876DE1" [ref=f13e149]
+                - generic [ref=f13e150]:
+                  - heading "Мультипіч TEFAL EY876DE1" [level=3] [ref=f13e151]
+                  - paragraph [ref=f13e152]: TEFAL
+                  - generic [ref=f13e153]: 10 999 UAH
+                  - paragraph [ref=f13e155]: В наявності
+            - generic [ref=f13e156]:
+              - button "Додати до обраного" [ref=f13e158]
+              - link "Плита комбінована HANSA FCMS582258 Плита комбінована HANSA FCMS582258 HANSA 15 555 UAH В наявності" [ref=f13e161] [cursor=pointer]:
+                - /url: /product/plyta-kombinovana-hansa-fcms582258-6548021
+                - img "Плита комбінована HANSA FCMS582258" [ref=f13e163]
+                - generic [ref=f13e164]:
+                  - heading "Плита комбінована HANSA FCMS582258" [level=3] [ref=f13e165]
+                  - paragraph [ref=f13e166]: HANSA
+                  - generic [ref=f13e167]: 15 555 UAH
+                  - paragraph [ref=f13e169]: В наявності
+            - generic [ref=f13e170]:
+              - button "Додати до обраного" [ref=f13e172]
+              - link "Мультипіч PHILIPS NA221/00 Мультипіч PHILIPS NA221/00 PHILIPS 4 499 UAH В наявності" [ref=f13e175] [cursor=pointer]:
+                - /url: /product/multypich-philips-na221-00-6995759
+                - img "Мультипіч PHILIPS NA221/00" [ref=f13e177]
+                - generic [ref=f13e178]:
+                  - heading "Мультипіч PHILIPS NA221/00" [level=3] [ref=f13e179]
+                  - paragraph [ref=f13e180]: PHILIPS
+                  - generic [ref=f13e181]: 4 499 UAH
+                  - paragraph [ref=f13e183]: В наявності
+            - generic [ref=f13e184]:
+              - button "Додати до обраного" [ref=f13e186]
+              - link "Мультипіч TEFAL EY846HE0 Мультипіч TEFAL EY846HE0 TEFAL 7 399 UAH В наявності" [ref=f13e189] [cursor=pointer]:
+                - /url: /product/multypich-tefal-ey846he0-7200200
+                - img "Мультипіч TEFAL EY846HE0" [ref=f13e191]
+                - generic [ref=f13e192]:
+                  - heading "Мультипіч TEFAL EY846HE0" [level=3] [ref=f13e193]
+                  - paragraph [ref=f13e194]: TEFAL
+                  - generic [ref=f13e195]: 7 399 UAH
+                  - paragraph [ref=f13e197]: В наявності
+            - generic [ref=f13e198]:
+              - button "Додати до обраного" [ref=f13e200]
+              - link "Плита комбінована GORENJE GKS6C71XF (FM6A4D-FPJDB) Плита комбінована GORENJE GKS6C71XF (FM6A4D-FPJDB) GORENJE 25 299 UAH В наявності" [ref=f13e203] [cursor=pointer]:
+                - /url: /product/plyta-kombinovana-gorenje-gks6c71xf-fm6a4d-fpjdb-7083202
+                - img "Плита комбінована GORENJE GKS6C71XF (FM6A4D-FPJDB)" [ref=f13e205]
+                - generic [ref=f13e206]:
+                  - heading "Плита комбінована GORENJE GKS6C71XF (FM6A4D-FPJDB)" [level=3] [ref=f13e207]
+                  - paragraph [ref=f13e208]: GORENJE
+                  - generic [ref=f13e209]: 25 299 UAH
+                  - paragraph [ref=f13e211]: В наявності
+            - generic [ref=f13e212]:
+              - button "Додати до обраного" [ref=f13e214]
+              - link "Мультипіч GORENJE AF1700DB (AF-5001AS) Мультипіч GORENJE AF1700DB (AF-5001AS) GORENJE 3 399 UAH В наявності" [ref=f13e217] [cursor=pointer]:
+                - /url: /product/multypich-gorenje-af1700db-af-5001as-6917782
+                - img "Мультипіч GORENJE AF1700DB (AF-5001AS)" [ref=f13e219]
+                - generic [ref=f13e220]:
+                  - heading "Мультипіч GORENJE AF1700DB (AF-5001AS)" [level=3] [ref=f13e221]
+                  - paragraph [ref=f13e222]: GORENJE
+                  - generic [ref=f13e223]: 3 399 UAH
+                  - paragraph [ref=f13e225]: В наявності
+          - navigation [ref=f13e226]:
+            - generic [ref=f13e227]: ← Назад
+            - generic [ref=f13e228]:
+              - text: Сторінка 1 із 345
+              - generic [ref=f13e229]: · знайдено 4130
+            - link "Далі →" [ref=f13e230] [cursor=pointer]:
+              - /url: /catalog?page=2
+    - contentinfo [ref=f13e231]:
+      - generic [ref=f13e232]:
+        - generic [ref=f13e233]:
+          - generic [ref=f13e234]:
+            - heading "E-Shop" [level=3] [ref=f13e235]
+            - paragraph [ref=f13e236]: Найкращі товари для вашого життя
+          - generic [ref=f13e237]:
+            - heading "Категорії" [level=4] [ref=f13e238]
+            - list [ref=f13e239]:
+              - listitem [ref=f13e240]:
+                - link "Електричні" [ref=f13e241] [cursor=pointer]:
+                  - /url: /catalog?category=elektrychni-1538
+              - listitem [ref=f13e242]:
+                - link "Електропечі" [ref=f13e243] [cursor=pointer]:
+                  - /url: /catalog?category=elektropechi-1419
+              - listitem [ref=f13e244]:
+                - link "Комплекти" [ref=f13e245] [cursor=pointer]:
+                  - /url: /catalog?category=komplekty-1646
+              - listitem [ref=f13e246]:
+                - link "Мірні склянки й кухлі" [ref=f13e247] [cursor=pointer]:
+                  - /url: /catalog?category=mirni-sklianky-i-kukhli-1349
+              - listitem [ref=f13e248]:
+                - link "Кухонне приладдя" [ref=f13e249] [cursor=pointer]:
+                  - /url: /catalog?category=kukhonne-pryladdia-884
+              - listitem [ref=f13e250]:
+                - link "Усі категорії →" [ref=f13e251] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=f13e252]:
+            - heading "Інформація" [level=4] [ref=f13e253]
+            - list [ref=f13e254]:
+              - listitem [ref=f13e255]:
+                - link "Статус замовлення" [ref=f13e256] [cursor=pointer]:
+                  - /url: /orders/lookup
+              - listitem [ref=f13e257]:
+                - link "Контакти" [ref=f13e258] [cursor=pointer]:
+                  - /url: /contacts
+              - listitem [ref=f13e259]:
+                - link "Політика конфіденційності" [ref=f13e260] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=f13e261]:
+                - link "Умови використання" [ref=f13e262] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=f13e263]:
+                - link "magazinujut@gmail.com" [ref=f13e264] [cursor=pointer]:
+                  - /url: mailto:magazinujut@gmail.com
+        - generic [ref=f13e265]:
+          - paragraph [ref=f13e266]:
+            - button "Як покращити сайт?" [ref=f13e267]
+          - paragraph [ref=f13e268]: © 2026 E-Shop. Всі права захищені.
+  - dialog "Фільтри" [ref=f13e271]:
+    - generic [ref=f13e272]:
+      - generic [ref=f13e273]: Фільтри
+      - button "Закрити фільтри" [ref=f13e274]
+    - generic [ref=f13e278]:
+      - generic [ref=f13e279]:
+        - heading "Категорії" [level=4] [ref=f13e280]
+        - generic [ref=f13e281]:
+          - 'button "Категорія: Всі категорії" [expanded] [ref=f13e282] [cursor=pointer]':
+            - generic [ref=f13e283]: Всі категорії
+          - generic [ref=f13e304]:
+            - textbox "Пошук категорій" [ref=f13e306]:
+              - /placeholder: Пошук категорій...
+            - listbox "Категорії" [ref=f13e307]:
+              - option [selected] [ref=f13e308]:
+                - button "Всі категорії" [ref=f13e309]
+              - option [ref=f13e310]:
+                - generic [ref=f13e311]:
+                  - 'button "Господарчі товари: розгорнути/згорнути" [ref=f13e312]'
+                  - button "Господарчі товари" [ref=f13e315]
+              - option [ref=f13e316]:
+                - generic [ref=f13e317]:
+                  - 'button "Декор: розгорнути/згорнути" [ref=f13e318]'
+                  - button "Декор" [ref=f13e321]
+              - option [ref=f13e322]:
+                - generic [ref=f13e323]:
+                  - 'button "Кошики та органайзери: розгорнути/згорнути" [ref=f13e324]'
+                  - button "Кошики та органайзери" [ref=f13e327]
+              - option [ref=f13e328]:
+                - generic [ref=f13e329]:
+                  - 'button "Кухонне приладдя: розгорнути/згорнути" [ref=f13e330]'
+                  - button "Кухонне приладдя" [ref=f13e333]
+              - option [ref=f13e334]:
+                - generic [ref=f13e335]:
+                  - 'button "Кухонний посуд: розгорнути/згорнути" [ref=f13e336]'
+                  - button "Кухонний посуд" [ref=f13e339]
+              - option [ref=f13e340]:
+                - generic [ref=f13e341]:
+                  - 'button "Ножі та аксессуари: розгорнути/згорнути" [ref=f13e342]'
+                  - button "Ножі та аксессуари" [ref=f13e345]
+              - option [ref=f13e346]:
+                - generic [ref=f13e347]:
+                  - 'button "Питне скло: розгорнути/згорнути" [ref=f13e348]'
+                  - button "Питне скло" [ref=f13e351]
+              - option [ref=f13e352]:
+                - generic [ref=f13e353]:
+                  - 'button "ПОБУТОВА ТЕХНІКА: розгорнути/згорнути" [expanded] [active] [ref=f13e354]'
+                  - button "ПОБУТОВА ТЕХНІКА" [ref=f13e357]
+              - option [ref=f13e374]:
+                - generic [ref=f13e375]:
+                  - 'button "Вбудована техніка: розгорнути/згорнути" [ref=f13e376]'
+                  - button "ПОБУТОВА ТЕХНІКА → Вбудована техніка" [ref=f13e379]:
+                    - generic [ref=f13e380]: ПОБУТОВА ТЕХНІКА →
+                    - text: Вбудована техніка
+              - option [ref=f13e381]:
+                - generic [ref=f13e382]:
+                  - 'button "Велика побутова техніка: розгорнути/згорнути" [ref=f13e383]'
+                  - button "ПОБУТОВА ТЕХНІКА → Велика побутова техніка" [ref=f13e386]:
+                    - generic [ref=f13e387]: ПОБУТОВА ТЕХНІКА →
+                    - text: Велика побутова техніка
+              - option [ref=f13e388]:
+                - generic [ref=f13e389]:
+                  - 'button "Догляд за домом та речами: розгорнути/згорнути" [ref=f13e390]'
+                  - button "ПОБУТОВА ТЕХНІКА → Догляд за домом та речами" [ref=f13e393]:
+                    - generic [ref=f13e394]: ПОБУТОВА ТЕХНІКА →
+                    - text: Догляд за домом та речами
+              - option [ref=f13e395]:
+                - generic [ref=f13e396]:
+                  - 'button "Кліматична техніка: розгорнути/згорнути" [ref=f13e397]'
+                  - button "ПОБУТОВА ТЕХНІКА → Кліматична техніка" [ref=f13e400]:
+                    - generic [ref=f13e401]: ПОБУТОВА ТЕХНІКА →
+                    - text: Кліматична техніка
+              - option [ref=f13e402]:
+                - generic [ref=f13e403]:
+                  - 'button "Краса та здоров''я: розгорнути/згорнути" [ref=f13e404]'
+                  - button "ПОБУТОВА ТЕХНІКА → Краса та здоров'я" [ref=f13e407]:
+                    - generic [ref=f13e408]: ПОБУТОВА ТЕХНІКА →
+                    - text: Краса та здоров'я
+              - option [ref=f13e409]:
+                - generic [ref=f13e410]:
+                  - 'button "Мала кухонна техніка: розгорнути/згорнути" [ref=f13e411]'
+                  - button "ПОБУТОВА ТЕХНІКА → Мала кухонна техніка" [ref=f13e414]:
+                    - generic [ref=f13e415]: ПОБУТОВА ТЕХНІКА →
+                    - text: Мала кухонна техніка
+              - option [ref=f13e358]:
+                - generic [ref=f13e359]:
+                  - 'button "Посуд для зберігання: розгорнути/згорнути" [ref=f13e360]'
+                  - button "Посуд для зберігання" [ref=f13e363]
+              - option [ref=f13e364]:
+                - generic [ref=f13e365]:
+                  - 'button "Столовий посуд: розгорнути/згорнути" [ref=f13e366]'
+                  - button "Столовий посуд" [ref=f13e369]
+              - option [ref=f13e370]:
+                - generic [ref=f13e371]:
+                  - 'button "Текстиль для кухні: розгорнути/згорнути" [ref=f13e372]'
+                  - button "Текстиль для кухні" [ref=f13e373]
+      - generic [ref=f13e286]:
+        - heading "Бренди" [level=4] [ref=f13e287]
+        - combobox "Бренд" [ref=f13e288]:
+          - option "Всі бренди" [selected]
+          - option "AMICA"
+          - option "ANKER"
+          - option "ARCOROC"
+          - option "ARIETE"
+          - option "BAGER"
+          - option "BEKO"
+          - option "BLACK&DECKER"
+          - option "BRAVO CHEF"
+          - option "C&S"
+          - option "CD'A"
+          - option "DELFA"
+          - option "DREAME"
+          - option "ECOMO"
+          - option "ELECTROLUX"
+          - option "ELEYUS"
+          - option "ERGO"
+          - option "ESTRADA"
+          - option "EVG"
+          - option "GLASSET"
+          - option "GORENJE"
+          - option "GRETA"
+          - option "HAIER"
+          - option "HANSA"
+          - option "HAUSMARK"
+          - option "HEREVIN"
+          - option "HISENSE"
+          - option "HOOVER"
+          - option "IDEA HOME"
+          - option "INDESIT"
+          - option "IPEC"
+          - option "IQ"
+          - option "JANTAR"
+          - option "KRUPS"
+          - option "LA-"
+          - option "LED"
+          - option "LG"
+          - option "LIMITED EDITION"
+          - option "LONGEVITA"
+          - option "LUMINARC"
+          - option "MOULINEX"
+          - option "MOVA"
+          - option "NOVA TEC"
+          - option "O CUISINE"
+          - option "OSCAR"
+          - option "PHILCO"
+          - option "PHILIPS"
+          - option "POLARIS"
+          - option "PYRAMIDA"
+          - option "PYREX"
+          - option "QUTU"
+          - option "REMINGTON"
+          - option "RINGEL"
+          - option "rotex"
+          - option "ROWENTA"
+          - option "RUSSELL HOBBS"
+          - option "SAMSUNG"
+          - option "SENCOR"
+          - option "SHARP"
+          - option "SOHO"
+          - option "TEFAL"
+          - option "TESY"
+          - option "THOMAS"
+          - option "TIKI"
+          - option "TRAMONTINA"
+          - option "TRENDGLASS"
+          - option "UFO"
+          - option "UP!"
+          - option "VIOLET HOUSE"
+          - option "VIVA"
+          - option "WHIRLPOOL"
+          - option "ximix"
+      - generic [ref=f13e289]:
+        - heading "Ціна (UAH)" [level=4] [ref=f13e290]
+        - generic [ref=f13e291]:
+          - spinbutton "Ціна від" [ref=f13e292]
+          - generic [ref=f13e293]: —
+          - spinbutton "Ціна до" [ref=f13e294]
+      - generic [ref=f13e295]:
+        - heading "Наявність" [level=4] [ref=f13e296]
+        - generic [ref=f13e297] [cursor=pointer]:
+          - checkbox "Тільки в наявності" [ref=f13e298]
+          - generic [ref=f13e299]: Тільки в наявності
+    - generic [ref=f13e301]:
+      - button "Застосувати" [ref=f13e302]
+      - button "Скинути" [ref=f13e303]
