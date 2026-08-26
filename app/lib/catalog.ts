@@ -103,8 +103,11 @@ const supabase = createClient(
  * (4131 == distinct products-with-images), and pagination stays per
  * top-level entity. Admin API keeps its own plain SELECT on purpose.
  */
+// Since migration 016 there are TWO products→categories relationships
+// (legacy FK + junction), so PostgREST needs a disambiguation hint. The
+// hint uses the constraint name discovered live via PGRST201 (2026-08-26).
 const PRODUCT_SELECT =
-  '*, category:categories(*), brand:brands(*), images:product_images!inner(*), variants:product_variants(*)';
+  '*, category:categories!products_category_id_fkey(id, name, slug), brand:brands(*), images:product_images!inner(*), variants:product_variants(*)';
 
 /** Same eligibility join for head-count queries (no row multiplication). */
 // NOTE: the junction count embed selects product_id (a real column), NOT id:

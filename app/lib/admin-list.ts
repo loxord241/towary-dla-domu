@@ -281,8 +281,11 @@ async function pagedAdminRead(
 
 // The admin list must satisfy the full Product contract that the UI types
 // against: relations are embedded and collection fields are always arrays.
+// Since migration 016 there are TWO products→categories relationships
+// (legacy FK + junction): the embed needs the constraint-name hint
+// (discovered live via PGRST201, 2026-08-26).
 export const PRODUCT_SELECT =
-  '*, category:categories(*), brand:brands(*), images:product_images(*), variants:product_variants(*)';
+  '*, category:categories!products_category_id_fkey(*), brand:brands(*), images:product_images(*), variants:product_variants(*)';
 
 // PostgREST embeds many-to-one relations as an object (or null) and
 // one-to-many relations as arrays — this row type mirrors the raw shape.
