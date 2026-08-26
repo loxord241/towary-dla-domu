@@ -12,6 +12,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildCategoryOptions,
+  collectSubtreeIds,
   filterCategoryOptions,
 } from '../app/lib/category-tree.ts';
 import type { Category } from '../app/lib/catalog.ts';
@@ -119,4 +120,73 @@ test('CATEGORY-TREE: search is case-insensitive for Ukrainian text', () => {
   const options = buildCategoryOptions(FIXTURE);
   assert.equal(filterCategoryOptions(options, 'БЛЕНДЕРИ').length, 1);
   assert.equal(filterCategoryOptions(options, 'блеНдери').length, 1);
+});
+
+// ---------------------------------------------------------------------------
+// Many-to-many category filtering + collapsible tree picker (2026-08-26)
+// ---------------------------------------------------------------------------
+
+test('SUBTREE: seed + all descendants, depth > 1', () => {
+  const tree = [
+    cat('root', 'Root', null),
+    cat('mid', 'Mid', 'root'),
+    cat('leaf', 'Leaf', 'mid'),
+    cat('deep', 'Deep', 'leaf'),
+    cat('other', 'Other', null),
+  ];
+  const ids = collectSubtreeIds(tree, 'root');
+  assert.ok(['root', 'mid', 'leaf', 'deep'].every((i) => ids.has(i)));
+  assert.ok(!ids.has('other'));
+});
+
+test('SUBTREE: leaf seed returns only itself', () => {
+  const ids = collectSubtreeIds(FIXTURE, 'blender');
+  assert.deepEqual([...ids], ['blender']);
+});
+
+test('SUBTREE: orphan seed (missing from set) -> only itself', () => {
+  const ids = collectSubtreeIds(FIXTURE, 'ghost');
+  assert.deepEqual([...ids], ['ghost']);
+});
+
+test('SUBTREE: cycle protection terminates and every reachable node is included once', () => {
+  const cyclic = [
+    cat('a', 'A', 'b'),
+    cat('b', 'B', 'a'),
+    cat('solo', 'Solo', null),
+  ];
+  const ids = collectSubtreeIds(cyclic, 'a');
+  assert.equal(ids.size, 2);
+});
+
+test('OPTIONS: expanded set hides unexpanded children', () => {
+  const expanded = new Set(['root-tech']);
+  const options = buildCategoryOptions(FIXTURE, { expanded });
+  assert.ok(options.some((o) => o.id === 'blender'));
+  assert.ok(options.some((o) => o.id === 'kettles'), 'expanded root shows all its children');
+  assert.ok(!options.some((o) => o.id === 'pots-a'), 'other root collapsed entirely');
+});
+
+test('OPTIONS: unexpanded mid-level parent hides its grandchildren branch', () => {
+  const tree = [
+    cat('r', 'Root', null),
+    cat('m1', 'Mid1', 'r'),
+    cat('m2', 'Mid2', 'r'),
+    cat('leaf1', 'Leaf1', 'm1'),
+  ];
+  // r expanded, m1 NOT expanded -> leaf1 hidden
+  const options = buildCategoryOptions(tree, { expanded: new Set(['r']) });
+  assert.ok(options.some((o) => o.id === 'm1'));
+  assert.ok(!options.some((o) => o.id === 'leaf1'));
+  // m1 also expanded -> leaf1 visible
+  const full = buildCategoryOptions(tree, { expanded: new Set(['r', 'm1', 'm2']) });
+  assert.ok(full.some((o) => o.id === 'leaf1'));
+});
+
+test('OPTIONS: no expanded option keeps full-tree behavior', () => {
+  const full = buildCategoryOptions(FIXTURE);
+  assert.deepEqual(
+    buildCategoryOptions(FIXTURE, {}).map((o) => o.id),
+    full.map((o) => o.id)
+  );
 });

@@ -27,11 +27,54 @@ export interface CategoryOption {
   label: string;
 }
 
-function compareSiblings(a: Category, b: Category): number {
+/**
+ * Sibling ordering is a commercial rule shared by storefront and admin:
+ * explicit sort_order wins, deterministic fallbacks (ukrainian name, then
+ * id) keep ties stable — never created_at, never input order.
+ */
+export function compareCategories(a: Category, b: Category): number {
   if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
   const byName = a.name.localeCompare(b.name, 'uk');
   if (byName !== 0) return byName;
   return a.id.localeCompare(b.id);
+}
+
+function compareSiblings(a: Category, b: Category): number {
+  return compareCategories(a, b);
+}
+
+/**
+ * Category ids of `seedId` plus every descendant (any depth). Direct
+ * assignments live in product_categories; parent categories are found by
+ * expanding the subtree in memory over the already-fetched active list.
+ * Cycle-safe: each node enters the set at most once.
+ */
+export function collectSubtreeIds(
+  categories: Category[],
+  seedId: string
+): Set<string> {
+  const childrenOf = new Map<string, string[]>();
+  const known = new Set(categories.map((c) => c.id));
+  for (const category of categories) {
+    const parentId = category.parent_id;
+    if (parentId && known.has(parentId)) {
+      const list = childrenOf.get(parentId) ?? [];
+      list.push(category.id);
+      childrenOf.set(parentId, list);
+    }
+  }
+  const out = new Set<string>([seedId]);
+  const stack = [seedId];
+  while (stack.length > 0) {
+    const current = stack.pop() as string;
+    for (const child of childrenOf.get(current) ?? []) {
+      if (!out.has(child)) {
+        out.add(child);
+        stack.push(child);
+      }
+    }
+  }
+  return out;
 }
 
 /**
@@ -40,8 +83,16 @@ function compareSiblings(a: Category, b: Category): number {
  *  - a node whose parent is missing from the input set is treated as a root
  *    (the storefront fetch returns only active rows);
  *  - parent/child cycles cannot hang the walk and lose no nodes.
+ *
+ * `opts.expanded` (when provided) drives the collapsible tree picker: only
+ * parents present in the set render their children. Without it the FULL
+ * tree is emitted — every existing consumer keeps its behavior.
  */
-export function buildCategoryOptions(categories: Category[]): CategoryOption[] {
+export function buildCategoryOptions(
+  categories: Category[],
+  opts?: { expanded?: ReadonlySet<string> }
+): CategoryOption[] {
+  const expanded = opts?.expanded;
   const childrenOf = new Map<string, Category[]>();
   const knownIds = new Set(categories.map((c) => c.id));
   const roots: Category[] = [];
@@ -49,10 +100,14 @@ export function buildCategoryOptions(categories: Category[]): CategoryOption[] {
   for (const category of categories) {
     const parentId = category.parent_id;
     if (parentId && knownIds.has(parentId)) {
-      const list = childrenOf.get(parentId) ?? [];
-      list.push(category);
-      childrenOf.set(parentId, list);
+      // An unexpanded parent hides its children from the flat option list.
+      if (!expanded || expanded.has(parentId)) {
+        const list = childrenOf.get(parentId) ?? [];
+        list.push(category);
+        childrenOf.set(parentId, list);
+      }
     } else {
+      // True roots and orphans are always visible — only parents toggle.
       roots.push(category);
     }
   }
