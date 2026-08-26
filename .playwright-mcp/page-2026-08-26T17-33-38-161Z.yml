@@ -1,0 +1,223 @@
+- generic [ref=f7e1]:
+  - button "Open Next.js Dev Tools" [ref=f7e7] [cursor=pointer]
+  - alert [ref=f7e11]: Горщики для квітів
+  - generic [ref=f7e12]:
+    - banner [ref=f7e13]:
+      - generic [ref=f7e15]:
+        - generic [ref=f7e16]:
+          - button "Відкрити меню" [ref=f7e17]
+          - link "E-Shop" [ref=f7e19] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f7e20]:
+            - link "Каталог" [ref=f7e21] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f7e23]:
+          - searchbox "Пошук" [ref=f7e24]
+          - button "Шукати" [ref=f7e25]
+        - generic [ref=f7e29]:
+          - 'link "Обране, товарів: 0" [ref=f7e30] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 0" [ref=f7e33] [cursor=pointer]':
+            - /url: /cart
+    - generic [ref=f7e39]:
+      - complementary [ref=f7e40]:
+        - button "Фільтри 1" [active] [ref=f7e409] [cursor=pointer]:
+          - generic [ref=f7e43]:
+            - text: Фільтри
+            - generic [ref=f7e410]: "1"
+      - main [ref=f7e48]:
+        - generic [ref=f7e49]:
+          - generic [ref=f7e50]:
+            - heading "Горщики для квітів" [level=1] [ref=f7e411]
+            - generic [ref=f7e52]: "Знайдено: 22"
+          - generic [ref=f7e53]:
+            - generic [ref=f7e412]:
+              - generic [ref=f7e413]: "Фільтри:"
+              - 'link "Прибрати фільтр Категорія: Горщики для квітів" [ref=f7e414] [cursor=pointer]':
+                - /url: /catalog
+                - text: "Категорія: Горщики для квітів"
+                - generic [ref=f7e415]: ×
+              - link "Скинути всі" [ref=f7e416] [cursor=pointer]:
+                - /url: /catalog
+            - combobox "Сортування" [ref=f7e54]:
+              - option "Спочатку нові" [selected]
+              - option "Ціна ▲"
+              - option "Ціна ▼"
+              - option "Назва А–Я"
+          - generic [ref=f7e55]:
+            - generic [ref=f7e417]:
+              - button "Додати до обраного" [ref=f7e419]
+              - link "Горщик для квітів VIOLET HOUSE 0201 PRIZMA BROWN з внут. зливом води 7 л. (0201 PRIZMA BROWN з внут. зливом води 7 л.) Горщик для квітів VIOLET HOUSE 0201 PRIZMA BROWN з внут. зливом води 7 л. (0201 PRIZMA BROWN з внут. зливом води 7 л.) VIOLET HOUSE 329 UAH В наявності" [ref=f7e422] [cursor=pointer]:
+                - /url: /product/horshchyk-dlia-kvitiv-violet-house-0201-prizma-brown-z-vnut-zlyvom-vody-7-l-0201-7051285
+                - img "Горщик для квітів VIOLET HOUSE 0201 PRIZMA BROWN з внут. зливом води 7 л. (0201 PRIZMA BROWN з внут. зливом води 7 л.)" [ref=f7e424]
+                - generic [ref=f7e425]:
+                  - heading "Горщик для квітів VIOLET HOUSE 0201 PRIZMA BROWN з внут. зливом води 7 л. (0201 PRIZMA BROWN з внут. зливом води 7 л.)" [level=3] [ref=f7e426]
+                  - paragraph [ref=f7e427]: VIOLET HOUSE
+                  - generic [ref=f7e428]: 329 UAH
+                  - paragraph [ref=f7e430]: В наявності
+            - generic [ref=f7e431]:
+              - button "Додати до обраного" [ref=f7e433]
+              - link "Горщик для квітів VIOLET HOUSE 0201 PRIZMA CAPPUCCINO з внут. зливом води 7 л. (0201 PRIZMA CAPPUCCINO д/квітів з внут. зливом вод) Горщик для квітів VIOLET HOUSE 0201 PRIZMA CAPPUCCINO з внут. зливом води 7 л. (0201 PRIZMA CAPPUCCINO д/квітів з внут. зливом вод) VIOLET HOUSE 329 UAH В наявності" [ref=f7e436] [cursor=pointer]:
+                - /url: /product/horshchyk-dlia-kvitiv-violet-house-0201-prizma-cappuccino-z-vnut-zlyvom-vody-7-l-6993567
+                - img "Горщик для квітів VIOLET HOUSE 0201 PRIZMA CAPPUCCINO з внут. зливом води 7 л. (0201 PRIZMA CAPPUCCINO д/квітів з внут. зливом вод)" [ref=f7e438]
+                - generic [ref=f7e439]:
+                  - heading "Горщик для квітів VIOLET HOUSE 0201 PRIZMA CAPPUCCINO з внут. зливом води 7 л. (0201 PRIZMA CAPPUCCINO д/квітів з внут. зливом вод)" [level=3] [ref=f7e440]
+                  - paragraph [ref=f7e441]: VIOLET HOUSE
+                  - generic [ref=f7e442]: 329 UAH
+                  - paragraph [ref=f7e444]: В наявності
+            - generic [ref=f7e445]:
+              - button "Додати до обраного" [ref=f7e447]
+              - link "Горщик для квітів VIOLET HOUSE 0198 PRIZMA DARK GREY д/квітів із внут.зливом води 1.5 л. (0198 PRIZMA DARK GREY 1.5 л.) Горщик для квітів VIOLET HOUSE 0198 PRIZMA DARK GREY д/квітів із внут.зливом води 1.5 л. (0198 PRIZMA DARK GREY 1.5 л.) VIOLET HOUSE 119 UAH В наявності" [ref=f7e450] [cursor=pointer]:
+                - /url: /product/horshchyk-dlia-kvitiv-violet-house-0198-prizma-dark-grey-d-kvitiv-iz-vnut-zlyvom-7140779
+                - img "Горщик для квітів VIOLET HOUSE 0198 PRIZMA DARK GREY д/квітів із внут.зливом води 1.5 л. (0198 PRIZMA DARK GREY 1.5 л.)" [ref=f7e452]
+                - generic [ref=f7e453]:
+                  - heading "Горщик для квітів VIOLET HOUSE 0198 PRIZMA DARK GREY д/квітів із внут.зливом води 1.5 л. (0198 PRIZMA DARK GREY 1.5 л.)" [level=3] [ref=f7e454]
+                  - paragraph [ref=f7e455]: VIOLET HOUSE
+                  - generic [ref=f7e456]: 119 UAH
+                  - paragraph [ref=f7e458]: В наявності
+            - generic [ref=f7e459]:
+              - button "Додати до обраного" [ref=f7e461]
+              - link "Горщик для квітів VIOLET HOUSE 1048 BAMBOO CAPPUCCINO д/квітів із дренажем 7 л. (1048 BAMBOO CAPPUCCINO 7 л.) Горщик для квітів VIOLET HOUSE 1048 BAMBOO CAPPUCCINO д/квітів із дренажем 7 л. (1048 BAMBOO CAPPUCCINO 7 л.) VIOLET HOUSE 319 UAH В наявності" [ref=f7e464] [cursor=pointer]:
+                - /url: /product/horshchyk-dlia-kvitiv-violet-house-1048-bamboo-cappuccino-d-kvitiv-iz-drenazhem-7247459
+                - img "Горщик для квітів VIOLET HOUSE 1048 BAMBOO CAPPUCCINO д/квітів із дренажем 7 л. (1048 BAMBOO CAPPUCCINO 7 л.)" [ref=f7e466]
+                - generic [ref=f7e467]:
+                  - heading "Горщик для квітів VIOLET HOUSE 1048 BAMBOO CAPPUCCINO д/квітів із дренажем 7 л. (1048 BAMBOO CAPPUCCINO 7 л.)" [level=3] [ref=f7e468]
+                  - paragraph [ref=f7e469]: VIOLET HOUSE
+                  - generic [ref=f7e470]: 319 UAH
+                  - paragraph [ref=f7e472]: В наявності
+            - generic [ref=f7e473]:
+              - button "Додати до обраного" [ref=f7e475]
+              - link "Горщик для квітів VIOLET HOUSE 1052 BAMBOO ANTRACITE д/квітів із дренажем 0.6 л. (1052 BAMBOO ANTRACITE 0.6 л.) Горщик для квітів VIOLET HOUSE 1052 BAMBOO ANTRACITE д/квітів із дренажем 0.6 л. (1052 BAMBOO ANTRACITE 0.6 л.) VIOLET HOUSE 109 UAH В наявності" [ref=f7e478] [cursor=pointer]:
+                - /url: /product/horshchyk-dlia-kvitiv-violet-house-1052-bamboo-antracite-d-kvitiv-iz-drenazhem-0-7122192
+                - img "Горщик для квітів VIOLET HOUSE 1052 BAMBOO ANTRACITE д/квітів із дренажем 0.6 л. (1052 BAMBOO ANTRACITE 0.6 л.)" [ref=f7e480]
+                - generic [ref=f7e481]:
+                  - heading "Горщик для квітів VIOLET HOUSE 1052 BAMBOO ANTRACITE д/квітів із дренажем 0.6 л. (1052 BAMBOO ANTRACITE 0.6 л.)" [level=3] [ref=f7e482]
+                  - paragraph [ref=f7e483]: VIOLET HOUSE
+                  - generic [ref=f7e484]: 109 UAH
+                  - paragraph [ref=f7e486]: В наявності
+            - generic [ref=f7e487]:
+              - button "Додати до обраного" [ref=f7e489]
+              - link "Горщик для квітів VIOLET HOUSE 1050 Бамбу WHITE д/квітів з внут. вставкою 10 л. (1050 Бамбу WHITE з внут. вставкою 10 л.) Горщик для квітів VIOLET HOUSE 1050 Бамбу WHITE д/квітів з внут. вставкою 10 л. (1050 Бамбу WHITE з внут. вставкою 10 л.) VIOLET HOUSE 469 UAH В наявності" [ref=f7e492] [cursor=pointer]:
+                - /url: /product/horshchyk-dlia-kvitiv-violet-house-1050-bambu-white-d-kvitiv-z-vnut-vstavkoiu-10-7248962
+                - img "Горщик для квітів VIOLET HOUSE 1050 Бамбу WHITE д/квітів з внут. вставкою 10 л. (1050 Бамбу WHITE з внут. вставкою 10 л.)" [ref=f7e494]
+                - generic [ref=f7e495]:
+                  - heading "Горщик для квітів VIOLET HOUSE 1050 Бамбу WHITE д/квітів з внут. вставкою 10 л. (1050 Бамбу WHITE з внут. вставкою 10 л.)" [level=3] [ref=f7e496]
+                  - paragraph [ref=f7e497]: VIOLET HOUSE
+                  - generic [ref=f7e498]: 469 UAH
+                  - paragraph [ref=f7e500]: В наявності
+            - generic [ref=f7e501]:
+              - button "Додати до обраного" [ref=f7e503]
+              - link "Горщик для квітів VIOLET HOUSE 1047 BAMBOO BLACK д/квітів із дренажем 5 л (1047 BAMBOO BLACK д/квітів із дренажем 5 л) Горщик для квітів VIOLET HOUSE 1047 BAMBOO BLACK д/квітів із дренажем 5 л (1047 BAMBOO BLACK д/квітів із дренажем 5 л) VIOLET HOUSE 229 UAH В наявності" [ref=f7e506] [cursor=pointer]:
+                - /url: /product/horshchyk-dlia-kvitiv-violet-house-1047-bamboo-black-d-kvitiv-iz-drenazhem-5-l-1-7288258
+                - img "Горщик для квітів VIOLET HOUSE 1047 BAMBOO BLACK д/квітів із дренажем 5 л (1047 BAMBOO BLACK д/квітів із дренажем 5 л)" [ref=f7e508]
+                - generic [ref=f7e509]:
+                  - heading "Горщик для квітів VIOLET HOUSE 1047 BAMBOO BLACK д/квітів із дренажем 5 л (1047 BAMBOO BLACK д/квітів із дренажем 5 л)" [level=3] [ref=f7e510]
+                  - paragraph [ref=f7e511]: VIOLET HOUSE
+                  - generic [ref=f7e512]: 229 UAH
+                  - paragraph [ref=f7e514]: В наявності
+            - generic [ref=f7e515]:
+              - button "Додати до обраного" [ref=f7e517]
+              - link "Горщик для квітів VIOLET HOUSE 1048 BAMBOO ANTRACITE д/квітів із дренажем 7 л. (1048 BAMBOO ANTRACITE 7 л.) Горщик для квітів VIOLET HOUSE 1048 BAMBOO ANTRACITE д/квітів із дренажем 7 л. (1048 BAMBOO ANTRACITE 7 л.) VIOLET HOUSE 279 UAH В наявності" [ref=f7e520] [cursor=pointer]:
+                - /url: /product/horshchyk-dlia-kvitiv-violet-house-1048-bamboo-antracite-d-kvitiv-iz-drenazhem-7-7247458
+                - img "Горщик для квітів VIOLET HOUSE 1048 BAMBOO ANTRACITE д/квітів із дренажем 7 л. (1048 BAMBOO ANTRACITE 7 л.)" [ref=f7e522]
+                - generic [ref=f7e523]:
+                  - heading "Горщик для квітів VIOLET HOUSE 1048 BAMBOO ANTRACITE д/квітів із дренажем 7 л. (1048 BAMBOO ANTRACITE 7 л.)" [level=3] [ref=f7e524]
+                  - paragraph [ref=f7e525]: VIOLET HOUSE
+                  - generic [ref=f7e526]: 279 UAH
+                  - paragraph [ref=f7e528]: В наявності
+            - generic [ref=f7e529]:
+              - button "Додати до обраного" [ref=f7e531]
+              - link "Горщик для квітів VIOLET HOUSE 1052 BAMBOO BROWN із дренажем 0.6 л. (1052 BAMBOO BROWN 0.6 л.) Горщик для квітів VIOLET HOUSE 1052 BAMBOO BROWN із дренажем 0.6 л. (1052 BAMBOO BROWN 0.6 л.) VIOLET HOUSE 109 UAH В наявності" [ref=f7e534] [cursor=pointer]:
+                - /url: /product/horshchyk-dlia-kvitiv-violet-house-1052-bamboo-brown-iz-drenazhem-0-6-l-1052-bam-7231877
+                - img "Горщик для квітів VIOLET HOUSE 1052 BAMBOO BROWN із дренажем 0.6 л. (1052 BAMBOO BROWN 0.6 л.)" [ref=f7e536]
+                - generic [ref=f7e537]:
+                  - heading "Горщик для квітів VIOLET HOUSE 1052 BAMBOO BROWN із дренажем 0.6 л. (1052 BAMBOO BROWN 0.6 л.)" [level=3] [ref=f7e538]
+                  - paragraph [ref=f7e539]: VIOLET HOUSE
+                  - generic [ref=f7e540]: 109 UAH
+                  - paragraph [ref=f7e542]: В наявності
+            - generic [ref=f7e543]:
+              - button "Додати до обраного" [ref=f7e545]
+              - link "Горщик для квітів VIOLET HOUSE 1047 BAMBOO WHITE із дренажем 5 л. (1047 BAMBOO WHITE 5 л.) Горщик для квітів VIOLET HOUSE 1047 BAMBOO WHITE із дренажем 5 л. (1047 BAMBOO WHITE 5 л.) VIOLET HOUSE 229 UAH В наявності" [ref=f7e548] [cursor=pointer]:
+                - /url: /product/horshchyk-dlia-kvitiv-violet-house-1047-bamboo-white-iz-drenazhem-5-l-1047-bambo-7051286
+                - img "Горщик для квітів VIOLET HOUSE 1047 BAMBOO WHITE із дренажем 5 л. (1047 BAMBOO WHITE 5 л.)" [ref=f7e550]
+                - generic [ref=f7e551]:
+                  - heading "Горщик для квітів VIOLET HOUSE 1047 BAMBOO WHITE із дренажем 5 л. (1047 BAMBOO WHITE 5 л.)" [level=3] [ref=f7e552]
+                  - paragraph [ref=f7e553]: VIOLET HOUSE
+                  - generic [ref=f7e554]: 229 UAH
+                  - paragraph [ref=f7e556]: В наявності
+            - generic [ref=f7e557]:
+              - button "Додати до обраного" [ref=f7e559]
+              - link "Горщик для квітів VIOLET HOUSE 1052 BAMBOO WHITE д/квітів із дренажем 0.6 л. (1052 BAMBOO WHITE 0.6 л.) Горщик для квітів VIOLET HOUSE 1052 BAMBOO WHITE д/квітів із дренажем 0.6 л. (1052 BAMBOO WHITE 0.6 л.) VIOLET HOUSE 109 UAH В наявності" [ref=f7e562] [cursor=pointer]:
+                - /url: /product/horshchyk-dlia-kvitiv-violet-house-1052-bamboo-white-d-kvitiv-iz-drenazhem-0-6-l-7122190
+                - img "Горщик для квітів VIOLET HOUSE 1052 BAMBOO WHITE д/квітів із дренажем 0.6 л. (1052 BAMBOO WHITE 0.6 л.)" [ref=f7e564]
+                - generic [ref=f7e565]:
+                  - heading "Горщик для квітів VIOLET HOUSE 1052 BAMBOO WHITE д/квітів із дренажем 0.6 л. (1052 BAMBOO WHITE 0.6 л.)" [level=3] [ref=f7e566]
+                  - paragraph [ref=f7e567]: VIOLET HOUSE
+                  - generic [ref=f7e568]: 109 UAH
+                  - paragraph [ref=f7e570]: В наявності
+            - generic [ref=f7e571]:
+              - button "Додати до обраного" [ref=f7e573]
+              - link "Горщик для квітів VIOLET HOUSE 1050 Бамбу CAPPUCHINO д/квітів з внут. вставкою 10 л. (1050 Бамбу CAPPUCHINO з внут. вставкою 10 л.) Горщик для квітів VIOLET HOUSE 1050 Бамбу CAPPUCHINO д/квітів з внут. вставкою 10 л. (1050 Бамбу CAPPUCHINO з внут. вставкою 10 л.) VIOLET HOUSE 429 UAH В наявності" [ref=f7e576] [cursor=pointer]:
+                - /url: /product/horshchyk-dlia-kvitiv-violet-house-1050-bambu-cappuchino-d-kvitiv-z-vnut-vstavko-7248963
+                - img "Горщик для квітів VIOLET HOUSE 1050 Бамбу CAPPUCHINO д/квітів з внут. вставкою 10 л. (1050 Бамбу CAPPUCHINO з внут. вставкою 10 л.)" [ref=f7e578]
+                - generic [ref=f7e579]:
+                  - heading "Горщик для квітів VIOLET HOUSE 1050 Бамбу CAPPUCHINO д/квітів з внут. вставкою 10 л. (1050 Бамбу CAPPUCHINO з внут. вставкою 10 л.)" [level=3] [ref=f7e580]
+                  - paragraph [ref=f7e581]: VIOLET HOUSE
+                  - generic [ref=f7e582]: 429 UAH
+                  - paragraph [ref=f7e584]: В наявності
+          - navigation [ref=f7e226]:
+            - generic [ref=f7e227]: ← Назад
+            - generic [ref=f7e228]:
+              - text: Сторінка 1 із 2
+              - generic [ref=f7e229]: · знайдено 22
+            - link "Далі →" [ref=f7e230] [cursor=pointer]:
+              - /url: /catalog?category=horshchyky-dlia-kvitiv-1630&page=2
+    - contentinfo [ref=f7e231]:
+      - generic [ref=f7e232]:
+        - generic [ref=f7e233]:
+          - generic [ref=f7e234]:
+            - heading "E-Shop" [level=3] [ref=f7e235]
+            - paragraph [ref=f7e236]: Найкращі товари для вашого життя
+          - generic [ref=f7e237]:
+            - heading "Категорії" [level=4] [ref=f7e238]
+            - list [ref=f7e239]:
+              - listitem [ref=f7e240]:
+                - link "Електричні" [ref=f7e241] [cursor=pointer]:
+                  - /url: /catalog?category=elektrychni-1538
+              - listitem [ref=f7e242]:
+                - link "Електропечі" [ref=f7e243] [cursor=pointer]:
+                  - /url: /catalog?category=elektropechi-1419
+              - listitem [ref=f7e244]:
+                - link "Комплекти" [ref=f7e245] [cursor=pointer]:
+                  - /url: /catalog?category=komplekty-1646
+              - listitem [ref=f7e246]:
+                - link "Мірні склянки й кухлі" [ref=f7e247] [cursor=pointer]:
+                  - /url: /catalog?category=mirni-sklianky-i-kukhli-1349
+              - listitem [ref=f7e248]:
+                - link "Кухонне приладдя" [ref=f7e249] [cursor=pointer]:
+                  - /url: /catalog?category=kukhonne-pryladdia-884
+              - listitem [ref=f7e250]:
+                - link "Усі категорії →" [ref=f7e251] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=f7e252]:
+            - heading "Інформація" [level=4] [ref=f7e253]
+            - list [ref=f7e254]:
+              - listitem [ref=f7e255]:
+                - link "Статус замовлення" [ref=f7e256] [cursor=pointer]:
+                  - /url: /orders/lookup
+              - listitem [ref=f7e257]:
+                - link "Контакти" [ref=f7e258] [cursor=pointer]:
+                  - /url: /contacts
+              - listitem [ref=f7e259]:
+                - link "Політика конфіденційності" [ref=f7e260] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=f7e261]:
+                - link "Умови використання" [ref=f7e262] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=f7e263]:
+                - link "magazinujut@gmail.com" [ref=f7e264] [cursor=pointer]:
+                  - /url: mailto:magazinujut@gmail.com
+        - generic [ref=f7e265]:
+          - paragraph [ref=f7e266]:
+            - button "Як покращити сайт?" [ref=f7e267]
+          - paragraph [ref=f7e268]: © 2026 E-Shop. Всі права захищені.

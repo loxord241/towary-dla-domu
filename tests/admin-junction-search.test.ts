@@ -67,11 +67,15 @@ function product(i: number, legacyCategoryId: string | null): Row {
 }
 
 // P4 belongs ONLY to the «Інша» branch (legacy + junction agree).
+// P5's legacy column points OUTSIDE the «Батьківська» subtree; its ONLY
+// junction assignment is inside it — token search must still find it.
 const products: Row[] = [
   { ...product(1, C_B_1) }, // in subtree via c1
   { ...product(2, C_B_2) }, // in subtree via c2
   { ...product(3, C_B_1) }, // TWO direct subtree links -> must appear ONCE
   { ...product(4, C_O_LEAF) }, // outside «Батьківська» subtree
+  { ...product(5, C_O_LEAF) }, // default outside; one NON-default junction link inside below
+  { ...product(6, C_O_LEAF) }, // EXCLUSIVELY non-default assignment (only junction C_B_2)
 ];
 
 // Direct assignments (P3 intentionally double-linked inside the subtree)
@@ -81,6 +85,8 @@ const productCategories: Row[] = [
   { product_id: uuid('p', 3), category_id: C_B_1 },
   { product_id: uuid('p', 3), category_id: C_B_2 },
   { product_id: uuid('p', 4), category_id: C_O_LEAF },
+  { product_id: uuid('p', 5), category_id: C_B_1 }, // P5: NON-default only inside subtree
+  { product_id: uuid('p', 6), category_id: C_B_2 }, // P6: its ONLY assignment is non-default
 ];
 
 // --- minimal or= evaluator (same semantics as admin-search-pagination) ---
@@ -131,7 +137,12 @@ function evalPredicate(row: Row, pred: string): boolean {
 }
 
 async function startFake(): Promise<{ client: import('@supabase/supabase-js').SupabaseClient; close: () => Promise<void>; urls: string[] }> {
-  const tables: Record<string, Row[]> = { products, brands: [], categories };
+  const tables: Record<string, Row[]> = {
+    products,
+    brands: [],
+    categories,
+    product_categories: productCategories as unknown as Row[],
+  };
   const urls: string[] = [];
 
   const server = http.createServer((req, res) => {
@@ -231,15 +242,21 @@ test('ADMIN-JUNCTION: explicit categoryId filter matches every subtree assignmen
       size: 20,
       categoryId: C_ROOT_B,
     });
-    assert.equal(result.total, 3, 'P1+P2+P3 по прямим зв’язкам піддерева');
-    assert.equal(result.products.length, 3);
+    // P1-P3 by their defaults; P5/P6 also match through their NON-default
+    // links inside the subtree.
+    assert.equal(result.total, 5, 'P1+P2+P3+P5+P6 по прямим зв’язкам піддерева');
+    assert.equal(result.products.length, 5);
     const ids = new Set(result.products.map((p) => p.id));
-    assert.equal(ids.size, 3, 'жодних дублів при множинних зв’язках');
+    assert.equal(ids.size, 5, 'жодних дублів при множинних зв’язках');
     assert.ok(
       ids.has(String(products[0].id)) &&
         ids.has(String(products[1].id)) &&
         ids.has(String(products[2].id)),
       'повний набір товарів гілки'
+    );
+    assert.ok(
+      ids.has(String(products[4].id)) && ids.has(String(products[5].id)),
+      'не-default зв’язки теж потрапляють у фільтр піддерева'
     );
     assert.ok(!ids.has(String(products[3].id)), 'товар іншої гілки виключено');
 
@@ -260,11 +277,64 @@ test('ADMIN-JUNCTION: token-search expands matched categories to full subtrees',
       size: 50,
       search: 'батьківська',
     });
-    // Token matches rootB by NAME; legacy category_id of P1/P2/P3 ∈ subtree,
-    // P4 (Інша branch) must stay out.
-    assert.equal(result.total, 3);
+    // Token matches rootB by NAME; subtree covers P1/P2/P3 via their defaults
+    // AND P5/P6 via their NON-default junction links. P4 must stay out.
+    assert.equal(result.total, 5);
     const ids = new Set(result.products.map((p) => p.id));
+    assert.ok(ids.has(String(products[4].id)), 'P5 знайдений по НЕ-default категорії');
+    assert.ok(ids.has(String(products[5].id)), 'P6 знайдений по НЕ-default категорії');
     assert.ok(!ids.has(String(products[3].id)));
+  } finally {
+    await fake.close();
+  }
+});
+
+test('ADMIN-JUNCTION: token-search finds a product assigned EXCLUSIVELY via non-default category (no dupes)', async () => {
+  const fake = await startFake();
+  try {
+    // «дитина» matches C_B_1 and C_B_2 by name; P6 has NO default in that
+    // subtree — it is reachable ONLY through its single non-default link.
+    const result = await adminList.listAdminProducts(fake.client, {
+      page: 1,
+      size: 50,
+      search: 'дитина',
+    });
+    assert.equal(result.total, 5, 'P1,P2,P3,P5,P6 — без дублів і без P4');
+    const ids = result.products.map((p) => p.id);
+    assert.equal(new Set(ids).size, ids.length, 'жодного дубля');
+    assert.ok(ids.includes(String(products[5].id)), 'P6 знайдений виключно за додатковою категорією');
+    assert.ok(!ids.includes(String(products[3].id)), 'P4 не потрапляє у піддерево');
+  } finally {
+    await fake.close();
+  }
+});
+
+test('ADMIN-JUNCTION: token-search scalar fields (name/sku/brand/slug) unaffected', async () => {
+  const fake = await startFake();
+  try {
+    const bySku = await adminList.listAdminProducts(fake.client, {
+      page: 1,
+      size: 50,
+      search: 'sku-5',
+    });
+    assert.equal(bySku.total, 1);
+    assert.equal(bySku.products[0].id, String(products[4].id));
+
+    const byNameToken = await adminList.listAdminProducts(fake.client, {
+      page: 1,
+      size: 50,
+      search: 'товар',
+    });
+    assert.equal(byNameToken.total, 6);
+    const nameIds = byNameToken.products.map((p) => p.id);
+    assert.equal(new Set(nameIds).size, nameIds.length);
+
+    const miss = await adminList.listAdminProducts(fake.client, {
+      page: 1,
+      size: 50,
+      search: 'ззовні-немає-такого',
+    });
+    assert.equal(miss.total, 0);
   } finally {
     await fake.close();
   }

@@ -1,0 +1,206 @@
+- generic [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - banner [ref=f2e3]:
+      - generic [ref=f2e4]:
+        - heading "Адмін-панель" [level=1] [ref=f2e5]
+        - generic [ref=f2e6]:
+          - generic [ref=f2e7]: Вітаємо, staslaba30032010@gmail.com
+          - button "Logout" [ref=f2e9]
+    - main [ref=f2e10]:
+      - generic [ref=f2e11]:
+        - generic [ref=f2e25]:
+          - heading "Товари" [level=1] [ref=f2e26]
+          - button "+ Додати товар" [ref=f2e27]
+        - generic [ref=f2e13]:
+          - searchbox "Пошук за назвою, SKU, slug, yc-id, брендом або категорією…" [ref=f2e28]: FSM52334DAO
+          - combobox "Сортування" [ref=f2e29]:
+            - option "За замовчуванням" [selected]
+            - option "Назва А→Я"
+            - option "Назва Я→А"
+            - 'option "Ціна: спочатку дешевші"'
+            - 'option "Ціна: спочатку дорожчі"'
+            - 'option "Залишок: більше → менше"'
+        - table [ref=f2e31]:
+          - rowgroup [ref=f2e32]:
+            - row [ref=f2e33]:
+              - columnheader "Фото" [ref=f2e34]
+              - columnheader "Назва" [ref=f2e35]
+              - columnheader "SKU" [ref=f2e36]
+              - columnheader "Ціна" [ref=f2e37]
+              - columnheader "Склад" [ref=f2e38]
+              - columnheader "Статус" [ref=f2e39]
+              - columnheader "Дії" [ref=f2e40]
+          - rowgroup [ref=f2e41]:
+            - row [ref=f2e42]:
+              - cell [ref=f2e43]:
+                - img "Плита комбінована BEKO FSM52334DAO" [ref=f2e44]
+              - cell "Плита комбінована BEKO FSM52334DAO BEKO" [ref=f2e45]:
+                - generic [ref=f2e46]: Плита комбінована BEKO FSM52334DAO
+                - generic [ref=f2e47]: BEKO
+              - cell "YC-7081966" [ref=f2e48]
+              - cell "17599 UAH" [ref=f2e49]
+              - cell "5 шт" [ref=f2e50]
+              - cell "Активний Вибраний" [ref=f2e51]:
+                - generic [ref=f2e52]: Активний
+                - generic [ref=f2e53]: Вибраний
+              - cell [ref=f2e54]:
+                - button "Фото" [ref=f2e55]
+                - button "Варіанти" [ref=f2e56]
+                - button "Редагувати" [ref=f2e57]
+                - button "Видалити" [ref=f2e58]
+        - dialog [ref=f2e59]:
+          - generic [ref=f2e60]:
+            - generic [ref=f2e61]:
+              - heading "Редагувати товар" [level=2] [ref=f2e62]
+              - button "Закрити" [ref=f2e63]: ×
+            - generic [ref=f2e65]:
+              - group "Основне" [ref=f2e66]:
+                - generic [ref=f2e68]:
+                  - generic [ref=f2e69]:
+                    - text: SKU *
+                    - textbox "SKU *" [ref=f2e70]: YC-7081966
+                  - generic [ref=f2e71]:
+                    - text: Назва *
+                    - textbox "Назва *" [ref=f2e72]: Плита комбінована BEKO FSM52334DAO
+                  - generic [ref=f2e73]:
+                    - text: Slug *
+                    - textbox "Slug *" [ref=f2e74]:
+                      - /placeholder: url-adresa-tovaru
+                      - text: plyta-kombinovana-beko-fsm52334dao-7081966
+                  - generic [ref=f2e75]:
+                    - text: Валюта
+                    - combobox "Валюта" [ref=f2e76]:
+                      - option "UAH" [selected]
+                      - option "USD"
+                      - option "EUR"
+                  - generic [ref=f2e77]:
+                    - text: Ціна *
+                    - spinbutton "Ціна *" [ref=f2e78]: "17599"
+                  - generic [ref=f2e79]:
+                    - text: Стара ціна
+                    - spinbutton "Стара ціна" [ref=f2e80]: "17600"
+                  - generic [ref=f2e81]:
+                    - text: Категорії
+                    - generic [ref=f2e83]:
+                      - list "Вибрані категорії" [ref=f2e84]:
+                        - listitem [ref=f2e85]:
+                          - generic "ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Комбіновані" [ref=f2e86]: Комбіновані
+                          - button "Видалити ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Комбіновані" [ref=f2e87]: ✕
+                        - listitem [ref=f2e1345]:
+                          - generic "ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Праски, парові системи" [ref=f2e1346]: Праски, парові системи
+                          - button "Видалити ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Праски, парові системи" [ref=f2e1347]: ✕
+                      - textbox "Пошук категорій для товару" [ref=f2e89]:
+                        - /placeholder: Пошук категорій…
+                        - text: праски
+                      - paragraph [ref=f2e1348]: "Показано результати пошуку по всіх категоріях: 1"
+                      - list "Дерево категорій" [ref=f2e90]:
+                        - listitem [ref=f2e751]:
+                          - generic [ref=f2e752] [cursor=pointer]:
+                            - checkbox "Праски, парові системи ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Праски, парові системи ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Праски, парові системи" [checked] [active] [ref=f2e753]
+                            - generic [ref=f2e754]: Праски, парові системи
+                            - generic [ref=f2e755]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Праски, парові системи
+                            - generic [ref=f2e756]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Праски, парові системи
+                  - generic [ref=f2e1321]:
+                    - text: Бренд
+                    - combobox "Бренд" [ref=f2e1322]:
+                      - option "— Без бренду —"
+                      - option "HEREVIN"
+                      - option "HISENSE"
+                      - option "CD'A"
+                      - option "BAGER"
+                      - option "EVG"
+                      - option "THOMAS"
+                      - option "PYRAMIDA"
+                      - option "MOVA"
+                      - option "ROWENTA"
+                      - option "VIVA"
+                      - option "PHILIPS"
+                      - option "ECOMO"
+                      - option "IPEC"
+                      - option "UFO"
+                      - option "TIKI"
+                      - option "ELEYUS"
+                      - option "JANTAR"
+                      - option "OSCAR"
+                      - option "AMICA"
+                      - option "VIOLET HOUSE"
+                      - option "RINGEL"
+                      - option "INDESIT"
+                      - option "LONGEVITA"
+                      - option "SHARP"
+                      - option "REMINGTON"
+                      - option "UP!"
+                      - option "HAIER"
+                      - option "TEFAL"
+                      - option "PHILCO"
+                      - option "MOULINEX"
+                      - option "LG"
+                      - option "ximix"
+                      - option "DELFA"
+                      - option "POLARIS"
+                      - option "GORENJE"
+                      - option "TRAMONTINA"
+                      - option "HOOVER"
+                      - option "SENCOR"
+                      - option "LA-"
+                      - option "rotex"
+                      - option "PYREX"
+                      - option "BLACK&DECKER"
+                      - option "ANKER"
+                      - option "HAUSMARK"
+                      - option "LIMITED EDITION"
+                      - option "TESY"
+                      - option "BRAVO CHEF"
+                      - option "WHIRLPOOL"
+                      - option "LUMINARC"
+                      - option "O CUISINE"
+                      - option "KRUPS"
+                      - option "ERGO"
+                      - option "SOHO"
+                      - option "RUSSELL HOBBS"
+                      - option "GLASSET"
+                      - option "QUTU"
+                      - option "ARIETE"
+                      - option "LED"
+                      - option "C&S"
+                      - option "GRETA"
+                      - option "ELECTROLUX"
+                      - option "TRENDGLASS"
+                      - option "BEKO" [selected]
+                      - option "NOVA TEC"
+                      - option "HANSA"
+                      - option "ARCOROC"
+                      - option "IDEA HOME"
+                      - option "IQ"
+                      - option "DREAME"
+                      - option "ESTRADA"
+                      - option "SAMSUNG"
+                  - generic [ref=f2e1323]:
+                    - text: Кількість на складі
+                    - spinbutton "Кількість на складі" [ref=f2e1324]: "5"
+                  - generic [ref=f2e1325]:
+                    - text: Наявність
+                    - combobox "Наявність" [ref=f2e1326]:
+                      - option "В наявності" [selected]
+                      - option "Немає в наявності"
+                      - option "Обмежена наявність"
+                - generic [ref=f2e1328]:
+                  - checkbox "Активний" [checked] [ref=f2e1329]
+                  - generic [ref=f2e1330]: Активний
+                - generic [ref=f2e1331]:
+                  - generic [ref=f2e1332]:
+                    - checkbox "Популярні товари" [checked] [ref=f2e1333]
+                    - generic [ref=f2e1334]: Популярні товари
+                  - paragraph [ref=f2e1335]: "Обрано: 6 / 8 · блок «Популярні товари» на головній сторінці (макс. 8)"
+              - group "Опис (базовий)" [ref=f2e1336]:
+                - generic [ref=f2e1338]:
+                  - text: Короткий опис
+                  - textbox "Короткий опис" [ref=f2e1339]
+                - generic [ref=f2e1340]:
+                  - text: Повний опис
+                  - textbox "Повний опис" [ref=f2e1341]
+              - generic [ref=f2e1342]:
+                - button "Скасувати" [ref=f2e1343]
+                - button "Зберегти" [ref=f2e1344]
+  - button "Open Next.js Dev Tools" [ref=f2e20] [cursor=pointer]
+  - alert [ref=f2e24]

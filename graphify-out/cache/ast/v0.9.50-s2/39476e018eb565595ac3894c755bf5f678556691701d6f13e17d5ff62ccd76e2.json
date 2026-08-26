@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_database_migrations_012_product_images_unique_pair_sql", "label": "012_product_images_unique_pair.sql", "file_type": "code", "source_file": "database/migrations/012_product_images_unique_pair.sql", "source_location": null}], "edges": []}

@@ -1,0 +1,192 @@
+- generic [active] [ref=f5e1]:
+  - button "Open Next.js Dev Tools" [ref=f5e7] [cursor=pointer]
+  - alert [ref=f5e11]
+  - generic [ref=f5e12]:
+    - banner [ref=f5e13]:
+      - generic [ref=f5e15]:
+        - generic [ref=f5e16]:
+          - button "Відкрити меню" [ref=f5e17]
+          - link "E-Shop" [ref=f5e19] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f5e20]:
+            - link "Каталог" [ref=f5e21] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f5e23]:
+          - searchbox "Пошук" [ref=f5e24]
+          - button "Шукати" [ref=f5e25]
+        - generic [ref=f5e29]:
+          - 'link "Обране, товарів: 0" [ref=f5e30] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 0" [ref=f5e33] [cursor=pointer]':
+            - /url: /cart
+    - generic [ref=f5e39]:
+      - complementary [ref=f5e40]:
+        - generic [ref=f5e42]:
+          - heading "Фільтри" [level=3] [ref=f5e43]
+          - generic [ref=f5e44]:
+            - generic [ref=f5e45]:
+              - heading "Категорії" [level=4] [ref=f5e46]
+              - 'button "Категорія: Всі категорії" [ref=f5e48] [cursor=pointer]':
+                - generic [ref=f5e49]: Всі категорії
+            - generic [ref=f5e52]:
+              - heading "Бренди" [level=4] [ref=f5e53]
+              - combobox "Бренд" [ref=f5e54]:
+                - option "Всі бренди" [selected]
+                - option "AMICA"
+                - option "ANKER"
+                - option "ARCOROC"
+                - option "ARIETE"
+                - option "BAGER"
+                - option "BEKO"
+                - option "BLACK&DECKER"
+                - option "BRAVO CHEF"
+                - option "C&S"
+                - option "CD'A"
+                - option "DELFA"
+                - option "DREAME"
+                - option "ECOMO"
+                - option "ELECTROLUX"
+                - option "ELEYUS"
+                - option "ERGO"
+                - option "ESTRADA"
+                - option "EVG"
+                - option "GLASSET"
+                - option "GORENJE"
+                - option "GRETA"
+                - option "HAIER"
+                - option "HANSA"
+                - option "HAUSMARK"
+                - option "HEREVIN"
+                - option "HISENSE"
+                - option "HOOVER"
+                - option "IDEA HOME"
+                - option "INDESIT"
+                - option "IPEC"
+                - option "IQ"
+                - option "JANTAR"
+                - option "KRUPS"
+                - option "LA-"
+                - option "LED"
+                - option "LG"
+                - option "LIMITED EDITION"
+                - option "LONGEVITA"
+                - option "LUMINARC"
+                - option "MOULINEX"
+                - option "MOVA"
+                - option "NOVA TEC"
+                - option "O CUISINE"
+                - option "OSCAR"
+                - option "PHILCO"
+                - option "PHILIPS"
+                - option "POLARIS"
+                - option "PYRAMIDA"
+                - option "PYREX"
+                - option "QUTU"
+                - option "REMINGTON"
+                - option "RINGEL"
+                - option "rotex"
+                - option "ROWENTA"
+                - option "RUSSELL HOBBS"
+                - option "SAMSUNG"
+                - option "SENCOR"
+                - option "SHARP"
+                - option "SOHO"
+                - option "TEFAL"
+                - option "TESY"
+                - option "THOMAS"
+                - option "TIKI"
+                - option "TRAMONTINA"
+                - option "TRENDGLASS"
+                - option "UFO"
+                - option "UP!"
+                - option "VIOLET HOUSE"
+                - option "VIVA"
+                - option "WHIRLPOOL"
+                - option "ximix"
+            - generic [ref=f5e55]:
+              - heading "Ціна (UAH)" [level=4] [ref=f5e56]
+              - generic [ref=f5e57]:
+                - spinbutton "Ціна від" [ref=f5e58]
+                - generic [ref=f5e59]: —
+                - spinbutton "Ціна до" [ref=f5e60]
+            - generic [ref=f5e61]:
+              - heading "Наявність" [level=4] [ref=f5e62]
+              - generic [ref=f5e63] [cursor=pointer]:
+                - checkbox "Тільки в наявності" [ref=f5e64]
+                - generic [ref=f5e65]: Тільки в наявності
+            - generic [ref=f5e66]:
+              - button "Застосувати" [ref=f5e67]
+              - button "Скинути" [ref=f5e68]
+      - main [ref=f5e69]:
+        - generic [ref=f5e70]:
+          - generic [ref=f5e71]:
+            - heading "Каталог товарів" [level=1] [ref=f5e72]
+            - generic [ref=f5e73]: "Знайдено: 0"
+          - generic [ref=f5e74]:
+            - generic [ref=f5e75]:
+              - generic [ref=f5e76]: "Фільтри:"
+              - 'link "Прибрати фільтр Категорія: velika-pobutova-tehnika" [ref=f5e77] [cursor=pointer]':
+                - /url: /catalog
+                - text: "Категорія: velika-pobutova-tehnika"
+                - generic [ref=f5e78]: ×
+              - link "Скинути всі" [ref=f5e79] [cursor=pointer]:
+                - /url: /catalog
+            - combobox "Сортування" [ref=f5e80]:
+              - option "Спочатку нові" [selected]
+              - option "Ціна ▲"
+              - option "Ціна ▼"
+              - option "Назва А–Я"
+          - generic [ref=f5e81]:
+            - paragraph [ref=f5e86]: Нічого не знайдено
+            - paragraph [ref=f5e87]: Спробуйте змінити або скинути фільтри.
+            - link "Скинути фільтри" [ref=f5e88] [cursor=pointer]:
+              - /url: /catalog
+    - contentinfo [ref=f5e89]:
+      - generic [ref=f5e90]:
+        - generic [ref=f5e91]:
+          - generic [ref=f5e92]:
+            - heading "E-Shop" [level=3] [ref=f5e93]
+            - paragraph [ref=f5e94]: Найкращі товари для вашого життя
+          - generic [ref=f5e95]:
+            - heading "Категорії" [level=4] [ref=f5e96]
+            - list [ref=f5e97]:
+              - listitem [ref=f5e98]:
+                - link "Електричні" [ref=f5e99] [cursor=pointer]:
+                  - /url: /catalog?category=elektrychni-1538
+              - listitem [ref=f5e100]:
+                - link "Електропечі" [ref=f5e101] [cursor=pointer]:
+                  - /url: /catalog?category=elektropechi-1419
+              - listitem [ref=f5e102]:
+                - link "Комплекти" [ref=f5e103] [cursor=pointer]:
+                  - /url: /catalog?category=komplekty-1646
+              - listitem [ref=f5e104]:
+                - link "Мірні склянки й кухлі" [ref=f5e105] [cursor=pointer]:
+                  - /url: /catalog?category=mirni-sklianky-i-kukhli-1349
+              - listitem [ref=f5e106]:
+                - link "Кухонне приладдя" [ref=f5e107] [cursor=pointer]:
+                  - /url: /catalog?category=kukhonne-pryladdia-884
+              - listitem [ref=f5e108]:
+                - link "Усі категорії →" [ref=f5e109] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=f5e110]:
+            - heading "Інформація" [level=4] [ref=f5e111]
+            - list [ref=f5e112]:
+              - listitem [ref=f5e113]:
+                - link "Статус замовлення" [ref=f5e114] [cursor=pointer]:
+                  - /url: /orders/lookup
+              - listitem [ref=f5e115]:
+                - link "Контакти" [ref=f5e116] [cursor=pointer]:
+                  - /url: /contacts
+              - listitem [ref=f5e117]:
+                - link "Політика конфіденційності" [ref=f5e118] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=f5e119]:
+                - link "Умови використання" [ref=f5e120] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=f5e121]:
+                - link "magazinujut@gmail.com" [ref=f5e122] [cursor=pointer]:
+                  - /url: mailto:magazinujut@gmail.com
+        - generic [ref=f5e123]:
+          - paragraph [ref=f5e124]:
+            - button "Як покращити сайт?" [ref=f5e125]
+          - paragraph [ref=f5e126]: © 2026 E-Shop. Всі права захищені.

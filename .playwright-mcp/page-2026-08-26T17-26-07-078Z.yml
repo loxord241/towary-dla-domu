@@ -1,0 +1,1425 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - banner [ref=f1e3]:
+      - generic [ref=f1e4]:
+        - heading "Адмін-панель" [level=1] [ref=f1e5]
+        - generic [ref=f1e6]:
+          - generic [ref=f1e7]: Вітаємо, staslaba30032010@gmail.com
+          - button "Logout" [ref=f1e9]
+    - main [ref=f1e10]:
+      - generic [ref=f1e11]:
+        - generic [ref=f1e24]:
+          - heading "Товари" [level=1] [ref=f1e25]
+          - button "+ Додати товар" [ref=f1e26]
+        - generic [ref=f1e13]:
+          - searchbox "Пошук за назвою, SKU, slug, yc-id, брендом або категорією…" [ref=f1e27]: FSM52334DAO
+          - combobox "Сортування" [ref=f1e28]:
+            - option "За замовчуванням" [selected]
+            - option "Назва А→Я"
+            - option "Назва Я→А"
+            - 'option "Ціна: спочатку дешевші"'
+            - 'option "Ціна: спочатку дорожчі"'
+            - 'option "Залишок: більше → менше"'
+        - table [ref=f1e30]:
+          - rowgroup [ref=f1e31]:
+            - row [ref=f1e32]:
+              - columnheader "Фото" [ref=f1e33]
+              - columnheader "Назва" [ref=f1e34]
+              - columnheader "SKU" [ref=f1e35]
+              - columnheader "Ціна" [ref=f1e36]
+              - columnheader "Склад" [ref=f1e37]
+              - columnheader "Статус" [ref=f1e38]
+              - columnheader "Дії" [ref=f1e39]
+          - rowgroup [ref=f1e40]:
+            - row [ref=f1e41]:
+              - cell [ref=f1e42]:
+                - img "Плита комбінована BEKO FSM52334DAO" [ref=f1e43]
+              - cell "Плита комбінована BEKO FSM52334DAO BEKO" [ref=f1e44]:
+                - generic [ref=f1e45]: Плита комбінована BEKO FSM52334DAO
+                - generic [ref=f1e46]: BEKO
+              - cell "YC-7081966" [ref=f1e47]
+              - cell "17599 UAH" [ref=f1e48]
+              - cell "5 шт" [ref=f1e49]
+              - cell "Активний Вибраний" [ref=f1e50]:
+                - generic [ref=f1e51]: Активний
+                - generic [ref=f1e52]: Вибраний
+              - cell [ref=f1e53]:
+                - button "Фото" [ref=f1e54]
+                - button "Варіанти" [ref=f1e55]
+                - button "Редагувати" [ref=f1e56]
+                - button "Видалити" [ref=f1e57]
+        - dialog [ref=f1e59]:
+          - generic [ref=f1e60]:
+            - generic [ref=f1e61]:
+              - heading "Редагувати товар" [level=2] [ref=f1e62]
+              - button "Закрити" [ref=f1e63]: ×
+            - generic [ref=f1e65]:
+              - group "Основне" [ref=f1e66]:
+                - generic [ref=f1e68]:
+                  - generic [ref=f1e69]:
+                    - text: SKU *
+                    - textbox "SKU *" [ref=f1e70]: YC-7081966
+                  - generic [ref=f1e71]:
+                    - text: Назва *
+                    - textbox "Назва *" [ref=f1e72]: Плита комбінована BEKO FSM52334DAO
+                  - generic [ref=f1e73]:
+                    - text: Slug *
+                    - textbox "Slug *" [ref=f1e74]:
+                      - /placeholder: url-adresa-tovaru
+                      - text: plyta-kombinovana-beko-fsm52334dao-7081966
+                  - generic [ref=f1e75]:
+                    - text: Валюта
+                    - combobox "Валюта" [ref=f1e76]:
+                      - option "UAH" [selected]
+                      - option "USD"
+                      - option "EUR"
+                  - generic [ref=f1e77]:
+                    - text: Ціна *
+                    - spinbutton "Ціна *" [ref=f1e78]: "17599"
+                  - generic [ref=f1e79]:
+                    - text: Стара ціна
+                    - spinbutton "Стара ціна" [ref=f1e80]: "17600"
+                  - generic [ref=f1e81]:
+                    - text: Категорії
+                    - generic [ref=f1e83]:
+                      - list "Вибрані категорії" [ref=f1e84]:
+                        - listitem [ref=f1e85]:
+                          - generic "ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Комбіновані" [ref=f1e86]: Комбіновані
+                          - button "Видалити ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Комбіновані" [ref=f1e87]: ✕
+                      - textbox "Пошук категорій для товару" [ref=f1e92]:
+                        - /placeholder: Пошук категорій…
+                      - list "Дерево категорій" [ref=f1e93]:
+                        - listitem [ref=f1e94]:
+                          - generic [ref=f1e95] [cursor=pointer]:
+                            - checkbox "Господарчі товари Господарчі товари Господарчі товари" [ref=f1e96]
+                            - generic [ref=f1e97]: Господарчі товари
+                            - generic [ref=f1e98]: Господарчі товари
+                            - generic [ref=f1e99]: Господарчі товари
+                        - listitem [ref=f1e100]:
+                          - generic [ref=f1e101] [cursor=pointer]:
+                            - checkbox "Горщики для квітів Господарчі товари → Горщики для квітів Господарчі товари → Горщики для квітів" [ref=f1e102]
+                            - generic [ref=f1e103]: Горщики для квітів
+                            - generic [ref=f1e104]: Господарчі товари → Горщики для квітів
+                            - generic [ref=f1e105]: Господарчі товари → Горщики для квітів
+                        - listitem [ref=f1e106]:
+                          - generic [ref=f1e107] [cursor=pointer]:
+                            - checkbox "Для ванної та туалету Господарчі товари → Для ванної та туалету Господарчі товари → Для ванної та туалету" [ref=f1e108]
+                            - generic [ref=f1e109]: Для ванної та туалету
+                            - generic [ref=f1e110]: Господарчі товари → Для ванної та туалету
+                            - generic [ref=f1e111]: Господарчі товари → Для ванної та туалету
+                        - listitem [ref=f1e112]:
+                          - generic [ref=f1e113] [cursor=pointer]:
+                            - checkbox "Аксесуари Господарчі товари → Для ванної та туалету → Аксесуари Господарчі товари → Для ванної та туалету → Аксесуари" [ref=f1e114]
+                            - generic [ref=f1e115]: Аксесуари
+                            - generic [ref=f1e116]: Господарчі товари → Для ванної та туалету → Аксесуари
+                            - generic [ref=f1e117]: Господарчі товари → Для ванної та туалету → Аксесуари
+                        - listitem [ref=f1e118]:
+                          - generic [ref=f1e119] [cursor=pointer]:
+                            - checkbox "Ванночки дитячі Господарчі товари → Для ванної та туалету → Ванночки дитячі Господарчі товари → Для ванної та туалету → Ванночки дитячі" [ref=f1e120]
+                            - generic [ref=f1e121]: Ванночки дитячі
+                            - generic [ref=f1e122]: Господарчі товари → Для ванної та туалету → Ванночки дитячі
+                            - generic [ref=f1e123]: Господарчі товари → Для ванної та туалету → Ванночки дитячі
+                        - listitem [ref=f1e124]:
+                          - generic [ref=f1e125] [cursor=pointer]:
+                            - checkbox "Горщики дитячі Господарчі товари → Для ванної та туалету → Горщики дитячі Господарчі товари → Для ванної та туалету → Горщики дитячі" [ref=f1e126]
+                            - generic [ref=f1e127]: Горщики дитячі
+                            - generic [ref=f1e128]: Господарчі товари → Для ванної та туалету → Горщики дитячі
+                            - generic [ref=f1e129]: Господарчі товари → Для ванної та туалету → Горщики дитячі
+                        - listitem [ref=f1e130]:
+                          - generic [ref=f1e131] [cursor=pointer]:
+                            - checkbox "Набори для ванної Господарчі товари → Для ванної та туалету → Набори для ванної Господарчі товари → Для ванної та туалету → Набори для ванної" [ref=f1e132]
+                            - generic [ref=f1e133]: Набори для ванної
+                            - generic [ref=f1e134]: Господарчі товари → Для ванної та туалету → Набори для ванної
+                            - generic [ref=f1e135]: Господарчі товари → Для ванної та туалету → Набори для ванної
+                        - listitem [ref=f1e136]:
+                          - generic [ref=f1e137] [cursor=pointer]:
+                            - checkbox "Стільчаки Господарчі товари → Для ванної та туалету → Стільчаки Господарчі товари → Для ванної та туалету → Стільчаки" [ref=f1e138]
+                            - generic [ref=f1e139]: Стільчаки
+                            - generic [ref=f1e140]: Господарчі товари → Для ванної та туалету → Стільчаки
+                            - generic [ref=f1e141]: Господарчі товари → Для ванної та туалету → Стільчаки
+                        - listitem [ref=f1e142]:
+                          - generic [ref=f1e143] [cursor=pointer]:
+                            - checkbox "Дошки для прасування Господарчі товари → Дошки для прасування Господарчі товари → Дошки для прасування" [ref=f1e144]
+                            - generic [ref=f1e145]: Дошки для прасування
+                            - generic [ref=f1e146]: Господарчі товари → Дошки для прасування
+                            - generic [ref=f1e147]: Господарчі товари → Дошки для прасування
+                        - listitem [ref=f1e148]:
+                          - generic [ref=f1e149] [cursor=pointer]:
+                            - checkbox "Стойки та вішалки для одягу Господарчі товари → Стойки та вішалки для одягу Господарчі товари → Стойки та вішалки для одягу" [ref=f1e150]
+                            - generic [ref=f1e151]: Стойки та вішалки для одягу
+                            - generic [ref=f1e152]: Господарчі товари → Стойки та вішалки для одягу
+                            - generic [ref=f1e153]: Господарчі товари → Стойки та вішалки для одягу
+                        - listitem [ref=f1e154]:
+                          - generic [ref=f1e155] [cursor=pointer]:
+                            - checkbox "Сушарки для білизни Господарчі товари → Сушарки для білизни Господарчі товари → Сушарки для білизни" [ref=f1e156]
+                            - generic [ref=f1e157]: Сушарки для білизни
+                            - generic [ref=f1e158]: Господарчі товари → Сушарки для білизни
+                            - generic [ref=f1e159]: Господарчі товари → Сушарки для білизни
+                        - listitem [ref=f1e160]:
+                          - generic [ref=f1e161] [cursor=pointer]:
+                            - checkbox "Товари для прибирання Господарчі товари → Товари для прибирання Господарчі товари → Товари для прибирання" [ref=f1e162]
+                            - generic [ref=f1e163]: Товари для прибирання
+                            - generic [ref=f1e164]: Господарчі товари → Товари для прибирання
+                            - generic [ref=f1e165]: Господарчі товари → Товари для прибирання
+                        - listitem [ref=f1e166]:
+                          - generic [ref=f1e167] [cursor=pointer]:
+                            - checkbox "Відра Господарчі товари → Товари для прибирання → Відра Господарчі товари → Товари для прибирання → Відра" [ref=f1e168]
+                            - generic [ref=f1e169]: Відра
+                            - generic [ref=f1e170]: Господарчі товари → Товари для прибирання → Відра
+                            - generic [ref=f1e171]: Господарчі товари → Товари для прибирання → Відра
+                        - listitem [ref=f1e172]:
+                          - generic [ref=f1e173] [cursor=pointer]:
+                            - checkbox "Вікномийки Господарчі товари → Товари для прибирання → Вікномийки Господарчі товари → Товари для прибирання → Вікномийки" [ref=f1e174]
+                            - generic [ref=f1e175]: Вікномийки
+                            - generic [ref=f1e176]: Господарчі товари → Товари для прибирання → Вікномийки
+                            - generic [ref=f1e177]: Господарчі товари → Товари для прибирання → Вікномийки
+                        - listitem [ref=f1e178]:
+                          - generic [ref=f1e179] [cursor=pointer]:
+                            - checkbox "Запаски Господарчі товари → Товари для прибирання → Запаски Господарчі товари → Товари для прибирання → Запаски" [ref=f1e180]
+                            - generic [ref=f1e181]: Запаски
+                            - generic [ref=f1e182]: Господарчі товари → Товари для прибирання → Запаски
+                            - generic [ref=f1e183]: Господарчі товари → Товари для прибирання → Запаски
+                        - listitem [ref=f1e184]:
+                          - generic [ref=f1e185] [cursor=pointer]:
+                            - checkbox "Набори для прибирання Господарчі товари → Товари для прибирання → Набори для прибирання Господарчі товари → Товари для прибирання → Набори для прибирання" [ref=f1e186]
+                            - generic [ref=f1e187]: Набори для прибирання
+                            - generic [ref=f1e188]: Господарчі товари → Товари для прибирання → Набори для прибирання
+                            - generic [ref=f1e189]: Господарчі товари → Товари для прибирання → Набори для прибирання
+                        - listitem [ref=f1e190]:
+                          - generic [ref=f1e191] [cursor=pointer]:
+                            - checkbox "Скребки Господарчі товари → Товари для прибирання → Скребки Господарчі товари → Товари для прибирання → Скребки" [ref=f1e192]
+                            - generic [ref=f1e193]: Скребки
+                            - generic [ref=f1e194]: Господарчі товари → Товари для прибирання → Скребки
+                            - generic [ref=f1e195]: Господарчі товари → Товари для прибирання → Скребки
+                        - listitem [ref=f1e196]:
+                          - generic [ref=f1e197] [cursor=pointer]:
+                            - checkbox "Совки Господарчі товари → Товари для прибирання → Совки Господарчі товари → Товари для прибирання → Совки" [ref=f1e198]
+                            - generic [ref=f1e199]: Совки
+                            - generic [ref=f1e200]: Господарчі товари → Товари для прибирання → Совки
+                            - generic [ref=f1e201]: Господарчі товари → Товари для прибирання → Совки
+                        - listitem [ref=f1e202]:
+                          - generic [ref=f1e203] [cursor=pointer]:
+                            - checkbox "Тази Господарчі товари → Товари для прибирання → Тази Господарчі товари → Товари для прибирання → Тази" [ref=f1e204]
+                            - generic [ref=f1e205]: Тази
+                            - generic [ref=f1e206]: Господарчі товари → Товари для прибирання → Тази
+                            - generic [ref=f1e207]: Господарчі товари → Товари для прибирання → Тази
+                        - listitem [ref=f1e208]:
+                          - generic [ref=f1e209] [cursor=pointer]:
+                            - checkbox "Швабри Господарчі товари → Товари для прибирання → Швабри Господарчі товари → Товари для прибирання → Швабри" [ref=f1e210]
+                            - generic [ref=f1e211]: Швабри
+                            - generic [ref=f1e212]: Господарчі товари → Товари для прибирання → Швабри
+                            - generic [ref=f1e213]: Господарчі товари → Товари для прибирання → Швабри
+                        - listitem [ref=f1e214]:
+                          - generic [ref=f1e215] [cursor=pointer]:
+                            - checkbox "Щітки Господарчі товари → Товари для прибирання → Щітки Господарчі товари → Товари для прибирання → Щітки" [ref=f1e216]
+                            - generic [ref=f1e217]: Щітки
+                            - generic [ref=f1e218]: Господарчі товари → Товари для прибирання → Щітки
+                            - generic [ref=f1e219]: Господарчі товари → Товари для прибирання → Щітки
+                        - listitem [ref=f1e220]:
+                          - generic [ref=f1e221] [cursor=pointer]:
+                            - checkbox "Декор Декор Декор" [ref=f1e222]
+                            - generic [ref=f1e223]: Декор
+                            - generic [ref=f1e224]: Декор
+                            - generic [ref=f1e225]: Декор
+                        - listitem [ref=f1e226]:
+                          - generic [ref=f1e227] [cursor=pointer]:
+                            - checkbox "Вази Декор → Вази Декор → Вази" [ref=f1e228]
+                            - generic [ref=f1e229]: Вази
+                            - generic [ref=f1e230]: Декор → Вази
+                            - generic [ref=f1e231]: Декор → Вази
+                        - listitem [ref=f1e232]:
+                          - generic [ref=f1e233] [cursor=pointer]:
+                            - checkbox "Дизайнерські Рамки і Підрамники FUJIFILM Декор → Дизайнерські Рамки і Підрамники FUJIFILM Декор → Дизайнерські Рамки і Підрамники FUJIFILM" [ref=f1e234]
+                            - generic [ref=f1e235]: Дизайнерські Рамки і Підрамники FUJIFILM
+                            - generic [ref=f1e236]: Декор → Дизайнерські Рамки і Підрамники FUJIFILM
+                            - generic [ref=f1e237]: Декор → Дизайнерські Рамки і Підрамники FUJIFILM
+                        - listitem [ref=f1e238]:
+                          - generic [ref=f1e239] [cursor=pointer]:
+                            - checkbox "Підсвічники Декор → Підсвічники Декор → Підсвічники" [ref=f1e240]
+                            - generic [ref=f1e241]: Підсвічники
+                            - generic [ref=f1e242]: Декор → Підсвічники
+                            - generic [ref=f1e243]: Декор → Підсвічники
+                        - listitem [ref=f1e244]:
+                          - generic [ref=f1e245] [cursor=pointer]:
+                            - checkbox "Подарункові коробки Декор → Подарункові коробки Декор → Подарункові коробки" [ref=f1e246]
+                            - generic [ref=f1e247]: Подарункові коробки
+                            - generic [ref=f1e248]: Декор → Подарункові коробки
+                            - generic [ref=f1e249]: Декор → Подарункові коробки
+                        - listitem [ref=f1e250]:
+                          - generic [ref=f1e251] [cursor=pointer]:
+                            - checkbox "Фотоальбоми Декор → Фотоальбоми Декор → Фотоальбоми" [ref=f1e252]
+                            - generic [ref=f1e253]: Фотоальбоми
+                            - generic [ref=f1e254]: Декор → Фотоальбоми
+                            - generic [ref=f1e255]: Декор → Фотоальбоми
+                        - listitem [ref=f1e256]:
+                          - generic [ref=f1e257] [cursor=pointer]:
+                            - checkbox "Фоторамки Декор → Фоторамки Декор → Фоторамки" [ref=f1e258]
+                            - generic [ref=f1e259]: Фоторамки
+                            - generic [ref=f1e260]: Декор → Фоторамки
+                            - generic [ref=f1e261]: Декор → Фоторамки
+                        - listitem [ref=f1e262]:
+                          - generic [ref=f1e263] [cursor=pointer]:
+                            - checkbox "Кошики та органайзери Кошики та органайзери Кошики та органайзери" [ref=f1e264]
+                            - generic [ref=f1e265]: Кошики та органайзери
+                            - generic [ref=f1e266]: Кошики та органайзери
+                            - generic [ref=f1e267]: Кошики та органайзери
+                        - listitem [ref=f1e268]:
+                          - generic [ref=f1e269] [cursor=pointer]:
+                            - checkbox "Кошики для білизни Кошики та органайзери → Кошики для білизни Кошики та органайзери → Кошики для білизни" [ref=f1e270]
+                            - generic [ref=f1e271]: Кошики для білизни
+                            - generic [ref=f1e272]: Кошики та органайзери → Кошики для білизни
+                            - generic [ref=f1e273]: Кошики та органайзери → Кошики для білизни
+                        - listitem [ref=f1e274]:
+                          - generic [ref=f1e275] [cursor=pointer]:
+                            - checkbox "Кошики для пікніка Кошики та органайзери → Кошики для пікніка Кошики та органайзери → Кошики для пікніка" [ref=f1e276]
+                            - generic [ref=f1e277]: Кошики для пікніка
+                            - generic [ref=f1e278]: Кошики та органайзери → Кошики для пікніка
+                            - generic [ref=f1e279]: Кошики та органайзери → Кошики для пікніка
+                        - listitem [ref=f1e280]:
+                          - generic [ref=f1e281] [cursor=pointer]:
+                            - checkbox "Кошики для сміття Кошики та органайзери → Кошики для сміття Кошики та органайзери → Кошики для сміття" [ref=f1e282]
+                            - generic [ref=f1e283]: Кошики для сміття
+                            - generic [ref=f1e284]: Кошики та органайзери → Кошики для сміття
+                            - generic [ref=f1e285]: Кошики та органайзери → Кошики для сміття
+                        - listitem [ref=f1e286]:
+                          - generic [ref=f1e287] [cursor=pointer]:
+                            - checkbox "Кошики та коробки універсальні Кошики та органайзери → Кошики та коробки універсальні Кошики та органайзери → Кошики та коробки універсальні" [ref=f1e288]
+                            - generic [ref=f1e289]: Кошики та коробки універсальні
+                            - generic [ref=f1e290]: Кошики та органайзери → Кошики та коробки універсальні
+                            - generic [ref=f1e291]: Кошики та органайзери → Кошики та коробки універсальні
+                        - listitem [ref=f1e292]:
+                          - generic [ref=f1e293] [cursor=pointer]:
+                            - checkbox "Органайзери Кошики та органайзери → Органайзери Кошики та органайзери → Органайзери" [ref=f1e294]
+                            - generic [ref=f1e295]: Органайзери
+                            - generic [ref=f1e296]: Кошики та органайзери → Органайзери
+                            - generic [ref=f1e297]: Кошики та органайзери → Органайзери
+                        - listitem [ref=f1e298]:
+                          - generic [ref=f1e299] [cursor=pointer]:
+                            - checkbox "Кухонне приладдя Кухонне приладдя Кухонне приладдя" [ref=f1e300]
+                            - generic [ref=f1e301]: Кухонне приладдя
+                            - generic [ref=f1e302]: Кухонне приладдя
+                            - generic [ref=f1e303]: Кухонне приладдя
+                        - listitem [ref=f1e304]:
+                          - generic [ref=f1e305] [cursor=pointer]:
+                            - checkbox "Глечики Кухонне приладдя → Глечики Кухонне приладдя → Глечики" [ref=f1e306]
+                            - generic [ref=f1e307]: Глечики
+                            - generic [ref=f1e308]: Кухонне приладдя → Глечики
+                            - generic [ref=f1e309]: Кухонне приладдя → Глечики
+                        - listitem [ref=f1e310]:
+                          - generic [ref=f1e311] [cursor=pointer]:
+                            - checkbox "Дошка для нарізання Кухонне приладдя → Дошка для нарізання Кухонне приладдя → Дошка для нарізання" [ref=f1e312]
+                            - generic [ref=f1e313]: Дошка для нарізання
+                            - generic [ref=f1e314]: Кухонне приладдя → Дошка для нарізання
+                            - generic [ref=f1e315]: Кухонне приладдя → Дошка для нарізання
+                        - listitem [ref=f1e316]:
+                          - generic [ref=f1e317] [cursor=pointer]:
+                            - checkbox "Кухонні аксесуари Кухонне приладдя → Кухонні аксесуари Кухонне приладдя → Кухонні аксесуари" [ref=f1e318]
+                            - generic [ref=f1e319]: Кухонні аксесуари
+                            - generic [ref=f1e320]: Кухонне приладдя → Кухонні аксесуари
+                            - generic [ref=f1e321]: Кухонне приладдя → Кухонні аксесуари
+                        - listitem [ref=f1e322]:
+                          - generic [ref=f1e323] [cursor=pointer]:
+                            - checkbox "Миски Кухонне приладдя → Миски Кухонне приладдя → Миски" [ref=f1e324]
+                            - generic [ref=f1e325]: Миски
+                            - generic [ref=f1e326]: Кухонне приладдя → Миски
+                            - generic [ref=f1e327]: Кухонне приладдя → Миски
+                        - listitem [ref=f1e328]:
+                          - generic [ref=f1e329] [cursor=pointer]:
+                            - checkbox "Мірні склянки й кухлі Кухонне приладдя → Мірні склянки й кухлі Кухонне приладдя → Мірні склянки й кухлі" [ref=f1e330]
+                            - generic [ref=f1e331]: Мірні склянки й кухлі
+                            - generic [ref=f1e332]: Кухонне приладдя → Мірні склянки й кухлі
+                            - generic [ref=f1e333]: Кухонне приладдя → Мірні склянки й кухлі
+                        - listitem [ref=f1e334]:
+                          - generic [ref=f1e335] [cursor=pointer]:
+                            - checkbox "Питні набори (пластик) Кухонне приладдя → Питні набори (пластик) Кухонне приладдя → Питні набори (пластик)" [ref=f1e336]
+                            - generic [ref=f1e337]: Питні набори (пластик)
+                            - generic [ref=f1e338]: Кухонне приладдя → Питні набори (пластик)
+                            - generic [ref=f1e339]: Кухонне приладдя → Питні набори (пластик)
+                        - listitem [ref=f1e340]:
+                          - generic [ref=f1e341] [cursor=pointer]:
+                            - checkbox "Склянки (пластик) Кухонне приладдя → Склянки (пластик) Кухонне приладдя → Склянки (пластик)" [ref=f1e342]
+                            - generic [ref=f1e343]: Склянки (пластик)
+                            - generic [ref=f1e344]: Кухонне приладдя → Склянки (пластик)
+                            - generic [ref=f1e345]: Кухонне приладдя → Склянки (пластик)
+                        - listitem [ref=f1e346]:
+                          - generic [ref=f1e347] [cursor=pointer]:
+                            - checkbox "Спецівники Кухонне приладдя → Спецівники Кухонне приладдя → Спецівники" [ref=f1e348]
+                            - generic [ref=f1e349]: Спецівники
+                            - generic [ref=f1e350]: Кухонне приладдя → Спецівники
+                            - generic [ref=f1e351]: Кухонне приладдя → Спецівники
+                        - listitem [ref=f1e352]:
+                          - generic [ref=f1e353] [cursor=pointer]:
+                            - checkbox "Тарілки (пластик) Кухонне приладдя → Тарілки (пластик) Кухонне приладдя → Тарілки (пластик)" [ref=f1e354]
+                            - generic [ref=f1e355]: Тарілки (пластик)
+                            - generic [ref=f1e356]: Кухонне приладдя → Тарілки (пластик)
+                            - generic [ref=f1e357]: Кухонне приладдя → Тарілки (пластик)
+                        - listitem [ref=f1e358]:
+                          - generic [ref=f1e359] [cursor=pointer]:
+                            - checkbox "Тортівниці (пластик) Кухонне приладдя → Тортівниці (пластик) Кухонне приладдя → Тортівниці (пластик)" [ref=f1e360]
+                            - generic [ref=f1e361]: Тортівниці (пластик)
+                            - generic [ref=f1e362]: Кухонне приладдя → Тортівниці (пластик)
+                            - generic [ref=f1e363]: Кухонне приладдя → Тортівниці (пластик)
+                        - listitem [ref=f1e364]:
+                          - generic [ref=f1e365] [cursor=pointer]:
+                            - checkbox "Фрешниці Кухонне приладдя → Фрешниці Кухонне приладдя → Фрешниці" [ref=f1e366]
+                            - generic [ref=f1e367]: Фрешниці
+                            - generic [ref=f1e368]: Кухонне приладдя → Фрешниці
+                            - generic [ref=f1e369]: Кухонне приладдя → Фрешниці
+                        - listitem [ref=f1e370]:
+                          - generic [ref=f1e371] [cursor=pointer]:
+                            - checkbox "Хлібниці Кухонне приладдя → Хлібниці Кухонне приладдя → Хлібниці" [ref=f1e372]
+                            - generic [ref=f1e373]: Хлібниці
+                            - generic [ref=f1e374]: Кухонне приладдя → Хлібниці
+                            - generic [ref=f1e375]: Кухонне приладдя → Хлібниці
+                        - listitem [ref=f1e376]:
+                          - generic [ref=f1e377] [cursor=pointer]:
+                            - checkbox "Кухонний посуд Кухонний посуд Кухонний посуд" [ref=f1e378]
+                            - generic [ref=f1e379]: Кухонний посуд
+                            - generic [ref=f1e380]: Кухонний посуд
+                            - generic [ref=f1e381]: Кухонний посуд
+                        - listitem [ref=f1e382]:
+                          - generic [ref=f1e383] [cursor=pointer]:
+                            - checkbox "Гусятниці Кухонний посуд → Гусятниці Кухонний посуд → Гусятниці" [ref=f1e384]
+                            - generic [ref=f1e385]: Гусятниці
+                            - generic [ref=f1e386]: Кухонний посуд → Гусятниці
+                            - generic [ref=f1e387]: Кухонний посуд → Гусятниці
+                        - listitem [ref=f1e388]:
+                          - generic [ref=f1e389] [cursor=pointer]:
+                            - checkbox "Кавоварки Кухонний посуд → Кавоварки Кухонний посуд → Кавоварки" [ref=f1e390]
+                            - generic [ref=f1e391]: Кавоварки
+                            - generic [ref=f1e392]: Кухонний посуд → Кавоварки
+                            - generic [ref=f1e393]: Кухонний посуд → Кавоварки
+                        - listitem [ref=f1e394]:
+                          - generic [ref=f1e395] [cursor=pointer]:
+                            - checkbox "Каструлі та ковші Кухонний посуд → Каструлі та ковші Кухонний посуд → Каструлі та ковші" [ref=f1e396]
+                            - generic [ref=f1e397]: Каструлі та ковші
+                            - generic [ref=f1e398]: Кухонний посуд → Каструлі та ковші
+                            - generic [ref=f1e399]: Кухонний посуд → Каструлі та ковші
+                        - listitem [ref=f1e400]:
+                          - generic [ref=f1e401] [cursor=pointer]:
+                            - checkbox "Кришки Кухонний посуд → Кришки Кухонний посуд → Кришки" [ref=f1e402]
+                            - generic [ref=f1e403]: Кришки
+                            - generic [ref=f1e404]: Кухонний посуд → Кришки
+                            - generic [ref=f1e405]: Кухонний посуд → Кришки
+                        - listitem [ref=f1e406]:
+                          - generic [ref=f1e407] [cursor=pointer]:
+                            - checkbox "Набори посуду Кухонний посуд → Набори посуду Кухонний посуд → Набори посуду" [ref=f1e408]
+                            - generic [ref=f1e409]: Набори посуду
+                            - generic [ref=f1e410]: Кухонний посуд → Набори посуду
+                            - generic [ref=f1e411]: Кухонний посуд → Набори посуду
+                        - listitem [ref=f1e412]:
+                          - generic [ref=f1e413] [cursor=pointer]:
+                            - checkbox "Сковорідки та сотейники Кухонний посуд → Сковорідки та сотейники Кухонний посуд → Сковорідки та сотейники" [ref=f1e414]
+                            - generic [ref=f1e415]: Сковорідки та сотейники
+                            - generic [ref=f1e416]: Кухонний посуд → Сковорідки та сотейники
+                            - generic [ref=f1e417]: Кухонний посуд → Сковорідки та сотейники
+                        - listitem [ref=f1e418]:
+                          - generic [ref=f1e419] [cursor=pointer]:
+                            - checkbox "Форми для випікання Кухонний посуд → Форми для випікання Кухонний посуд → Форми для випікання" [ref=f1e420]
+                            - generic [ref=f1e421]: Форми для випікання
+                            - generic [ref=f1e422]: Кухонний посуд → Форми для випікання
+                            - generic [ref=f1e423]: Кухонний посуд → Форми для випікання
+                        - listitem [ref=f1e424]:
+                          - generic [ref=f1e425] [cursor=pointer]:
+                            - checkbox "Френч-преси Кухонний посуд → Френч-преси Кухонний посуд → Френч-преси" [ref=f1e426]
+                            - generic [ref=f1e427]: Френч-преси
+                            - generic [ref=f1e428]: Кухонний посуд → Френч-преси
+                            - generic [ref=f1e429]: Кухонний посуд → Френч-преси
+                        - listitem [ref=f1e430]:
+                          - generic [ref=f1e431] [cursor=pointer]:
+                            - checkbox "Чайники Кухонний посуд → Чайники Кухонний посуд → Чайники" [ref=f1e432]
+                            - generic [ref=f1e433]: Чайники
+                            - generic [ref=f1e434]: Кухонний посуд → Чайники
+                            - generic [ref=f1e435]: Кухонний посуд → Чайники
+                        - listitem [ref=f1e436]:
+                          - generic [ref=f1e437] [cursor=pointer]:
+                            - checkbox "Ножі та аксессуари Ножі та аксессуари Ножі та аксессуари" [ref=f1e438]
+                            - generic [ref=f1e439]: Ножі та аксессуари
+                            - generic [ref=f1e440]: Ножі та аксессуари
+                            - generic [ref=f1e441]: Ножі та аксессуари
+                        - listitem [ref=f1e442]:
+                          - generic [ref=f1e443] [cursor=pointer]:
+                            - checkbox "Барбекю Ножі та аксессуари → Барбекю Ножі та аксессуари → Барбекю" [ref=f1e444]
+                            - generic [ref=f1e445]: Барбекю
+                            - generic [ref=f1e446]: Ножі та аксессуари → Барбекю
+                            - generic [ref=f1e447]: Ножі та аксессуари → Барбекю
+                        - listitem [ref=f1e448]:
+                          - generic [ref=f1e449] [cursor=pointer]:
+                            - checkbox "Набори ножів Ножі та аксессуари → Набори ножів Ножі та аксессуари → Набори ножів" [ref=f1e450]
+                            - generic [ref=f1e451]: Набори ножів
+                            - generic [ref=f1e452]: Ножі та аксессуари → Набори ножів
+                            - generic [ref=f1e453]: Ножі та аксессуари → Набори ножів
+                        - listitem [ref=f1e454]:
+                          - generic [ref=f1e455] [cursor=pointer]:
+                            - checkbox "Ножиці Ножі та аксессуари → Ножиці Ножі та аксессуари → Ножиці" [ref=f1e456]
+                            - generic [ref=f1e457]: Ножиці
+                            - generic [ref=f1e458]: Ножі та аксессуари → Ножиці
+                            - generic [ref=f1e459]: Ножі та аксессуари → Ножиці
+                        - listitem [ref=f1e460]:
+                          - generic [ref=f1e461] [cursor=pointer]:
+                            - checkbox "Ножі Ножі та аксессуари → Ножі Ножі та аксессуари → Ножі" [ref=f1e462]
+                            - generic [ref=f1e463]: Ножі
+                            - generic [ref=f1e464]: Ножі та аксессуари → Ножі
+                            - generic [ref=f1e465]: Ножі та аксессуари → Ножі
+                        - listitem [ref=f1e466]:
+                          - generic [ref=f1e467] [cursor=pointer]:
+                            - checkbox "Приналежності для ножів Ножі та аксессуари → Приналежності для ножів Ножі та аксессуари → Приналежності для ножів" [ref=f1e468]
+                            - generic [ref=f1e469]: Приналежності для ножів
+                            - generic [ref=f1e470]: Ножі та аксессуари → Приналежності для ножів
+                            - generic [ref=f1e471]: Ножі та аксессуари → Приналежності для ножів
+                        - listitem [ref=f1e472]:
+                          - generic [ref=f1e473] [cursor=pointer]:
+                            - checkbox "Питне скло Питне скло Питне скло" [ref=f1e474]
+                            - generic [ref=f1e475]: Питне скло
+                            - generic [ref=f1e476]: Питне скло
+                            - generic [ref=f1e477]: Питне скло
+                        - listitem [ref=f1e478]:
+                          - generic [ref=f1e479] [cursor=pointer]:
+                            - checkbox "Глечики Питне скло → Глечики Питне скло → Глечики" [ref=f1e480]
+                            - generic [ref=f1e481]: Глечики
+                            - generic [ref=f1e482]: Питне скло → Глечики
+                            - generic [ref=f1e483]: Питне скло → Глечики
+                        - listitem [ref=f1e484]:
+                          - generic [ref=f1e485] [cursor=pointer]:
+                            - checkbox "Диспенсери Питне скло → Диспенсери Питне скло → Диспенсери" [ref=f1e486]
+                            - generic [ref=f1e487]: Диспенсери
+                            - generic [ref=f1e488]: Питне скло → Диспенсери
+                            - generic [ref=f1e489]: Питне скло → Диспенсери
+                        - listitem [ref=f1e490]:
+                          - generic [ref=f1e491] [cursor=pointer]:
+                            - checkbox "Келихи, фужери, кухолі Питне скло → Келихи, фужери, кухолі Питне скло → Келихи, фужери, кухолі" [ref=f1e492]
+                            - generic [ref=f1e493]: Келихи, фужери, кухолі
+                            - generic [ref=f1e494]: Питне скло → Келихи, фужери, кухолі
+                            - generic [ref=f1e495]: Питне скло → Келихи, фужери, кухолі
+                        - listitem [ref=f1e496]:
+                          - generic [ref=f1e497] [cursor=pointer]:
+                            - checkbox "Набори для напоїв Питне скло → Набори для напоїв Питне скло → Набори для напоїв" [ref=f1e498]
+                            - generic [ref=f1e499]: Набори для напоїв
+                            - generic [ref=f1e500]: Питне скло → Набори для напоїв
+                            - generic [ref=f1e501]: Питне скло → Набори для напоїв
+                        - listitem [ref=f1e502]:
+                          - generic [ref=f1e503] [cursor=pointer]:
+                            - checkbox "Пляшки-штоф Питне скло → Пляшки-штоф Питне скло → Пляшки-штоф" [ref=f1e504]
+                            - generic [ref=f1e505]: Пляшки-штоф
+                            - generic [ref=f1e506]: Питне скло → Пляшки-штоф
+                            - generic [ref=f1e507]: Питне скло → Пляшки-штоф
+                        - listitem [ref=f1e508]:
+                          - generic [ref=f1e509] [cursor=pointer]:
+                            - checkbox "Склянки Питне скло → Склянки Питне скло → Склянки" [ref=f1e510]
+                            - generic [ref=f1e511]: Склянки
+                            - generic [ref=f1e512]: Питне скло → Склянки
+                            - generic [ref=f1e513]: Питне скло → Склянки
+                        - listitem [ref=f1e514]:
+                          - generic [ref=f1e515] [cursor=pointer]:
+                            - checkbox "Чарки Питне скло → Чарки Питне скло → Чарки" [ref=f1e516]
+                            - generic [ref=f1e517]: Чарки
+                            - generic [ref=f1e518]: Питне скло → Чарки
+                            - generic [ref=f1e519]: Питне скло → Чарки
+                        - listitem [ref=f1e520]:
+                          - generic [ref=f1e521] [cursor=pointer]:
+                            - checkbox "ПОБУТОВА ТЕХНІКА ПОБУТОВА ТЕХНІКА ПОБУТОВА ТЕХНІКА" [ref=f1e522]
+                            - generic [ref=f1e523]: ПОБУТОВА ТЕХНІКА
+                            - generic [ref=f1e524]: ПОБУТОВА ТЕХНІКА
+                            - generic [ref=f1e525]: ПОБУТОВА ТЕХНІКА
+                        - listitem [ref=f1e526]:
+                          - generic [ref=f1e527] [cursor=pointer]:
+                            - checkbox "Вбудована техніка ПОБУТОВА ТЕХНІКА → Вбудована техніка ПОБУТОВА ТЕХНІКА → Вбудована техніка" [ref=f1e528]
+                            - generic [ref=f1e529]: Вбудована техніка
+                            - generic [ref=f1e530]: ПОБУТОВА ТЕХНІКА → Вбудована техніка
+                            - generic [ref=f1e531]: ПОБУТОВА ТЕХНІКА → Вбудована техніка
+                        - listitem [ref=f1e532]:
+                          - generic [ref=f1e533] [cursor=pointer]:
+                            - checkbox "Аксесуари до вбудованої техніки ПОБУТОВА ТЕХНІКА → Вбудована техніка → Аксесуари до вбудованої техніки ПОБУТОВА ТЕХНІКА → Вбудована техніка → Аксесуари до вбудованої техніки" [ref=f1e534]
+                            - generic [ref=f1e535]: Аксесуари до вбудованої техніки
+                            - generic [ref=f1e536]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Аксесуари до вбудованої техніки
+                            - generic [ref=f1e537]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Аксесуари до вбудованої техніки
+                        - listitem [ref=f1e538]:
+                          - generic [ref=f1e539] [cursor=pointer]:
+                            - checkbox "Витяжки ПОБУТОВА ТЕХНІКА → Вбудована техніка → Витяжки ПОБУТОВА ТЕХНІКА → Вбудована техніка → Витяжки" [ref=f1e540]
+                            - generic [ref=f1e541]: Витяжки
+                            - generic [ref=f1e542]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Витяжки
+                            - generic [ref=f1e543]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Витяжки
+                        - listitem [ref=f1e544]:
+                          - generic [ref=f1e545] [cursor=pointer]:
+                            - checkbox "Духові шафи ПОБУТОВА ТЕХНІКА → Вбудована техніка → Духові шафи ПОБУТОВА ТЕХНІКА → Вбудована техніка → Духові шафи" [ref=f1e546]
+                            - generic [ref=f1e547]: Духові шафи
+                            - generic [ref=f1e548]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Духові шафи
+                            - generic [ref=f1e549]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Духові шафи
+                        - listitem [ref=f1e550]:
+                          - generic [ref=f1e551] [cursor=pointer]:
+                            - checkbox "Комплекти ПОБУТОВА ТЕХНІКА → Вбудована техніка → Комплекти ПОБУТОВА ТЕХНІКА → Вбудована техніка → Комплекти" [ref=f1e552]
+                            - generic [ref=f1e553]: Комплекти
+                            - generic [ref=f1e554]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Комплекти
+                            - generic [ref=f1e555]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Комплекти
+                        - listitem [ref=f1e556]:
+                          - generic [ref=f1e557] [cursor=pointer]:
+                            - checkbox "Поверхні ПОБУТОВА ТЕХНІКА → Вбудована техніка → Поверхні ПОБУТОВА ТЕХНІКА → Вбудована техніка → Поверхні" [ref=f1e558]
+                            - generic [ref=f1e559]: Поверхні
+                            - generic [ref=f1e560]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Поверхні
+                            - generic [ref=f1e561]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Поверхні
+                        - listitem [ref=f1e562]:
+                          - generic [ref=f1e563] [cursor=pointer]:
+                            - checkbox "Посудомийні машини ПОБУТОВА ТЕХНІКА → Вбудована техніка → Посудомийні машини ПОБУТОВА ТЕХНІКА → Вбудована техніка → Посудомийні машини" [ref=f1e564]
+                            - generic [ref=f1e565]: Посудомийні машини
+                            - generic [ref=f1e566]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Посудомийні машини
+                            - generic [ref=f1e567]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Посудомийні машини
+                        - listitem [ref=f1e568]:
+                          - generic [ref=f1e569] [cursor=pointer]:
+                            - checkbox "Пральні машини ПОБУТОВА ТЕХНІКА → Вбудована техніка → Пральні машини ПОБУТОВА ТЕХНІКА → Вбудована техніка → Пральні машини" [ref=f1e570]
+                            - generic [ref=f1e571]: Пральні машини
+                            - generic [ref=f1e572]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Пральні машини
+                            - generic [ref=f1e573]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Пральні машини
+                        - listitem [ref=f1e574]:
+                          - generic [ref=f1e575] [cursor=pointer]:
+                            - checkbox "СВЧ печі ПОБУТОВА ТЕХНІКА → Вбудована техніка → СВЧ печі ПОБУТОВА ТЕХНІКА → Вбудована техніка → СВЧ печі" [ref=f1e576]
+                            - generic [ref=f1e577]: СВЧ печі
+                            - generic [ref=f1e578]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → СВЧ печі
+                            - generic [ref=f1e579]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → СВЧ печі
+                        - listitem [ref=f1e580]:
+                          - generic [ref=f1e581] [cursor=pointer]:
+                            - checkbox "Холодильники ПОБУТОВА ТЕХНІКА → Вбудована техніка → Холодильники ПОБУТОВА ТЕХНІКА → Вбудована техніка → Холодильники" [ref=f1e582]
+                            - generic [ref=f1e583]: Холодильники
+                            - generic [ref=f1e584]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Холодильники
+                            - generic [ref=f1e585]: ПОБУТОВА ТЕХНІКА → Вбудована техніка → Холодильники
+                        - listitem [ref=f1e586]:
+                          - generic [ref=f1e587] [cursor=pointer]:
+                            - checkbox "Велика побутова техніка ПОБУТОВА ТЕХНІКА → Велика побутова техніка ПОБУТОВА ТЕХНІКА → Велика побутова техніка" [ref=f1e588]
+                            - generic [ref=f1e589]: Велика побутова техніка
+                            - generic [ref=f1e590]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка
+                            - generic [ref=f1e591]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка
+                        - listitem [ref=f1e592]:
+                          - generic [ref=f1e593] [cursor=pointer]:
+                            - checkbox "Аксесуари до великої побутової техніки ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки" [ref=f1e594]
+                            - generic [ref=f1e595]: Аксесуари до великої побутової техніки
+                            - generic [ref=f1e596]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки
+                            - generic [ref=f1e597]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки
+                        - listitem [ref=f1e598]:
+                          - generic [ref=f1e599] [cursor=pointer]:
+                            - checkbox "Аксесуари для холодильників ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Аксесуари для холодильників ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Аксесуари для холодильників" [ref=f1e600]
+                            - generic [ref=f1e601]: Аксесуари для холодильників
+                            - generic [ref=f1e602]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Аксесуари для холодильників
+                            - generic [ref=f1e603]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Аксесуари для холодильників
+                        - listitem [ref=f1e604]:
+                          - generic [ref=f1e605] [cursor=pointer]:
+                            - checkbox "Для посудомийних та пральних машин ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Для посудомийних та пральних машин ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Для посудомийних та пральних машин" [ref=f1e606]
+                            - generic [ref=f1e607]: Для посудомийних та пральних машин
+                            - generic [ref=f1e608]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Для посудомийних та пральних машин
+                            - generic [ref=f1e609]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Для посудомийних та пральних машин
+                        - listitem [ref=f1e610]:
+                          - generic [ref=f1e611] [cursor=pointer]:
+                            - checkbox "Різні аксесуари для ВПТ ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Різні аксесуари для ВПТ ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Різні аксесуари для ВПТ" [ref=f1e612]
+                            - generic [ref=f1e613]: Різні аксесуари для ВПТ
+                            - generic [ref=f1e614]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Різні аксесуари для ВПТ
+                            - generic [ref=f1e615]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Різні аксесуари для ВПТ
+                        - listitem [ref=f1e616]:
+                          - generic [ref=f1e617] [cursor=pointer]:
+                            - checkbox "Хімія для побутової техніки ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Хімія для побутової техніки ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Хімія для побутової техніки" [ref=f1e618]
+                            - generic [ref=f1e619]: Хімія для побутової техніки
+                            - generic [ref=f1e620]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Хімія для побутової техніки
+                            - generic [ref=f1e621]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Аксесуари до великої побутової техніки → Хімія для побутової техніки
+                        - listitem [ref=f1e622]:
+                          - generic [ref=f1e623] [cursor=pointer]:
+                            - checkbox "Запчастини та комплектуючі ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Запчастини та комплектуючі ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Запчастини та комплектуючі" [ref=f1e624]
+                            - generic [ref=f1e625]: Запчастини та комплектуючі
+                            - generic [ref=f1e626]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Запчастини та комплектуючі
+                            - generic [ref=f1e627]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Запчастини та комплектуючі
+                        - listitem [ref=f1e628]:
+                          - generic [ref=f1e629] [cursor=pointer]:
+                            - checkbox "Морозильні камери та ларі ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Морозильні камери та ларі ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Морозильні камери та ларі" [ref=f1e630]
+                            - generic [ref=f1e631]: Морозильні камери та ларі
+                            - generic [ref=f1e632]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Морозильні камери та ларі
+                            - generic [ref=f1e633]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Морозильні камери та ларі
+                        - listitem [ref=f1e634]:
+                          - generic [ref=f1e635] [cursor=pointer]:
+                            - checkbox "Плити ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити" [ref=f1e636]
+                            - generic [ref=f1e637]: Плити
+                            - generic [ref=f1e638]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити
+                            - generic [ref=f1e639]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити
+                        - listitem [ref=f1e640]:
+                          - generic [ref=f1e641] [cursor=pointer]:
+                            - checkbox "Газові ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Газові ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Газові" [ref=f1e642]
+                            - generic [ref=f1e643]: Газові
+                            - generic [ref=f1e644]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Газові
+                            - generic [ref=f1e645]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Газові
+                        - listitem [ref=f1e646]:
+                          - generic [ref=f1e647] [cursor=pointer]:
+                            - checkbox "Електричні ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Електричні ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Електричні" [ref=f1e648]
+                            - generic [ref=f1e649]: Електричні
+                            - generic [ref=f1e650]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Електричні
+                            - generic [ref=f1e651]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Електричні
+                        - listitem [ref=f1e652]:
+                          - generic [ref=f1e653] [cursor=pointer]:
+                            - checkbox "Індукційні ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Індукційні ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Індукційні" [ref=f1e654]
+                            - generic [ref=f1e655]: Індукційні
+                            - generic [ref=f1e656]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Індукційні
+                            - generic [ref=f1e657]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Індукційні
+                        - listitem [ref=f1e658]:
+                          - generic [ref=f1e659] [cursor=pointer]:
+                            - checkbox "Комбіновані ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Комбіновані ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Комбіновані" [checked] [ref=f1e660]
+                            - generic [ref=f1e661]: Комбіновані
+                            - generic [ref=f1e662]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Комбіновані
+                            - generic [ref=f1e663]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Комбіновані
+                        - listitem [ref=f1e664]:
+                          - generic [ref=f1e665] [cursor=pointer]:
+                            - checkbox "Склокерамічні ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Склокерамічні ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Склокерамічні" [ref=f1e666]
+                            - generic [ref=f1e667]: Склокерамічні
+                            - generic [ref=f1e668]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Склокерамічні
+                            - generic [ref=f1e669]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Плити → Склокерамічні
+                        - listitem [ref=f1e670]:
+                          - generic [ref=f1e671] [cursor=pointer]:
+                            - checkbox "Посудомийні машини ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Посудомийні машини ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Посудомийні машини" [ref=f1e672]
+                            - generic [ref=f1e673]: Посудомийні машини
+                            - generic [ref=f1e674]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Посудомийні машини
+                            - generic [ref=f1e675]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Посудомийні машини
+                        - listitem [ref=f1e676]:
+                          - generic [ref=f1e677] [cursor=pointer]:
+                            - checkbox "Пральні машини ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Пральні машини ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Пральні машини" [ref=f1e678]
+                            - generic [ref=f1e679]: Пральні машини
+                            - generic [ref=f1e680]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Пральні машини
+                            - generic [ref=f1e681]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Пральні машини
+                        - listitem [ref=f1e682]:
+                          - generic [ref=f1e683] [cursor=pointer]:
+                            - checkbox "Сушильні машини ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Сушильні машини ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Сушильні машини" [ref=f1e684]
+                            - generic [ref=f1e685]: Сушильні машини
+                            - generic [ref=f1e686]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Сушильні машини
+                            - generic [ref=f1e687]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Сушильні машини
+                        - listitem [ref=f1e688]:
+                          - generic [ref=f1e689] [cursor=pointer]:
+                            - checkbox "Холодильники ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Холодильники ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Холодильники" [ref=f1e690]
+                            - generic [ref=f1e691]: Холодильники
+                            - generic [ref=f1e692]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Холодильники
+                            - generic [ref=f1e693]: ПОБУТОВА ТЕХНІКА → Велика побутова техніка → Холодильники
+                        - listitem [ref=f1e694]:
+                          - generic [ref=f1e695] [cursor=pointer]:
+                            - checkbox "Догляд за домом та речами ПОБУТОВА ТЕХНІКА → Догляд за домом та речами ПОБУТОВА ТЕХНІКА → Догляд за домом та речами" [ref=f1e696]
+                            - generic [ref=f1e697]: Догляд за домом та речами
+                            - generic [ref=f1e698]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами
+                            - generic [ref=f1e699]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами
+                        - listitem [ref=f1e700]:
+                          - generic [ref=f1e701] [cursor=pointer]:
+                            - checkbox "Аксесуари до техніки для дому ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Аксесуари до техніки для дому ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Аксесуари до техніки для дому" [ref=f1e702]
+                            - generic [ref=f1e703]: Аксесуари до техніки для дому
+                            - generic [ref=f1e704]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Аксесуари до техніки для дому
+                            - generic [ref=f1e705]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Аксесуари до техніки для дому
+                        - listitem [ref=f1e706]:
+                          - generic [ref=f1e707] [cursor=pointer]:
+                            - checkbox "Машинки для чищення від катишів ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Машинки для чищення від катишів ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Машинки для чищення від катишів" [ref=f1e708]
+                            - generic [ref=f1e709]: Машинки для чищення від катишів
+                            - generic [ref=f1e710]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Машинки для чищення від катишів
+                            - generic [ref=f1e711]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Машинки для чищення від катишів
+                        - listitem [ref=f1e712]:
+                          - generic [ref=f1e713] [cursor=pointer]:
+                            - checkbox "Очищувачі скла ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Очищувачі скла ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Очищувачі скла" [ref=f1e714]
+                            - generic [ref=f1e715]: Очищувачі скла
+                            - generic [ref=f1e716]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Очищувачі скла
+                            - generic [ref=f1e717]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Очищувачі скла
+                        - listitem [ref=f1e718]:
+                          - generic [ref=f1e719] [cursor=pointer]:
+                            - checkbox "Пароочищувачі ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пароочищувачі ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пароочищувачі" [ref=f1e720]
+                            - generic [ref=f1e721]: Пароочищувачі
+                            - generic [ref=f1e722]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пароочищувачі
+                            - generic [ref=f1e723]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пароочищувачі
+                        - listitem [ref=f1e724]:
+                          - generic [ref=f1e725] [cursor=pointer]:
+                            - checkbox "Пилосмоки акумуляторні та/або роботизовані ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки акумуляторні та/або роботизовані ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки акумуляторні та/або роботизовані" [ref=f1e726]
+                            - generic [ref=f1e727]: Пилосмоки акумуляторні та/або роботизовані
+                            - generic [ref=f1e728]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки акумуляторні та/або роботизовані
+                            - generic [ref=f1e729]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки акумуляторні та/або роботизовані
+                        - listitem [ref=f1e730]:
+                          - generic [ref=f1e731] [cursor=pointer]:
+                            - checkbox "Пилосмоки вологого прибирання ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки вологого прибирання ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки вологого прибирання" [ref=f1e732]
+                            - generic [ref=f1e733]: Пилосмоки вологого прибирання
+                            - generic [ref=f1e734]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки вологого прибирання
+                            - generic [ref=f1e735]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки вологого прибирання
+                        - listitem [ref=f1e736]:
+                          - generic [ref=f1e737] [cursor=pointer]:
+                            - checkbox "Пилосмоки з контейнером ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки з контейнером ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки з контейнером" [ref=f1e738]
+                            - generic [ref=f1e739]: Пилосмоки з контейнером
+                            - generic [ref=f1e740]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки з контейнером
+                            - generic [ref=f1e741]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки з контейнером
+                        - listitem [ref=f1e742]:
+                          - generic [ref=f1e743] [cursor=pointer]:
+                            - checkbox "Пилосмоки з мішком ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки з мішком ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки з мішком" [ref=f1e744]
+                            - generic [ref=f1e745]: Пилосмоки з мішком
+                            - generic [ref=f1e746]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки з мішком
+                            - generic [ref=f1e747]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки з мішком
+                        - listitem [ref=f1e748]:
+                          - generic [ref=f1e749] [cursor=pointer]:
+                            - checkbox "Пилосмоки ручні ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки ручні ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки ручні" [ref=f1e750]
+                            - generic [ref=f1e751]: Пилосмоки ручні
+                            - generic [ref=f1e752]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки ручні
+                            - generic [ref=f1e753]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Пилосмоки ручні
+                        - listitem [ref=f1e754]:
+                          - generic [ref=f1e755] [cursor=pointer]:
+                            - checkbox "Праски, парові системи ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Праски, парові системи ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Праски, парові системи" [ref=f1e756]
+                            - generic [ref=f1e757]: Праски, парові системи
+                            - generic [ref=f1e758]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Праски, парові системи
+                            - generic [ref=f1e759]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Праски, парові системи
+                        - listitem [ref=f1e760]:
+                          - generic [ref=f1e761] [cursor=pointer]:
+                            - checkbox "Швейні машини ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Швейні машини ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Швейні машини" [ref=f1e762]
+                            - generic [ref=f1e763]: Швейні машини
+                            - generic [ref=f1e764]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Швейні машини
+                            - generic [ref=f1e765]: ПОБУТОВА ТЕХНІКА → Догляд за домом та речами → Швейні машини
+                        - listitem [ref=f1e766]:
+                          - generic [ref=f1e767] [cursor=pointer]:
+                            - checkbox "Кліматична техніка ПОБУТОВА ТЕХНІКА → Кліматична техніка ПОБУТОВА ТЕХНІКА → Кліматична техніка" [ref=f1e768]
+                            - generic [ref=f1e769]: Кліматична техніка
+                            - generic [ref=f1e770]: ПОБУТОВА ТЕХНІКА → Кліматична техніка
+                            - generic [ref=f1e771]: ПОБУТОВА ТЕХНІКА → Кліматична техніка
+                        - listitem [ref=f1e772]:
+                          - generic [ref=f1e773] [cursor=pointer]:
+                            - checkbox "Аксесуари до кліматичної техніки ПОБУТОВА ТЕХНІКА → Кліматична техніка → Аксесуари до кліматичної техніки ПОБУТОВА ТЕХНІКА → Кліматична техніка → Аксесуари до кліматичної техніки" [ref=f1e774]
+                            - generic [ref=f1e775]: Аксесуари до кліматичної техніки
+                            - generic [ref=f1e776]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Аксесуари до кліматичної техніки
+                            - generic [ref=f1e777]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Аксесуари до кліматичної техніки
+                        - listitem [ref=f1e778]:
+                          - generic [ref=f1e779] [cursor=pointer]:
+                            - checkbox "Вентилятори ПОБУТОВА ТЕХНІКА → Кліматична техніка → Вентилятори ПОБУТОВА ТЕХНІКА → Кліматична техніка → Вентилятори" [ref=f1e780]
+                            - generic [ref=f1e781]: Вентилятори
+                            - generic [ref=f1e782]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Вентилятори
+                            - generic [ref=f1e783]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Вентилятори
+                        - listitem [ref=f1e784]:
+                          - generic [ref=f1e785] [cursor=pointer]:
+                            - checkbox "Водонагрівачі ПОБУТОВА ТЕХНІКА → Кліматична техніка → Водонагрівачі ПОБУТОВА ТЕХНІКА → Кліматична техніка → Водонагрівачі" [ref=f1e786]
+                            - generic [ref=f1e787]: Водонагрівачі
+                            - generic [ref=f1e788]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Водонагрівачі
+                            - generic [ref=f1e789]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Водонагрівачі
+                        - listitem [ref=f1e790]:
+                          - generic [ref=f1e791] [cursor=pointer]:
+                            - checkbox "Зволожувачі ПОБУТОВА ТЕХНІКА → Кліматична техніка → Зволожувачі ПОБУТОВА ТЕХНІКА → Кліматична техніка → Зволожувачі" [ref=f1e792]
+                            - generic [ref=f1e793]: Зволожувачі
+                            - generic [ref=f1e794]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Зволожувачі
+                            - generic [ref=f1e795]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Зволожувачі
+                        - listitem [ref=f1e796]:
+                          - generic [ref=f1e797] [cursor=pointer]:
+                            - checkbox "Кліматичні комплекси ПОБУТОВА ТЕХНІКА → Кліматична техніка → Кліматичні комплекси ПОБУТОВА ТЕХНІКА → Кліматична техніка → Кліматичні комплекси" [ref=f1e798]
+                            - generic [ref=f1e799]: Кліматичні комплекси
+                            - generic [ref=f1e800]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Кліматичні комплекси
+                            - generic [ref=f1e801]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Кліматичні комплекси
+                        - listitem [ref=f1e802]:
+                          - generic [ref=f1e803] [cursor=pointer]:
+                            - checkbox "Кондиціонери ПОБУТОВА ТЕХНІКА → Кліматична техніка → Кондиціонери ПОБУТОВА ТЕХНІКА → Кліматична техніка → Кондиціонери" [ref=f1e804]
+                            - generic [ref=f1e805]: Кондиціонери
+                            - generic [ref=f1e806]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Кондиціонери
+                            - generic [ref=f1e807]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Кондиціонери
+                        - listitem [ref=f1e808]:
+                          - generic [ref=f1e809] [cursor=pointer]:
+                            - checkbox "Обігрівачі ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі" [ref=f1e810]
+                            - generic [ref=f1e811]: Обігрівачі
+                            - generic [ref=f1e812]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі
+                            - generic [ref=f1e813]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі
+                        - listitem [ref=f1e814]:
+                          - generic [ref=f1e815] [cursor=pointer]:
+                            - checkbox "Аксесуари до обігрівачів ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Аксесуари до обігрівачів ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Аксесуари до обігрівачів" [ref=f1e816]
+                            - generic [ref=f1e817]: Аксесуари до обігрівачів
+                            - generic [ref=f1e818]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Аксесуари до обігрівачів
+                            - generic [ref=f1e819]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Аксесуари до обігрівачів
+                        - listitem [ref=f1e820]:
+                          - generic [ref=f1e821] [cursor=pointer]:
+                            - checkbox "Керамічні панелі ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Керамічні панелі ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Керамічні панелі" [ref=f1e822]
+                            - generic [ref=f1e823]: Керамічні панелі
+                            - generic [ref=f1e824]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Керамічні панелі
+                            - generic [ref=f1e825]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Керамічні панелі
+                        - listitem [ref=f1e826]:
+                          - generic [ref=f1e827] [cursor=pointer]:
+                            - checkbox "Конвектори ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Конвектори ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Конвектори" [ref=f1e828]
+                            - generic [ref=f1e829]: Конвектори
+                            - generic [ref=f1e830]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Конвектори
+                            - generic [ref=f1e831]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Конвектори
+                        - listitem [ref=f1e832]:
+                          - generic [ref=f1e833] [cursor=pointer]:
+                            - checkbox "Обігрівачі інфрачервоні ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Обігрівачі інфрачервоні ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Обігрівачі інфрачервоні" [ref=f1e834]
+                            - generic [ref=f1e835]: Обігрівачі інфрачервоні
+                            - generic [ref=f1e836]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Обігрівачі інфрачервоні
+                            - generic [ref=f1e837]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Обігрівачі інфрачервоні
+                        - listitem [ref=f1e838]:
+                          - generic [ref=f1e839] [cursor=pointer]:
+                            - checkbox "Обігрівачі оливного типу ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Обігрівачі оливного типу ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Обігрівачі оливного типу" [ref=f1e840]
+                            - generic [ref=f1e841]: Обігрівачі оливного типу
+                            - generic [ref=f1e842]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Обігрівачі оливного типу
+                            - generic [ref=f1e843]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Обігрівачі оливного типу
+                        - listitem [ref=f1e844]:
+                          - generic [ref=f1e845] [cursor=pointer]:
+                            - checkbox "Тепловентилятори ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Тепловентилятори ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Тепловентилятори" [ref=f1e846]
+                            - generic [ref=f1e847]: Тепловентилятори
+                            - generic [ref=f1e848]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Тепловентилятори
+                            - generic [ref=f1e849]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Обігрівачі → Тепловентилятори
+                        - listitem [ref=f1e850]:
+                          - generic [ref=f1e851] [cursor=pointer]:
+                            - checkbox "Осушувачі повітря ПОБУТОВА ТЕХНІКА → Кліматична техніка → Осушувачі повітря ПОБУТОВА ТЕХНІКА → Кліматична техніка → Осушувачі повітря" [ref=f1e852]
+                            - generic [ref=f1e853]: Осушувачі повітря
+                            - generic [ref=f1e854]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Осушувачі повітря
+                            - generic [ref=f1e855]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Осушувачі повітря
+                        - listitem [ref=f1e856]:
+                          - generic [ref=f1e857] [cursor=pointer]:
+                            - checkbox "Очищувачі повітря ПОБУТОВА ТЕХНІКА → Кліматична техніка → Очищувачі повітря ПОБУТОВА ТЕХНІКА → Кліматична техніка → Очищувачі повітря" [ref=f1e858]
+                            - generic [ref=f1e859]: Очищувачі повітря
+                            - generic [ref=f1e860]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Очищувачі повітря
+                            - generic [ref=f1e861]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Очищувачі повітря
+                        - listitem [ref=f1e862]:
+                          - generic [ref=f1e863] [cursor=pointer]:
+                            - checkbox "Сушарки для рушників ПОБУТОВА ТЕХНІКА → Кліматична техніка → Сушарки для рушників ПОБУТОВА ТЕХНІКА → Кліматична техніка → Сушарки для рушників" [ref=f1e864]
+                            - generic [ref=f1e865]: Сушарки для рушників
+                            - generic [ref=f1e866]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Сушарки для рушників
+                            - generic [ref=f1e867]: ПОБУТОВА ТЕХНІКА → Кліматична техніка → Сушарки для рушників
+                        - listitem [ref=f1e868]:
+                          - generic [ref=f1e869] [cursor=pointer]:
+                            - checkbox "Краса та здоров'я ПОБУТОВА ТЕХНІКА → Краса та здоров'я ПОБУТОВА ТЕХНІКА → Краса та здоров'я" [ref=f1e870]
+                            - generic [ref=f1e871]: Краса та здоров'я
+                            - generic [ref=f1e872]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я
+                            - generic [ref=f1e873]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я
+                        - listitem [ref=f1e874]:
+                          - generic [ref=f1e875] [cursor=pointer]:
+                            - checkbox "Аксесуари в групі Краса та здоров'я ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Аксесуари в групі Краса та здоров'я ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Аксесуари в групі Краса та здоров'я" [ref=f1e876]
+                            - generic [ref=f1e877]: Аксесуари в групі Краса та здоров'я
+                            - generic [ref=f1e878]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Аксесуари в групі Краса та здоров'я
+                            - generic [ref=f1e879]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Аксесуари в групі Краса та здоров'я
+                        - listitem [ref=f1e880]:
+                          - generic [ref=f1e881] [cursor=pointer]:
+                            - checkbox "Ваги ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Ваги ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Ваги" [ref=f1e882]
+                            - generic [ref=f1e883]: Ваги
+                            - generic [ref=f1e884]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Ваги
+                            - generic [ref=f1e885]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Ваги
+                        - listitem [ref=f1e886]:
+                          - generic [ref=f1e887] [cursor=pointer]:
+                            - checkbox "Видалення волосся ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся" [ref=f1e888]
+                            - generic [ref=f1e889]: Видалення волосся
+                            - generic [ref=f1e890]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся
+                            - generic [ref=f1e891]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся
+                        - listitem [ref=f1e892]:
+                          - generic [ref=f1e893] [cursor=pointer]:
+                            - checkbox "Електробритви ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Електробритви ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Електробритви" [ref=f1e894]
+                            - generic [ref=f1e895]: Електробритви
+                            - generic [ref=f1e896]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Електробритви
+                            - generic [ref=f1e897]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Електробритви
+                        - listitem [ref=f1e898]:
+                          - generic [ref=f1e899] [cursor=pointer]:
+                            - checkbox "Епілятори ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Епілятори ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Епілятори" [ref=f1e900]
+                            - generic [ref=f1e901]: Епілятори
+                            - generic [ref=f1e902]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Епілятори
+                            - generic [ref=f1e903]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Епілятори
+                        - listitem [ref=f1e904]:
+                          - generic [ref=f1e905] [cursor=pointer]:
+                            - checkbox "Машинки для стрижки ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Машинки для стрижки ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Машинки для стрижки" [ref=f1e906]
+                            - generic [ref=f1e907]: Машинки для стрижки
+                            - generic [ref=f1e908]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Машинки для стрижки
+                            - generic [ref=f1e909]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Машинки для стрижки
+                        - listitem [ref=f1e910]:
+                          - generic [ref=f1e911] [cursor=pointer]:
+                            - checkbox "Станки для гоління ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Станки для гоління ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Станки для гоління" [ref=f1e912]
+                            - generic [ref=f1e913]: Станки для гоління
+                            - generic [ref=f1e914]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Станки для гоління
+                            - generic [ref=f1e915]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Видалення волосся → Станки для гоління
+                        - listitem [ref=f1e916]:
+                          - generic [ref=f1e917] [cursor=pointer]:
+                            - checkbox "Дарсонваль ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Дарсонваль ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Дарсонваль" [ref=f1e918]
+                            - generic [ref=f1e919]: Дарсонваль
+                            - generic [ref=f1e920]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Дарсонваль
+                            - generic [ref=f1e921]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Дарсонваль
+                        - listitem [ref=f1e922]:
+                          - generic [ref=f1e923] [cursor=pointer]:
+                            - checkbox "Диспенсери ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Диспенсери ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Диспенсери" [ref=f1e924]
+                            - generic [ref=f1e925]: Диспенсери
+                            - generic [ref=f1e926]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Диспенсери
+                            - generic [ref=f1e927]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Диспенсери
+                        - listitem [ref=f1e928]:
+                          - generic [ref=f1e929] [cursor=pointer]:
+                            - checkbox "Догляд за волоссям ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям" [ref=f1e930]
+                            - generic [ref=f1e931]: Догляд за волоссям
+                            - generic [ref=f1e932]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям
+                            - generic [ref=f1e933]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям
+                        - listitem [ref=f1e934]:
+                          - generic [ref=f1e935] [cursor=pointer]:
+                            - checkbox "Бігуді ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Бігуді ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Бігуді" [ref=f1e936]
+                            - generic [ref=f1e937]: Бігуді
+                            - generic [ref=f1e938]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Бігуді
+                            - generic [ref=f1e939]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Бігуді
+                        - listitem [ref=f1e940]:
+                          - generic [ref=f1e941] [cursor=pointer]:
+                            - checkbox "Вирівнювачі для волосся ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Вирівнювачі для волосся ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Вирівнювачі для волосся" [ref=f1e942]
+                            - generic [ref=f1e943]: Вирівнювачі для волосся
+                            - generic [ref=f1e944]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Вирівнювачі для волосся
+                            - generic [ref=f1e945]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Вирівнювачі для волосся
+                        - listitem [ref=f1e946]:
+                          - generic [ref=f1e947] [cursor=pointer]:
+                            - checkbox "Мультісталери ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Мультісталери ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Мультісталери" [ref=f1e948]
+                            - generic [ref=f1e949]: Мультісталери
+                            - generic [ref=f1e950]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Мультісталери
+                            - generic [ref=f1e951]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Мультісталери
+                        - listitem [ref=f1e952]:
+                          - generic [ref=f1e953] [cursor=pointer]:
+                            - checkbox "Фени ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Фени ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Фени" [ref=f1e954]
+                            - generic [ref=f1e955]: Фени
+                            - generic [ref=f1e956]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Фени
+                            - generic [ref=f1e957]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Фени
+                        - listitem [ref=f1e958]:
+                          - generic [ref=f1e959] [cursor=pointer]:
+                            - checkbox "Фени-щітки ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Фени-щітки ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Фени-щітки" [ref=f1e960]
+                            - generic [ref=f1e961]: Фени-щітки
+                            - generic [ref=f1e962]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Фени-щітки
+                            - generic [ref=f1e963]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Фени-щітки
+                        - listitem [ref=f1e964]:
+                          - generic [ref=f1e965] [cursor=pointer]:
+                            - checkbox "Щипці для завивки ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Щипці для завивки ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Щипці для завивки" [ref=f1e966]
+                            - generic [ref=f1e967]: Щипці для завивки
+                            - generic [ref=f1e968]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Щипці для завивки
+                            - generic [ref=f1e969]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за волоссям → Щипці для завивки
+                        - listitem [ref=f1e970]:
+                          - generic [ref=f1e971] [cursor=pointer]:
+                            - checkbox "Догляд за руками та ногами ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за руками та ногами ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за руками та ногами" [ref=f1e972]
+                            - generic [ref=f1e973]: Догляд за руками та ногами
+                            - generic [ref=f1e974]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за руками та ногами
+                            - generic [ref=f1e975]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за руками та ногами
+                        - listitem [ref=f1e976]:
+                          - generic [ref=f1e977] [cursor=pointer]:
+                            - checkbox "Масажери та ванночки ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за руками та ногами → Масажери та ванночки ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за руками та ногами → Масажери та ванночки" [ref=f1e978]
+                            - generic [ref=f1e979]: Масажери та ванночки
+                            - generic [ref=f1e980]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за руками та ногами → Масажери та ванночки
+                            - generic [ref=f1e981]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за руками та ногами → Масажери та ванночки
+                        - listitem [ref=f1e982]:
+                          - generic [ref=f1e983] [cursor=pointer]:
+                            - checkbox "Набори для педикюра, манікюра ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за руками та ногами → Набори для педикюра, манікюра ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за руками та ногами → Набори для педикюра, манікюра" [ref=f1e984]
+                            - generic [ref=f1e985]: Набори для педикюра, манікюра
+                            - generic [ref=f1e986]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за руками та ногами → Набори для педикюра, манікюра
+                            - generic [ref=f1e987]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Догляд за руками та ногами → Набори для педикюра, манікюра
+                        - listitem [ref=f1e988]:
+                          - generic [ref=f1e989] [cursor=pointer]:
+                            - checkbox "Електроковдри ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Електроковдри ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Електроковдри" [ref=f1e990]
+                            - generic [ref=f1e991]: Електроковдри
+                            - generic [ref=f1e992]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Електроковдри
+                            - generic [ref=f1e993]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Електроковдри
+                        - listitem [ref=f1e994]:
+                          - generic [ref=f1e995] [cursor=pointer]:
+                            - checkbox "Електрощітки зубні ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Електрощітки зубні ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Електрощітки зубні" [ref=f1e996]
+                            - generic [ref=f1e997]: Електрощітки зубні
+                            - generic [ref=f1e998]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Електрощітки зубні
+                            - generic [ref=f1e999]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Електрощітки зубні
+                        - listitem [ref=f1e1000]:
+                          - generic [ref=f1e1001] [cursor=pointer]:
+                            - checkbox "Ірригатори ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Ірригатори ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Ірригатори" [ref=f1e1002]
+                            - generic [ref=f1e1003]: Ірригатори
+                            - generic [ref=f1e1004]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Ірригатори
+                            - generic [ref=f1e1005]: ПОБУТОВА ТЕХНІКА → Краса та здоров'я → Ірригатори
+                        - listitem [ref=f1e1006]:
+                          - generic [ref=f1e1007] [cursor=pointer]:
+                            - checkbox "Мала кухонна техніка ПОБУТОВА ТЕХНІКА → Мала кухонна техніка ПОБУТОВА ТЕХНІКА → Мала кухонна техніка" [ref=f1e1008]
+                            - generic [ref=f1e1009]: Мала кухонна техніка
+                            - generic [ref=f1e1010]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка
+                            - generic [ref=f1e1011]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка
+                        - listitem [ref=f1e1012]:
+                          - generic [ref=f1e1013] [cursor=pointer]:
+                            - checkbox "Аксесуари до кухонної техніки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Аксесуари до кухонної техніки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Аксесуари до кухонної техніки" [ref=f1e1014]
+                            - generic [ref=f1e1015]: Аксесуари до кухонної техніки
+                            - generic [ref=f1e1016]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Аксесуари до кухонної техніки
+                            - generic [ref=f1e1017]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Аксесуари до кухонної техніки
+                        - listitem [ref=f1e1018]:
+                          - generic [ref=f1e1019] [cursor=pointer]:
+                            - checkbox "Для соків ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для соків ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для соків" [ref=f1e1020]
+                            - generic [ref=f1e1021]: Для соків
+                            - generic [ref=f1e1022]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для соків
+                            - generic [ref=f1e1023]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для соків
+                        - listitem [ref=f1e1024]:
+                          - generic [ref=f1e1025] [cursor=pointer]:
+                            - checkbox "Для чаю та кави ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави" [ref=f1e1026]
+                            - generic [ref=f1e1027]: Для чаю та кави
+                            - generic [ref=f1e1028]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави
+                            - generic [ref=f1e1029]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави
+                        - listitem [ref=f1e1030]:
+                          - generic [ref=f1e1031] [cursor=pointer]:
+                            - checkbox "Електрочайники ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави → Електрочайники ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави → Електрочайники" [ref=f1e1032]
+                            - generic [ref=f1e1033]: Електрочайники
+                            - generic [ref=f1e1034]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави → Електрочайники
+                            - generic [ref=f1e1035]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави → Електрочайники
+                        - listitem [ref=f1e1036]:
+                          - generic [ref=f1e1037] [cursor=pointer]:
+                            - checkbox "Кавоварки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави → Кавоварки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави → Кавоварки" [ref=f1e1038]
+                            - generic [ref=f1e1039]: Кавоварки
+                            - generic [ref=f1e1040]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави → Кавоварки
+                            - generic [ref=f1e1041]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави → Кавоварки
+                        - listitem [ref=f1e1042]:
+                          - generic [ref=f1e1043] [cursor=pointer]:
+                            - checkbox "Кавомолки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави → Кавомолки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави → Кавомолки" [ref=f1e1044]
+                            - generic [ref=f1e1045]: Кавомолки
+                            - generic [ref=f1e1046]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави → Кавомолки
+                            - generic [ref=f1e1047]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Для чаю та кави → Кавомолки
+                        - listitem [ref=f1e1048]:
+                          - generic [ref=f1e1049] [cursor=pointer]:
+                            - checkbox "Інша кухонна техніка ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка" [ref=f1e1050]
+                            - generic [ref=f1e1051]: Інша кухонна техніка
+                            - generic [ref=f1e1052]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка
+                            - generic [ref=f1e1053]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка
+                        - listitem [ref=f1e1054]:
+                          - generic [ref=f1e1055] [cursor=pointer]:
+                            - checkbox "Бутербродниці та вафельниці ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Бутербродниці та вафельниці ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Бутербродниці та вафельниці" [ref=f1e1056]
+                            - generic [ref=f1e1057]: Бутербродниці та вафельниці
+                            - generic [ref=f1e1058]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Бутербродниці та вафельниці
+                            - generic [ref=f1e1059]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Бутербродниці та вафельниці
+                        - listitem [ref=f1e1060]:
+                          - generic [ref=f1e1061] [cursor=pointer]:
+                            - checkbox "Ваги кухонні ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Ваги кухонні ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Ваги кухонні" [ref=f1e1062]
+                            - generic [ref=f1e1063]: Ваги кухонні
+                            - generic [ref=f1e1064]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Ваги кухонні
+                            - generic [ref=f1e1065]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Ваги кухонні
+                        - listitem [ref=f1e1066]:
+                          - generic [ref=f1e1067] [cursor=pointer]:
+                            - checkbox "Гриль ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Гриль ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Гриль" [ref=f1e1068]
+                            - generic [ref=f1e1069]: Гриль
+                            - generic [ref=f1e1070]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Гриль
+                            - generic [ref=f1e1071]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Гриль
+                        - listitem [ref=f1e1072]:
+                          - generic [ref=f1e1073] [cursor=pointer]:
+                            - checkbox "Електросушарки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Електросушарки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Електросушарки" [ref=f1e1074]
+                            - generic [ref=f1e1075]: Електросушарки
+                            - generic [ref=f1e1076]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Електросушарки
+                            - generic [ref=f1e1077]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Електросушарки
+                        - listitem [ref=f1e1078]:
+                          - generic [ref=f1e1079] [cursor=pointer]:
+                            - checkbox "Інше ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Інше ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Інше" [ref=f1e1080]
+                            - generic [ref=f1e1081]: Інше
+                            - generic [ref=f1e1082]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Інше
+                            - generic [ref=f1e1083]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Інше
+                        - listitem [ref=f1e1084]:
+                          - generic [ref=f1e1085] [cursor=pointer]:
+                            - checkbox "Йогуртниці ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Йогуртниці ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Йогуртниці" [ref=f1e1086]
+                            - generic [ref=f1e1087]: Йогуртниці
+                            - generic [ref=f1e1088]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Йогуртниці
+                            - generic [ref=f1e1089]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Йогуртниці
+                        - listitem [ref=f1e1090]:
+                          - generic [ref=f1e1091] [cursor=pointer]:
+                            - checkbox "Млинниці ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Млинниці ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Млинниці" [ref=f1e1092]
+                            - generic [ref=f1e1093]: Млинниці
+                            - generic [ref=f1e1094]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Млинниці
+                            - generic [ref=f1e1095]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Млинниці
+                        - listitem [ref=f1e1096]:
+                          - generic [ref=f1e1097] [cursor=pointer]:
+                            - checkbox "Настільні плити ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Настільні плити ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Настільні плити" [ref=f1e1098]
+                            - generic [ref=f1e1099]: Настільні плити
+                            - generic [ref=f1e1100]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Настільні плити
+                            - generic [ref=f1e1101]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Настільні плити
+                        - listitem [ref=f1e1102]:
+                          - generic [ref=f1e1103] [cursor=pointer]:
+                            - checkbox "Тостери ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Тостери ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Тостери" [ref=f1e1104]
+                            - generic [ref=f1e1105]: Тостери
+                            - generic [ref=f1e1106]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Тостери
+                            - generic [ref=f1e1107]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Тостери
+                        - listitem [ref=f1e1108]:
+                          - generic [ref=f1e1109] [cursor=pointer]:
+                            - checkbox "Фритюрниці ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Фритюрниці ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Фритюрниці" [ref=f1e1110]
+                            - generic [ref=f1e1111]: Фритюрниці
+                            - generic [ref=f1e1112]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Фритюрниці
+                            - generic [ref=f1e1113]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Інша кухонна техніка → Фритюрниці
+                        - listitem [ref=f1e1114]:
+                          - generic [ref=f1e1115] [cursor=pointer]:
+                            - checkbox "Подрібнення та змішування ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування" [ref=f1e1116]
+                            - generic [ref=f1e1117]: Подрібнення та змішування
+                            - generic [ref=f1e1118]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування
+                            - generic [ref=f1e1119]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування
+                        - listitem [ref=f1e1120]:
+                          - generic [ref=f1e1121] [cursor=pointer]:
+                            - checkbox "Блендери ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Блендери ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Блендери" [ref=f1e1122]
+                            - generic [ref=f1e1123]: Блендери
+                            - generic [ref=f1e1124]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Блендери
+                            - generic [ref=f1e1125]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Блендери
+                        - listitem [ref=f1e1126]:
+                          - generic [ref=f1e1127] [cursor=pointer]:
+                            - checkbox "Комбайни ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Комбайни ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Комбайни" [ref=f1e1128]
+                            - generic [ref=f1e1129]: Комбайни
+                            - generic [ref=f1e1130]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Комбайни
+                            - generic [ref=f1e1131]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Комбайни
+                        - listitem [ref=f1e1132]:
+                          - generic [ref=f1e1133] [cursor=pointer]:
+                            - checkbox "Ломтерізки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Ломтерізки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Ломтерізки" [ref=f1e1134]
+                            - generic [ref=f1e1135]: Ломтерізки
+                            - generic [ref=f1e1136]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Ломтерізки
+                            - generic [ref=f1e1137]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Ломтерізки
+                        - listitem [ref=f1e1138]:
+                          - generic [ref=f1e1139] [cursor=pointer]:
+                            - checkbox "М'ясорубки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → М'ясорубки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → М'ясорубки" [ref=f1e1140]
+                            - generic [ref=f1e1141]: М'ясорубки
+                            - generic [ref=f1e1142]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → М'ясорубки
+                            - generic [ref=f1e1143]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → М'ясорубки
+                        - listitem [ref=f1e1144]:
+                          - generic [ref=f1e1145] [cursor=pointer]:
+                            - checkbox "Міксери ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Міксери ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Міксери" [ref=f1e1146]
+                            - generic [ref=f1e1147]: Міксери
+                            - generic [ref=f1e1148]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Міксери
+                            - generic [ref=f1e1149]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Міксери
+                        - listitem [ref=f1e1150]:
+                          - generic [ref=f1e1151] [cursor=pointer]:
+                            - checkbox "Тертки електричні ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Тертки електричні ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Тертки електричні" [ref=f1e1152]
+                            - generic [ref=f1e1153]: Тертки електричні
+                            - generic [ref=f1e1154]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Тертки електричні
+                            - generic [ref=f1e1155]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Подрібнення та змішування → Тертки електричні
+                        - listitem [ref=f1e1156]:
+                          - generic [ref=f1e1157] [cursor=pointer]:
+                            - checkbox "Приготування їжі ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі" [ref=f1e1158]
+                            - generic [ref=f1e1159]: Приготування їжі
+                            - generic [ref=f1e1160]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі
+                            - generic [ref=f1e1161]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі
+                        - listitem [ref=f1e1162]:
+                          - generic [ref=f1e1163] [cursor=pointer]:
+                            - checkbox "Електропечі ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Електропечі ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Електропечі" [ref=f1e1164]
+                            - generic [ref=f1e1165]: Електропечі
+                            - generic [ref=f1e1166]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Електропечі
+                            - generic [ref=f1e1167]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Електропечі
+                        - listitem [ref=f1e1168]:
+                          - generic [ref=f1e1169] [cursor=pointer]:
+                            - checkbox "Мультиварки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Мультиварки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Мультиварки" [ref=f1e1170]
+                            - generic [ref=f1e1171]: Мультиварки
+                            - generic [ref=f1e1172]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Мультиварки
+                            - generic [ref=f1e1173]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Мультиварки
+                        - listitem [ref=f1e1174]:
+                          - generic [ref=f1e1175] [cursor=pointer]:
+                            - checkbox "Мультипечі ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Мультипечі ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Мультипечі" [ref=f1e1176]
+                            - generic [ref=f1e1177]: Мультипечі
+                            - generic [ref=f1e1178]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Мультипечі
+                            - generic [ref=f1e1179]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Мультипечі
+                        - listitem [ref=f1e1180]:
+                          - generic [ref=f1e1181] [cursor=pointer]:
+                            - checkbox "Пароварки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Пароварки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Пароварки" [ref=f1e1182]
+                            - generic [ref=f1e1183]: Пароварки
+                            - generic [ref=f1e1184]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Пароварки
+                            - generic [ref=f1e1185]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Пароварки
+                        - listitem [ref=f1e1186]:
+                          - generic [ref=f1e1187] [cursor=pointer]:
+                            - checkbox "Хлібопічки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Хлібопічки ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Хлібопічки" [ref=f1e1188]
+                            - generic [ref=f1e1189]: Хлібопічки
+                            - generic [ref=f1e1190]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Хлібопічки
+                            - generic [ref=f1e1191]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → Приготування їжі → Хлібопічки
+                        - listitem [ref=f1e1192]:
+                          - generic [ref=f1e1193] [cursor=pointer]:
+                            - checkbox "СВЧ печі ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → СВЧ печі ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → СВЧ печі" [ref=f1e1194]
+                            - generic [ref=f1e1195]: СВЧ печі
+                            - generic [ref=f1e1196]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → СВЧ печі
+                            - generic [ref=f1e1197]: ПОБУТОВА ТЕХНІКА → Мала кухонна техніка → СВЧ печі
+                        - listitem [ref=f1e1198]:
+                          - generic [ref=f1e1199] [cursor=pointer]:
+                            - checkbox "Посуд для зберігання Посуд для зберігання Посуд для зберігання" [ref=f1e1200]
+                            - generic [ref=f1e1201]: Посуд для зберігання
+                            - generic [ref=f1e1202]: Посуд для зберігання
+                            - generic [ref=f1e1203]: Посуд для зберігання
+                        - listitem [ref=f1e1204]:
+                          - generic [ref=f1e1205] [cursor=pointer]:
+                            - checkbox "Банки Посуд для зберігання → Банки Посуд для зберігання → Банки" [ref=f1e1206]
+                            - generic [ref=f1e1207]: Банки
+                            - generic [ref=f1e1208]: Посуд для зберігання → Банки
+                            - generic [ref=f1e1209]: Посуд для зберігання → Банки
+                        - listitem [ref=f1e1210]:
+                          - generic [ref=f1e1211] [cursor=pointer]:
+                            - checkbox "Контейнери Посуд для зберігання → Контейнери Посуд для зберігання → Контейнери" [ref=f1e1212]
+                            - generic [ref=f1e1213]: Контейнери
+                            - generic [ref=f1e1214]: Посуд для зберігання → Контейнери
+                            - generic [ref=f1e1215]: Посуд для зберігання → Контейнери
+                        - listitem [ref=f1e1216]:
+                          - generic [ref=f1e1217] [cursor=pointer]:
+                            - checkbox "Пляшки Посуд для зберігання → Пляшки Посуд для зберігання → Пляшки" [ref=f1e1218]
+                            - generic [ref=f1e1219]: Пляшки
+                            - generic [ref=f1e1220]: Посуд для зберігання → Пляшки
+                            - generic [ref=f1e1221]: Посуд для зберігання → Пляшки
+                        - listitem [ref=f1e1222]:
+                          - generic [ref=f1e1223] [cursor=pointer]:
+                            - checkbox "Пляшки для масла та оцет Посуд для зберігання → Пляшки для масла та оцет Посуд для зберігання → Пляшки для масла та оцет" [ref=f1e1224]
+                            - generic [ref=f1e1225]: Пляшки для масла та оцет
+                            - generic [ref=f1e1226]: Посуд для зберігання → Пляшки для масла та оцет
+                            - generic [ref=f1e1227]: Посуд для зберігання → Пляшки для масла та оцет
+                        - listitem [ref=f1e1228]:
+                          - generic [ref=f1e1229] [cursor=pointer]:
+                            - checkbox "Термокружки та термоси Посуд для зберігання → Термокружки та термоси Посуд для зберігання → Термокружки та термоси" [ref=f1e1230]
+                            - generic [ref=f1e1231]: Термокружки та термоси
+                            - generic [ref=f1e1232]: Посуд для зберігання → Термокружки та термоси
+                            - generic [ref=f1e1233]: Посуд для зберігання → Термокружки та термоси
+                        - listitem [ref=f1e1234]:
+                          - generic [ref=f1e1235] [cursor=pointer]:
+                            - checkbox "Столовий посуд Столовий посуд Столовий посуд" [ref=f1e1236]
+                            - generic [ref=f1e1237]: Столовий посуд
+                            - generic [ref=f1e1238]: Столовий посуд
+                            - generic [ref=f1e1239]: Столовий посуд
+                        - listitem [ref=f1e1240]:
+                          - generic [ref=f1e1241] [cursor=pointer]:
+                            - checkbox "Відерця сервірувальні Столовий посуд → Відерця сервірувальні Столовий посуд → Відерця сервірувальні" [ref=f1e1242]
+                            - generic [ref=f1e1243]: Відерця сервірувальні
+                            - generic [ref=f1e1244]: Столовий посуд → Відерця сервірувальні
+                            - generic [ref=f1e1245]: Столовий посуд → Відерця сервірувальні
+                        - listitem [ref=f1e1246]:
+                          - generic [ref=f1e1247] [cursor=pointer]:
+                            - checkbox "Маслянки Столовий посуд → Маслянки Столовий посуд → Маслянки" [ref=f1e1248]
+                            - generic [ref=f1e1249]: Маслянки
+                            - generic [ref=f1e1250]: Столовий посуд → Маслянки
+                            - generic [ref=f1e1251]: Столовий посуд → Маслянки
+                        - listitem [ref=f1e1252]:
+                          - generic [ref=f1e1253] [cursor=pointer]:
+                            - checkbox "Молочники, сливочники Столовий посуд → Молочники, сливочники Столовий посуд → Молочники, сливочники" [ref=f1e1254]
+                            - generic [ref=f1e1255]: Молочники, сливочники
+                            - generic [ref=f1e1256]: Столовий посуд → Молочники, сливочники
+                            - generic [ref=f1e1257]: Столовий посуд → Молочники, сливочники
+                        - listitem [ref=f1e1258]:
+                          - generic [ref=f1e1259] [cursor=pointer]:
+                            - checkbox "Попільнички Столовий посуд → Попільнички Столовий посуд → Попільнички" [ref=f1e1260]
+                            - generic [ref=f1e1261]: Попільнички
+                            - generic [ref=f1e1262]: Столовий посуд → Попільнички
+                            - generic [ref=f1e1263]: Столовий посуд → Попільнички
+                        - listitem [ref=f1e1264]:
+                          - generic [ref=f1e1265] [cursor=pointer]:
+                            - checkbox "Соусники Столовий посуд → Соусники Столовий посуд → Соусники" [ref=f1e1266]
+                            - generic [ref=f1e1267]: Соусники
+                            - generic [ref=f1e1268]: Столовий посуд → Соусники
+                            - generic [ref=f1e1269]: Столовий посуд → Соусники
+                        - listitem [ref=f1e1270]:
+                          - generic [ref=f1e1271] [cursor=pointer]:
+                            - checkbox "Столові прибори Столовий посуд → Столові прибори Столовий посуд → Столові прибори" [ref=f1e1272]
+                            - generic [ref=f1e1273]: Столові прибори
+                            - generic [ref=f1e1274]: Столовий посуд → Столові прибори
+                            - generic [ref=f1e1275]: Столовий посуд → Столові прибори
+                        - listitem [ref=f1e1276]:
+                          - generic [ref=f1e1277] [cursor=pointer]:
+                            - checkbox "Столові сервізи Столовий посуд → Столові сервізи Столовий посуд → Столові сервізи" [ref=f1e1278]
+                            - generic [ref=f1e1279]: Столові сервізи
+                            - generic [ref=f1e1280]: Столовий посуд → Столові сервізи
+                            - generic [ref=f1e1281]: Столовий посуд → Столові сервізи
+                        - listitem [ref=f1e1282]:
+                          - generic [ref=f1e1283] [cursor=pointer]:
+                            - checkbox "Тарілки, салатники, блюда Столовий посуд → Тарілки, салатники, блюда Столовий посуд → Тарілки, салатники, блюда" [ref=f1e1284]
+                            - generic [ref=f1e1285]: Тарілки, салатники, блюда
+                            - generic [ref=f1e1286]: Столовий посуд → Тарілки, салатники, блюда
+                            - generic [ref=f1e1287]: Столовий посуд → Тарілки, салатники, блюда
+                        - listitem [ref=f1e1288]:
+                          - generic [ref=f1e1289] [cursor=pointer]:
+                            - checkbox "Таці сервирувальні Столовий посуд → Таці сервирувальні Столовий посуд → Таці сервирувальні" [ref=f1e1290]
+                            - generic [ref=f1e1291]: Таці сервирувальні
+                            - generic [ref=f1e1292]: Столовий посуд → Таці сервирувальні
+                            - generic [ref=f1e1293]: Столовий посуд → Таці сервирувальні
+                        - listitem [ref=f1e1294]:
+                          - generic [ref=f1e1295] [cursor=pointer]:
+                            - checkbox "Тортівниці Столовий посуд → Тортівниці Столовий посуд → Тортівниці" [ref=f1e1296]
+                            - generic [ref=f1e1297]: Тортівниці
+                            - generic [ref=f1e1298]: Столовий посуд → Тортівниці
+                            - generic [ref=f1e1299]: Столовий посуд → Тортівниці
+                        - listitem [ref=f1e1300]:
+                          - generic [ref=f1e1301] [cursor=pointer]:
+                            - checkbox "Цукорниці Столовий посуд → Цукорниці Столовий посуд → Цукорниці" [ref=f1e1302]
+                            - generic [ref=f1e1303]: Цукорниці
+                            - generic [ref=f1e1304]: Столовий посуд → Цукорниці
+                            - generic [ref=f1e1305]: Столовий посуд → Цукорниці
+                        - listitem [ref=f1e1306]:
+                          - generic [ref=f1e1307] [cursor=pointer]:
+                            - checkbox "Чайники заварочні Столовий посуд → Чайники заварочні Столовий посуд → Чайники заварочні" [ref=f1e1308]
+                            - generic [ref=f1e1309]: Чайники заварочні
+                            - generic [ref=f1e1310]: Столовий посуд → Чайники заварочні
+                            - generic [ref=f1e1311]: Столовий посуд → Чайники заварочні
+                        - listitem [ref=f1e1312]:
+                          - generic [ref=f1e1313] [cursor=pointer]:
+                            - checkbox "Чашки Столовий посуд → Чашки Столовий посуд → Чашки" [ref=f1e1314]
+                            - generic [ref=f1e1315]: Чашки
+                            - generic [ref=f1e1316]: Столовий посуд → Чашки
+                            - generic [ref=f1e1317]: Столовий посуд → Чашки
+                        - listitem [ref=f1e1318]:
+                          - generic [ref=f1e1319] [cursor=pointer]:
+                            - checkbox "Текстиль для кухні Текстиль для кухні Текстиль для кухні" [ref=f1e1320]
+                            - generic [ref=f1e1321]: Текстиль для кухні
+                            - generic [ref=f1e1322]: Текстиль для кухні
+                            - generic [ref=f1e1323]: Текстиль для кухні
+                  - generic [ref=f1e1324]:
+                    - text: Бренд
+                    - combobox "Бренд" [ref=f1e1325]:
+                      - option "— Без бренду —"
+                      - option "HEREVIN"
+                      - option "HISENSE"
+                      - option "CD'A"
+                      - option "BAGER"
+                      - option "EVG"
+                      - option "THOMAS"
+                      - option "PYRAMIDA"
+                      - option "MOVA"
+                      - option "ROWENTA"
+                      - option "VIVA"
+                      - option "PHILIPS"
+                      - option "ECOMO"
+                      - option "IPEC"
+                      - option "UFO"
+                      - option "TIKI"
+                      - option "ELEYUS"
+                      - option "JANTAR"
+                      - option "OSCAR"
+                      - option "AMICA"
+                      - option "VIOLET HOUSE"
+                      - option "RINGEL"
+                      - option "INDESIT"
+                      - option "LONGEVITA"
+                      - option "SHARP"
+                      - option "REMINGTON"
+                      - option "UP!"
+                      - option "HAIER"
+                      - option "TEFAL"
+                      - option "PHILCO"
+                      - option "MOULINEX"
+                      - option "LG"
+                      - option "ximix"
+                      - option "DELFA"
+                      - option "POLARIS"
+                      - option "GORENJE"
+                      - option "TRAMONTINA"
+                      - option "HOOVER"
+                      - option "SENCOR"
+                      - option "LA-"
+                      - option "rotex"
+                      - option "PYREX"
+                      - option "BLACK&DECKER"
+                      - option "ANKER"
+                      - option "HAUSMARK"
+                      - option "LIMITED EDITION"
+                      - option "TESY"
+                      - option "BRAVO CHEF"
+                      - option "WHIRLPOOL"
+                      - option "LUMINARC"
+                      - option "O CUISINE"
+                      - option "KRUPS"
+                      - option "ERGO"
+                      - option "SOHO"
+                      - option "RUSSELL HOBBS"
+                      - option "GLASSET"
+                      - option "QUTU"
+                      - option "ARIETE"
+                      - option "LED"
+                      - option "C&S"
+                      - option "GRETA"
+                      - option "ELECTROLUX"
+                      - option "TRENDGLASS"
+                      - option "BEKO" [selected]
+                      - option "NOVA TEC"
+                      - option "HANSA"
+                      - option "ARCOROC"
+                      - option "IDEA HOME"
+                      - option "IQ"
+                      - option "DREAME"
+                      - option "ESTRADA"
+                      - option "SAMSUNG"
+                  - generic [ref=f1e1326]:
+                    - text: Кількість на складі
+                    - spinbutton "Кількість на складі" [ref=f1e1327]: "5"
+                  - generic [ref=f1e1328]:
+                    - text: Наявність
+                    - combobox "Наявність" [ref=f1e1329]:
+                      - option "В наявності" [selected]
+                      - option "Немає в наявності"
+                      - option "Обмежена наявність"
+                - generic [ref=f1e1331]:
+                  - checkbox "Активний" [checked] [ref=f1e1332]
+                  - generic [ref=f1e1333]: Активний
+                - generic [ref=f1e1334]:
+                  - generic [ref=f1e1335]:
+                    - checkbox "Популярні товари" [checked] [ref=f1e1336]
+                    - generic [ref=f1e1337]: Популярні товари
+                  - paragraph [ref=f1e1338]: "Обрано: 6 / 8 · блок «Популярні товари» на головній сторінці (макс. 8)"
+              - group "Опис (базовий)" [ref=f1e1339]:
+                - generic [ref=f1e1341]:
+                  - text: Короткий опис
+                  - textbox "Короткий опис" [ref=f1e1342]
+                - generic [ref=f1e1343]:
+                  - text: Повний опис
+                  - textbox "Повний опис" [ref=f1e1344]
+              - generic [ref=f1e1345]:
+                - button "Скасувати" [ref=f1e1346]
+                - button "Зберегти" [ref=f1e1347]
+  - button "Open Next.js Dev Tools" [ref=f1e20] [cursor=pointer]
+  - alert [ref=f1e58]

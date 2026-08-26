@@ -176,10 +176,11 @@ async function resolveNameOrSlugIds(
  * An empty resolution simply omits the branch (scalar branches still apply).
  *
  * Multi-category transition: a token's category branch expands each matched
- * category to its FULL subtree, referenced via the legacy products.category_id
- * column (always ∈ junction by construction of every writer). A product whose
- * NON-default assignment matches but whose default does not is covered by the
- * explicit categoryId dropdown filter below — accepted transition gap.
+ * category to its FULL subtree and resolves product ids through the
+ * product_categories JUNCTION (products.category_id ∈ junction by
+ * construction of every writer, so this covers defaults too). A product
+ * whose NON-default assignment matches is therefore found the same way as
+ * one assigned via its default column.
  */
 async function buildProductExpressions(
   client: SupabaseClient,
@@ -199,11 +200,39 @@ async function buildProductExpressions(
       for (const id of matchedCategoryIds) {
         for (const sub of collectSubtreeIds(allCategories, id)) expanded.add(sub);
       }
-      parts.push(`category_id.in.(${[...expanded].join(',')})`);
+      const productIds = await resolveProductIdsForCategories(client, [...expanded]);
+      if (productIds.length > 0) parts.push(`id.in.(${productIds.join(',')})`);
     }
     expressions.push(parts.join(','));
   }
   return expressions;
+}
+
+/** Paged ≤1000 read of product ids linked (ANY assignment) to a bounded set
+ * of category ids — same pagination invariant as resolveNameOrSlugIds. */
+async function resolveProductIdsForCategories(
+  client: SupabaseClient,
+  categoryIds: string[]
+): Promise<string[]> {
+  if (categoryIds.length === 0) return [];
+  const out: string[] = [];
+  let from = 0;
+  for (;;) {
+    // Builder rebuilt INSIDE the loop (supabase-js accumulates repeated
+    // .order calls on a shared builder); .order stays lexically adjacent
+    // to .range per the project-wide pagination invariant.
+    const { data, error } = await [['product_id', true] as OrderSpec[number]]
+      .reduce(
+        (q, [column, ascending]) => q.order(column, { ascending }),
+        client.from('product_categories').select('product_id').in('category_id', categoryIds)
+      )
+      .range(from, from + RESOLUTION_PAGE - 1);
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as { product_id: string }[];
+    out.push(...rows.map((r) => r.product_id));
+    if (rows.length < RESOLUTION_PAGE) return out;
+    from += RESOLUTION_PAGE;
+  }
 }
 
 /** CategoryRow -> minimal tree-shaped Category for collectSubtreeIds. */
