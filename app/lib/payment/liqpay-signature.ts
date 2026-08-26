@@ -1,10 +1,17 @@
 import crypto from 'node:crypto';
 
 /**
- * LiqPay API v3 signature primitives.
+ * LiqPay checkout signature primitives.
  *
- * Scheme (current LiqPay documentation):
- *   signature = base64( sha3-256( private_key + data + private_key ) )
+ * CONFIRMED contract for /api/3/checkout (verified against ALL official
+ * LiqPay SDKs — sdk-nodejs str_to_sign, sdk-php sha1($str, true),
+ * sdk-python hashlib.sha1, sdk-go sha1.New — all targeting this endpoint):
+ *
+ *   signature = base64( sha1( private_key + data + private_key ) )
+ *
+ * (The documentation page text mentions sha3-256 with a numeric-version
+ * example, but the working checkout v3 contract is SHA-1. A production
+ * sandbox test confirmed sha3-256 is rejected with "невірний підпис".)
  *
  * The private key is ALWAYS passed explicitly by the server-side caller
  * (see app/lib/payment/liqpay-config.ts) and must never reach the client
@@ -18,7 +25,7 @@ import crypto from 'node:crypto';
 
 export function createLiqPaySignature(data: string, privateKey: string): string {
   return crypto
-    .createHash('sha3-256')
+    .createHash('sha1')
     .update(privateKey + data + privateKey, 'utf8')
     .digest('base64');
 }

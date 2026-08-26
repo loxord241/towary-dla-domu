@@ -175,7 +175,10 @@ test('PAYLOAD: contains version 3 / action pay / public key / attempt order_id',
     resultUrl: 'https://shop.example.ua/r',
     callbackUrl: 'https://shop.example.ua/cb',
   });
-  assert.equal(p.version, '3');
+  // LiqPay docs: version must be a NUMBER — a string here makes checkout
+  // reject the request with "невірний підпис signature".
+  assert.equal(typeof p.version, 'number', 'version must be a JSON number');
+  assert.equal(p.version, 3);
   assert.equal(p.action, 'pay');
   assert.equal(p.public_key, 'test-public-key');
   assert.equal(p.order_id, `${ORDER}:2`);

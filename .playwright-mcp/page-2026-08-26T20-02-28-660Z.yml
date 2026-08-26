@@ -1,0 +1,31 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e3]:
+    - generic [ref=f2e4]:
+      - generic [ref=f2e5]: ✓
+      - heading "Оплату отримано!" [level=1] [ref=f2e6]
+      - paragraph [ref=f2e7]: Замовлення ORD-20260826-E2E123 успішно оплачено.
+    - generic [ref=f2e8]:
+      - table [ref=f2e9]:
+        - rowgroup [ref=f2e10]:
+          - row [ref=f2e11]:
+            - 'cell "E2E Товар SKU: E2E-SKU-1 · 1 шт × 99" [ref=f2e12]':
+              - text: E2E Товар
+              - generic [ref=f2e13]: "SKU: E2E-SKU-1 · 1 шт × 99"
+            - cell "99 UAH" [ref=f2e14]
+      - generic [ref=f2e15]:
+        - generic [ref=f2e16]:
+          - term [ref=f2e17]: Товари
+          - definition [ref=f2e18]: 99 UAH
+        - generic [ref=f2e19]:
+          - term [ref=f2e20]: Доставка
+          - definition [ref=f2e21]: 0 UAH
+        - generic [ref=f2e22]:
+          - term [ref=f2e23]: Разом до сплати
+          - definition [ref=f2e24]: 99 UAH
+      - paragraph [ref=f2e25]: "Статус: pending · оплата: paid"
+    - generic [ref=f2e26]:
+      - generic [ref=f2e27]: Очікує підтвердження
+      - generic [ref=f2e28]: Оплачено
+    - link "Продовжити покупки" [ref=f2e31] [cursor=pointer]:
+      - /url: /catalog
+  - button "Open Next.js Dev Tools" [ref=f2e37] [cursor=pointer]

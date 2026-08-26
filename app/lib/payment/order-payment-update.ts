@@ -107,10 +107,12 @@ export interface CheckoutPayloadInput {
   callbackUrl: string;
 }
 
-export function buildCheckoutPayload(i: CheckoutPayloadInput): Record<string, string> {
-  const payload: Record<string, string> = {
+export function buildCheckoutPayload(i: CheckoutPayloadInput): Record<string, string | number> {
+  const payload: Record<string, string | number> = {
     public_key: i.config.publicKey,
-    version: '3',
+    // LiqPay API contract: version is a Number (docs example: "version":7).
+    // A string here makes checkout reject with "невірний підпис signature".
+    version: 3,
     action: 'pay',
     amount: formatDbAmount(i.amount),
     currency: i.currency,

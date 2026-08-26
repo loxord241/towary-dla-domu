@@ -1,0 +1,42 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]: ✓
+    - heading "Замовлення прийнято!" [level=1] [ref=e6]
+    - paragraph [ref=e7]: "Номер замовлення: ORD-20260826-E2E123"
+    - paragraph [ref=e8]:
+      - text: Збережіть номер — статус можна перевірити
+      - link "за номером та email" [ref=e9] [cursor=pointer]:
+        - /url: /orders/lookup
+      - text: .
+  - generic [ref=e10]:
+    - table [ref=e11]:
+      - rowgroup [ref=e12]:
+        - row [ref=e13]:
+          - 'cell "E2E Товар SKU: E2E-SKU-1 · 1 шт × 99" [ref=e14]':
+            - text: E2E Товар
+            - generic [ref=e15]: "SKU: E2E-SKU-1 · 1 шт × 99"
+          - cell "99 UAH" [ref=e16]
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - term [ref=e19]: Товари
+        - definition [ref=e20]: 99 UAH
+      - generic [ref=e21]:
+        - term [ref=e22]: Доставка
+        - definition [ref=e23]: 0 UAH
+      - generic [ref=e24]:
+        - term [ref=e25]: Разом до сплати
+        - definition [ref=e26]: 99 UAH
+    - paragraph [ref=e27]: "Статус: pending · оплата: unpaid"
+  - generic [ref=e28]:
+    - generic [ref=e29]: Очікує підтвердження
+    - generic [ref=e30]: Не оплачено
+  - generic [ref=e31]:
+    - button "Оплатити через LiqPay" [ref=e33]
+    - generic [ref=e34]:
+      - paragraph [ref=e35]: Що далі?
+      - list [ref=e36]:
+        - listitem [ref=e37]: Менеджер зв’яжеться з вами для підтвердження.
+        - listitem [ref=e38]: Після підтвердження узгодимо доставку та оплату.
+        - listitem [ref=e39]: Статус можна перевірити за номером замовлення.
+  - link "Продовжити покупки" [ref=e41] [cursor=pointer]:
+    - /url: /catalog
