@@ -508,3 +508,80 @@ test('CALLBACK: reversed applies refund only from paid state', async () => {
   );
   assert.equal(res2.kind, 'kept-pending');
 });
+
+// ---------- full lifecycle audit (pre-production) ----------
+
+test('LIFECYCLE: unpaid → init :1 → failure → failed → init :2 → success for :2 → paid', async () => {
+  const deps = makeDeps(baseRow());
+
+  // attempt :1
+  const r1 = await createPaymentInit(deps, { orderNumber: ORDER, token: 'goodtok' });
+  assert.equal(r1.kind, 'started');
+  assert.equal(JSON.parse(Buffer.from((r1 as { data: string }).data, 'base64').toString()).order_id, ORDER);
+
+  // provider reports terminal failure for :1
+  await processLiqPayCallback(deps2cb(deps), cbBody(ORDER, 'failure'));
+  assert.equal(deps.gateway.row.payment_status, 'failed');
+
+  // retry reserves :2
+  const r2 = await createPaymentInit(deps, { orderNumber: ORDER, token: 'goodtok' });
+  assert.equal(r2.kind, 'started');
+  assert.equal(deps.gateway.row.liqpay_order_id, `${ORDER}:2`);
+
+  // success for the live attempt :2 → paid with id/method
+  const res = await processLiqPayCallback(
+    deps2cb(deps),
+    callbackBody({
+      status: 'sandbox',
+      order_id: `${ORDER}:2`,
+      amount: '1050.50',
+      currency: 'UAH',
+      transaction_id: '100200300',
+      paytype: 'card',
+    })
+  );
+  assert.equal(res.kind, 'updated');
+  assert.deepEqual(
+    deps.gateway.calls.filter((c) => c.startsWith('applyPaid')),
+    ['applyPaid:pending:100200300:card']
+  );
+  // a failed order never resurfaces as unpaid under retry — it is pending now
+  assert.equal(deps.gateway.row.payment_status, 'paid');
+});
+
+test('LIFECYCLE: every documented intermediate status keeps the order pending (callback level)', async () => {
+  for (const st of [
+    'processing',
+    '3ds_verify',
+    'otp_verify',
+    'wait_accept',
+    'wait_secure',
+    'prepared',
+    'hold_wait',
+    'cash_wait',
+  ]) {
+    const deps = makeDeps({ ...baseRow(), liqpay_order_id: ORDER });
+    const res = await processLiqPayCallback(
+      deps,
+      callbackBody({ status: st, amount: '1050.50', currency: 'UAH' })
+    );
+    assert.equal(res.kind, 'kept-pending', `status ${st}`);
+    assert.ok(!deps.gateway.calls.some((c) => c.startsWith('apply')),
+      `status ${st} must never reach any state transition`);
+  }
+});
+
+test('LIFECYCLE: after paid, neither duplicate success nor stale failure mutate anything', async () => {
+  const row = { ...baseRow(), payment_status: 'paid', liqpay_order_id: ORDER };
+  const deps = makeDeps(row);
+  const dup = await processLiqPayCallback(deps2cb(deps), cbBody(ORDER, 'success'));
+  const fail = await processLiqPayCallback(deps2cb(deps), cbBody(ORDER, 'failure'));
+  assert.equal(dup.kind, 'already-paid');
+  assert.equal(fail.kind, 'kept-pending');
+  // zero transition calls beyond the guarded ones: no writes were ATTEMPTED twice
+  assert.deepEqual(
+    deps.gateway.calls.filter((c) => c.startsWith('applyPaid')),
+    ['applyPaid:paid:null:null'],
+    'duplicate callback must short-circuit on the paid guard, not re-apply'
+  );
+});
