@@ -23,7 +23,7 @@ export async function GET(request: Request) {
         .select(CATEGORY_FIELDS_LIST)
         .eq('is_active', true)
         .order('sort_order')
-        .order('name');
+        .order('id');
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
       }

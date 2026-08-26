@@ -621,8 +621,11 @@ export async function fetchActiveCategories(): Promise<Category[]> {
     .from('categories')
     .select('*')
     .eq('is_active', true)
+    // Commercial order is sort_order alone; the deterministic id fallback
+    // keeps ties stable. No row-timestamp tiebreak here: the uk-name
+    // fallback for display lives in compareCategories.
     .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: false })
+    .order('id', { ascending: true })
     .returns<Category[]>();
 
   if (error) {

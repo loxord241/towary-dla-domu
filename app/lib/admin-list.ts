@@ -109,8 +109,7 @@ export const BRAND_SORT_KEYS = Object.keys(BRAND_SORTS);
 const CATEGORY_SORTS: Record<string, OrderSpec> = {
   default: [
     ['sort_order', true],
-    ['created_at', false],
-    ['id', false],
+    ['id', true],
   ],
   name_asc: [
     ['name', true],
