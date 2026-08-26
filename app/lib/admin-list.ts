@@ -21,6 +21,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // tests/admin-search-pagination.test.ts under plain node ESM, where
 // extensionless relative specifiers do not resolve.
 import { sanitizeSearchTerm } from './catalog.ts';
+import { collectSubtreeIds } from './category-tree.ts';
 import type { Product, Category, Brand, ProductImage, ProductVariant } from './catalog.ts';
 
 export const ADMIN_LIST_DEFAULT_PAGE_SIZE = 20;
@@ -173,6 +174,12 @@ async function resolveNameOrSlugIds(
  * brand/category NAMES: embed paths inside or= fail to parse on the live
  * PostgREST, so matching ids are resolved first and referenced via in().
  * An empty resolution simply omits the branch (scalar branches still apply).
+ *
+ * Multi-category transition: a token's category branch expands each matched
+ * category to its FULL subtree, referenced via the legacy products.category_id
+ * column (always ∈ junction by construction of every writer). A product whose
+ * NON-default assignment matches but whose default does not is covered by the
+ * explicit categoryId dropdown filter below — accepted transition gap.
  */
 async function buildProductExpressions(
   client: SupabaseClient,
@@ -185,11 +192,32 @@ async function buildProductExpressions(
     );
     const brandIds = await resolveNameOrSlugIds(client, 'brands', token);
     if (brandIds.length > 0) parts.push(`brand_id.in.(${brandIds.join(',')})`);
-    const categoryIds = await resolveNameOrSlugIds(client, 'categories', token);
-    if (categoryIds.length > 0) parts.push(`category_id.in.(${categoryIds.join(',')})`);
+    const matchedCategoryIds = await resolveNameOrSlugIds(client, 'categories', token);
+    if (matchedCategoryIds.length > 0) {
+      const allCategories = await toTreeCategories(fetchAllCategories(client));
+      const expanded = new Set<string>();
+      for (const id of matchedCategoryIds) {
+        for (const sub of collectSubtreeIds(allCategories, id)) expanded.add(sub);
+      }
+      parts.push(`category_id.in.(${[...expanded].join(',')})`);
+    }
     expressions.push(parts.join(','));
   }
   return expressions;
+}
+
+/** CategoryRow -> minimal tree-shaped Category for collectSubtreeIds. */
+async function toTreeCategories(rowsPromise: Promise<CategoryRow[]>): Promise<Category[]> {
+  return (await rowsPromise).map((r) => ({
+    id: r.id,
+    parent_id: r.parent_id,
+    name: r.name,
+    slug: r.slug,
+    sort_order: r.sort_order,
+    is_active: r.is_active,
+    created_at: r.created_at ?? '',
+    updated_at: r.updated_at ?? '',
+  }));
 }
 
 function buildPlainExpressions(fields: readonly string[], search: string): string[] {
@@ -205,17 +233,23 @@ interface PagedCoreOptions {
   sorts: Record<string, OrderSpec>;
   expressions: string[];
   mapRow?: (row: any) => any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  /** Builder-level embedded filter (pc.category_id) — never inside or=. */
+  extraFilter?: { column: string; ids: string[] };
 }
 
 async function pagedAdminRead(
   client: SupabaseClient,
   options: PagedCoreOptions
 ): Promise<{ items: unknown[]; total: number; page: number; size: number }> {
-  const { table, select, params, sorts, expressions, mapRow } = options;
+  const { table, select, params, sorts, expressions, mapRow, extraFilter } = options;
   const orderSpec = sorts[params.sort] ?? sorts.default;
 
-  // COUNT mirrors the data filters exactly.
-  let countQuery = client.from(table).select('id', { count: 'exact', head: true });
+  // COUNT mirrors the data filters exactly (extraFilter included both here
+  // and on the data query; the pc embed must join into this select for the
+  // filter to have a relationship to constrain).
+  const countSelect = extraFilter ? `id${JUNCTION_COUNT_EMBED}` : 'id';
+  let countQuery = client.from(table).select(countSelect, { count: 'exact', head: true });
+  if (extraFilter) countQuery = countQuery.in(extraFilter.column, extraFilter.ids);
   for (const expr of expressions) countQuery = countQuery.or(expr);
   const { count, error: countError } = await countQuery;
   if (countError) throw new Error(countError.message);
@@ -224,7 +258,9 @@ async function pagedAdminRead(
   const maxPage = Math.max(1, Math.ceil(total / params.size));
   const page = Math.min(params.page, maxPage);
 
-  let dataQuery = client.from(table).select(select);
+  const dataSelect = extraFilter ? select + JUNCTION_DATA_EMBED : select;
+  let dataQuery = client.from(table).select(dataSelect);
+  if (extraFilter) dataQuery = dataQuery.in(extraFilter.column, extraFilter.ids);
   for (const expr of expressions) dataQuery = dataQuery.or(expr);
   const from = (page - 1) * params.size;
   const { data, error } = await orderSpec
@@ -252,29 +288,37 @@ export const PRODUCT_SELECT =
 // one-to-many relations as arrays — this row type mirrors the raw shape.
 export type ProductJoinedRow = Omit<
   Product,
-  'category' | 'brand' | 'images' | 'variants'
+  'category' | 'brand' | 'images' | 'variants' | 'pc'
 > & {
   category: Category | null;
   brand: Brand | null;
   images: ProductImage[] | null;
   variants: ProductVariant[] | null;
+  // Junction join attached only while a pc.category_id filter is active.
+  pc?: { id: string }[] | null;
 };
 
+/** Category-filtered count join (dedup-safe head count). */
+const JUNCTION_COUNT_EMBED = ', pc:product_categories!inner(id)';
+/** Category-filtered data join — stripped by normalizeProduct. */
+const JUNCTION_DATA_EMBED = ', pc:product_categories!inner(id)';
+
 export function normalizeProduct(row: ProductJoinedRow): Product {
+  const { pc: _pc, ...rest } = row;
   return {
-    ...row,
+    ...rest,
     category: row.category ?? null,
     brand: row.brand ?? null,
-    images: [...(row.images ?? [])].sort(
+    images: [...(rest.images ?? [])].sort(
       (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
     ),
-    variants: row.variants ?? [],
+    variants: rest.variants ?? [],
   };
 }
 
 export async function listAdminProducts(
   client: SupabaseClient,
-  params: Partial<AdminListParams>
+  params: Partial<AdminListParams> & { categoryId?: string }
 ): Promise<{ products: Product[]; total: number; page: number; size: number }> {
   const resolved: AdminListParams = {
     page: params.page && params.page > 0 ? params.page : 1,
@@ -287,6 +331,18 @@ export async function listAdminProducts(
       ? (params.sort as string)
       : 'default',
   };
+
+  // Explicit category dropdown filter: subtree-aware and junction-driven.
+  let extraFilter: PagedCoreOptions['extraFilter'];
+  const rawCategoryId = params.categoryId?.trim() ?? '';
+  if (rawCategoryId !== '') {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawCategoryId)) {
+      return { products: [], total: 0, page: 1, size: resolved.size };
+    }
+    const ids = Array.from(collectSubtreeIds(await toTreeCategories(fetchAllCategories(client)), rawCategoryId));
+    extraFilter = { column: 'pc.category_id', ids };
+  }
+
   const expressions = await buildProductExpressions(client, resolved.search);
   const result = await pagedAdminRead(client, {
     table: 'products',
@@ -295,6 +351,7 @@ export async function listAdminProducts(
     sorts: PRODUCT_SORTS,
     expressions,
     mapRow: normalizeProduct,
+    ...(extraFilter ? { extraFilter } : {}),
   });
   return {
     products: result.items as Product[],

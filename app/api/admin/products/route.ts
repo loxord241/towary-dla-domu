@@ -100,8 +100,13 @@ export async function GET(request: Request) {
         // at 100) and ALWAYS filtered server-side (?search=&sort=): search
         // runs BEFORE pagination — DB or= filter → COUNT(filtered) → range
         // window. total/page/size in the response describe the FILTERED set.
+        // ?categoryId= adds a junction-driven subtree filter.
         const params = parseAdminListParams(searchParams, PRODUCT_SORT_KEYS);
-        const result = await listAdminProducts(ctx.serviceClient, params);
+        const categoryId = searchParams.get('categoryId') ?? undefined;
+        const result = await listAdminProducts(ctx.serviceClient, {
+          ...params,
+          ...(categoryId ? { categoryId } : {}),
+        });
         return NextResponse.json(result);
       }
     }
