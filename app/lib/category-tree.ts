@@ -27,12 +27,19 @@ export interface CategoryOption {
   label: string;
 }
 
+/** Subset of Category used for ordering decisions. */
+export interface SortableCategory {
+  id: string;
+  sort_order: number;
+  name: string;
+}
+
 /**
- * Sibling ordering is a commercial rule shared by storefront and admin:
+ * Commercial ordering rule shared by storefront and admin:
  * explicit sort_order wins, deterministic fallbacks (ukrainian name, then
  * id) keep ties stable — never created_at, never input order.
  */
-export function compareCategories(a: Category, b: Category): number {
+export function compareCategories(a: SortableCategory, b: SortableCategory): number {
   if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
   const byName = a.name.localeCompare(b.name, 'uk');
   if (byName !== 0) return byName;
@@ -149,6 +156,28 @@ export function buildCategoryOptions(
     if (!visited.has(node.id)) walk(node, []);
   }
   return options;
+}
+
+/**
+ * Pure sibling-reorder for the admin categories page. Input is the whole
+ * sibling group (same parent), unordered; output is the group re-sorted by
+ * compareCategories with `id` swapped one slot in `direction` — or null
+ * when the move is impossible (edge of the group / unknown target). The
+ * caller persists positions 0..n-1, which also normalizes away duplicate
+ * or absurd sort_order values accumulated by imports.
+ */
+export function moveInGroup(
+  group: SortableCategory[],
+  id: string,
+  direction: 'up' | 'down'
+): SortableCategory[] | null {
+  const sorted = [...group].sort(compareCategories);
+  const index = sorted.findIndex((c) => c.id === id);
+  if (index === -1) return null;
+  const target = direction === 'up' ? index - 1 : index + 1;
+  if (target < 0 || target >= sorted.length) return null;
+  [sorted[index], sorted[target]] = [sorted[target], sorted[index]];
+  return sorted.map((c, i) => ({ ...c, sort_order: i }));
 }
 
 /** Case-insensitive trimmed query; empty query matches everything. */

@@ -207,6 +207,25 @@ export default function CategoriesAdminPage() {
     }
   };
 
+  const handleReorder = async (id: string, direction: 'up' | 'down') => {
+    setError(null);
+    setStatus(null);
+    try {
+      const response = await fetch(`/api/admin/categories/${id}/order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direction })
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || 'Не вдалося змінити порядок');
+      }
+      await fetchCategories();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Невідома помилка');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -321,6 +340,7 @@ export default function CategoriesAdminPage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slug</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Порядок сортування</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Позиція</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Дії</th>
             </tr>
           </thead>
@@ -347,6 +367,26 @@ export default function CategoriesAdminPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {category.sort_order}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      aria-label={`Перемістити «${category.name}» вище`}
+                      onClick={() => handleReorder(category.id, 'up')}
+                      className="px-2 py-1 border border-gray-200 rounded hover:bg-gray-100"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Перемістити «${category.name}» нижче`}
+                      onClick={() => handleReorder(category.id, 'down')}
+                      className="px-2 py-1 border border-gray-200 rounded hover:bg-gray-100"
+                    >
+                      ↓
+                    </button>
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
