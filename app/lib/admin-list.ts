@@ -298,10 +298,11 @@ export type ProductJoinedRow = Omit<
   pc?: { id: string }[] | null;
 };
 
-/** Category-filtered count join (dedup-safe head count). */
-const JUNCTION_COUNT_EMBED = ', pc:product_categories!inner(id)';
+/** Category-filtered count join — selects product_id: `pc.id` resolves
+ * against the EMBEDDED table and fails live (42703, verified 2026-08-26). */
+const JUNCTION_COUNT_EMBED = ', pc:product_categories!inner(product_id)';
 /** Category-filtered data join — stripped by normalizeProduct. */
-const JUNCTION_DATA_EMBED = ', pc:product_categories!inner(id)';
+const JUNCTION_DATA_EMBED = ', pc:product_categories!inner(product_id)';
 
 export function normalizeProduct(row: ProductJoinedRow): Product {
   const { pc: _pc, ...rest } = row;

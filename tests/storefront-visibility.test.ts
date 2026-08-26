@@ -34,7 +34,7 @@ test('VISIBILITY: catalog head-count mirrors the eligibility join', () => {
   // category filter is active; both variants share ELIGIBLE_COUNT_SELECT.
   assert.match(
     body,
-    /\.select\(\s*\n?\s*categoryId\s*\?[\s\S]{0,120}?ELIGIBLE_COUNT_SELECT \+ ', pc:product_categories!inner\(id\)'\s*:\s*ELIGIBLE_COUNT_SELECT,\s*\{ count: 'exact', head: true \}\s*\)/,
+    /\.select\(\s*\n?\s*categoryId \? JUNCTION_COUNT_SELECT : ELIGIBLE_COUNT_SELECT,/,
     'count-запрос каталога должен использовать тот же eligibility join, иначе total не сойдётся с выдачей'
   );
 });

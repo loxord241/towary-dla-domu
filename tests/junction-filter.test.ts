@@ -33,8 +33,10 @@ test('JUNCTION-FILTER: both queries embed pc and filter by subtree ids', () => {
   // Both count and data queries carry the guarded junction filter.
   const inFilters = (s.match(/\.in\('pc\.category_id', subtreeIds\)/g) ?? []).length;
   assert.equal(inFilters, 2, 'count + data + no other spot');
-  // The pc embed joins only via the categoryId ternary guards.
-  assert.match(s, /categoryId\s*\?\s*\n?\s*ELIGIBLE_COUNT_SELECT \+ ', pc:product_categories!inner\(id\)'/);
+  // The pc embed joins only via the categoryId ternary guards; the count
+  // variant selects product_id (pc.id is not a valid live column).
+  assert.match(s, /categoryId \? JUNCTION_COUNT_SELECT : ELIGIBLE_COUNT_SELECT/);
+  assert.match(s, /JUNCTION_COUNT_SELECT = 'id, images:product_images!inner\(id\), pc:product_categories!inner\(product_id\)'/);
   assert.match(s, /categoryId\s*\?[\s\S]{0,120}?PRODUCT_SELECT \+ ', pc:product_categories!inner\(category_id\)'/);
 });
 

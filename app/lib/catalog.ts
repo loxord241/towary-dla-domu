@@ -107,7 +107,12 @@ const PRODUCT_SELECT =
   '*, category:categories(*), brand:brands(*), images:product_images!inner(*), variants:product_variants(*)';
 
 /** Same eligibility join for head-count queries (no row multiplication). */
+// NOTE: the junction count embed selects product_id (a real column), NOT id:
+// PostgREST resolves `pc.id` against the EMBEDDED table, and selecting
+// `, pc:product_categories!inner(id)` made the head-count fail live with
+// 42703 "column product_categories_1.id does not exist" (verified 2026-08-26).
 const ELIGIBLE_COUNT_SELECT = 'id, images:product_images!inner(id)';
+const JUNCTION_COUNT_SELECT = 'id, images:product_images!inner(id), pc:product_categories!inner(product_id)';
 
 // PostgREST embeds a many-to-one relation as an object (or null when the
 // FK is unset) and one-to-many relations as arrays — verified against the
@@ -364,12 +369,10 @@ export async function fetchCatalogProducts(
   // would count imageless products that the data query can never return.
   let countQuery = supabase
     .from('products')
-    .select(
-      categoryId
-        ? ELIGIBLE_COUNT_SELECT + ', pc:product_categories!inner(id)'
-        : ELIGIBLE_COUNT_SELECT,
-      { count: 'exact', head: true }
-    )
+    .select(categoryId ? JUNCTION_COUNT_SELECT : ELIGIBLE_COUNT_SELECT, {
+      count: 'exact',
+      head: true,
+    })
     .eq('is_active', true);
 
   if (categoryId) {
@@ -760,7 +763,8 @@ async function fetchRelatedStage(
     .eq('is_active', true)
     .neq('id', currentId);
   if (filter?.kind === 'category') {
-    // Same junction + subtree semantics as fetchCatalogProducts.
+    // Same junction + subtree semantics as fetchCatalogProducts. The count
+    // embed uses product_id (see JUNCTION_COUNT_SELECT note).
     query = query
       .select(PRODUCT_SELECT + ', pc:product_categories!inner(category_id)')
       .in('pc.category_id', filter.subtreeIds);
