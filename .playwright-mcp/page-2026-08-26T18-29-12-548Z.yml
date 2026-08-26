@@ -1,0 +1,48 @@
+- generic [active] [ref=f3e1]:
+  - generic [ref=f3e3]:
+    - generic [ref=f3e4]:
+      - generic [ref=f3e5]: ✓
+      - heading "Замовлення прийнято!" [level=1] [ref=f3e6]
+      - paragraph [ref=f3e7]: "Номер замовлення: ORD-20260826-E2E123"
+      - paragraph [ref=f3e8]:
+        - text: Збережіть номер — статус можна перевірити
+        - link "за номером та email" [ref=f3e9] [cursor=pointer]:
+          - /url: /orders/lookup
+        - text: .
+    - generic [ref=f3e10]:
+      - table [ref=f3e11]:
+        - rowgroup [ref=f3e12]:
+          - row [ref=f3e13]:
+            - 'cell "E2E Товар SKU: E2E-SKU-1 · 1 шт × 1050.5" [ref=f3e14]':
+              - text: E2E Товар
+              - generic [ref=f3e15]: "SKU: E2E-SKU-1 · 1 шт × 1050.5"
+            - cell "1050.5 UAH" [ref=f3e16]
+      - generic [ref=f3e17]:
+        - generic [ref=f3e18]:
+          - term [ref=f3e19]: Товари
+          - definition [ref=f3e20]: 1050.5 UAH
+        - generic [ref=f3e21]:
+          - term [ref=f3e22]: Доставка
+          - definition [ref=f3e23]: 0 UAH
+        - generic [ref=f3e24]:
+          - term [ref=f3e25]: Разом до сплати
+          - definition [ref=f3e26]: 1050.5 UAH
+      - paragraph [ref=f3e27]: "Статус: pending · оплата: pending"
+    - generic [ref=f3e28]:
+      - generic [ref=f3e29]: Очікує підтвердження
+      - generic [ref=f3e30]: Очікує оплату
+    - generic [ref=f3e31]:
+      - generic [ref=f3e32]:
+        - paragraph [ref=f3e33]: Оплату обробляється
+        - paragraph [ref=f3e34]: Ми чекаємо підтвердження від платіжної системи. Якщо оплата вже здійснена, статус оновиться найближчим часом.
+        - link "Оновити статус" [ref=f3e35] [cursor=pointer]:
+          - /url: /checkout/success?order=ORD-20260826-E2E123&t=a18026ddcd06ab7781851c91cfdb31c6
+      - generic [ref=f3e36]:
+        - paragraph [ref=f3e37]: Що далі?
+        - list [ref=f3e38]:
+          - listitem [ref=f3e39]: Менеджер зв’яжеться з вами для підтвердження.
+          - listitem [ref=f3e40]: Після підтвердження узгодимо доставку та оплату.
+          - listitem [ref=f3e41]: Статус можна перевірити за номером замовлення.
+    - link "Продовжити покупки" [ref=f3e43] [cursor=pointer]:
+      - /url: /catalog
+  - button "Open Next.js Dev Tools" [ref=f3e49] [cursor=pointer]

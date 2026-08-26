@@ -5,6 +5,7 @@ import OrderDetailsCard from '@/app/components/OrderDetailsCard';
 import OrderStatusBadge, {
   PaymentStatusBadge,
 } from '@/app/components/OrderStatusBadge';
+import PayWithLiqPayButton from '@/app/components/PayWithLiqPayButton';
 
 /**
  * Guest order view: /orders/<order_number>?t=<hmac token>.
@@ -134,6 +135,32 @@ export default async function GuestOrderViewPage({
         <div className="flex flex-wrap items-center gap-2 px-6 pb-2 text-xs text-gray-500">
           <OrderStatusBadge status={order.status} />
           <PaymentStatusBadge status={order.payment_status} />
+        </div>
+
+        <div className="px-6 pb-4">
+          {(order.payment_status === 'unpaid' ||
+            order.payment_status === 'failed') && (
+            <PayWithLiqPayButton
+              orderNumber={order.order_number}
+              accessToken={typeof t === 'string' ? t : ''}
+            />
+          )}
+          {order.payment_status === 'pending' && (
+            <div className="rounded-lg bg-amber-50 p-4 text-sm">
+              <p className="font-semibold text-amber-900">Оплату обробляється</p>
+              <Link
+                href={`/orders/${encodeURIComponent(order.order_number)}?t=${encodeURIComponent(typeof t === 'string' ? t : '')}`}
+                className="mt-2 inline-block text-sm font-medium underline text-amber-900"
+              >
+                Оновити статус
+              </Link>
+            </div>
+          )}
+          {order.payment_status === 'paid' && (
+            <div className="rounded-lg bg-green-50 p-4 text-sm text-green-800">
+              Оплату отримано — дякуємо!
+            </div>
+          )}
         </div>
 
         <div className="px-6 pb-6">

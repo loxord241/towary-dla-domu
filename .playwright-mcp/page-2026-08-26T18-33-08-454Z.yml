@@ -1,0 +1,45 @@
+- generic [active] [ref=f8e1]:
+  - generic [ref=f8e3]:
+    - generic [ref=f8e4]:
+      - generic [ref=f8e5]: ✓
+      - heading "Замовлення прийнято!" [level=1] [ref=f8e6]
+      - paragraph [ref=f8e7]: "Номер замовлення: ORD-20260826-E2E123"
+      - paragraph [ref=f8e8]:
+        - text: Збережіть номер — статус можна перевірити
+        - link "за номером та email" [ref=f8e9] [cursor=pointer]:
+          - /url: /orders/lookup
+        - text: .
+    - generic [ref=f8e10]:
+      - table [ref=f8e11]:
+        - rowgroup [ref=f8e12]:
+          - row [ref=f8e13]:
+            - 'cell "E2E Товар SKU: E2E-SKU-1 · 1 шт × 1050.5" [ref=f8e14]':
+              - text: E2E Товар
+              - generic [ref=f8e15]: "SKU: E2E-SKU-1 · 1 шт × 1050.5"
+            - cell "1050.5 UAH" [ref=f8e16]
+      - generic [ref=f8e17]:
+        - generic [ref=f8e18]:
+          - term [ref=f8e19]: Товари
+          - definition [ref=f8e20]: 1050.5 UAH
+        - generic [ref=f8e21]:
+          - term [ref=f8e22]: Доставка
+          - definition [ref=f8e23]: 0 UAH
+        - generic [ref=f8e24]:
+          - term [ref=f8e25]: Разом до сплати
+          - definition [ref=f8e26]: 1050.5 UAH
+      - paragraph [ref=f8e27]: "Статус: pending · оплата: failed"
+    - generic [ref=f8e28]:
+      - generic [ref=f8e29]: Очікує підтвердження
+      - generic [ref=f8e30]: Помилка оплати
+    - generic [ref=f8e31]:
+      - button "Оплатити через LiqPay" [ref=f8e33]
+      - generic [ref=f8e34]:
+        - paragraph [ref=f8e35]: Що далі?
+        - list [ref=f8e36]:
+          - listitem [ref=f8e37]: Менеджер зв’яжеться з вами для підтвердження.
+          - listitem [ref=f8e38]: Після підтвердження узгодимо доставку та оплату.
+          - listitem [ref=f8e39]: Статус можна перевірити за номером замовлення.
+    - paragraph [ref=f8e40]: Остання спроба оплати не була успішною. Ви можете повторити оплату кнопкою вище.
+    - link "Продовжити покупки" [ref=f8e42] [cursor=pointer]:
+      - /url: /catalog
+  - button "Open Next.js Dev Tools" [ref=f8e48] [cursor=pointer]

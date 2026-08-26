@@ -100,6 +100,11 @@ export const RATE_RULES = {
     { max: 5, windowMs: 60_000 },
     { max: 20, windowMs: 60 * 60_000 },
   ],
+  // payment init: signed checkout request per order; burst + hourly ceiling
+  paymentInit: [
+    { max: 5, windowMs: 60_000 },
+    { max: 20, windowMs: 60 * 60_000 },
+  ],
   // anonymous feedback: strict anti-spam (no auth, no persistence yet)
   feedback: [
     { max: 3, windowMs: 60_000 },
