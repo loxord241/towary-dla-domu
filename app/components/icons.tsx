@@ -118,6 +118,14 @@ export function ChevronDownIcon({ className }: IconProps) {
   );
 }
 
+export function ChevronRightIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
+
 export function StarIcon({
   className,
   filled = false,

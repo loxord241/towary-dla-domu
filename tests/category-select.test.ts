@@ -108,3 +108,31 @@ test('CATEGORY-SELECT: duplicate names are disambiguated by branch label', () =>
   const s = select();
   assert.match(s, /option\.label/, 'list must render the full path label');
 });
+
+// ---- collapsible tree (2026-08-26) ----
+
+test('CATEGORY-TREE: toggle arrow carries aria-expanded + aria-controls, separate from selection', () => {
+  const s = select();
+  assert.match(s, /expandedIds/, 'collapsible state missing');
+  assert.match(s, /aria-expanded=\{[^}]*isOpen|aria-expanded=\{isExpanded\}/,
+    'toggle button must announce expansion');
+  assert.match(s, /aria-controls=\{[^`]*`category-kids-/, 'toggle must reference nested list');
+  assert.match(s, /розгорнути\/згорнути/, 'toggle needs an accessible name distinct from selection');
+});
+
+test('CATEGORY-TREE: ArrowRight/ArrowLeft expand/collapse the active node', () => {
+  const s = select();
+  assert.match(s, /'ArrowRight'/);
+  assert.match(s, /'ArrowLeft'/);
+});
+
+test('CATEGORY-TREE: search reveals everything; empty query honors collapsed state', () => {
+  const s = select();
+  assert.match(s, /query\.trim\(\)\s*===\s*''/, 'visibility must branch on search emptiness');
+  assert.match(s, /buildCategoryOptions\(categories,\s*\{\s*expanded/, 'expanded set must feed the builder');
+});
+
+test('CATEGORY-TREE: URL contract untouched — selection still emits slug only', () => {
+  const s = select();
+  assert.match(s, /onChange\(option\.slug\)/);
+});

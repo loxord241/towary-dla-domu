@@ -6,23 +6,25 @@ import {
   buildCategoryOptions,
   filterCategoryOptions,
 } from '@/app/lib/category-tree';
-import { ChevronDownIcon, SearchIcon } from './icons';
+import { ChevronDownIcon, ChevronRightIcon, SearchIcon } from './icons';
 
 /**
- * Searchable hierarchical category picker for the catalog filters.
- * Replaces the ~205-option native select element: options render as a tree
- * («ПОБУТОВА ТЕХНІКА → Блендери») so duplicate branch names stay
- * distinguishable, and the search field filters the FULL option set.
+ * Searchable COLLAPSIBLE category tree for the catalog filters.
+ * Replaces the ~205-option flat list: roots render collapsed («▸»), the
+ * arrow expands/collapses children without selecting, and clicking a NAME
+ * selects that category (parents and children are equally selectable).
+ * Duplicate names stay distinguishable via their root→leaf path.
  *
- * Accessibility contract: the trigger is a button with aria-expanded/
- * aria-controls/aria-haspopup; the list is role="listbox" with
- * role="option" children tracked via aria-activedescendant. Opening moves
- * focus to the search field; Escape (and any selection) closes and returns
- * focus to the trigger; ArrowDown/ArrowUp move the active option with
- * clamping and Enter selects it — fully keyboard operable, no mouse
- * required anywhere.
+ * Accessibility contract: trigger = button with aria-expanded/aria-controls/
+ * aria-haspopup; list = role="listbox" with role="option" children tracked
+ * via aria-activedescendant; toggle arrows are separate buttons with
+ * aria-expanded/aria-controls; ArrowDown/Up move the active option,
+ * ArrowRight/Left expand/collapse it; Enter selects; Escape closes and
+ * refocuses the trigger. Opening moves focus to the search field.
+ *
+ * Visibility rule: an EMPTY search honors the collapsed state; any search
+ * reveals the full tree (search must always reach every category).
  */
-
 export default function CategorySelect({
   categories,
   value,
@@ -36,20 +38,48 @@ export default function CategorySelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [rawActiveIndex, setRawActiveIndex] = useState(0);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  // The full option set is derived once per categories payload — search
-  // always runs against ALL categories, never a rendered subset.
-  const options = useMemo(() => buildCategoryOptions(categories), [categories]);
+  // Full tree walk once per payload; `expanded` hides unexpanded branches.
+  const options = useMemo(
+    () => buildCategoryOptions(categories, { expanded: expandedIds }),
+    [categories, expandedIds]
+  );
+  // Any query bypasses collapsing — search reaches the FULL set.
+  const searchable = useMemo(
+    () =>
+      query.trim() === ''
+        ? options
+        : buildCategoryOptions(categories),
+    [categories, options, query]
+  );
   const filtered = useMemo(
-    () => filterCategoryOptions(options, query),
-    [options, query]
+    () => filterCategoryOptions(searchable, query),
+    [searchable, query]
   );
 
-  const selected = options.find((o) => o.slug === value);
+  // Children presence is derived from the input set (no extra state).
+  const hasChildren = useMemo(() => {
+    const ids = new Set(categories.map((c) => c.id));
+    const set = new Set<string>();
+    for (const c of categories) {
+      if (c.parent_id && ids.has(c.parent_id)) set.add(c.parent_id);
+    }
+    return set;
+  }, [categories]);
+
+  // Full-tree list (ignores collapse) drives the trigger label so a
+  // selection hidden inside a collapsed branch still displays its path.
+  const allOptions = useMemo(() => buildCategoryOptions(categories), [categories]);
+
+  const selected = useMemo(
+    () => allOptions.find((c) => c.slug === value),
+    [allOptions, value]
+  );
 
   // Active index must always point at a rendered option, even right after
   // the filtered set shrinks — derived clamp instead of effect-based reset.
@@ -105,6 +135,16 @@ export default function CategorySelect({
         commitAndClose();
         onChange(option.slug);
       }
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const option = filtered[activeIndex];
+      if (!option || !hasChildren.has(option.id)) return;
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
+        if (e.key === 'ArrowRight') next.add(option.id);
+        else next.delete(option.id);
+        return next;
+      });
     }
   };
 
@@ -185,38 +225,82 @@ export default function CategorySelect({
                 Всі категорії
               </button>
             </li>
-            {filtered.map((option, index) => (
-              <li
-                key={option.id}
-                id={`category-opt-${index}`}
-                role="option"
-                aria-selected={value === option.slug}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    commitAndClose();
-                    onChange(option.slug);
-                  }}
-                  onMouseMove={() => setRawActiveIndex(index)}
-                  title={option.label}
-                  className={`w-full py-2 pr-3 text-left text-sm hover:bg-gray-50 ${
-                    index === activeIndex ? 'bg-gray-50' : ''
-                  } ${value === option.slug ? 'font-semibold text-blue-700' : 'text-gray-700'}`}
-                  style={{ paddingLeft: `${12 + option.depth * 16}px` }}
+            {filtered.map((option, index) => {
+              const canExpand = hasChildren.has(option.id);
+              const isOpen = expandedIds.has(option.id);
+              return (
+                <li
+                  key={option.id}
+                  id={`category-opt-${index}`}
+                  role="option"
+                  aria-selected={value === option.slug}
                 >
-                  {option.depth > 0 && (
-                    <span className="sr-only">
-                      {option.path.slice(0, -1).join(' → ')} →{' '}
-                    </span>
-                  )}
-                  <span className={option.depth > 0 ? '' : 'font-medium'}>
-                    {/* Full path in title; sr-only branch context for duplicates */}
-                    {option.name}
-                  </span>
-                </button>
-              </li>
-            ))}
+                  {/* Nested list lives outside the option button flow but
+                      inside the li for DOM locality of aria-controls. */}
+                  <div
+                    className={`flex items-center pr-2 ${index === activeIndex ? 'bg-gray-50' : ''}`}
+                    style={{ paddingLeft: `${12 + option.depth * 16}px` }}
+                  >
+                    {canExpand && (
+                      <span
+                        id={`category-kids-${index}`}
+                        hidden
+                        aria-hidden="true"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      aria-label={`${option.name}: розгорнути/згорнути`}
+                      aria-expanded={canExpand ? isOpen : undefined}
+                      aria-controls={isOpen ? `category-kids-${index}` : undefined}
+                      tabIndex={-1}
+                      onMouseMove={() => setRawActiveIndex(index)}
+                      onClick={() => {
+                        if (!canExpand) return;
+                        setExpandedIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(option.id)) next.delete(option.id);
+                          else next.add(option.id);
+                          return next;
+                        });
+                      }}
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${
+                        canExpand ? 'hover:bg-gray-200' : ''
+                      }`}
+                    >
+                      {canExpand ? (
+                        <ChevronRightIcon
+                          className={`h-3.5 w-3.5 text-gray-500 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                        />
+                      ) : (
+                        <span className="w-3.5" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onMouseMove={() => setRawActiveIndex(index)}
+                      title={option.label}
+                      onClick={() => {
+                        commitAndClose();
+                        onChange(option.slug);
+                      }}
+                      className={`flex-1 py-2 pr-1 text-left text-sm hover:bg-gray-50 ${
+                        value === option.slug ? 'font-semibold text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      {option.depth > 0 && (
+                        <span className="sr-only">
+                          {option.path.slice(0, -1).join(' → ')} →{' '}
+                        </span>
+                      )}
+                      <span className={option.depth > 0 ? '' : 'font-medium'}>
+                        {option.name}
+                      </span>
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
             {filtered.length === 0 && (
               <li className="px-3 py-3 text-sm text-gray-500" aria-live="polite">
                 Нічого не знайдено
