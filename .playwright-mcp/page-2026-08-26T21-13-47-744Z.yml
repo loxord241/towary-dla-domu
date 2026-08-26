@@ -1,0 +1,25 @@
+- generic [active] [ref=f1e1]:
+  - alert [ref=f1e31]: Оформлення замовлення — E-Shop
+  - generic [ref=f1e86]:
+    - banner [ref=f1e87]:
+      - generic [ref=f1e89]:
+        - generic [ref=f1e90]:
+          - button "Відкрити меню" [ref=f1e91]
+          - link "E-Shop" [ref=f1e93] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f1e94]:
+            - link "Каталог" [ref=f1e95] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f1e97]:
+          - searchbox "Пошук" [ref=f1e98]
+          - button "Шукати" [ref=f1e99]
+        - generic [ref=f1e103]:
+          - 'link "Обране, товарів: 0" [ref=f1e104] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 0" [ref=f1e159] [cursor=pointer]':
+            - /url: /cart
+    - generic [ref=f1e160]:
+      - heading "Кошик порожній" [level=1] [ref=f1e161]
+      - paragraph [ref=f1e162]: Додайте товари до кошика, щоб оформити замовлення.
+      - link "До каталогу" [ref=f1e163] [cursor=pointer]:
+        - /url: /catalog

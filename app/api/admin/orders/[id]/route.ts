@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requireAdminApi, isUuid } from '@/app/lib/admin-api';
+import {
+  decideAdminCancellation,
+  PAID_CANCEL_REJECTION_MESSAGE,
+} from '@/app/lib/admin-order-cancel';
 
 /**
  * GET   /api/admin/orders/[id] — full order details (order + items).
@@ -89,6 +93,34 @@ export async function PATCH(
   }
 
   try {
+    // B2 interlock (server-side, effective even before migration 018 lands):
+    // a paid order must never be cancellable through the plain admin flow —
+    // stock would be restored while the customer stays charged. The DB-level
+    // guard in admin_cancel_order (018) remains the authoritative backstop.
+    if (status === 'cancelled') {
+      const { data: guardRow, error: guardError } = await ctx.serviceClient
+        .from('orders')
+        .select('payment_status')
+        .eq('id', id)
+        .maybeSingle();
+      if (guardError) {
+        console.error('admin cancel guard read failed:', guardError.code);
+        return NextResponse.json(
+          { error: 'Не вдалося змінити статус замовлення' },
+          { status: 500 }
+        );
+      }
+      const decision = decideAdminCancellation({
+        payment_status: guardRow?.payment_status ?? null,
+      });
+      if (!decision.allowed) {
+        return NextResponse.json(
+          { error: PAID_CANCEL_REJECTION_MESSAGE },
+          { status: 409 }
+        );
+      }
+    }
+
     const rpcName = status === 'cancelled' ? 'admin_cancel_order' : 'admin_set_order_status';
     const rpcArgs =
       status === 'cancelled' ? { p_order_id: id } : { p_order_id: id, p_new_status: status };

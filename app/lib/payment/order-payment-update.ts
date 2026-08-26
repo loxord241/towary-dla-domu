@@ -396,6 +396,12 @@ export function createSupabaseOrdersGateway(db: SupabaseClient): OrdersGateway {
         })
         .eq('id', id)
         .neq('payment_status', 'paid')
+        // B1 interlock: a success callback that was blocked on the row lock
+        // while expire_pending_orders()/admin_cancel_order() committed
+        // status='cancelled' must never flip that order to paid (PostgreSQL
+        // re-evaluates quals after the lock wait, so this qualifier sees the
+        // committed cancel).
+        .neq('status', 'cancelled')
         .select('id');
       return updatedCount(res as unknown as { data: unknown[] | null })
         ? 'applied'

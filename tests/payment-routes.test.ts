@@ -75,7 +75,11 @@ function makeGateway(row: Row | null) {
       state && state.liqpay_order_id === id ? { ...state } : null,
     applyPaid: async (i: { id: string; paymentId: number | null; method: string | null }) => {
       calls.push(`applyPaid:${state?.payment_status}:${i.paymentId}:${i.method}`);
-      if (!state || state.payment_status === 'paid') return 'already-paid' as const;
+      // Mirrors the production adapter's conditional UPDATE quals:
+      // paid is terminal AND a cancelled order can never regress to paid.
+      if (!state || state.status === 'cancelled' || state.payment_status === 'paid') {
+        return 'already-paid' as const;
+      }
       state.payment_status = 'paid';
       return 'applied' as const;
     },
@@ -507,6 +511,49 @@ test('CALLBACK: reversed applies refund only from paid state', async () => {
     callbackBody({ status: 'reversed', amount: '1050.50', currency: 'UAH' })
   );
   assert.equal(res2.kind, 'kept-pending');
+});
+
+// ---------- B1: cancel/paid interlock sequences ----------
+
+test('INTERLOCK-B1: late SUCCESS callback after expiry-cancelled order is a safe no-op', async () => {
+  // Sequence 2 (expiry → cancelled → late success): the expiry transaction
+  // committed status='cancelled' (+stock restore) while the callback waited
+  // on the row lock. The blocked success must NOT mark the order paid.
+  const row = {
+    ...baseRow(),
+    status: 'cancelled',
+    payment_status: 'pending',
+    liqpay_order_id: ORDER,
+  };
+  const deps = makeDeps(row);
+  const res = await processLiqPayCallback(deps2cb(deps), cbBody(ORDER, 'success'));
+  // recognized + processed (HTTP 200 semantics) but ZERO state change
+  assert.equal(res.kind, 'already-paid');
+  assert.equal(deps.gateway.row.status, 'cancelled', 'status untouched');
+  assert.notEqual(deps.gateway.row.payment_status, 'paid', 'cancelled can never become paid');
+});
+
+test('INTERLOCK-B1: manual admin cancel of a pending live attempt → success cannot mark paid', async () => {
+  // Sequence 3 (cancel → callback): admin cancels an order that has a live
+  // provider session; the provider completes it anyway. Money state at the
+  // provider is reconciled offline; our DB must not flip to paid.
+  const row = { ...baseRow(), payment_status: 'unpaid', liqpay_order_id: ORDER };
+  const deps = makeDeps(row);
+  deps.gateway.row.status = 'cancelled'; // cancel happened between init and callback
+  const res = await processLiqPayCallback(deps2cb(deps), cbBody(ORDER, 'success'));
+  assert.equal(res.kind, 'already-paid');
+  assert.equal(deps.gateway.row.status, 'cancelled');
+  assert.equal(deps.gateway.row.payment_status, 'unpaid');
+});
+
+test('INTERLOCK-B1: normal pending → paid still works with the cancelled guard in place', async () => {
+  // The interlock must never block the happy path.
+  const row = { ...baseRow(), status: 'pending', liqpay_order_id: ORDER };
+  const deps = makeDeps(row);
+  const res = await processLiqPayCallback(deps2cb(deps), cbBody(ORDER, 'success'));
+  assert.equal(res.kind, 'updated');
+  assert.equal(deps.gateway.row.payment_status, 'paid');
+  assert.equal(deps.gateway.row.status, 'pending');
 });
 
 // ---------- full lifecycle audit (pre-production) ----------

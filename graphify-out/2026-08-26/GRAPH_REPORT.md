@@ -1,10 +1,11 @@
 # Graph Report - my-shop  (2026-08-26)
 
 ## Corpus Check
-- cluster-only mode — file stats not available
+- 265 files · ~310,085 words
+- Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1680 nodes · 2729 edges · 150 communities (115 shown, 35 thin omitted)
+- 1681 nodes · 2731 edges · 151 communities (117 shown, 34 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 21 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
@@ -31,15 +32,15 @@
 - catalog.ts
 - InfoPage.tsx
 - tmp-postverify-content.ts
-- RecentProducts.tsx
+- [orderNumber]/page.tsx
 - products/page.tsx
 - import-run.ts
-- orders/page.tsx
+- (dashboard)/categories/page.tsx
 - File Structure (deliverable map)
 - [slug]/page.tsx
 - cart-context.tsx
 - tmp-verify-stage.ts
-- schema-org.ts
+- enforceRateLimit
 - client.ts
 - content-images.ts
 - admin-api.ts
@@ -51,8 +52,8 @@
 - admin-junction-search.test.ts
 - admin-search-pagination.test.ts
 - products/route.ts
-- enforceRateLimit
-- cart-preview.ts
+- FeedbackModal.tsx
+- cart/page.tsx
 - icons.tsx
 - yugcontract-content-fetch.ts
 - normalize.ts
@@ -61,16 +62,16 @@
 - yugcontract-rrp-apply.ts
 - yugcontract-rrp-dry-run.ts
 - CatalogFilters.tsx
-- ProductDescription.tsx
-- cart/page.tsx
+- orders/page.tsx
+- ReviewFormModal.tsx
 - tmp-verify-011.ts
 - fetchActiveCategories
 - content-staging.ts
 - [imageId]/route.ts
 - yugcontract/categories/route.ts
 - preview/route.ts
-- favorites/page.tsx
-- ProductSpecifications.tsx
+- ProductCard.tsx
+- favorites-context.tsx
 - runProductsBatch
 - selection.ts
 - E-Commerce Database Schema
@@ -85,14 +86,14 @@
 - Global Constraints
 - yugcontract-import-run.ts
 - (home)/page.tsx
-- jwt.ts
+- getAuthToken
 - Priority 2 UX/UI: Mobile Catalog + Product Page — дизайн (2026-08-26)
 - pagination-hardening.test.ts
 - tmp-verify-f6.ts
 - public.product_reviews
 - 011_content_import.sql
 - Global Constraints
-- SiteFooter.tsx
+- favorites/page.tsx
 - tmp-audit-orders-rls.mts
 - tmp-sentinel.ts
 - tmp-verify-admin-search-live.ts
@@ -141,6 +142,7 @@
 - postcss.config.mjs
 - h1-invariants.test.ts
 - migration-016-invariants.test.ts
+- api/orders/route.ts
 - 010_yugcontract_import_infra.sql
 - 013_feedback.sql
 
@@ -151,31 +153,31 @@
 4. `dbErrorResponse()` - 26 edges
 5. `enforceRateLimit()` - 23 edges
 6. `strOrNull()` - 22 edges
-7. `File Structure (deliverable map)` - 17 edges
-8. `compilerOptions` - 17 edges
+7. `compilerOptions` - 17 edges
+8. `File Structure (deliverable map)` - 17 edges
 9. `numOrNull()` - 16 edges
 10. `Global Constraints` - 14 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `externalExisting` --calls--> `isExternalImportedImage()`  [EXTRACTED]
-  scripts/yugcontract-content-images.ts → app/lib/yugcontract/content-images.ts
-- `manualImages` --calls--> `isExternalImportedImage()`  [EXTRACTED]
-  scripts/yugcontract-content-images.ts → app/lib/yugcontract/content-images.ts
+- `runPlanPreview()` --calls--> `matchContentGoodsToProducts()`  [EXTRACTED]
+  scripts/yugcontract-content-fetch.ts → app/lib/yugcontract/content-dry-run.ts
 - `runPlanPreview()` --calls--> `buildDescriptionStats()`  [EXTRACTED]
   scripts/yugcontract-content-fetch.ts → app/lib/yugcontract/content-dry-run.ts
 - `runPlanPreview()` --calls--> `buildParamsStats()`  [EXTRACTED]
   scripts/yugcontract-content-fetch.ts → app/lib/yugcontract/content-dry-run.ts
-- `runPlanPreview()` --calls--> `matchContentGoodsToProducts()`  [EXTRACTED]
-  scripts/yugcontract-content-fetch.ts → app/lib/yugcontract/content-dry-run.ts
+- `externalExisting` --calls--> `isExternalImportedImage()`  [EXTRACTED]
+  scripts/yugcontract-content-images.ts → app/lib/yugcontract/content-images.ts
+- `manualImages` --calls--> `isExternalImportedImage()`  [EXTRACTED]
+  scripts/yugcontract-content-images.ts → app/lib/yugcontract/content-images.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (150 total, 35 thin omitted)
+## Communities (151 total, 34 thin omitted)
 
 ### Community 0 - "category-tree.ts"
-Cohesion: 0.26
-Nodes (11): AdminCategoryMultiSelect(), CategorySelect(), Category, buildCategoryOptions(), CategoryOption, compareCategories(), compareSiblings(), filterCategoryOptions() (+3 more)
+Cohesion: 0.24
+Nodes (12): AdminCategoryMultiSelect(), CategorySelect(), Category, buildCategoryOptions(), CategoryOption, collectSubtreeIds(), compareCategories(), compareSiblings() (+4 more)
 
 ### Community 1 - "devDependencies"
 Cohesion: 0.04
@@ -186,7 +188,7 @@ Cohesion: 0.05
 Nodes (36): anonClient, client, dangerCounts, dangerPatterns, dangerSamples, diffSamples, external, imagesByProduct (+28 more)
 
 ### Community 3 - "admin-list.ts"
-Cohesion: 0.12
+Cohesion: 0.11
 Nodes (31): GET(), GET(), ADMIN_LIST_DEFAULT_PAGE_SIZE, ADMIN_LIST_MAX_PAGE_SIZE, AdminListParams, BRAND_FIELDS_LIST, BRAND_SORT_KEYS, BRAND_SORTS (+23 more)
 
 ### Community 4 - "requireAdminApi"
@@ -231,7 +233,7 @@ Nodes (21): anomalies, batches, brokenMains, client, crossProductDups, dbIdByYc,
 
 ### Community 14 - "catalog.ts"
 Cohesion: 0.12
-Nodes (20): buildSearchConditions(), CATALOG_PAGE_SIZE, CatalogPage, CatalogSort, collectRelated(), fetchCatalogProducts(), fetchProductBySlug(), fetchProducts() (+12 more)
+Nodes (18): buildSearchConditions(), CATALOG_PAGE_SIZE, CatalogPage, CatalogSort, collectRelated(), fetchCatalogProducts(), fetchProductBySlug(), fetchRelatedStage() (+10 more)
 
 ### Community 15 - "InfoPage.tsx"
 Cohesion: 0.12
@@ -241,9 +243,9 @@ Nodes (8): metadata, InfoPage(), InfoPageProps, metadata, metadata, metadata, me
 Cohesion: 0.12
 Nodes (19): byStatus, byYc, check(), client, DANGER, emptyDesc, hasDupConflict(), manual (+11 more)
 
-### Community 17 - "RecentProducts.tsx"
-Cohesion: 0.27
-Nodes (10): RecentlyViewedTracker(), RecentProducts(), MAX_RECENTLY_VIEWED, readRecentlyViewed(), RECENTLY_VIEWED_STORAGE_KEY, recordRecentlyViewed(), sanitizeRecentlyViewed(), UUID_RE (+2 more)
+### Community 17 - "[orderNumber]/page.tsx"
+Cohesion: 0.13
+Nodes (15): CheckoutSuccessPage(), ItemRow, OrderRow, SearchParams, supabase, ItemRow, OrderDetails, OrderDetailsCard() (+7 more)
 
 ### Community 18 - "products/page.tsx"
 Cohesion: 0.13
@@ -253,33 +255,33 @@ Nodes (16): AVAILABILITY_OPTIONS, draftFromVariant(), EMPTY_FORM, fetchBrandList
 Cohesion: 0.17
 Nodes (17): maxDuration, POST(), maxDuration, POST(), BatchCounters, BatchOutcome, claimNextBatch(), ensureRun() (+9 more)
 
-### Community 20 - "orders/page.tsx"
-Cohesion: 0.06
-Nodes (44): BRAND_SORT_KEYS, BrandsAdminPage(), fetchBrandList(), SORT_OPTIONS, totalPagesFor(), CategoriesAdminPage(), CATEGORY_SORT_KEYS, fetchAllCategoriesForPicker() (+36 more)
+### Community 20 - "(dashboard)/categories/page.tsx"
+Cohesion: 0.17
+Nodes (16): BRAND_SORT_KEYS, BrandsAdminPage(), fetchBrandList(), SORT_OPTIONS, totalPagesFor(), CategoriesAdminPage(), CATEGORY_SORT_KEYS, fetchAllCategoriesForPicker() (+8 more)
 
 ### Community 21 - "File Structure (deliverable map)"
 Cohesion: 0.10
 Nodes (19): File Structure (deliverable map), Global Constraints, Storefront Features: Reviews / Recently Viewed / Popular Products — Implementation Plan, Task 10: Recently-viewed pure storage module, Task 11: Tracker + shelf components, page wiring, Task 12: Featured-limit pure module, Task 13: Storefront popular query — featured-only + homepage hides empty, Task 14: Admin API enforcement (PUT/POST + featured-count) (+11 more)
 
 ### Community 22 - "[slug]/page.tsx"
-Cohesion: 0.14
-Nodes (17): AddToCartButton(), AddToCartButtonProps, VariantOption, GalleryImage, ProductGallery(), dateFormatter, pluralReviews(), ProductReviews() (+9 more)
+Cohesion: 0.05
+Nodes (47): AddToCartButton(), AddToCartButtonProps, VariantOption, ProductDescription(), GalleryImage, ProductGallery(), ProductJsonLd(), dateFormatter (+39 more)
 
 ### Community 23 - "cart-context.tsx"
-Cohesion: 0.11
-Nodes (26): geistMono, geistSans, metadata, CartAction, CartContext, CartContextValue, CartProvider(), CartState (+18 more)
+Cohesion: 0.18
+Nodes (18): geistMono, geistSans, metadata, CartAction, CartContext, CartContextValue, CartProvider(), CartState (+10 more)
 
 ### Community 24 - "tmp-verify-stage.ts"
 Cohesion: 0.12
 Nodes (17): byYc, client, DANGER, dangerSamples, descPairs, descStats, headCount(), ids (+9 more)
 
-### Community 25 - "schema-org.ts"
-Cohesion: 0.27
-Nodes (10): ProductJsonLd(), ReviewSummary, availabilityUrl(), buildProductJsonLd(), ProductLike, ReviewSummaryLike, serializeJsonLd(), stripHtmlToText() (+2 more)
+### Community 25 - "enforceRateLimit"
+Cohesion: 0.16
+Nodes (15): CheckpointRow, GET(), POST(), supabase, PreviewRequestItem, buckets, checkRateLimit(), clientIpOf() (+7 more)
 
 ### Community 26 - "client.ts"
-Cohesion: 0.15
-Nodes (20): authUrl(), CachedAuthToken, categoriesUrl(), contentUrl(), FetchLike, getAuthToken(), getContentGoods(), getContentGoodsWithMeta() (+12 more)
+Cohesion: 0.17
+Nodes (16): CachedAuthToken, categoriesUrl(), contentUrl(), FetchLike, getContentGoods(), getContentGoodsWithMeta(), GetContentResultWithMeta, getPriceCatalogWithMeta() (+8 more)
 
 ### Community 27 - "content-images.ts"
 Cohesion: 0.13
@@ -318,20 +320,20 @@ Cohesion: 0.18
 Nodes (14): compareRows(), evalOr(), evalPredicate(), FakeDataset, LoggedRequest, makeDataset(), pad(), parseOrder() (+6 more)
 
 ### Community 36 - "products/route.ts"
-Cohesion: 0.19
-Nodes (17): ALLOWED_AVAILABILITY, isValidCurrency(), PUT(), fetchAllJoined(), GET(), POST(), parseCategoryIds(), normalizeProduct() (+9 more)
+Cohesion: 0.20
+Nodes (17): ALLOWED_AVAILABILITY, isValidCurrency(), PUT(), fetchAllJoined(), GET(), POST(), parseCategoryIds(), listAdminProducts() (+9 more)
 
-### Community 37 - "enforceRateLimit"
-Cohesion: 0.06
-Nodes (41): CheckpointRow, GET(), POST(), serviceClient(), POST(), supabase, POST(), SanitizedItem (+33 more)
+### Community 37 - "FeedbackModal.tsx"
+Cohesion: 0.17
+Nodes (11): POST(), serviceClient(), ErrorKind, FeedbackModal(), Status, FEEDBACK_DAILY_CAP, FEEDBACK_MAX_LENGTH, FEEDBACK_MIN_LENGTH (+3 more)
 
-### Community 38 - "cart-preview.ts"
-Cohesion: 0.19
-Nodes (11): supabase, CheckoutForm(), SubmitResult, CartPreviewLine, fetchCartPreview(), FetchHandlers, PREVIEW_NETWORK_ERROR, PREVIEW_TIMEOUT_MS (+3 more)
+### Community 38 - "cart/page.tsx"
+Cohesion: 0.15
+Nodes (15): availabilityLabel(), CartPage(), CheckoutForm(), SubmitResult, metadata, EmptyState(), SiteHeader(), useCart() (+7 more)
 
 ### Community 39 - "icons.tsx"
-Cohesion: 0.16
-Nodes (17): base(), BoxIcon(), CartIcon(), ChevronDownIcon(), ChevronRightIcon(), FilterIcon(), IconProps, MenuIcon() (+9 more)
+Cohesion: 0.14
+Nodes (20): CartBadge(), FavoritesBadge(), base(), BoxIcon(), CartIcon(), ChevronDownIcon(), ChevronRightIcon(), FilterIcon() (+12 more)
 
 ### Community 40 - "yugcontract-content-fetch.ts"
 Cohesion: 0.12
@@ -361,13 +363,13 @@ Nodes (13): changedRrps, DbRow, dbRows, examples, feed, feedById, FeedRow, noRrp
 Cohesion: 0.29
 Nodes (6): CatalogFilters(), buildFilterSearchParams(), buildFilterUrl(), FilterDraft, PRESERVED_KEYS, setIfPresent()
 
-### Community 47 - "ProductDescription.tsx"
-Cohesion: 0.32
-Nodes (4): ProductDescription(), ResolvedDescription, resolveProductDescription(), root
+### Community 47 - "orders/page.tsx"
+Cohesion: 0.18
+Nodes (13): ALLOWED_TRANSITIONS, fetchOrderDetailsApi(), fetchOrdersApi(), formatDate(), ItemRow, OrderDetails, OrderListRow, OrdersAdminPage() (+5 more)
 
-### Community 48 - "cart/page.tsx"
-Cohesion: 0.20
-Nodes (9): availabilityLabel(), CartPage(), metadata, CartBadge(), SiteHeader(), useCart(), formatPrice(), fracFormat (+1 more)
+### Community 48 - "ReviewFormModal.tsx"
+Cohesion: 0.25
+Nodes (11): POST(), serviceClient(), ErrorKind, Status, cleanUserString(), REVIEW_DAILY_CAP, REVIEW_MAX_LENGTH, REVIEW_MIN_LENGTH (+3 more)
 
 ### Community 49 - "tmp-verify-011.ts"
 Cohesion: 0.14
@@ -393,13 +395,13 @@ Nodes (11): GET(), maxDuration, getCategoriesCatalog(), loadOnce(), buildCategor
 Cohesion: 0.26
 Nodes (10): errorResponse(), fetchAllRows(), GET(), maxDuration, getPriceCatalog(), YugcontractError, buildFieldTypeHistogram(), buildPreviewStats() (+2 more)
 
-### Community 55 - "favorites/page.tsx"
-Cohesion: 0.23
-Nodes (10): EmptyState(), FavoriteButton(), FavoritesBadge(), HeartIcon(), availabilityLabel(), ProductCard(), ProductCardData, RemoveFavoriteButton() (+2 more)
+### Community 55 - "ProductCard.tsx"
+Cohesion: 0.25
+Nodes (7): FavoriteButton(), availabilityLabel(), ProductCard(), ProductCardData, formatPrice(), fracFormat, intFormat
 
-### Community 56 - "ProductSpecifications.tsx"
-Cohesion: 0.36
-Nodes (5): ProductSpecifications(), ProductSpecificationsRow, sanitizeSpecRows(), componentSrc, root
+### Community 56 - "favorites-context.tsx"
+Cohesion: 0.27
+Nodes (8): FavoritesContext, FavoritesContextValue, FavoritesProvider(), FavoritesState, loadStoredFavorites(), FAVORITES_STORAGE_KEY, MAX_FAVORITES, sanitizeStoredFavorites()
 
 ### Community 57 - "runProductsBatch"
 Cohesion: 0.27
@@ -455,7 +457,11 @@ Nodes (9): allConflicts, client, deps, execDeps, planned, resumeIdx, root, t0 (+
 
 ### Community 70 - "(home)/page.tsx"
 Cohesion: 0.19
-Nodes (12): ImageRow(), POST(), RelatedProducts(), Home(), metadata, revalidate, fetchFeaturedProducts(), fetchPopularProducts() (+4 more)
+Nodes (12): ImageRow(), RelatedProducts(), Home(), metadata, revalidate, fetchFeaturedProducts(), fetchPopularProducts(), fetchProducts() (+4 more)
+
+### Community 71 - "getAuthToken"
+Cohesion: 0.22
+Nodes (6): authUrl(), getAuthToken(), parseJsonResponse(), readCredentials(), signHs256Jwt(), PAYLOAD
 
 ### Community 72 - "Priority 2 UX/UI: Mobile Catalog + Product Page — дизайн (2026-08-26)"
 Cohesion: 0.22
@@ -477,9 +483,9 @@ Nodes (3): public.product_reviews, public, public.products
 Cohesion: 0.25
 Nodes (7): Global Constraints, Priority 2 UX/UI: Mobile Catalog + Product Page Implementation Plan, Task 1: Related-products data layer (`RELATED_LIMIT`, `collectRelated`, `fetchRelatedProducts`), Task 2: `RelatedProducts` component + product-page wiring, Task 3: Delivery CTA on the product page, Task 4: LCP priority for first-row cards (ProductCard + home/catalog wiring), Task 5: Full verification gates + live SSR + docs
 
-### Community 78 - "SiteFooter.tsx"
-Cohesion: 0.40
-Nodes (4): CONTACT_EMAIL, INFO_LINKS, SiteFooter(), SiteFooterProps
+### Community 78 - "favorites/page.tsx"
+Cohesion: 0.31
+Nodes (7): RemoveFavoriteButton(), CONTACT_EMAIL, INFO_LINKS, SiteFooter(), SiteFooterProps, FavoritesPage(), useFavorites()
 
 ### Community 79 - "tmp-audit-orders-rls.mts"
 Cohesion: 0.33
@@ -549,25 +555,29 @@ Nodes (3): filters(), root, src()
 Cohesion: 0.67
 Nodes (3): ReceivedRequest, startServer(), withServer()
 
+### Community 142 - "api/orders/route.ts"
+Cohesion: 0.27
+Nodes (7): POST(), supabase, POST(), SanitizedItem, sanitizeShippingInfo(), supabase, orderAccessToken()
+
 ## Knowledge Gaps
-- **676 isolated node(s):** `CategoryOption`, `SortableCategory`, `BrandPlan`, `CategoryCreateOp`, `CategoryUpdateOp` (+671 more)
+- **676 isolated node(s):** `$schema`, `.opencode/plugins/graphify.js`, `metadata`, `revalidate`, `metadata` (+671 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **35 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **34 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `enforceRateLimit()` connect `enforceRateLimit` to `cart-preview.ts`, `(home)/page.tsx`, `import-run.ts`, `yugcontract/categories/route.ts`, `preview/route.ts`?**
-  _High betweenness centrality (0.031) - this node is a cross-community bridge._
-- **Why does `requireAdminApi()` connect `requireAdminApi` to `admin-list.ts`, `products/route.ts`, `enforceRateLimit`, `import-run.ts`, `[imageId]/route.ts`, `yugcontract/categories/route.ts`, `preview/route.ts`, `admin-api.ts`, `admin/orders/route.ts`?**
-  _High betweenness centrality (0.030) - this node is a cross-community bridge._
-- **Why does `Product` connect `(home)/page.tsx` to `admin-list.ts`, `catalog.ts`, `products/page.tsx`, `[slug]/page.tsx`, `schema-org.ts`?**
+- **Why does `requireAdminApi()` connect `requireAdminApi` to `admin-list.ts`, `products/route.ts`, `import-run.ts`, `[imageId]/route.ts`, `yugcontract/categories/route.ts`, `preview/route.ts`, `enforceRateLimit`, `admin-api.ts`, `admin/orders/route.ts`?**
+  _High betweenness centrality (0.033) - this node is a cross-community bridge._
+- **Why does `enforceRateLimit()` connect `enforceRateLimit` to `FeedbackModal.tsx`, `api/orders/route.ts`, `ReviewFormModal.tsx`, `import-run.ts`, `yugcontract/categories/route.ts`, `preview/route.ts`?**
+  _High betweenness centrality (0.023) - this node is a cross-community bridge._
+- **Why does `Product` connect `(home)/page.tsx` to `products/page.tsx`, `admin-list.ts`, `catalog.ts`, `[slug]/page.tsx`?**
   _High betweenness centrality (0.016) - this node is a cross-community bridge._
-- **What connects `CategoryOption`, `SortableCategory`, `BrandPlan` to the rest of the system?**
+- **What connects `$schema`, `.opencode/plugins/graphify.js`, `metadata` to the rest of the system?**
   _676 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `devDependencies` be split into smaller, more focused modules?**
   _Cohesion score 0.044444444444444446 - nodes in this community are weakly interconnected._
 - **Should `tmp-audit-readonly.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.05110336817653891 - nodes in this community are weakly interconnected._
 - **Should `admin-list.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.12477718360071301 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.1140819964349376 - nodes in this community are weakly interconnected._

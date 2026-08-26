@@ -31,11 +31,19 @@ test('CONFIG: returns public/private key pair and sandbox=false by default', () 
 });
 
 test('CONFIG: sandbox flag enabled only via LIQPAY_SANDBOX=1', () => {
-  process.env.LIQPAY_SANDBOX = '1';
-  assert.equal(getLiqPayConfig().sandbox, true);
-  process.env.LIQPAY_SANDBOX = '0';
-  assert.equal(getLiqPayConfig().sandbox, false);
-  delete process.env.LIQPAY_SANDBOX;
+  const prevPub = process.env.LIQPAY_PUBLIC_KEY;
+  try {
+    // sandbox mode requires a sandbox_-prefixed public key (cross-check)
+    process.env.LIQPAY_PUBLIC_KEY = 'sandbox_pub';
+    process.env.LIQPAY_SANDBOX = '1';
+    assert.equal(getLiqPayConfig().sandbox, true);
+    process.env.LIQPAY_PUBLIC_KEY = 'pub';
+    process.env.LIQPAY_SANDBOX = '0';
+    assert.equal(getLiqPayConfig().sandbox, false);
+  } finally {
+    process.env.LIQPAY_PUBLIC_KEY = prevPub;
+    delete process.env.LIQPAY_SANDBOX;
+  }
 });
 
 test('CONFIG: throws a typed error when keys are missing', () => {

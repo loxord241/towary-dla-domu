@@ -1,0 +1,5 @@
+[   56500ms] [WARNING] Geolocation permission has been blocked as the user has ignored the permission prompt several times. This can be reset in Page Info which can be accessed by clicking the tune icon next to the URL. See https://www.chromestatus.com/feature/6443143280984064 for more information. @ https://www.liqpay.ua/uk/checkout/checkout_1787778852665099_29968771_LgOYH6NByhmwauYVu7ex:0
+[   57134ms] Uncaught TypeError: Cannot read properties of undefined (reading 'constructor')
+    at u (https://matomo.privatbank.ua/matomo.js:297:626)
+    at V (https://matomo.privatbank.ua/matomo.js:305:172)
+[   57135ms] undefined

@@ -1,0 +1,44 @@
+- generic [active] [ref=f1e1]:
+  - alert [ref=f1e31]: E-Shop — Інтернет-магазин
+  - generic [ref=f1e165]:
+    - generic [ref=f1e166]:
+      - generic [ref=f1e167]: ✓
+      - heading "Замовлення прийнято!" [level=1] [ref=f1e168]
+      - paragraph [ref=f1e169]: "Номер замовлення: ORD-20260826-51F67E"
+      - paragraph [ref=f1e170]:
+        - text: Збережіть номер — статус можна перевірити
+        - link "за номером та email" [ref=f1e171] [cursor=pointer]:
+          - /url: /orders/lookup
+        - text: .
+    - generic [ref=f1e172]:
+      - table [ref=f1e173]:
+        - rowgroup [ref=f1e174]:
+          - row [ref=f1e175]:
+            - 'cell "Порт холод ELECTROLUX E3FVTRA1 Форма для льоду SKU: YC-7130656 · 1 шт × 99" [ref=f1e176]':
+              - text: Порт холод ELECTROLUX E3FVTRA1 Форма для льоду
+              - generic [ref=f1e177]: "SKU: YC-7130656 · 1 шт × 99"
+            - cell "99 UAH" [ref=f1e178]
+      - generic [ref=f1e179]:
+        - generic [ref=f1e180]:
+          - term [ref=f1e181]: Товари
+          - definition [ref=f1e182]: 99 UAH
+        - generic [ref=f1e183]:
+          - term [ref=f1e184]: Доставка
+          - definition [ref=f1e185]: 0 UAH
+        - generic [ref=f1e186]:
+          - term [ref=f1e187]: Разом до сплати
+          - definition [ref=f1e188]: 99 UAH
+      - paragraph [ref=f1e189]: "Статус: pending · оплата: unpaid"
+    - generic [ref=f1e190]:
+      - generic [ref=f1e191]: Очікує підтвердження
+      - generic [ref=f1e192]: Не оплачено
+    - generic [ref=f1e193]:
+      - button "Оплатити через LiqPay" [ref=f1e195]
+      - generic [ref=f1e196]:
+        - paragraph [ref=f1e197]: Що далі?
+        - list [ref=f1e198]:
+          - listitem [ref=f1e199]: Менеджер зв’яжеться з вами для підтвердження.
+          - listitem [ref=f1e200]: Після підтвердження узгодимо доставку та оплату.
+          - listitem [ref=f1e201]: Статус можна перевірити за номером замовлення.
+    - link "Продовжити покупки" [ref=f1e203] [cursor=pointer]:
+      - /url: /catalog

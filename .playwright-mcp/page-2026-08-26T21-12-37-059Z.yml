@@ -1,0 +1,235 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e2]
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - button "Відкрити меню" [ref=e8]
+          - link "E-Shop" [ref=e10] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=e11]:
+            - link "Каталог" [ref=e12] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=e14]:
+          - searchbox "Пошук" [ref=e15]
+          - button "Шукати" [ref=e16]
+        - generic [ref=e20]:
+          - 'link "Обране, товарів: 0" [ref=e21] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 0" [ref=e24] [cursor=pointer]':
+            - /url: /cart
+    - generic [ref=e30]:
+      - heading "Ласкаво просимо до E-Shop" [level=1] [ref=e31]
+      - paragraph [ref=e32]: Найкращі товари за найкращими цінами — з доставкою по всій Україні
+      - generic [ref=e33]:
+        - link "Перейти до каталогу" [ref=e34] [cursor=pointer]:
+          - /url: /catalog
+        - link "Категорії товарів" [ref=e35] [cursor=pointer]:
+          - /url: "#categories"
+    - generic [ref=e36]:
+      - generic [ref=e37]:
+        - heading "Вибрані товари" [level=2] [ref=e38]
+        - link "Усі товари →" [ref=e39] [cursor=pointer]:
+          - /url: /catalog
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - button "Додати до обраного" [ref=e43]
+          - link "Плита комбінована BEKO FSM52334DAO Плита комбінована BEKO FSM52334DAO BEKO 17 599 UAH В наявності" [ref=e46] [cursor=pointer]:
+            - /url: /product/plyta-kombinovana-beko-fsm52334dao-7081966
+            - img "Плита комбінована BEKO FSM52334DAO" [ref=e48]
+            - generic [ref=e49]:
+              - heading "Плита комбінована BEKO FSM52334DAO" [level=3] [ref=e50]
+              - paragraph [ref=e51]: BEKO
+              - generic [ref=e52]: 17 599 UAH
+              - paragraph [ref=e54]: В наявності
+        - generic [ref=e55]:
+          - button "Додати до обраного" [ref=e57]
+          - link "Мультипіч GORENJE AF1409DW (AF-350A) Мультипіч GORENJE AF1409DW (AF-350A) GORENJE 2 899 UAH В наявності" [ref=e60] [cursor=pointer]:
+            - /url: /product/multypich-gorenje-af1409dw-af-350a-7019432
+            - img "Мультипіч GORENJE AF1409DW (AF-350A)" [ref=e62]
+            - generic [ref=e63]:
+              - heading "Мультипіч GORENJE AF1409DW (AF-350A)" [level=3] [ref=e64]
+              - paragraph [ref=e65]: GORENJE
+              - generic [ref=e66]: 2 899 UAH
+              - paragraph [ref=e68]: В наявності
+        - generic [ref=e69]:
+          - button "Додати до обраного" [ref=e71]
+          - link "Порт холод ELECTROLUX E3FVTRA1 Форма для льоду Порт холод ELECTROLUX E3FVTRA1 Форма для льоду ELECTROLUX 99 UAH В наявності" [ref=e74] [cursor=pointer]:
+            - /url: /product/port-kholod-electrolux-e3fvtra1-forma-dlia-lodu-7130656
+            - img "Порт холод ELECTROLUX E3FVTRA1 Форма для льоду" [ref=e76]
+            - generic [ref=e77]:
+              - heading "Порт холод ELECTROLUX E3FVTRA1 Форма для льоду" [level=3] [ref=e78]
+              - paragraph [ref=e79]: ELECTROLUX
+              - generic [ref=e80]: 99 UAH
+              - paragraph [ref=e82]: В наявності
+        - generic [ref=e83]:
+          - button "Додати до обраного" [ref=e85]
+          - link "LONGEVITA Апарат для Дарсонвалізації PREMIUM JHM-08B LONGEVITA Апарат для Дарсонвалізації PREMIUM JHM-08B LONGEVITA 3 000 UAH В наявності" [ref=e88] [cursor=pointer]:
+            - /url: /product/longevita-aparat-dlia-darsonvalizatsii-premium-jhm-08b-6767745
+            - img "LONGEVITA Апарат для Дарсонвалізації PREMIUM JHM-08B" [ref=e90]
+            - generic [ref=e91]:
+              - heading "LONGEVITA Апарат для Дарсонвалізації PREMIUM JHM-08B" [level=3] [ref=e92]
+              - paragraph [ref=e93]: LONGEVITA
+              - generic [ref=e94]: 3 000 UAH
+              - paragraph [ref=e96]: В наявності
+        - generic [ref=e97]:
+          - button "Додати до обраного" [ref=e99]
+          - link "Мультипіч PHILIPS HD9285/00 Мультипіч PHILIPS HD9285/00 PHILIPS 5 999 UAH В наявності" [ref=e102] [cursor=pointer]:
+            - /url: /product/multypich-philips-hd9285-00-7046132
+            - img "Мультипіч PHILIPS HD9285/00" [ref=e104]
+            - generic [ref=e105]:
+              - heading "Мультипіч PHILIPS HD9285/00" [level=3] [ref=e106]
+              - paragraph [ref=e107]: PHILIPS
+              - generic [ref=e108]: 5 999 UAH
+              - paragraph [ref=e110]: В наявності
+        - generic [ref=e111]:
+          - button "Додати до обраного" [ref=e113]
+          - link "Пилосос ручний ROWENTA IN7021F0 Пилосос ручний ROWENTA IN7021F0 ROWENTA 14 999 UAH В наявності" [ref=e116] [cursor=pointer]:
+            - /url: /product/pylosos-ruchnyi-rowenta-in7021f0-7274062
+            - img "Пилосос ручний ROWENTA IN7021F0" [ref=e118]
+            - generic [ref=e119]:
+              - heading "Пилосос ручний ROWENTA IN7021F0" [level=3] [ref=e120]
+              - paragraph [ref=e121]: ROWENTA
+              - generic [ref=e122]: 14 999 UAH
+              - paragraph [ref=e124]: В наявності
+    - generic [ref=e125]:
+      - generic [ref=e126]:
+        - heading "Популярні товари" [level=2] [ref=e127]
+        - link "Усі товари →" [ref=e128] [cursor=pointer]:
+          - /url: /catalog
+      - generic [ref=e129]:
+        - generic [ref=e130]:
+          - button "Додати до обраного" [ref=e132]
+          - link "Плита комбінована BEKO FSM52334DAO Плита комбінована BEKO FSM52334DAO BEKO 17 599 UAH В наявності" [ref=e135] [cursor=pointer]:
+            - /url: /product/plyta-kombinovana-beko-fsm52334dao-7081966
+            - img "Плита комбінована BEKO FSM52334DAO" [ref=e137]
+            - generic [ref=e138]:
+              - heading "Плита комбінована BEKO FSM52334DAO" [level=3] [ref=e139]
+              - paragraph [ref=e140]: BEKO
+              - generic [ref=e141]: 17 599 UAH
+              - paragraph [ref=e143]: В наявності
+        - generic [ref=e144]:
+          - button "Додати до обраного" [ref=e146]
+          - link "Мультипіч GORENJE AF1409DW (AF-350A) Мультипіч GORENJE AF1409DW (AF-350A) GORENJE 2 899 UAH В наявності" [ref=e149] [cursor=pointer]:
+            - /url: /product/multypich-gorenje-af1409dw-af-350a-7019432
+            - img "Мультипіч GORENJE AF1409DW (AF-350A)" [ref=e151]
+            - generic [ref=e152]:
+              - heading "Мультипіч GORENJE AF1409DW (AF-350A)" [level=3] [ref=e153]
+              - paragraph [ref=e154]: GORENJE
+              - generic [ref=e155]: 2 899 UAH
+              - paragraph [ref=e157]: В наявності
+        - generic [ref=e158]:
+          - button "Додати до обраного" [ref=e160]
+          - link "Порт холод ELECTROLUX E3FVTRA1 Форма для льоду Порт холод ELECTROLUX E3FVTRA1 Форма для льоду ELECTROLUX 99 UAH В наявності" [ref=e163] [cursor=pointer]:
+            - /url: /product/port-kholod-electrolux-e3fvtra1-forma-dlia-lodu-7130656
+            - img "Порт холод ELECTROLUX E3FVTRA1 Форма для льоду" [ref=e165]
+            - generic [ref=e166]:
+              - heading "Порт холод ELECTROLUX E3FVTRA1 Форма для льоду" [level=3] [ref=e167]
+              - paragraph [ref=e168]: ELECTROLUX
+              - generic [ref=e169]: 99 UAH
+              - paragraph [ref=e171]: В наявності
+        - generic [ref=e172]:
+          - button "Додати до обраного" [ref=e174]
+          - link "LONGEVITA Апарат для Дарсонвалізації PREMIUM JHM-08B LONGEVITA Апарат для Дарсонвалізації PREMIUM JHM-08B LONGEVITA 3 000 UAH В наявності" [ref=e177] [cursor=pointer]:
+            - /url: /product/longevita-aparat-dlia-darsonvalizatsii-premium-jhm-08b-6767745
+            - img "LONGEVITA Апарат для Дарсонвалізації PREMIUM JHM-08B" [ref=e179]
+            - generic [ref=e180]:
+              - heading "LONGEVITA Апарат для Дарсонвалізації PREMIUM JHM-08B" [level=3] [ref=e181]
+              - paragraph [ref=e182]: LONGEVITA
+              - generic [ref=e183]: 3 000 UAH
+              - paragraph [ref=e185]: В наявності
+        - generic [ref=e186]:
+          - button "Додати до обраного" [ref=e188]
+          - link "Мультипіч PHILIPS HD9285/00 Мультипіч PHILIPS HD9285/00 PHILIPS 5 999 UAH В наявності" [ref=e191] [cursor=pointer]:
+            - /url: /product/multypich-philips-hd9285-00-7046132
+            - img "Мультипіч PHILIPS HD9285/00" [ref=e193]
+            - generic [ref=e194]:
+              - heading "Мультипіч PHILIPS HD9285/00" [level=3] [ref=e195]
+              - paragraph [ref=e196]: PHILIPS
+              - generic [ref=e197]: 5 999 UAH
+              - paragraph [ref=e199]: В наявності
+        - generic [ref=e200]:
+          - button "Додати до обраного" [ref=e202]
+          - link "Пилосос ручний ROWENTA IN7021F0 Пилосос ручний ROWENTA IN7021F0 ROWENTA 14 999 UAH В наявності" [ref=e205] [cursor=pointer]:
+            - /url: /product/pylosos-ruchnyi-rowenta-in7021f0-7274062
+            - img "Пилосос ручний ROWENTA IN7021F0" [ref=e207]
+            - generic [ref=e208]:
+              - heading "Пилосос ручний ROWENTA IN7021F0" [level=3] [ref=e209]
+              - paragraph [ref=e210]: ROWENTA
+              - generic [ref=e211]: 14 999 UAH
+              - paragraph [ref=e213]: В наявності
+    - generic [ref=e215]:
+      - generic [ref=e216]:
+        - heading "Категорії" [level=2] [ref=e217]
+        - link "Усі категорії →" [ref=e218] [cursor=pointer]:
+          - /url: /catalog
+      - generic [ref=e219]:
+        - link [ref=e220] [cursor=pointer]:
+          - /url: /catalog?category=elektrychni-1538
+          - heading "Електричні" [level=3] [ref=e221]
+          - paragraph [ref=e222]: Переглянути товари →
+        - link [ref=e223] [cursor=pointer]:
+          - /url: /catalog?category=elektropechi-1419
+          - heading "Електропечі" [level=3] [ref=e224]
+          - paragraph [ref=e225]: Переглянути товари →
+        - link [ref=e226] [cursor=pointer]:
+          - /url: /catalog?category=komplekty-1646
+          - heading "Комплекти" [level=3] [ref=e227]
+          - paragraph [ref=e228]: Переглянути товари →
+        - link [ref=e229] [cursor=pointer]:
+          - /url: /catalog?category=mirni-sklianky-i-kukhli-1349
+          - heading "Мірні склянки й кухлі" [level=3] [ref=e230]
+          - paragraph [ref=e231]: Переглянути товари →
+        - link [ref=e232] [cursor=pointer]:
+          - /url: /catalog?category=kukhonne-pryladdia-884
+          - heading "Кухонне приладдя" [level=3] [ref=e233]
+          - paragraph [ref=e234]: Переглянути товари →
+    - contentinfo [ref=e236]:
+      - generic [ref=e237]:
+        - generic [ref=e238]:
+          - generic [ref=e239]:
+            - heading "E-Shop" [level=3] [ref=e240]
+            - paragraph [ref=e241]: Найкращі товари для вашого життя
+          - generic [ref=e242]:
+            - heading "Категорії" [level=4] [ref=e243]
+            - list [ref=e244]:
+              - listitem [ref=e245]:
+                - link "Електричні" [ref=e246] [cursor=pointer]:
+                  - /url: /catalog?category=elektrychni-1538
+              - listitem [ref=e247]:
+                - link "Електропечі" [ref=e248] [cursor=pointer]:
+                  - /url: /catalog?category=elektropechi-1419
+              - listitem [ref=e249]:
+                - link "Комплекти" [ref=e250] [cursor=pointer]:
+                  - /url: /catalog?category=komplekty-1646
+              - listitem [ref=e251]:
+                - link "Мірні склянки й кухлі" [ref=e252] [cursor=pointer]:
+                  - /url: /catalog?category=mirni-sklianky-i-kukhli-1349
+              - listitem [ref=e253]:
+                - link "Кухонне приладдя" [ref=e254] [cursor=pointer]:
+                  - /url: /catalog?category=kukhonne-pryladdia-884
+              - listitem [ref=e255]:
+                - link "Усі категорії →" [ref=e256] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=e257]:
+            - heading "Інформація" [level=4] [ref=e258]
+            - list [ref=e259]:
+              - listitem [ref=e260]:
+                - link "Статус замовлення" [ref=e261] [cursor=pointer]:
+                  - /url: /orders/lookup
+              - listitem [ref=e262]:
+                - link "Контакти" [ref=e263] [cursor=pointer]:
+                  - /url: /contacts
+              - listitem [ref=e264]:
+                - link "Політика конфіденційності" [ref=e265] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=e266]:
+                - link "Умови використання" [ref=e267] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=e268]:
+                - link "magazinujut@gmail.com" [ref=e269] [cursor=pointer]:
+                  - /url: mailto:magazinujut@gmail.com
+        - generic [ref=e270]:
+          - paragraph [ref=e271]:
+            - button "Як покращити сайт?" [ref=e272]
+          - paragraph [ref=e273]: © 2026 E-Shop. Всі права захищені.

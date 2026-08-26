@@ -1,0 +1,44 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e4]:
+    - generic [ref=f2e1733] [cursor=pointer]: Тестовий режим
+    - generic [ref=f2e1810]:
+      - generic [ref=f2e1947]:
+        - generic [ref=f2e1949]:
+          - img "Done" [ref=f2e1950]
+          - generic [ref=f2e1951]: Дякуємо! Платіж успішно відправлено
+        - generic [ref=f2e1952]:
+          - generic [ref=f2e1953]:
+            - generic [ref=f2e1954]: ID
+            - generic [ref=f2e1955]: "2915510259"
+          - generic [ref=f2e1956]:
+            - generic [ref=f2e1957]: Дата
+            - generic [ref=f2e1958]: 26.08.2026 23:16:28
+          - generic [ref=f2e1959]:
+            - generic [ref=f2e1960]: Сума
+            - generic [ref=f2e1961]:
+              - generic [ref=f2e1962]: "99"
+              - generic [ref=f2e1963]: .00 UAH
+        - button [ref=f2e1965]
+        - button [ref=f2e1971]
+      - generic [ref=f2e1977]:
+        - generic [ref=f2e1978]: Підтримай українську армію!
+        - generic [ref=f2e1979]:
+          - img "SupportHearts" [ref=f2e1981]
+          - button "Допомогти" [ref=f2e1983]
+    - contentinfo [ref=f2e1869]:
+      - generic [ref=f2e1870]: Платіжну послугу надає Акціонерне товариство комерційний банк «ПриватБанк»
+      - generic [ref=f2e1871]:
+        - generic [ref=f2e1872]:
+          - link "3700" [ref=f2e1876] [cursor=pointer]:
+            - /url: tel:3700
+          - generic [ref=f2e1877]: безкоштовно з мобільних
+        - generic [ref=f2e1878]:
+          - link "+380 73 716 11 31" [ref=f2e1882] [cursor=pointer]:
+            - /url: tel:+380737161131
+          - generic [ref=f2e1883]: для дзвінків з-за кордону
+      - generic [ref=f2e1884]: Допомога онлайн
+  - generic:
+    - generic:
+      - iframe
+      - iframe [ref=f2e1914]:
+        

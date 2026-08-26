@@ -447,16 +447,24 @@ export default function OrdersAdminPage() {
                       → {next}
                     </button>
                   ))}
-                  {['pending', 'confirmed'].includes(details.order.status) && (
-                    <button
-                      type="button"
-                      disabled={detailsBusy}
-                      onClick={() => changeStatus(details.order.id, 'cancelled')}
-                      className="px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50"
-                    >
-                      Скасувати (повернути залишок)
-                    </button>
-                  )}
+                  {['pending', 'confirmed'].includes(details.order.status) &&
+                    details.order.payment_status !== 'paid' && (
+                      <button
+                        type="button"
+                        disabled={detailsBusy}
+                        onClick={() => changeStatus(details.order.id, 'cancelled')}
+                        className="px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50"
+                      >
+                        Скасувати (повернути залишок)
+                      </button>
+                    )}
+                  {['pending', 'confirmed'].includes(details.order.status) &&
+                    details.order.payment_status === 'paid' && (
+                      <span className="px-3 py-1.5 text-sm text-gray-500 border border-gray-200 rounded">
+                        Оплата вже отримана — скасування недоступне до повернення коштів
+                        (refund)
+                      </span>
+                    )}
                   {(ALLOWED_TRANSITIONS[details.order.status]?.length ?? 0) === 0 &&
                     !['pending', 'confirmed'].includes(details.order.status) && (
                       <span className="text-sm text-gray-400">

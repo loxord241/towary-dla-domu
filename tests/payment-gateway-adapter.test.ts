@@ -132,12 +132,30 @@ test('ADAPTER: applyPaid guarded by neq(paid); writes paid_at/payment_id/method 
   assert.equal(patch.liqpay_payment_id, 777);
   assert.equal(patch.payment_method, 'card');
   assert.equal(patch.payment_error, null);
-  assert.deepEqual(
-    b.calls.filter((c) => c.op === 'neq'),
-    [{ op: 'neq', args: ['payment_status', 'paid'] }],
+  assert.ok(
+    b.calls.some((c) => c.op === 'neq' && c.args[0] === 'payment_status' && c.args[1] === 'paid'),
     'paid is terminal: concurrent callbacks must lose this UPDATE'
   );
   assert.ok(b.calls.some((c) => c.op === 'eq' && c.args[0] === 'id'));
+});
+
+test('ADAPTER: applyPaid guarded ALSO against status=cancelled (B1 interlock)', async () => {
+  // Race: expire_pending_orders() holds the row lock, commits status='cancelled',
+  // THEN a blocked success callback proceeds. The UPDATE quals must exclude
+  // cancelled rows so a cancelled order can never regress into paid.
+  const db = fakeDb([{ id: 'row1' }]);
+  const g = createSupabaseOrdersGateway(db as never);
+  const res = await g.applyPaid({ id: 'row1', paymentId: 777, method: 'card' });
+  assert.equal(res, 'applied');
+  const b = FakeBuilder.lastCreated!;
+  assert.deepEqual(
+    b.calls.filter((c) => c.op === 'neq'),
+    [
+      { op: 'neq', args: ['payment_status', 'paid'] },
+      { op: 'neq', args: ['status', 'cancelled'] },
+    ],
+    'applyPaid must carry BOTH terminality guards: payment neq(paid) AND status neq(cancelled)'
+  );
 });
 
 test('ADAPTER: applyPaid maps empty update result to already-paid (idempotent replay)', async () => {

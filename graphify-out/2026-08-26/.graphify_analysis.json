@@ -2245,18 +2245,18 @@
   "questions": [
     {
       "type": "bridge_node",
-      "question": "Why does `enforceRateLimit()` connect `enforceRateLimit` to `cart-preview.ts`, `(home)/page.tsx`, `import-run.ts`, `yugcontract/categories/route.ts`, `preview/route.ts`?",
+      "question": "Why does `requireAdminApi()` connect `requireAdminApi` to `admin-list.ts`, `products/route.ts`, `enforceRateLimit`, `import-run.ts`, `[imageId]/route.ts`, `yugcontract/categories/route.ts`, `preview/route.ts`, `admin-api.ts`, `admin/orders/route.ts`?",
       "why": "High betweenness centrality (0.031) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `requireAdminApi()` connect `requireAdminApi` to `admin-list.ts`, `products/route.ts`, `enforceRateLimit`, `import-run.ts`, `[imageId]/route.ts`, `yugcontract/categories/route.ts`, `preview/route.ts`, `admin-api.ts`, `admin/orders/route.ts`?",
-      "why": "High betweenness centrality (0.030) - this node is a cross-community bridge."
+      "question": "Why does `enforceRateLimit()` connect `enforceRateLimit` to `cart-preview.ts`, `(home)/page.tsx`, `import-run.ts`, `yugcontract/categories/route.ts`, `preview/route.ts`?",
+      "why": "High betweenness centrality (0.025) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
       "question": "Why does `Product` connect `(home)/page.tsx` to `admin-list.ts`, `catalog.ts`, `products/page.tsx`, `[slug]/page.tsx`, `schema-org.ts`?",
-      "why": "High betweenness centrality (0.016) - this node is a cross-community bridge."
+      "why": "High betweenness centrality (0.018) - this node is a cross-community bridge."
     },
     {
       "type": "isolated_nodes",
