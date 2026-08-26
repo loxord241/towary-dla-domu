@@ -487,7 +487,7 @@ async function runProductsBatch(
         chunk(ids).map(async (part) => {
           const { data, error } = await client
             .from('products')
-            .select('id,yugcontract_id,sku,name,slug,price,old_price,stock_quantity,availability_status')
+            .select('id,yugcontract_id,sku,name,slug,price,old_price,stock_quantity,availability_status,category_id')
             .in('yugcontract_id', part)
             .returns<ExistingProductRowLite[]>();
           if (error) throw new Error(error.message);
@@ -503,7 +503,7 @@ async function runProductsBatch(
         chunk(skus).map(async (part) => {
           const { data, error } = await client
             .from('products')
-            .select('id,yugcontract_id,sku,name,slug,price,old_price,stock_quantity,availability_status')
+            .select('id,yugcontract_id,sku,name,slug,price,old_price,stock_quantity,availability_status,category_id')
             .in('sku', part)
             .returns<ExistingProductRowLite[]>();
           if (error) throw new Error(error.message);
@@ -530,15 +530,31 @@ async function runProductsBatch(
       };
     }
 
-    // ---- writes: inserts, updates, stock history ----
+    // ---- writes: inserts, updates, stock history, junction links ----
     let inserted = 0;
     let updatedCount = 0;
+    let recategorized = 0;
     let errors = 0;
     const history: StockHistoryRow[] = [];
 
     for (const part of chunk(split.inserts.map((r) => ({ ...r })))) {
-      const done = await insertChunked(client, 'products', part, 'id');
+      const done = await insertChunked(client, 'products', part, 'id,yugcontract_id');
       inserted += done.length;
+      // Junction rows for the fresh products: exactly one DIRECT link (the
+      // resolved YC leaf). Parents are never materialized here.
+      const pcRows = done
+        .filter((row) => typeof row.id === 'string')
+        .map((row) => ({
+          product_id: row.id as string,
+          category_id:
+            part.find((p) => p.yugcontract_id === row.yugcontract_id)?.category_id ?? null,
+        }))
+        .filter((row): row is { product_id: string; category_id: string } =>
+          Boolean(row.category_id)
+        );
+      if (pcRows.length > 0) {
+        await insertChunked(client, 'product_categories', pcRows, 'product_id');
+      }
     }
 
     for (const op of split.updates) {
@@ -552,6 +568,27 @@ async function runProductsBatch(
         continue;
       }
       updatedCount += 1;
+      if (op.categorySync) {
+        // Replace-all semantics for YC rows: upsert first (idempotent on
+        // retry), then drop every other direct link of this product.
+        const { error: upErr } = await client
+          .from('product_categories')
+          .upsert(
+            { product_id: op.id, category_id: op.categorySync.newCategoryId },
+            { onConflict: 'product_id,category_id' }
+          );
+        if (upErr) {
+          errors += 1;
+        } else {
+          const { error: delErr } = await client
+            .from('product_categories')
+            .delete()
+            .eq('product_id', op.id)
+            .neq('category_id', op.categorySync.newCategoryId);
+          if (delErr) errors += 1;
+          else recategorized += 1;
+        }
+      }
       if (op.stockChanged) {
         history.push({
           product_id: op.id,
@@ -580,7 +617,9 @@ async function runProductsBatch(
       status: 'done',
       counters,
       conflicts: [],
-      message: `Батч ${batch.batch_no}: +${inserted} нових, ${updatedCount} оновлено, ${counters.skipped} пропущено, ${errors} помилок`,
+      message: `Батч ${batch.batch_no}: +${inserted} нових, ${updatedCount} оновлено${
+        recategorized > 0 ? `, ${recategorized} рекатегоризовано` : ''
+      }, ${counters.skipped} пропущено${split.unresolvedCategoryUpdates.length > 0 ? ` (${split.unresolvedCategoryUpdates.length} без зміни категорії)` : ''}, ${errors} помилок`,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -606,6 +645,7 @@ type ExistingProductRowLite = {
   old_price: number | null;
   stock_quantity: number | null;
   availability_status: string | null;
+  category_id: string | null;
 };
 
 function normalizeKeyOf(name: string): string {
@@ -656,7 +696,7 @@ export async function runUntilDone(
 export interface ImportPlanSummary {
   categories: { create: number; update: number; conflicts: string[] };
   brands: { linkExisting: number; create: number; nearMatches: { ycBrand: string; ourBrand: string }[] };
-  products: { feedRows: number; insert: number; update: number; skip: number; conflicts: string[] };
+  products: { feedRows: number; insert: number; update: number; recategorized: number; skip: number; conflicts: string[] };
   leaves: number;
   productBatches: string[][];
 }
@@ -707,7 +747,7 @@ export async function buildFullPlan(
       chunk(ycIds).map(async (part) => {
         const { data, error } = await client
           .from('products')
-          .select('id,yugcontract_id,sku,name,slug,price,old_price,stock_quantity,availability_status')
+          .select('id,yugcontract_id,sku,name,slug,price,old_price,stock_quantity,availability_status,category_id')
           .in('yugcontract_id', part)
           .returns<ExistingProductRowLite[]>();
         if (error) throw new Error(error.message);
@@ -721,7 +761,7 @@ export async function buildFullPlan(
       chunk(skus).map(async (part) => {
         const { data, error } = await client
           .from('products')
-          .select('id,yugcontract_id,sku,name,slug,price,old_price,stock_quantity,availability_status')
+          .select('id,yugcontract_id,sku,name,slug,price,old_price,stock_quantity,availability_status,category_id')
           .in('sku', part)
           .returns<ExistingProductRowLite[]>();
         if (error) throw new Error(error.message);
@@ -760,7 +800,11 @@ export async function buildFullPlan(
       feedRows: allRows.length,
       insert: split.inserts.length,
       update: split.updates.length,
-      skip: skipCount + split.unresolvedRefs.length,
+      recategorized: split.updates.filter((u) => u.categorySync !== undefined).length,
+      skip:
+        skipCount +
+        split.unresolvedRefs.length +
+        split.unresolvedCategoryUpdates.length,
       conflicts: split.hardConflicts,
     },
     leaves: leaves.length,

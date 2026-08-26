@@ -328,6 +328,12 @@ export interface ProductUpdateOp {
   stockChanged: boolean;
   oldStock: number | null;
   newStock: number;
+  /**
+   * Present when the feed moved the product to a different leaf category:
+   * products.category_id AND the junction links are replaced together
+   * (replace-all semantics for YC rows — one direct link, the new leaf).
+   */
+  categorySync?: { oldCategoryId: string | null; newCategoryId: string };
 }
 
 export interface ProductWriteSplit {
@@ -441,13 +447,27 @@ export function splitProductWrites(
     if ((existing.availability_status ?? '') !== row.availability_status) {
       fields.availability_status = row.availability_status;
     }
-    if (Object.keys(fields).length === 0) continue;
+    // Recategorization (approved 2026-08-26): when the supplier moved the
+    // product to another leaf category, both the legacy default column and
+    // the junction rows are replaced in the same batch update. The old
+    // category is never left behind, never nulled out silently.
+    const categorySync =
+      refs.category_id !== null && (existing.category_id ?? null) !== refs.category_id
+        ? {
+            oldCategoryId: existing.category_id ?? null,
+            newCategoryId: refs.category_id,
+          }
+        : undefined;
+    if (categorySync) fields.category_id = refs.category_id;
+
+    if (Object.keys(fields).length === 0 && !categorySync) continue;
     split.updates.push({
       id: existing.id,
       fields,
       stockChanged: fields.stock_quantity !== undefined,
       oldStock,
       newStock,
+      ...(categorySync ? { categorySync } : {}),
     });
   }
 

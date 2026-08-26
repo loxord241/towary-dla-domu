@@ -184,6 +184,7 @@ test('splitProductWrites without RRP: inserts blocked, existing price untouched'
       old_price: 399,
       stock_quantity: 5,
       availability_status: 'in_stock',
+      category_id: 'c',
     },
     {
       id: 'uuid-e2',
@@ -195,6 +196,7 @@ test('splitProductWrites without RRP: inserts blocked, existing price untouched'
       old_price: null,
       stock_quantity: 5,
       availability_status: 'in_stock',
+      category_id: 'c',
     },
   ];
   const split = splitProductWrites(rows as never[], existing, () => ({
@@ -229,6 +231,8 @@ const EXISTING_ROW = {
   old_price: null,
   stock_quantity: 4,
   availability_status: 'in_stock',
+  // same as what resolveRefs below returns → no recategorization in this diff
+  category_id: 'cat-uuid',
 };
 
 test('splitProductWrites: diff-only updates, stable slug, history flag', () => {
@@ -269,6 +273,7 @@ test('splitProductWrites blocks on manual sku squatters, resolves refs', () => {
     old_price: null,
     stock_quantity: 1,
     availability_status: 'in_stock',
+    category_id: null,
   };
   const split = splitProductWrites(rows as never[], [manualSquat], (row) =>
     row.yugcontract_id === '300'
