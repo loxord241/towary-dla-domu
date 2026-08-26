@@ -5,6 +5,7 @@ import { Product, Category, Brand, ProductImage, ProductVariant } from '@/app/li
 import { getPublicImageUrl } from '@/app/lib/supabase-storage';
 import { MAX_FEATURED_PRODUCTS } from '@/app/lib/featured-limit';
 import Modal from '@/app/components/Modal';
+import AdminCategoryMultiSelect from '@/app/components/AdminCategoryMultiSelect';
 import { useAdminListUrlState } from '@/app/lib/use-admin-list-state';
 
 // Module-scope loaders: receive state setters as arguments so that effects
@@ -133,7 +134,8 @@ interface ProductFormState {
   price: string;
   old_price: string;
   currency: string;
-  category_id: string;
+  /** direct category assignments (multi); first item becomes legacy default */
+  category_ids: string[];
   brand_id: string;
   description: string;
   short_description: string;
@@ -150,7 +152,7 @@ const EMPTY_FORM: ProductFormState = {
   price: '',
   old_price: '',
   currency: 'UAH',
-  category_id: '',
+  category_ids: [],
   brand_id: '',
   description: '',
   short_description: '',
@@ -303,7 +305,7 @@ export default function ProductsAdminPage() {
         price: String(p.price),
         old_price: p.old_price === null || p.old_price === undefined ? '' : String(p.old_price),
         currency: p.currency || 'UAH',
-        category_id: p.category_id ?? '',
+        category_ids: Array.isArray(data.category_ids) ? data.category_ids : [],
         brand_id: p.brand_id ?? '',
         description: p.description ?? '',
         short_description: p.short_description ?? '',
@@ -364,7 +366,7 @@ export default function ProductsAdminPage() {
         price: Number(formData.price),
         old_price: formData.old_price.trim() === '' ? null : Number(formData.old_price),
         currency: formData.currency.trim() || 'UAH',
-        category_id: formData.category_id || null,
+        category_ids: formData.category_ids,
         brand_id: formData.brand_id || null,
         description: formData.description.trim(),
         short_description: formData.short_description.trim(),
@@ -716,16 +718,22 @@ export default function ProductsAdminPage() {
                     <input type="number" step="0.01" min="0" name="old_price" value={formData.old_price} onChange={handleChange}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
                   </label>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Категорія
-                    <select name="category_id" value={formData.category_id} onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
-                      <option value="">— Без категорії —</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>{category.name}</option>
-                      ))}
-                    </select>
-                  </label>
+                  <div className="block text-sm font-medium text-gray-700">
+                    Категорії
+                    <div className="mt-1">
+                      {categories.length > 0 ? (
+                        <AdminCategoryMultiSelect
+                          categories={categories}
+                          selectedIds={formData.category_ids}
+                          onChange={(ids) =>
+                            setFormData((prev) => ({ ...prev, category_ids: ids }))
+                          }
+                        />
+                      ) : (
+                        <p className="text-sm text-gray-500">Категорії завантажуються…</p>
+                      )}
+                    </div>
+                  </div>
                   <label className="block text-sm font-medium text-gray-700">
                     Бренд
                     <select name="brand_id" value={formData.brand_id} onChange={handleChange}
