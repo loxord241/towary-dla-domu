@@ -1,4 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
+// Explicit .ts extension: required by node:test ESM resolution and allowed
+// by allowImportingTsExtensions for the Next bundler.
+import { collectSubtreeIds } from './category-tree.ts';
 
 export interface ProductImage {
   id: string;
@@ -111,21 +114,26 @@ const ELIGIBLE_COUNT_SELECT = 'id, images:product_images!inner(id)';
 // live database. This row type mirrors that raw shape exactly.
 type ProductJoinedRow = Omit<
   Product,
-  'category' | 'brand' | 'images' | 'variants'
+  'category' | 'brand' | 'images' | 'variants' | 'pc'
 > & {
   category: Category | null;
   brand: Brand | null;
   images: ProductImage[] | null;
   variants: ProductVariant[] | null;
+  // Junction rows joined via `pc:product_categories!inner(...)` when the
+  // caller filters by category (direct assignments; parents are resolved
+  // through collectSubtreeIds in memory). Stripped by normalizeProduct.
+  pc?: { category_id: string }[] | null;
 };
 
 function normalizeProduct(row: ProductJoinedRow): Product {
-  const images = [...(row.images ?? [])].sort(
+  const { pc: _pc, ...rest } = row;
+  const images = [...(rest.images ?? [])].sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
   );
 
   return {
-    ...row,
+    ...rest,
     category: row.category ?? null,
     brand: row.brand ?? null,
     images,
@@ -339,16 +347,33 @@ export async function fetchCatalogProducts(
     return { products: [], total: 0, page: 1, size };
   }
 
+  // Multi-category model (2026-08-26): products match a category through
+  // product_categories DIRECT assignments; selecting any parent pulls in
+  // every descendant via in-memory subtree expansion over the already
+  // fetched active list (one dictionary read per catalog page, no N+1).
+  // The legacy products.category_id holds only the default assignment, so
+  // filtering by it would miss multi-assigned products.
+  let subtreeIds: string[] = [];
+  if (categoryId) {
+    const activeCategories = await fetchActiveCategories();
+    subtreeIds = Array.from(collectSubtreeIds(activeCategories, categoryId));
+  }
+
   // ---- total count with identical filters (no pagination) ----
   // The eligibility join MUST mirror PRODUCT_SELECT, otherwise totals
   // would count imageless products that the data query can never return.
   let countQuery = supabase
     .from('products')
-    .select(ELIGIBLE_COUNT_SELECT, { count: 'exact', head: true })
+    .select(
+      categoryId
+        ? ELIGIBLE_COUNT_SELECT + ', pc:product_categories!inner(id)'
+        : ELIGIBLE_COUNT_SELECT,
+      { count: 'exact', head: true }
+    )
     .eq('is_active', true);
 
   if (categoryId) {
-    countQuery = countQuery.eq('category_id', categoryId);
+    countQuery = countQuery.in('pc.category_id', subtreeIds);
   }
   if (brandId) {
     countQuery = countQuery.eq('brand_id', brandId);
@@ -383,11 +408,17 @@ export async function fetchCatalogProducts(
   // ---- paged data query ----
   let query = supabase
     .from('products')
-    .select(PRODUCT_SELECT)
+    .select(
+      categoryId
+        ? PRODUCT_SELECT + ', pc:product_categories!inner(category_id)'
+        : PRODUCT_SELECT
+    )
     .eq('is_active', true);
 
   if (categoryId) {
-    query = query.eq('category_id', categoryId);
+    // PostgREST dedups the top-level entities of this one-to-many inner
+    // join (same verified behavior as the images!inner eligibility join).
+    query = query.in('pc.category_id', subtreeIds);
   }
   if (brandId) {
     query = query.eq('brand_id', brandId);
@@ -713,8 +744,13 @@ export function collectRelated(
   return collected;
 }
 
+type RelatedStageFilter =
+  | { kind: 'brand'; id: string }
+  | { kind: 'category'; subtreeIds: string[] }
+  | null;
+
 async function fetchRelatedStage(
-  filter: { field: 'category_id' | 'brand_id'; id: string } | null,
+  filter: RelatedStageFilter,
   currentId: string,
   limit: number
 ): Promise<Product[]> {
@@ -723,7 +759,14 @@ async function fetchRelatedStage(
     .select(PRODUCT_SELECT)
     .eq('is_active', true)
     .neq('id', currentId);
-  if (filter) query = query.eq(filter.field, filter.id);
+  if (filter?.kind === 'category') {
+    // Same junction + subtree semantics as fetchCatalogProducts.
+    query = query
+      .select(PRODUCT_SELECT + ', pc:product_categories!inner(category_id)')
+      .in('pc.category_id', filter.subtreeIds);
+  } else if (filter?.kind === 'brand') {
+    query = query.eq('brand_id', filter.id);
+  }
   const { data, error } = await query
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
@@ -739,12 +782,22 @@ export async function fetchRelatedProducts(
   product: Pick<Product, 'id' | 'category_id' | 'brand_id'>,
   limit: number = RELATED_LIMIT
 ): Promise<Product[]> {
+  const sameCategoryStage = product.category_id
+    ? fetchActiveCategories().then((activeCategories) =>
+        fetchRelatedStage(
+          {
+            kind: 'category',
+            subtreeIds: Array.from(collectSubtreeIds(activeCategories, product.category_id!)),
+          },
+          product.id,
+          limit
+        )
+      )
+    : Promise.resolve<Product[]>([]);
   const [sameCategory, sameBrand, newest] = await Promise.all([
-    product.category_id
-      ? fetchRelatedStage({ field: 'category_id', id: product.category_id }, product.id, limit)
-      : Promise.resolve<Product[]>([]),
+    sameCategoryStage,
     product.brand_id
-      ? fetchRelatedStage({ field: 'brand_id', id: product.brand_id }, product.id, limit)
+      ? fetchRelatedStage({ kind: 'brand', id: product.brand_id }, product.id, limit)
       : Promise.resolve<Product[]>([]),
     fetchRelatedStage(null, product.id, limit),
   ]);

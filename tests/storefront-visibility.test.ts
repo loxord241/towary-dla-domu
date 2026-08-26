@@ -30,9 +30,11 @@ test('VISIBILITY: catalog head-count mirrors the eligibility join', () => {
   const src = read('app/lib/catalog.ts');
   const start = src.indexOf('export async function fetchCatalogProducts');
   const body = src.slice(start, src.indexOf('\n}', start + 100));
+  // Ternary form (2026-08-26): the pc junction embed joins only when a
+  // category filter is active; both variants share ELIGIBLE_COUNT_SELECT.
   assert.match(
     body,
-    /\.select\(ELIGIBLE_COUNT_SELECT, \{ count: 'exact', head: true \}\)/,
+    /\.select\(\s*\n?\s*categoryId\s*\?[\s\S]{0,120}?ELIGIBLE_COUNT_SELECT \+ ', pc:product_categories!inner\(id\)'\s*:\s*ELIGIBLE_COUNT_SELECT,\s*\{ count: 'exact', head: true \}\s*\)/,
     'count-запрос каталога должен использовать тот же eligibility join, иначе total не сойдётся с выдачей'
   );
 });
