@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { cache } from 'react'
 import type { Metadata } from 'next'
 import { fetchProductBySlug, fetchPublishedReviews, fetchReviewSummary, fetchRelatedProducts, type ReviewsPageData, type ReviewSummary, type Product } from '@/app/lib/catalog'
-import { getPublicImageUrls } from '@/app/lib/supabase-storage'
+import { getPublicImageUrls, getMainPublicImageUrl } from '@/app/lib/supabase-storage'
 import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
 import AddToCartButton from '@/app/components/AddToCartButton'
@@ -45,7 +45,10 @@ export async function generateMetadata({
 
   // Self-canonical plus full OG fields: page-level openGraph REPLACES the
   // layout's (shallow merge), so locale/siteName must be repeated here.
+  // og:image is the product's REAL main image — the same URL the gallery
+  // shows — only when one exists; no invented or placeholder URLs.
   const canonical = `/product/${slug}`
+  const mainImage = getMainPublicImageUrl(product.images)
   return {
     title: `${product.name} — E-Shop`,
     description,
@@ -57,6 +60,7 @@ export async function generateMetadata({
       locale: 'uk_UA',
       type: 'website',
       siteName: 'E-Shop',
+      images: mainImage ? [mainImage] : [],
     },
   }
 }

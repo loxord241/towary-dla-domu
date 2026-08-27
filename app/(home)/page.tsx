@@ -25,6 +25,7 @@ export const metadata: Metadata = {
     locale: 'uk_UA',
     type: 'website',
     siteName: 'E-Shop',
+    images: ['/og-image.png'],
   },
 }
 

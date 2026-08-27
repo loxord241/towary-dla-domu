@@ -29,6 +29,10 @@ export const metadata: Metadata = {
     locale: "uk_UA",
     type: "website",
     siteName: "E-Shop",
+    // Default OG image for every page that does not override openGraph.
+    // Committed static asset — resolvable by social crawlers without JS,
+    // same origin as the site itself. Resolved against metadataBase.
+    images: ['/og-image.png'],
   },
 };
 
