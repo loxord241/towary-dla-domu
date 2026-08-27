@@ -1,0 +1,58 @@
+# Yugcontract scheduled price/stock sync (OPS stage 3).
+#
+# Runs the canonical importer CLI (scripts/yugcontract-import-run.ts) with
+# NO importer changes: same env contract, same checkpoint/resume format.
+#
+# Safety rails:
+#  - concurrency 'yugcontract-sync': at most one runner works at a time;
+#    new runs wait instead of cancelling an in-flight sync.
+#  - job-level GO gate: schedule stays dormant until the repository
+#    variable YUGCONTRACT_SYNC_ENABLED is explicitly set to "true"
+#    (repo Settings -> Secrets and variables -> Actions -> Variables).
+#  - workflow_dispatch allows manual runs; manual production sync also
+#    requires a separate GO per OPS process.
+name: Yugcontract scheduled sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every 6 hours at :17 UTC. GitHub cron is UTC-only and top-of-hour
+    # minutes are congested/delayed; supplier data does not need real-time
+    # freshness, so 4 runs/day is ample headroom (~2 min each).
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yugcontract-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # GO gate: repository variable must be explicitly enabled before any
+    # scheduled production write happens.
+    if: vars.YUGCONTRACT_SYNC_ENABLED == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Canonical CLI, unmodified. --run performs planning + gating itself
+      # (blocking conflicts exit non-zero); a failed run exits non-zero so
+      # the workflow fails. Resume of a crashed run is documented in
+      # docs/: `node scripts/yugcontract-import-run.ts --run --resume RUN_ID`.
+      - name: Run Yugcontract import
+        run: node scripts/yugcontract-import-run.ts --run
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          YUGCONTRACT_USER_KEY: ${{ secrets.YUGCONTRACT_USER_KEY }}
+          YUGCONTRACT_SECRET: ${{ secrets.YUGCONTRACT_SECRET }}
