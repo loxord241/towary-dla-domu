@@ -440,10 +440,19 @@ export default function OrdersAdminPage() {
                 </div>
               </dl>
 
+              {/* Shipment planner (stage 2D) */}
+              <div className="border-t pt-4 mb-4">
+                <Link
+                  href={`/admin/orders/${details.order.id}`}
+                  className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                >
+                  Планування відправлень →
+                </Link>
+              </div>
+
               {/* Status actions — allowed transitions only */}
               <div className="border-t pt-4">
-                <h3 className="text-sm font-semibold mb-2">Змінити статус</h3>
-                <div className="flex flex-wrap gap-2">
+                <h3 className="text-sm font-semibold mb-2">Змінити статус</h3>                <div className="flex flex-wrap gap-2">
                   {(ALLOWED_TRANSITIONS[details.order.status] ?? []).map((next) => (
                     <button
                       key={next}

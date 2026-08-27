@@ -127,6 +127,12 @@ export const RATE_RULES = {
   yugcontractImportStart: [{ max: 3, windowMs: 10 * 60_000 }],
   yugcontractImportRun: [{ max: 30, windowMs: 10 * 60_000 }],
   yugcontractImportStatus: [{ max: 60, windowMs: 10 * 60_000 }],
+  // Nova Post proxies (server-side, read-only provider calls): city search
+  // is per-keystroke autocomplete, branch lookup fires once per city pick,
+  // delivery cost calls the provider calculation endpoint (heaviest).
+  novaPoshtaSettlements: [{ max: 60, windowMs: 60_000 }],
+  novaPoshtaDivisions: [{ max: 90, windowMs: 60_000 }],
+  novaPoshtaDeliveryCost: [{ max: 12, windowMs: 60_000 }],
 } as const;
 
 /**
