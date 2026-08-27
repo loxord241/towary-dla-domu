@@ -1,11 +1,10 @@
 # Graph Report - my-shop  (2026-08-27)
 
 ## Corpus Check
-- 286 files · ~353,066 words
-- Verdict: corpus is large enough that graph structure adds value.
+- cluster-only mode — file stats not available
 
 ## Summary
-- 1822 nodes · 2954 edges · 155 communities (117 shown, 38 thin omitted)
+- 1822 nodes · 2954 edges · 155 communities (116 shown, 39 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 24 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
@@ -67,7 +66,7 @@
 - tmp-verify-011.ts
 - fetchActiveCategories
 - content-staging.ts
-- [imageId]/route.ts
+- admin-image-main.test.ts
 - yugcontract/categories/route.ts
 - liqpay-status.ts
 - ProductCard.tsx
@@ -158,27 +157,27 @@
 4. `dbErrorResponse()` - 26 edges
 5. `enforceRateLimit()` - 25 edges
 6. `strOrNull()` - 22 edges
-7. `compilerOptions` - 17 edges
-8. `File Structure (deliverable map)` - 17 edges
+7. `File Structure (deliverable map)` - 17 edges
+8. `compilerOptions` - 17 edges
 9. `numOrNull()` - 16 edges
 10. `processLiqPayCallback()` - 15 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `runPlanPreview()` --calls--> `matchContentGoodsToProducts()`  [EXTRACTED]
-  scripts/yugcontract-content-fetch.ts → app/lib/yugcontract/content-dry-run.ts
-- `runPlanPreview()` --calls--> `buildDescriptionStats()`  [EXTRACTED]
-  scripts/yugcontract-content-fetch.ts → app/lib/yugcontract/content-dry-run.ts
-- `runPlanPreview()` --calls--> `buildParamsStats()`  [EXTRACTED]
-  scripts/yugcontract-content-fetch.ts → app/lib/yugcontract/content-dry-run.ts
 - `externalExisting` --calls--> `isExternalImportedImage()`  [EXTRACTED]
   scripts/yugcontract-content-images.ts → app/lib/yugcontract/content-images.ts
 - `manualImages` --calls--> `isExternalImportedImage()`  [EXTRACTED]
   scripts/yugcontract-content-images.ts → app/lib/yugcontract/content-images.ts
+- `runPlanPreview()` --calls--> `buildDescriptionStats()`  [EXTRACTED]
+  scripts/yugcontract-content-fetch.ts → app/lib/yugcontract/content-dry-run.ts
+- `runPlanPreview()` --calls--> `buildParamsStats()`  [EXTRACTED]
+  scripts/yugcontract-content-fetch.ts → app/lib/yugcontract/content-dry-run.ts
+- `runPlanPreview()` --calls--> `matchContentGoodsToProducts()`  [EXTRACTED]
+  scripts/yugcontract-content-fetch.ts → app/lib/yugcontract/content-dry-run.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (155 total, 38 thin omitted)
+## Communities (155 total, 39 thin omitted)
 
 ### Community 0 - "order-payment-update.ts"
 Cohesion: 0.13
@@ -193,12 +192,12 @@ Cohesion: 0.05
 Nodes (36): anonClient, client, dangerCounts, dangerPatterns, dangerSamples, diffSamples, external, imagesByProduct (+28 more)
 
 ### Community 3 - "admin-list.ts"
-Cohesion: 0.12
-Nodes (32): GET(), POST(), GET(), ADMIN_LIST_DEFAULT_PAGE_SIZE, ADMIN_LIST_MAX_PAGE_SIZE, AdminListParams, BRAND_FIELDS_LIST, BRAND_SORT_KEYS (+24 more)
+Cohesion: 0.10
+Nodes (38): GET(), POST(), GET(), POST(), ADMIN_LIST_DEFAULT_PAGE_SIZE, ADMIN_LIST_MAX_PAGE_SIZE, AdminListParams, BRAND_FIELDS_LIST (+30 more)
 
 ### Community 4 - "requireAdminApi"
-Cohesion: 0.11
-Nodes (24): DELETE(), PUT(), POST(), SiblingRow, DELETE(), DELETE(), GET(), POST() (+16 more)
+Cohesion: 0.17
+Nodes (12): POST(), SiblingRow, DELETE(), GET(), POST(), GET(), sanitizeSearchTerm(), STATUSES (+4 more)
 
 ### Community 5 - "yugcontract-content-dry-run.ts"
 Cohesion: 0.09
@@ -293,8 +292,8 @@ Cohesion: 0.13
 Nodes (12): IMAGE_UPDATE_FIELDS, ImageInsertOp, ImagePlan, ImagePlanInputProduct, ImageUpdateOp, isExternalImportedImage(), planImageOps(), ProductImageRow (+4 more)
 
 ### Community 28 - "admin-api.ts"
-Cohesion: 0.30
-Nodes (14): PUT(), POST(), GET(), POST(), DELETE(), PUT(), AdminApiContext, dbErrorResponse() (+6 more)
+Cohesion: 0.14
+Nodes (30): DELETE(), PUT(), DELETE(), PUT(), DELETE(), PUT(), ALLOWED_MIME, detectImageMime() (+22 more)
 
 ### Community 29 - "final_001_initial_schema.sql"
 Cohesion: 0.07
@@ -325,8 +324,8 @@ Cohesion: 0.18
 Nodes (14): compareRows(), evalOr(), evalPredicate(), FakeDataset, LoggedRequest, makeDataset(), pad(), parseOrder() (+6 more)
 
 ### Community 36 - "products/route.ts"
-Cohesion: 0.18
-Nodes (18): ALLOWED_AVAILABILITY, GET(), isValidCurrency(), PUT(), fetchAllJoined(), GET(), POST(), parseCategoryIds() (+10 more)
+Cohesion: 0.24
+Nodes (15): ALLOWED_AVAILABILITY, isValidCurrency(), PUT(), fetchAllJoined(), GET(), POST(), parseCategoryIds(), uuidOrNull() (+7 more)
 
 ### Community 37 - "ReviewFormModal.tsx"
 Cohesion: 0.25
@@ -383,10 +382,6 @@ Nodes (9): GET(), revalidate, fetchActiveBrands(), fetchActiveCategories(), coll
 ### Community 51 - "content-staging.ts"
 Cohesion: 0.10
 Nodes (18): YcContentGood, YcContentParam, ALLOWED_TAGS, sanitizeYcDescription(), ALLOWED_IMAGE_EXTENSIONS, ImageUrlCheck, reduceGoodsToStagedRows(), StagedContentRow (+10 more)
-
-### Community 52 - "[imageId]/route.ts"
-Cohesion: 0.21
-Nodes (9): DELETE(), PUT(), DELETE(), toStoragePath(), MainPromotionStep, planMainPromotion(), storagePathFromImageUrl(), root (+1 more)
 
 ### Community 53 - "yugcontract/categories/route.ts"
 Cohesion: 0.25
@@ -569,20 +564,20 @@ Cohesion: 0.33
 Nodes (3): count(), env, seen
 
 ## Knowledge Gaps
-- **719 isolated node(s):** `$schema`, `.opencode/plugins/graphify.js`, `metadata`, `revalidate`, `metadata` (+714 more)
+- **719 isolated node(s):** `ApplyResult`, `CallbackDeps`, `CallbackOrderRow`, `CallbackOutcome`, `InitOutcome` (+714 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **38 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **39 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
+- **Why does `requireAdminApi()` connect `requireAdminApi` to `admin-list.ts`, `products/route.ts`, `normalize.ts`, `import-run.ts`, `yugcontract/categories/route.ts`, `enforceRateLimit`, `orders/[id]/route.ts`, `admin-api.ts`?**
+  _High betweenness centrality (0.045) - this node is a cross-community bridge._
 - **Why does `enforceRateLimit()` connect `enforceRateLimit` to `ReviewFormModal.tsx`, `normalize.ts`, `liqpay-config.ts`, `InfoPage.tsx`, `products/page.tsx`, `import-run.ts`, `yugcontract/categories/route.ts`?**
-  _High betweenness centrality (0.047) - this node is a cross-community bridge._
-- **Why does `requireAdminApi()` connect `requireAdminApi` to `admin-list.ts`, `products/route.ts`, `normalize.ts`, `import-run.ts`, `[imageId]/route.ts`, `yugcontract/categories/route.ts`, `enforceRateLimit`, `orders/[id]/route.ts`, `admin-api.ts`?**
-  _High betweenness centrality (0.034) - this node is a cross-community bridge._
-- **Why does `CartPreviewLine` connect `favorites/page.tsx` to `products/page.tsx`, `[slug]/page.tsx`?**
-  _High betweenness centrality (0.013) - this node is a cross-community bridge._
-- **What connects `$schema`, `.opencode/plugins/graphify.js`, `metadata` to the rest of the system?**
+  _High betweenness centrality (0.037) - this node is a cross-community bridge._
+- **Why does `Product` connect `[slug]/page.tsx` to `products/page.tsx`, `admin-list.ts`, `(home)/page.tsx`, `catalog.ts`?**
+  _High betweenness centrality (0.015) - this node is a cross-community bridge._
+- **What connects `ApplyResult`, `CallbackDeps`, `CallbackOrderRow` to the rest of the system?**
   _719 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `order-payment-update.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.1282051282051282 - nodes in this community are weakly interconnected._

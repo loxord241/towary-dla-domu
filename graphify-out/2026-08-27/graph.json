@@ -1421,6 +1421,19 @@
       "source_location": "L7"
     },
     {
+      "id": "app_lib_admin_image_main_mainpromotionstep",
+      "label": "MainPromotionStep",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "mainpromotionstep",
+      "source_file": "app/lib/admin-image-main.ts",
+      "source_location": "L12"
+    },
+    {
       "id": "app_lib_admin_list_adminlistparams",
       "label": "AdminListParams",
       "_callable": true,
@@ -1484,6 +1497,19 @@
       "norm_label": "pagedcoreoptions",
       "source_file": "app/lib/admin-list.ts",
       "source_location": "L258"
+    },
+    {
+      "id": "app_lib_admin_list_productjoinedrow",
+      "label": "ProductJoinedRow",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "admin-list.ts",
+      "file_type": "code",
+      "norm_label": "productjoinedrow",
+      "source_file": "app/lib/admin-list.ts",
+      "source_location": "L321"
     },
     {
       "id": "app_lib_yugcontract_content_dry_run_contentissue",
@@ -1692,19 +1718,6 @@
       "norm_label": "row",
       "source_file": "tests/admin-search-pagination.test.ts",
       "source_location": "L34"
-    },
-    {
-      "id": "app_lib_admin_list_productjoinedrow",
-      "label": "ProductJoinedRow",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 36,
-      "community_name": "products/route.ts",
-      "file_type": "code",
-      "norm_label": "productjoinedrow",
-      "source_file": "app/lib/admin-list.ts",
-      "source_location": "L321"
     },
     {
       "id": "app_lib_featured_limit_featureddecision",
@@ -2186,19 +2199,6 @@
       "norm_label": "stagereductionresult",
       "source_file": "app/lib/yugcontract/content-staging.ts",
       "source_location": "L85"
-    },
-    {
-      "id": "app_lib_admin_image_main_mainpromotionstep",
-      "label": "MainPromotionStep",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "[imageId]/route.ts",
-      "file_type": "code",
-      "norm_label": "mainpromotionstep",
-      "source_file": "app/lib/admin-image-main.ts",
-      "source_location": "L12"
     },
     {
       "id": "app_lib_yugcontract_client_yugcontracterror",
@@ -5976,6 +5976,42 @@
       "source_location": "L20"
     },
     {
+      "id": "app_api_admin_brands_id_route_delete",
+      "label": "DELETE()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "delete()",
+      "source_file": "app/api/admin/brands/[id]/route.ts",
+      "source_location": "L57"
+    },
+    {
+      "id": "app_api_admin_brands_id_route_put",
+      "label": "PUT()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "put()",
+      "source_file": "app/api/admin/brands/[id]/route.ts",
+      "source_location": "L4"
+    },
+    {
+      "id": "app_api_admin_categories_id_route_delete",
+      "label": "DELETE()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "delete()",
+      "source_file": "app/api/admin/categories/[id]/route.ts",
+      "source_location": "L67"
+    },
+    {
       "id": "app_api_admin_categories_id_route_put",
       "label": "PUT()",
       "_callable": true,
@@ -5988,7 +6024,55 @@
       "source_location": "L4"
     },
     {
-      "id": "app_api_admin_categories_route_post",
+      "id": "app_api_admin_products_id_images_imageid_route_delete",
+      "label": "DELETE()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "delete()",
+      "source_file": "app/api/admin/products/[id]/images/[imageId]/route.ts",
+      "source_location": "L146"
+    },
+    {
+      "id": "app_api_admin_products_id_images_imageid_route_put",
+      "label": "PUT()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "put()",
+      "source_file": "app/api/admin/products/[id]/images/[imageId]/route.ts",
+      "source_location": "L9"
+    },
+    {
+      "id": "app_api_admin_products_id_images_route_detectimagemime",
+      "label": "detectImageMime()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "detectimagemime()",
+      "source_file": "app/api/admin/products/[id]/images/route.ts",
+      "source_location": "L30"
+    },
+    {
+      "id": "app_api_admin_products_id_images_route_get",
+      "label": "GET()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "get()",
+      "source_file": "app/api/admin/products/[id]/images/route.ts",
+      "source_location": "L57"
+    },
+    {
+      "id": "app_api_admin_products_id_images_route_post",
       "label": "POST()",
       "_callable": true,
       "_origin": "ast",
@@ -5996,8 +6080,44 @@
       "community_name": "admin-api.ts",
       "file_type": "code",
       "norm_label": "post()",
-      "source_file": "app/api/admin/categories/route.ts",
-      "source_location": "L55"
+      "source_file": "app/api/admin/products/[id]/images/route.ts",
+      "source_location": "L91"
+    },
+    {
+      "id": "app_api_admin_products_id_images_route_sanitizefilename",
+      "label": "sanitizeFileName()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "sanitizefilename()",
+      "source_file": "app/api/admin/products/[id]/images/route.ts",
+      "source_location": "L13"
+    },
+    {
+      "id": "app_api_admin_products_id_route_delete",
+      "label": "DELETE()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "delete()",
+      "source_file": "app/api/admin/products/[id]/route.ts",
+      "source_location": "L305"
+    },
+    {
+      "id": "app_api_admin_products_id_route_get",
+      "label": "GET()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "get()",
+      "source_file": "app/api/admin/products/[id]/route.ts",
+      "source_location": "L19"
     },
     {
       "id": "app_api_admin_products_id_variants_route_get",
@@ -6048,6 +6168,30 @@
       "source_location": "L8"
     },
     {
+      "id": "app_api_admin_reviews_id_route_delete",
+      "label": "DELETE()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "delete()",
+      "source_file": "app/api/admin/reviews/[id]/route.ts",
+      "source_location": "L62"
+    },
+    {
+      "id": "app_api_admin_reviews_id_route_patch",
+      "label": "PATCH()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "patch()",
+      "source_file": "app/api/admin/reviews/[id]/route.ts",
+      "source_location": "L16"
+    },
+    {
       "id": "app_lib_admin_api_dberrorresponse",
       "label": "dbErrorResponse()",
       "_callable": true,
@@ -6058,6 +6202,18 @@
       "norm_label": "dberrorresponse()",
       "source_file": "app/lib/admin-api.ts",
       "source_location": "L139"
+    },
+    {
+      "id": "app_lib_admin_api_isuuid",
+      "label": "isUuid()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "isuuid()",
+      "source_file": "app/lib/admin-api.ts",
+      "source_location": "L111"
     },
     {
       "id": "app_lib_admin_api_nonnegnumornull",
@@ -6096,16 +6252,40 @@
       "source_location": "L82"
     },
     {
-      "id": "app_lib_admin_api_uuidornull",
-      "label": "uuidOrNull()",
+      "id": "app_lib_admin_api_tostoragepath",
+      "label": "toStoragePath()",
       "_callable": true,
       "_origin": "ast",
       "community": 28,
       "community_name": "admin-api.ts",
       "file_type": "code",
-      "norm_label": "uuidornull()",
+      "norm_label": "tostoragepath()",
       "source_file": "app/lib/admin-api.ts",
-      "source_location": "L89"
+      "source_location": "L171"
+    },
+    {
+      "id": "app_lib_admin_image_main_planmainpromotion",
+      "label": "planMainPromotion()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "planmainpromotion()",
+      "source_file": "app/lib/admin-image-main.ts",
+      "source_location": "L19"
+    },
+    {
+      "id": "app_lib_supabase_storage_storagepathfromimageurl",
+      "label": "storagePathFromImageUrl()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "storagepathfromimageurl()",
+      "source_file": "app/lib/supabase-storage.ts",
+      "source_location": "L39"
     },
     {
       "id": "app_api_admin_brands_route_get",
@@ -6142,6 +6322,18 @@
       "norm_label": "get()",
       "source_file": "app/api/admin/categories/route.ts",
       "source_location": "L11"
+    },
+    {
+      "id": "app_api_admin_categories_route_post",
+      "label": "POST()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "admin-list.ts",
+      "file_type": "code",
+      "norm_label": "post()",
+      "source_file": "app/api/admin/categories/route.ts",
+      "source_location": "L55"
     },
     {
       "id": "app_lib_admin_list_buildplainexpressions",
@@ -6780,18 +6972,6 @@
       "source_location": "L41"
     },
     {
-      "id": "app_api_admin_products_id_route_get",
-      "label": "GET()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 36,
-      "community_name": "products/route.ts",
-      "file_type": "code",
-      "norm_label": "get()",
-      "source_file": "app/api/admin/products/[id]/route.ts",
-      "source_location": "L19"
-    },
-    {
       "id": "app_api_admin_products_id_route_isvalidcurrency",
       "label": "isValidCurrency()",
       "_callable": true,
@@ -6862,6 +7042,18 @@
       "norm_label": "parsecategoryids()",
       "source_file": "app/lib/admin-api.ts",
       "source_location": "L99"
+    },
+    {
+      "id": "app_lib_admin_api_uuidornull",
+      "label": "uuidOrNull()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 36,
+      "community_name": "products/route.ts",
+      "file_type": "code",
+      "norm_label": "uuidornull()",
+      "source_file": "app/lib/admin-api.ts",
+      "source_location": "L89"
     },
     {
       "id": "app_lib_admin_list_normalizeproduct",
@@ -7296,30 +7488,6 @@
       "source_location": "L11"
     },
     {
-      "id": "app_api_admin_brands_id_route_delete",
-      "label": "DELETE()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "delete()",
-      "source_file": "app/api/admin/brands/[id]/route.ts",
-      "source_location": "L57"
-    },
-    {
-      "id": "app_api_admin_brands_id_route_put",
-      "label": "PUT()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "put()",
-      "source_file": "app/api/admin/brands/[id]/route.ts",
-      "source_location": "L4"
-    },
-    {
       "id": "app_api_admin_categories_id_order_route_post",
       "label": "POST()",
       "_callable": true,
@@ -7330,18 +7498,6 @@
       "norm_label": "post()",
       "source_file": "app/api/admin/categories/[id]/order/route.ts",
       "source_location": "L25"
-    },
-    {
-      "id": "app_api_admin_categories_id_route_delete",
-      "label": "DELETE()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "delete()",
-      "source_file": "app/api/admin/categories/[id]/route.ts",
-      "source_location": "L67"
     },
     {
       "id": "app_api_admin_feedback_route_delete",
@@ -7404,78 +7560,6 @@
       "source_location": "L21"
     },
     {
-      "id": "app_api_admin_products_id_images_route_detectimagemime",
-      "label": "detectImageMime()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "detectimagemime()",
-      "source_file": "app/api/admin/products/[id]/images/route.ts",
-      "source_location": "L30"
-    },
-    {
-      "id": "app_api_admin_products_id_images_route_get",
-      "label": "GET()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "get()",
-      "source_file": "app/api/admin/products/[id]/images/route.ts",
-      "source_location": "L57"
-    },
-    {
-      "id": "app_api_admin_products_id_images_route_post",
-      "label": "POST()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "post()",
-      "source_file": "app/api/admin/products/[id]/images/route.ts",
-      "source_location": "L91"
-    },
-    {
-      "id": "app_api_admin_products_id_images_route_sanitizefilename",
-      "label": "sanitizeFileName()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "sanitizefilename()",
-      "source_file": "app/api/admin/products/[id]/images/route.ts",
-      "source_location": "L13"
-    },
-    {
-      "id": "app_api_admin_reviews_id_route_delete",
-      "label": "DELETE()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "delete()",
-      "source_file": "app/api/admin/reviews/[id]/route.ts",
-      "source_location": "L62"
-    },
-    {
-      "id": "app_api_admin_reviews_id_route_patch",
-      "label": "PATCH()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "patch()",
-      "source_file": "app/api/admin/reviews/[id]/route.ts",
-      "source_location": "L16"
-    },
-    {
       "id": "app_api_admin_reviews_route_get",
       "label": "GET()",
       "_callable": true,
@@ -7486,18 +7570,6 @@
       "norm_label": "get()",
       "source_file": "app/api/admin/reviews/route.ts",
       "source_location": "L21"
-    },
-    {
-      "id": "app_lib_admin_api_isuuid",
-      "label": "isUuid()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "isuuid()",
-      "source_file": "app/lib/admin-api.ts",
-      "source_location": "L111"
     },
     {
       "id": "app_lib_admin_api_requireadminapi",
@@ -8350,78 +8422,6 @@
       "norm_label": "fmtint()",
       "source_file": "scripts/yugcontract-content-apply.ts",
       "source_location": "L56"
-    },
-    {
-      "id": "app_api_admin_products_id_images_imageid_route_delete",
-      "label": "DELETE()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "[imageId]/route.ts",
-      "file_type": "code",
-      "norm_label": "delete()",
-      "source_file": "app/api/admin/products/[id]/images/[imageId]/route.ts",
-      "source_location": "L146"
-    },
-    {
-      "id": "app_api_admin_products_id_images_imageid_route_put",
-      "label": "PUT()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "[imageId]/route.ts",
-      "file_type": "code",
-      "norm_label": "put()",
-      "source_file": "app/api/admin/products/[id]/images/[imageId]/route.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "app_api_admin_products_id_route_delete",
-      "label": "DELETE()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "[imageId]/route.ts",
-      "file_type": "code",
-      "norm_label": "delete()",
-      "source_file": "app/api/admin/products/[id]/route.ts",
-      "source_location": "L305"
-    },
-    {
-      "id": "app_lib_admin_api_tostoragepath",
-      "label": "toStoragePath()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "[imageId]/route.ts",
-      "file_type": "code",
-      "norm_label": "tostoragepath()",
-      "source_file": "app/lib/admin-api.ts",
-      "source_location": "L171"
-    },
-    {
-      "id": "app_lib_admin_image_main_planmainpromotion",
-      "label": "planMainPromotion()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "[imageId]/route.ts",
-      "file_type": "code",
-      "norm_label": "planmainpromotion()",
-      "source_file": "app/lib/admin-image-main.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "app_lib_supabase_storage_storagepathfromimageurl",
-      "label": "storagePathFromImageUrl()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "[imageId]/route.ts",
-      "file_type": "code",
-      "norm_label": "storagepathfromimageurl()",
-      "source_file": "app/lib/supabase-storage.ts",
-      "source_location": "L39"
     },
     {
       "id": "app_api_admin_yugcontract_categories_route_get",
@@ -14644,6 +14644,17 @@
       "source_location": "L1"
     },
     {
+      "id": "app_api_admin_brands_id_route",
+      "label": "brands/[id]/route.ts",
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "brands/[id]/route.ts",
+      "source_file": "app/api/admin/brands/[id]/route.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "app_api_admin_categories_id_route",
       "label": "categories/[id]/route.ts",
       "_origin": "ast",
@@ -14655,15 +14666,37 @@
       "source_location": "L1"
     },
     {
-      "id": "app_api_admin_categories_route",
-      "label": "admin/categories/route.ts",
+      "id": "app_api_admin_products_id_images_imageid_route",
+      "label": "[imageId]/route.ts",
       "_origin": "ast",
       "community": 28,
       "community_name": "admin-api.ts",
       "file_type": "code",
-      "norm_label": "admin/categories/route.ts",
-      "source_file": "app/api/admin/categories/route.ts",
+      "norm_label": "[imageid]/route.ts",
+      "source_file": "app/api/admin/products/[id]/images/[imageId]/route.ts",
       "source_location": "L1"
+    },
+    {
+      "id": "app_api_admin_products_id_images_route",
+      "label": "images/route.ts",
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "images/route.ts",
+      "source_file": "app/api/admin/products/[id]/images/route.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_api_admin_products_id_images_route_allowed_mime",
+      "label": "ALLOWED_MIME",
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "allowed_mime",
+      "source_file": "app/api/admin/products/[id]/images/route.ts",
+      "source_location": "L5"
     },
     {
       "id": "app_api_admin_products_id_variants_route",
@@ -14688,6 +14721,28 @@
       "source_location": "L1"
     },
     {
+      "id": "app_api_admin_reviews_id_route",
+      "label": "reviews/[id]/route.ts",
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "reviews/[id]/route.ts",
+      "source_file": "app/api/admin/reviews/[id]/route.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_api_admin_reviews_id_route_action_to_status",
+      "label": "ACTION_TO_STATUS",
+      "_origin": "ast",
+      "community": 28,
+      "community_name": "admin-api.ts",
+      "file_type": "code",
+      "norm_label": "action_to_status",
+      "source_file": "app/api/admin/reviews/[id]/route.ts",
+      "source_location": "L10"
+    },
+    {
       "id": "app_lib_admin_api",
       "label": "admin-api.ts",
       "_origin": "ast",
@@ -14699,26 +14754,15 @@
       "source_location": "L1"
     },
     {
-      "id": "app_lib_admin_list_category_fields_list",
-      "label": "CATEGORY_FIELDS_LIST",
+      "id": "app_lib_admin_image_main",
+      "label": "admin-image-main.ts",
       "_origin": "ast",
       "community": 28,
       "community_name": "admin-api.ts",
       "file_type": "code",
-      "norm_label": "category_fields_list",
-      "source_file": "app/lib/admin-list.ts",
-      "source_location": "L448"
-    },
-    {
-      "id": "app_lib_admin_list_category_sort_keys",
-      "label": "CATEGORY_SORT_KEYS",
-      "_origin": "ast",
-      "community": 28,
-      "community_name": "admin-api.ts",
-      "file_type": "code",
-      "norm_label": "category_sort_keys",
-      "source_file": "app/lib/admin-list.ts",
-      "source_location": "L132"
+      "norm_label": "admin-image-main.ts",
+      "source_file": "app/lib/admin-image-main.ts",
+      "source_location": "L1"
     },
     {
       "id": "case",
@@ -15282,6 +15326,17 @@
       "source_location": "L1"
     },
     {
+      "id": "app_api_admin_categories_route",
+      "label": "admin/categories/route.ts",
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "admin-list.ts",
+      "file_type": "code",
+      "norm_label": "admin/categories/route.ts",
+      "source_file": "app/api/admin/categories/route.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "app_lib_admin_list",
       "label": "admin-list.ts",
       "_origin": "ast",
@@ -15348,6 +15403,28 @@
       "source_location": "L90"
     },
     {
+      "id": "app_lib_admin_list_category_fields_list",
+      "label": "CATEGORY_FIELDS_LIST",
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "admin-list.ts",
+      "file_type": "code",
+      "norm_label": "category_fields_list",
+      "source_file": "app/lib/admin-list.ts",
+      "source_location": "L448"
+    },
+    {
+      "id": "app_lib_admin_list_category_sort_keys",
+      "label": "CATEGORY_SORT_KEYS",
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "admin-list.ts",
+      "file_type": "code",
+      "norm_label": "category_sort_keys",
+      "source_file": "app/lib/admin-list.ts",
+      "source_location": "L132"
+    },
+    {
       "id": "app_lib_admin_list_category_sorts",
       "label": "CATEGORY_SORTS",
       "_origin": "ast",
@@ -15357,6 +15434,28 @@
       "norm_label": "category_sorts",
       "source_file": "app/lib/admin-list.ts",
       "source_location": "L110"
+    },
+    {
+      "id": "app_lib_admin_list_product_select",
+      "label": "PRODUCT_SELECT",
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "admin-list.ts",
+      "file_type": "code",
+      "norm_label": "product_select",
+      "source_file": "app/lib/admin-list.ts",
+      "source_location": "L316"
+    },
+    {
+      "id": "app_lib_admin_list_product_sort_keys",
+      "label": "PRODUCT_SORT_KEYS",
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "admin-list.ts",
+      "file_type": "code",
+      "norm_label": "product_sort_keys",
+      "source_file": "app/lib/admin-list.ts",
+      "source_location": "L88"
     },
     {
       "id": "app_lib_admin_list_product_sorts",
@@ -15948,28 +16047,6 @@
       "source_location": "L1"
     },
     {
-      "id": "app_lib_admin_list_product_select",
-      "label": "PRODUCT_SELECT",
-      "_origin": "ast",
-      "community": 36,
-      "community_name": "products/route.ts",
-      "file_type": "code",
-      "norm_label": "product_select",
-      "source_file": "app/lib/admin-list.ts",
-      "source_location": "L316"
-    },
-    {
-      "id": "app_lib_admin_list_product_sort_keys",
-      "label": "PRODUCT_SORT_KEYS",
-      "_origin": "ast",
-      "community": 36,
-      "community_name": "products/route.ts",
-      "file_type": "code",
-      "norm_label": "product_sort_keys",
-      "source_file": "app/lib/admin-list.ts",
-      "source_location": "L88"
-    },
-    {
       "id": "app_lib_featured_limit",
       "label": "featured-limit.ts",
       "_origin": "ast",
@@ -16300,17 +16377,6 @@
       "source_location": "L1"
     },
     {
-      "id": "app_api_admin_brands_id_route",
-      "label": "brands/[id]/route.ts",
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "brands/[id]/route.ts",
-      "source_file": "app/api/admin/brands/[id]/route.ts",
-      "source_location": "L1"
-    },
-    {
       "id": "app_api_admin_categories_id_order_route",
       "label": "order/route.ts",
       "_origin": "ast",
@@ -16364,50 +16430,6 @@
       "norm_label": "statuses",
       "source_file": "app/api/admin/orders/route.ts",
       "source_location": "L11"
-    },
-    {
-      "id": "app_api_admin_products_id_images_route",
-      "label": "images/route.ts",
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "images/route.ts",
-      "source_file": "app/api/admin/products/[id]/images/route.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_api_admin_products_id_images_route_allowed_mime",
-      "label": "ALLOWED_MIME",
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "allowed_mime",
-      "source_file": "app/api/admin/products/[id]/images/route.ts",
-      "source_location": "L5"
-    },
-    {
-      "id": "app_api_admin_reviews_id_route",
-      "label": "reviews/[id]/route.ts",
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "reviews/[id]/route.ts",
-      "source_file": "app/api/admin/reviews/[id]/route.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_api_admin_reviews_id_route_action_to_status",
-      "label": "ACTION_TO_STATUS",
-      "_origin": "ast",
-      "community": 4,
-      "community_name": "requireAdminApi",
-      "file_type": "code",
-      "norm_label": "action_to_status",
-      "source_file": "app/api/admin/reviews/[id]/route.ts",
-      "source_location": "L10"
     },
     {
       "id": "app_api_admin_reviews_route",
@@ -17812,33 +17834,11 @@
       "source_location": "L13"
     },
     {
-      "id": "app_api_admin_products_id_images_imageid_route",
-      "label": "[imageId]/route.ts",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "[imageId]/route.ts",
-      "file_type": "code",
-      "norm_label": "[imageid]/route.ts",
-      "source_file": "app/api/admin/products/[id]/images/[imageId]/route.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_lib_admin_image_main",
-      "label": "admin-image-main.ts",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "[imageId]/route.ts",
-      "file_type": "code",
-      "norm_label": "admin-image-main.ts",
-      "source_file": "app/lib/admin-image-main.ts",
-      "source_location": "L1"
-    },
-    {
       "id": "tests_admin_image_main_test",
       "label": "admin-image-main.test.ts",
       "_origin": "ast",
       "community": 52,
-      "community_name": "[imageId]/route.ts",
+      "community_name": "admin-image-main.test.ts",
       "file_type": "code",
       "norm_label": "admin-image-main.test.ts",
       "source_file": "tests/admin-image-main.test.ts",
@@ -17849,7 +17849,7 @@
       "label": "root",
       "_origin": "ast",
       "community": 52,
-      "community_name": "[imageId]/route.ts",
+      "community_name": "admin-image-main.test.ts",
       "file_type": "code",
       "norm_label": "root",
       "source_file": "tests/admin-image-main.test.ts",
@@ -17860,7 +17860,7 @@
       "label": "routeSrc",
       "_origin": "ast",
       "community": 52,
-      "community_name": "[imageId]/route.ts",
+      "community_name": "admin-image-main.test.ts",
       "file_type": "code",
       "norm_label": "routesrc",
       "source_file": "tests/admin-image-main.test.ts",
