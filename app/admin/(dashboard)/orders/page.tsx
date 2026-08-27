@@ -215,7 +215,15 @@ export default function OrdersAdminPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold tracking-tight text-gray-900">Замовлення</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Замовлення</h1>
+        <Link
+          href="/admin/orders/reconciliation"
+          className="text-sm underline text-gray-600 hover:text-gray-900"
+        >
+          Зверка LiqPay ↔ БД
+        </Link>
+      </div>
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-4 flex flex-wrap gap-3 items-center">

@@ -15,7 +15,9 @@
  * Classification priority (each later check only sees rows the earlier ones
  * did not classify):
  *   1. provider reachability / well-formedness  → UNREACHABLE (retry-safe,
- *      deliberately NOT a payment failure);
+ *      deliberately NOT a payment failure), except a completed lookup whose
+ *      machine answer is payment_not_found → PROVIDER_NOT_FOUND (the API is
+ *      reachable and authoritative about THIS merchant/key context only);
  *   2. money identity of a paid claim           → AMOUNT_MISMATCH,
  *                                                  CURRENCY_MISMATCH
  *      (mirrors callback flow: amount/currency are verified only on
@@ -47,6 +49,7 @@ export type ReconciliationCase =
   | 'STALE_ATTEMPT'
   | 'MANUAL_REVIEW'
   | 'UNREACHABLE'
+  | 'PROVIDER_NOT_FOUND'
   | 'DUPLICATE_PAYMENT_ID';
 
 /** Projection of one orders row (migration 017 bookkeeping + money cols). */
@@ -68,6 +71,13 @@ export interface ReconcileRow {
  * Shape of LiqPay's action=status response. Fields arrive unvalidated:
  * the classifier treats anything malformed as UNREACHABLE, never as
  * evidence about payment state.
+ *
+ * Verified production shapes (read-only probes, phase-2 audit):
+ *   - transaction found: result="ok" + full structured body;
+ *   - lookup completed but absent in the current merchant/key context:
+ *       result="error", code/err_code="payment_not_found",
+ *       err_description="Платіж не знайдено";
+ *   - other API errors carry their own err_code (e.g. "invalid_signature").
  */
 export interface ProviderStatus {
   result?: unknown;
@@ -78,6 +88,9 @@ export interface ProviderStatus {
   amount?: unknown;
   currency?: unknown;
   paytype?: unknown;
+  code?: unknown;
+  err_code?: unknown;
+  err_description?: unknown;
   [key: string]: unknown;
 }
 
@@ -86,6 +99,21 @@ function isWellFormedProvider(p: ProviderStatus): boolean {
   // which intentionally maps undocumented statuses to non-terminal pending
   // so they can never assert money movement here.
   return p.result === 'ok' && typeof p.status === 'string' && p.status.length > 0;
+}
+
+/**
+ * Machine code LiqPay reports when the lookup itself completed successfully
+ * but no transaction exists for the order_id in the current merchant/key
+ * context. Verified against the live Status API (phase-2 read-only audit).
+ * This asserts NOTHING about whether a payment ever happened under another
+ * key context — it is purely "the API answered: not found here".
+ */
+const PROVIDER_NOT_FOUND_CODE = 'payment_not_found';
+
+function isProviderNotFound(p: ProviderStatus): boolean {
+  if (p.result !== 'error') return false;
+  const codes = [p.code, p.err_code];
+  return codes.some((c) => typeof c === 'string' && c === PROVIDER_NOT_FOUND_CODE);
 }
 
 function currencyEquals(a: unknown, b: unknown): boolean {
@@ -105,7 +133,13 @@ export function classifyReconcileRow(
   nowMs: number = Date.now()
 ): Exclude<ReconciliationCase, 'DUPLICATE_PAYMENT_ID'> {
   // 1. Reachability first: no provider answer → say nothing about money.
-  if (!provider || !isWellFormedProvider(provider)) return 'UNREACHABLE';
+  if (!provider || !isWellFormedProvider(provider)) {
+    // The exchange was authenticated and answered, and its answer is exactly
+    // "no such transaction in this merchant/key context". That is evidence
+    // — unlike network/HTTP/malformed failures below.
+    if (isProviderNotFound(provider ?? {})) return 'PROVIDER_NOT_FOUND';
+    return 'UNREACHABLE';
+  }
 
   const mapped = mapLiqPayStatus(provider.status);
 

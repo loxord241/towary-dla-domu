@@ -78,37 +78,16 @@ const svc = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const { encodeLiqPayData, createLiqPaySignature } = await import(
-  '../app/lib/payment/liqpay-signature.ts'
-);
 const { classifyReconcileRow, findDuplicatePaymentIdGroups } = await import(
   '../app/lib/payment/reconciliation.ts'
 );
+const { fetchLiqPayProviderStatus } = await import(
+  '../app/lib/payment/liqpay-status-api.ts'
+);
 
 // ---------------------------------------------------------------------------
-// LiqPay Status API — production-verified contract (action=status only)
+// LiqPay Status API — shared read-only client (single implementation)
 // ---------------------------------------------------------------------------
-
-async function fetchProviderStatus(liqpayOrderId: string): Promise<Record<string, unknown> | null> {
-  try {
-    const data = encodeLiqPayData({
-      action: 'status', // READ — never any mutating action here
-      version: 3,
-      public_key: process.env.LIQPAY_PUBLIC_KEY,
-      order_id: liqpayOrderId,
-    });
-    const signature = createLiqPaySignature(data, process.env.LIQPAY_PRIVATE_KEY!);
-    const res = await fetch('https://www.liqpay.ua/api/request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ data, signature }),
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -178,7 +157,7 @@ for await (const row of loadRows()) {
   if (!first) await sleep(THROTTLE_MS); // polite pacing; no parallelism
   first = false;
 
-  const provider = await fetchProviderStatus(row.liqpay_order_id);
+  const provider = await fetchLiqPayProviderStatus(row.liqpay_order_id);
   const cls = classifyReconcileRow(
     {
       order_number: row.order_number,
@@ -227,6 +206,12 @@ const duplicates = findDuplicatePaymentIdGroups(
 const CLEAN = new Set(['OK_OK']);
 const findings = results.filter((r) => !CLEAN.has(r.classification));
 
+// Semantics differ even though both remain findings (exit 1):
+//   UNREACHABLE        — provider status could NOT be reliably obtained;
+//   PROVIDER_NOT_FOUND — provider answered: no transaction for this order_id
+//                        in the current merchant/key context.
+const NOT_FOUND = new Set(['PROVIDER_NOT_FOUND']);
+
 console.log('== LiqPay ↔ DB reconciliation (READ-ONLY) ==');
 console.log(`window: created_at >= ${FROM}${TO ? ` AND <= ${TO}` : ''}, limit=${LIMIT}`);
 console.log(`checked: ${results.length}; consistent: ${results.length - findings.length}; findings: ${findings.length + duplicates.length}`);
@@ -238,8 +223,11 @@ for (const [k, v] of [...byClass.entries()].sort()) console.log(`  ${k}: ${v}`);
 if (findings.length > 0 || duplicates.length > 0) {
   console.log('\n-- Discrepancies (facts only; NO auto-fix will be attempted) --');
   for (const r of findings) {
+    const note = NOT_FOUND.has(r.classification)
+      ? ' [provider answered: transaction not found in current merchant/key context]'
+      : '';
     console.log(
-      `[${r.classification}] ${r.order_number} ` +
+      `[${r.classification}]${note} ${r.order_number} ` +
         `db=${r.db_payment_status} provider=${r.provider_status ?? '(n/a)'} ` +
         `${r.amount} ${r.currency} payment_id=${r.liqpay_payment_id ?? '(null)'}`
     );

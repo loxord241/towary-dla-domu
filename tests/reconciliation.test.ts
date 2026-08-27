@@ -304,6 +304,71 @@ test('RECONCILE: malformed provider payload → UNREACHABLE', () => {
 });
 
 // ---------------------------------------------------------------------------
+// PROVIDER_NOT_FOUND vs UNREACHABLE — phase 2 refinement.
+//
+// Production evidence (read-only probes against the Status API, action=status):
+//   - "not found":   HTTP 200, result="error",
+//                    code/err_code="payment_not_found",
+//                    err_description="Платіж не знайдено";
+//   - other errors:  e.g. err_code="invalid_signature";
+// i.e. a machine-readable err_code discriminates a COMPLETED lookup from an
+// exchange that cannot be trusted. Semantics of NOT_FOUND: the API answered
+// that no transaction exists for this order_id in the CURRENT merchant/key
+// context — nothing more (no refund/no DB implications are implied).
+// ---------------------------------------------------------------------------
+
+test('RECONCILE: exact production "Платіж не знайдено" body → PROVIDER_NOT_FOUND', () => {
+  const c = classifyReconcileRow(
+    dbRow({
+      payment_status: 'pending',
+      liqpay_payment_id: null,
+      status: 'cancelled',
+    }),
+    {
+      code: 'payment_not_found',
+      err_code: 'payment_not_found',
+      err_description: 'Платіж не знайдено',
+      result: 'error',
+      status: 'error',
+    },
+    NOW
+  );
+  assert.equal(c, 'PROVIDER_NOT_FOUND');
+});
+
+test('RECONCILE: result=error WITHOUT payment_not_found code stays UNREACHABLE', () => {
+  const c = classifyReconcileRow(
+    dbRow(),
+    {
+      code: 'invalid_signature',
+      err_code: 'invalid_signature',
+      err_description: 'Невірний підпис signature',
+      result: 'error',
+      status: 'error',
+    },
+    NOW
+  );
+  assert.equal(c, 'UNREACHABLE');
+});
+
+test('RECONCILE: result=error with unknown/absent err_code → UNREACHABLE (fail closed)', () => {
+  assert.equal(classifyReconcileRow(dbRow(), { result: 'error' }, NOW), 'UNREACHABLE');
+  assert.equal(
+    classifyReconcileRow(dbRow(), { result: 'error', err_code: 'something_new' }, NOW),
+    'UNREACHABLE'
+  );
+});
+
+test('RECONCILE: realistic found-success response → OK_OK', () => {
+  const c = classifyReconcileRow(
+    dbRow({ amount: '20', currency: 'UAH' }),
+    providerOk({ amount: 20, currency: 'UAH' }),
+    NOW
+  );
+  assert.equal(c, 'OK_OK');
+});
+
+// ---------------------------------------------------------------------------
 // Priority sanity: reachability > money > identity > state > staleness.
 // ---------------------------------------------------------------------------
 
