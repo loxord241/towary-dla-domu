@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { CartProvider } from "@/app/lib/cart-context";
 import { FavoritesProvider } from "@/app/lib/favorites-context";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <CartProvider>
           <FavoritesProvider>{children}</FavoritesProvider>
         </CartProvider>
+        <Analytics />
       </body>
     </html>
   );
