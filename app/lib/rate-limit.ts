@@ -14,6 +14,14 @@ import { NextResponse } from 'next/server';
  *    shared-cap pattern instead of persisting IPs.
  *  - Buckets are keyed by client IP + route name; IP comes from
  *    x-forwarded-for / x-real-ip set by the upstream proxy.
+ *    TRUST ASSUMPTION (deployment: Vercel): Vercel's edge OVERWRITES
+ *    x-forwarded-for with the real client IP and does not forward
+ *    externally supplied values ("to prevent IP spoofing" — vercel.com/docs,
+ *    System Headers → x-forwarded-for; x-real-ip is identical). The first
+ *    XFF element is therefore edge-verified and NOT client-controllable.
+ *    This only holds on Vercel: behind another reverse proxy (Cloudflare,
+ *    nginx) or an Enterprise trusted-proxy setup, re-validate before
+ *    trusting it.
  *  - Only ACCEPTED requests count toward limits; rejected ones neither
  *    extend nor deepen the block (prevents permanent starvation of
  *    clients behind shared NATs).

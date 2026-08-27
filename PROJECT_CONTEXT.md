@@ -673,3 +673,29 @@ email, expires_at, payment_status), order_items (+variant_name/sku), product_sto
   hover-only=0, col-span фикс, md-ступень в HTML, aria-disabled работает.
   DB: 0 writes.
 
+
+## Етап 16: Security hardening (2026-08-27)
+- TRUNCATE: міграція 024 revoke truncate on all tables in schema public
+  from anon, authenticated (застосована через migration runner; live-аудит
+  information_schema: після — TRUNCATE лише у postgres/service_role).
+  RLS не захищає від TRUNCATE — це не row-level операція.
+- XFF/rate-limit: clientIpOf НЕ змінено. Vercel edge перезаписує
+  x-forwarded-for і не пропускає зовнішні значення (anti-spoofing,
+  vercel.com/docs/headers/request-headers); перший елемент XFF = 
+  edge-verified IP. Припущення задокументовано в rate-limit.ts + тести
+  tests/rate-limit-xff.test.ts. УВАГА: за іншим proxy — перевірити знову.
+- CSP: enforcing (Content-Security-Policy у next.config.ts). 'unsafe-inline'
+  залишено у script-src/style-src З ДОКУМЕНТОВАНОЮ причиною: nonce вимагає
+  динамічного рендерингу ВСІХ сторінок (ISR/static вимкнено — офіційні
+  docs Next). 'unsafe-eval' лише в dev. Тести tests/csp-enforcing.test.ts.
+- Storage product_images: file_size_limit=5242880 (5MB),
+  allowed_mime_types=[jpeg,png,webp,gif,avif] (міграція 025). 
+  sanitizeFileName → app/lib/upload-filename.ts: розширення з whitelist,
+  примусово = магічно верифікованому MIME (svg/html неможливі). Тести
+  tests/storage-hardening.test.ts. public=true збережено (не змінювалось).
+- Auth Leaked Password Protection: НЕ вдалося перевірити/увімкнути
+  програмно (Dashboard-only, Pro plan; /auth/v1/settings та admin config
+  API не експонують стан). ПОТРІБНО ВРУЧНУ: Dashboard → Authentication →
+  Policies → увімкнути "Leaked password protection" (HaveIBeenPwned).
+  Application auth flow не змінюється (перевірка лише при
+  signup/password update).

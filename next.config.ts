@@ -15,44 +15,66 @@ const SUPABASE_HOST = (() => {
 const YUGCONTRACT_IMAGE_ORIGIN = "https://b2b.yugcontract.ua";
 
 /**
- * CSP REPORT-ONLY (2026-08-27 stage): evidence-gathering only, zero risk
- * to storefront/checkout/LiqPay/Supabase by construction.
+ * CSP ENFORCING (2026-08-27 security hardening stage).
  *
  * Every directive is derived from audited facts about the app:
  *  - script-src 'self' 'unsafe-inline': Next.js self-hosted chunks plus
  *    unavoidable inline scripts (App Router hydration payloads and the
- *    JSON-LD <script> sinks). A nonce/'strict-dynamic' policy requires
- *    runtime changes and is explicitly deferred; production Next does NOT
- *    need an eval source, and none is granted.
+ *    JSON-LD <script> sinks — app/components/ProductJsonLd.tsx). Removing
+ *    'unsafe-inline' requires a nonce, and per Next.js docs (guides/
+ *    content-security-policy) nonce-based CSP forces DYNAMIC rendering of
+ *    every page: ISR/static generation disabled, PPR incompatible. This
+ *    storefront is ISR-based (home ISR 60s, static pages, sitemap), so a
+ *    nonce policy is an architectural rework, not a hardening patch —
+ *    consciously deferred. 'unsafe-eval' is NOT granted in production
+ *    (Next/React do not need it there); it is appended ONLY in
+ *    development, where React dev tooling uses eval.
  *  - style-src 'self' 'unsafe-inline': compiled CSS plus React inline
- *    style attributes (4 sanctioned components).
+ *    style attributes (4 sanctioned components). Same nonce/dynamic-
+ *    rendering constraint applies; kept minimal and documented.
  *  - img-src: own origin, Supabase public bucket, Yugcontract hotlinks.
  *  - font-src 'self': next/font/google self-hosts woff2 at build time.
  *  - connect-src: same-origin APIs + Supabase Auth/REST (client-side on
  *    admin login, order status, checkout success). No realtime/websockets.
- *  - form-action: LiqPay checkout is a top-level POST navigation.
+ *    (CSP scheme matching: https://host also permits wss://host.)
+ *  - form-action: LiqPay checkout is a top-level POST navigation
+ *    (PayWithLiqPayButton builds a form POST to https://www.liqpay.ua).
  *  - frame-ancestors/base-uri/object-src harden the defaults.
+ *
+ * Dev-only relaxations ('unsafe-eval' for React dev eval, ws: for HMR) are
+ * appended exclusively when NODE_ENV=development and never reach production.
  */
-const CSP_REPORT_ONLY = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
-  ["img-src 'self'", SUPABASE_HOST && `https://${SUPABASE_HOST}`, YUGCONTRACT_IMAGE_ORIGIN]
-    .filter(Boolean)
-    .join(" "),
-  "font-src 'self'",
-  ["connect-src 'self'", SUPABASE_HOST && `https://${SUPABASE_HOST}`]
-    .filter(Boolean)
-    .join(" "),
-  "form-action 'self' https://www.liqpay.ua",
-  "frame-ancestors 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-].join("; ");
+function buildCsp(isDev: boolean): string {
+  const directives = [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    ["img-src 'self'", SUPABASE_HOST && `https://${SUPABASE_HOST}`, YUGCONTRACT_IMAGE_ORIGIN]
+      .filter(Boolean)
+      .join(" "),
+    "font-src 'self'",
+    ["connect-src 'self'", SUPABASE_HOST && `https://${SUPABASE_HOST}`]
+      .filter(Boolean)
+      .join(" "),
+    "form-action 'self' https://www.liqpay.ua",
+    "frame-ancestors 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+  ];
+  if (isDev) {
+    // HMR websocket to the local dev server (localhost is same-host, but
+    // keep the dev tunnel origin usable too). Production policy untouched.
+    directives.push("connect-src 'self' ws: wss:");
+  }
+  return directives.join("; ");
+}
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
+    // Read at call time (not module load) so the enforcing policy can be
+    // exercised for both environments in tests.
+    const isDev = process.env.NODE_ENV === "development";
     return [
       {
         source: "/:path*",
@@ -65,11 +87,11 @@ const nextConfig: NextConfig = {
             value: "camera=(), microphone=(), geolocation=()",
           },
           {
-            // Report-only: browsers log violations but do not block,
-            // so checkout, LiqPay redirect/callback and Supabase flows
-            // are untouched until a separate enforcement GO.
-            key: "Content-Security-Policy-Report-Only",
-            value: CSP_REPORT_ONLY,
+            // Enforcing since 2026-08-27: the identical policy ran as
+            // Report-Only first; directives are derived from audited app
+            // facts (see buildCsp). Production never gets 'unsafe-eval'.
+            key: "Content-Security-Policy",
+            value: buildCsp(isDev),
           },
         ],
       },

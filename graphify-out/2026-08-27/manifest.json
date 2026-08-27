@@ -2484,15 +2484,15 @@
     "semantic_hash": ""
   },
   "app/lib/delivery/novapost/client.ts": {
-    "mtime": 1787852374.4272943,
-    "seen": 1787854285.1060524,
-    "ast_hash": "4b58017ae3818c2a1053c37dd4f85a81",
+    "mtime": 1787861979.4610016,
+    "seen": 1787862783.124777,
+    "ast_hash": "2469c050c5d0672cf8fe51fde5aafb69",
     "semantic_hash": ""
   },
   "app/lib/delivery/novapost/config.ts": {
-    "mtime": 1787858357.9298651,
-    "seen": 1787858893.4084086,
-    "ast_hash": "97929ef51aa45798a1374cd3f38c748b",
+    "mtime": 1787862201.732948,
+    "seen": 1787862783.1247787,
+    "ast_hash": "00c4827fa22b6fd61d135b80fecb742e",
     "semantic_hash": ""
   },
   "app/lib/delivery/novapost/delivery-cost.ts": {
@@ -2562,15 +2562,15 @@
     "semantic_hash": ""
   },
   "app/admin/(dashboard)/orders/[id]/page.tsx": {
-    "mtime": 1787858821.3777552,
-    "seen": 1787858893.4083116,
-    "ast_hash": "e1c6a42a86a057309b78568e0fa16470",
+    "mtime": 1787862651.55284,
+    "seen": 1787862783.1246538,
+    "ast_hash": "e9c425c6343dc862bc916b604c84cf47",
     "semantic_hash": ""
   },
   "app/api/admin/orders/[id]/shipments/route.ts": {
-    "mtime": 1787858697.393784,
-    "seen": 1787858893.408331,
-    "ast_hash": "bcfa96dd7e795776f53fea3c3ff5975e",
+    "mtime": 1787862518.3408718,
+    "seen": 1787862783.1246765,
+    "ast_hash": "d5c2db897afcdf84086752868f94c118",
     "semantic_hash": ""
   },
   "app/lib/admin-shipments.ts": {
@@ -2637,6 +2637,36 @@
     "mtime": 1787858825.0057542,
     "seen": 1787858893.4085217,
     "ast_hash": "5bb6144c12e727b3bc2f690ac127bb5d",
+    "semantic_hash": ""
+  },
+  "app/api/admin/orders/[id]/shipments/ttn/route.ts": {
+    "mtime": 1787862601.516852,
+    "seen": 1787862783.1246777,
+    "ast_hash": "3e8c2fc1116dfcd88849e9f76f7150a6",
+    "semantic_hash": ""
+  },
+  "app/lib/admin-shipments-ttn.ts": {
+    "mtime": 1787862254.3929346,
+    "seen": 1787862783.1247702,
+    "ast_hash": "fbe5546bdf5f56f42f7404f3c846fe45",
+    "semantic_hash": ""
+  },
+  "app/lib/delivery/novapost/shipments.ts": {
+    "mtime": 1787862082.340976,
+    "seen": 1787862783.1247869,
+    "ast_hash": "23379e3caf0ab427b3ea475f648b6e16",
+    "semantic_hash": ""
+  },
+  "tests/admin-shipments-ttn.test.ts": {
+    "mtime": 1787862738.1381865,
+    "seen": 1787862783.124928,
+    "ast_hash": "78738b349549c68463d184d54e7db500",
+    "semantic_hash": ""
+  },
+  "tests/novapost-shipments.test.ts": {
+    "mtime": 1787862068.2809792,
+    "seen": 1787862783.1249616,
+    "ast_hash": "c2af1c0a271a170ac7c6da49d456e172",
     "semantic_hash": ""
   }
 }

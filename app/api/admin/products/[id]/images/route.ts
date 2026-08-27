@@ -1,27 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requireAdminApi, strOrNull, numOrNull, isUuid, dbErrorResponse } from '@/app/lib/admin-api';
+import { sanitizeUploadFileName, IMAGE_EXT_BY_MIME } from '@/app/lib/upload-filename';
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-const ALLOWED_MIME = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'image/avif',
-];
-
-function sanitizeFileName(name: string): string {
-  const dot = name.lastIndexOf('.');
-  const base = dot > 0 ? name.slice(0, dot) : name;
-  const ext = dot > 0 ? name.slice(dot).toLowerCase() : '';
-  const safeBase =
-    base
-      .toLowerCase()
-      .replace(/[^a-z0-9-_]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 60) || 'image';
-  return `${safeBase}${ext}`;
-}
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB — mirrored by the Storage bucket limit (migration 025)
+const ALLOWED_MIME = Object.keys(IMAGE_EXT_BY_MIME);
 
 /**
  * Magic-byte sniffing: the multipart Content-Type is client-controlled, so
@@ -150,7 +132,16 @@ export async function POST(
     const sortOrder = numOrNull(formData.get('sort_order')) ?? 0;
     const isMain = formData.get('is_main') === 'true';
 
-    const storagePath = `products/${id}/${Date.now()}-${sanitizeFileName(file.name)}`;
+    const safeName = sanitizeUploadFileName(file.name, detectedMime);
+    if (!safeName) {
+      // Defense in depth: unreachable while ALLOWED_MIME mirrors
+      // IMAGE_EXT_BY_MIME, but never build a path from an unknown type.
+      return NextResponse.json(
+        { error: 'Непідтримуваний тип файлу.' },
+        { status: 400 }
+      );
+    }
+    const storagePath = `products/${id}/${Date.now()}-${safeName}`;
 
     // Upload + insert FIRST, and only then clear the siblings' main flag:
     // clearing first would leave the product with ZERO main images whenever
