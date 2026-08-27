@@ -1,0 +1,228 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - banner [ref=f2e3]:
+      - generic [ref=f2e5]:
+        - generic [ref=f2e6]:
+          - button "Відкрити меню" [ref=f2e7]
+          - link "E-Shop" [ref=f2e9] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f2e10]:
+            - link "Каталог" [ref=f2e11] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f2e13]:
+          - searchbox "Пошук" [ref=f2e14]
+          - button "Шукати" [ref=f2e15]
+        - generic [ref=f2e19]:
+          - 'link "Обране, товарів: 0" [ref=f2e20] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 0" [ref=f2e23] [cursor=pointer]':
+            - /url: /cart
+    - main [ref=f2e28]:
+      - navigation "Навігація" [ref=f2e29]:
+        - link "Каталог" [ref=f2e30] [cursor=pointer]:
+          - /url: /catalog
+        - text: /
+        - link "Столові прибори" [ref=f2e31] [cursor=pointer]:
+          - /url: /catalog?category=stolovi-prybory-1387
+        - text: /Столові прилади TRAMONTINA AMAZONAS ложка д/цукру - 1 шт, б/упак (63960/110)
+      - generic [ref=f2e32]:
+        - img "Столові прилади TRAMONTINA AMAZONAS ложка д/цукру - 1 шт, б/упак (63960/110)" [ref=f2e36]
+        - generic [ref=f2e37]:
+          - generic [ref=f2e38]:
+            - heading "Столові прилади TRAMONTINA AMAZONAS ложка д/цукру - 1 шт, б/упак (63960/110)" [level=1] [ref=f2e39]
+            - 'button "Додати до обраного: Столові прилади TRAMONTINA AMAZONAS ложка д/цукру - 1 шт, б/упак (63960/110)" [ref=f2e40]'
+          - generic [ref=f2e43]:
+            - generic [ref=f2e44]: "Артикул:"
+            - generic [ref=f2e45]: YC-6408296
+          - generic [ref=f2e46]: 69 UAH
+          - generic [ref=f2e48]:
+            - generic [ref=f2e49]: В наявності
+            - generic [ref=f2e50]: "на складі: 10 шт"
+          - generic [ref=f2e51]:
+            - heading "Опис" [level=3] [ref=f2e52]
+            - generic [ref=f2e54]:
+              - generic [ref=f2e56]:
+                - paragraph [ref=f2e57]:
+                  - text: Кожен виріб
+                  - strong [ref=f2e58]: Tramontina
+                  - text: розробляється з умовою, щоб він зміг задовольнити смак як звичайного домовласника, так і найбільш вибагливого професійного кухаря. Tramontina – це інноваційні розробки, сучасний дизайн, еко-технології та символ гарного смаку для всього світу.
+                - paragraph [ref=f2e59]:
+                  - strong [ref=f2e60]: "Особливості:"
+                - list [ref=f2e61]:
+                  - listitem [ref=f2e62]: Нержавіюча сталь
+                  - listitem [ref=f2e63]: "Розмір: 128x30x15 мм"
+                  - listitem [ref=f2e64]: Ложка має симетричну форму, найбільш зручну при використанні
+                  - listitem [ref=f2e65]: Загартоване лезо ножа гарантує більш міцну кромку, велику стійкість до корозії і не дряпає порцеляну
+                  - listitem [ref=f2e66]: Зубчики виделки відполіровані всередині, з округленними зубчиками
+                  - listitem [ref=f2e67]: Глянсове оздоблення
+                  - listitem [ref=f2e68]: Можна мити в посудомийній машині
+                - paragraph [ref=f2e69]:
+                  - strong [ref=f2e70]: Tramontina
+                  - text: – це бразильська корпорація з віковою історією, заснована в Бразилії в 1911 році. Наразі це - світовий лідер у виробництві товарів для кухні, будинку, саду. Tramontina – це бренд, представлений в 120 країнах світу, це 10 фабрик і 22 000 + одиниць продукції. Один з лідерів світового ринку з виробництва ножів, столових і кухонних аксесуарів, посуду для приготування їжі, інструментів для сільського господарства, будівництва та саду.
+                - paragraph [ref=f2e71]
+              - button "Показати більше" [ref=f2e72]:
+                - text: Показати більше
+                - generic [ref=f2e73]: ▾
+          - generic [ref=f2e74]:
+            - generic [ref=f2e75]:
+              - heading "Бренд:" [level=4] [ref=f2e76]
+              - paragraph [ref=f2e77]:
+                - link "TRAMONTINA" [ref=f2e78] [cursor=pointer]:
+                  - /url: /catalog?brand=tramontina
+            - generic [ref=f2e79]:
+              - heading "Категорія:" [level=4] [ref=f2e80]
+              - paragraph [ref=f2e81]:
+                - link "Столові прибори" [ref=f2e82] [cursor=pointer]:
+                  - /url: /catalog?category=stolovi-prybory-1387
+          - generic [ref=f2e83]:
+            - generic [ref=f2e84]:
+              - generic [ref=f2e85]: "Кількість:"
+              - spinbutton [ref=f2e86]: "1"
+              - generic [ref=f2e87]: макс. 10
+            - button "Додати в кошик" [ref=f2e88]
+          - generic [ref=f2e89]:
+            - paragraph [ref=f2e90]: Доставка та оплата
+            - paragraph [ref=f2e91]:
+              - text: Умови доставки та оплати — на сторінці
+              - link "«Доставка та оплата»" [ref=f2e92] [cursor=pointer]:
+                - /url: /delivery
+              - text: .
+      - generic [ref=f2e93]:
+        - heading "Характеристики товару" [level=2] [ref=f2e94]
+        - table [ref=f2e95]:
+          - rowgroup [ref=f2e96]:
+            - row [ref=f2e97]:
+              - rowheader "Серія" [ref=f2e98]
+              - cell "Amazonas" [ref=f2e99]
+            - row [ref=f2e100]:
+              - rowheader "Кількість предметів, шт." [ref=f2e101]
+              - cell "1" [ref=f2e102]
+            - row [ref=f2e103]:
+              - rowheader "Матеріал" [ref=f2e104]
+              - cell "Нержавіюча сталь" [ref=f2e105]
+            - row [ref=f2e106]:
+              - rowheader "В упаковці" [ref=f2e107]
+              - cell "Ні" [ref=f2e108]
+      - generic [ref=f2e109]:
+        - heading "Схожі товари" [level=2] [ref=f2e110]
+        - generic [ref=f2e111]:
+          - generic [ref=f2e112]:
+            - button "Додати до обраного" [ref=f2e114]
+            - link "Столові прилади RINGEL Oder підставка під столові прибори (квадрат) (RG-9012) Столові прилади RINGEL Oder підставка під столові прибори (квадрат) (RG-9012) RINGEL 284 UAH В наявності" [ref=f2e117] [cursor=pointer]:
+              - /url: /product/stolovi-prylady-ringel-oder-pidstavka-pid-stolovi-prybory-kvadrat-rg-9012-6990006
+              - img "Столові прилади RINGEL Oder підставка під столові прибори (квадрат) (RG-9012)" [ref=f2e119]
+              - generic [ref=f2e120]:
+                - heading "Столові прилади RINGEL Oder підставка під столові прибори (квадрат) (RG-9012)" [level=3] [ref=f2e121]
+                - paragraph [ref=f2e122]: RINGEL
+                - generic [ref=f2e123]: 284 UAH
+                - paragraph [ref=f2e125]: В наявності
+          - generic [ref=f2e126]:
+            - button "Додати до обраного" [ref=f2e128]
+            - link "Столові прилади RINGEL Oder серветниця (чашка) (RG-9005) Столові прилади RINGEL Oder серветниця (чашка) (RG-9005) RINGEL 154 UAH В наявності" [ref=f2e131] [cursor=pointer]:
+              - /url: /product/stolovi-prylady-ringel-oder-servetnytsia-chashka-rg-9005-6989997
+              - img "Столові прилади RINGEL Oder серветниця (чашка) (RG-9005)" [ref=f2e133]
+              - generic [ref=f2e134]:
+                - heading "Столові прилади RINGEL Oder серветниця (чашка) (RG-9005)" [level=3] [ref=f2e135]
+                - paragraph [ref=f2e136]: RINGEL
+                - generic [ref=f2e137]: 154 UAH
+                - paragraph [ref=f2e139]: В наявності
+          - generic [ref=f2e140]:
+            - button "Додати до обраного" [ref=f2e142]
+            - link "Столові прилади RINGEL Oder серветниця з зажимом (RG-9015) Столові прилади RINGEL Oder серветниця з зажимом (RG-9015) RINGEL 322 UAH В наявності" [ref=f2e145] [cursor=pointer]:
+              - /url: /product/stolovi-prylady-ringel-oder-servetnytsia-z-zazhymom-rg-9015-6990010
+              - img "Столові прилади RINGEL Oder серветниця з зажимом (RG-9015)" [ref=f2e147]
+              - generic [ref=f2e148]:
+                - heading "Столові прилади RINGEL Oder серветниця з зажимом (RG-9015)" [level=3] [ref=f2e149]
+                - paragraph [ref=f2e150]: RINGEL
+                - generic [ref=f2e151]: 322 UAH
+                - paragraph [ref=f2e153]: В наявності
+          - generic [ref=f2e154]:
+            - button "Додати до обраного" [ref=f2e156]
+            - link "Столові прилади RINGEL Oder підставка під столові прибори (овал) (RG-9011) Столові прилади RINGEL Oder підставка під столові прибори (овал) (RG-9011) RINGEL 284 UAH В наявності" [ref=f2e159] [cursor=pointer]:
+              - /url: /product/stolovi-prylady-ringel-oder-pidstavka-pid-stolovi-prybory-oval-rg-9011-6990004
+              - img "Столові прилади RINGEL Oder підставка під столові прибори (овал) (RG-9011)" [ref=f2e161]
+              - generic [ref=f2e162]:
+                - heading "Столові прилади RINGEL Oder підставка під столові прибори (овал) (RG-9011)" [level=3] [ref=f2e163]
+                - paragraph [ref=f2e164]: RINGEL
+                - generic [ref=f2e165]: 284 UAH
+                - paragraph [ref=f2e167]: В наявності
+          - generic [ref=f2e168]:
+            - button "Додати до обраного" [ref=f2e170]
+            - link "Столові прилади RINGEL Oder серветниця (кругла) (RG-9009) Столові прилади RINGEL Oder серветниця (кругла) (RG-9009) RINGEL 212 UAH В наявності" [ref=f2e173] [cursor=pointer]:
+              - /url: /product/stolovi-prylady-ringel-oder-servetnytsia-kruhla-rg-9009-6990002
+              - img "Столові прилади RINGEL Oder серветниця (кругла) (RG-9009)" [ref=f2e175]
+              - generic [ref=f2e176]:
+                - heading "Столові прилади RINGEL Oder серветниця (кругла) (RG-9009)" [level=3] [ref=f2e177]
+                - paragraph [ref=f2e178]: RINGEL
+                - generic [ref=f2e179]: 212 UAH
+                - paragraph [ref=f2e181]: В наявності
+          - generic [ref=f2e182]:
+            - button "Додати до обраного" [ref=f2e184]
+            - link "Столові прилади RINGEL Oder серветниця (прибори) (RG-9013) Столові прилади RINGEL Oder серветниця (прибори) (RG-9013) RINGEL 174 UAH В наявності" [ref=f2e187] [cursor=pointer]:
+              - /url: /product/stolovi-prylady-ringel-oder-servetnytsia-prybory-rg-9013-6990008
+              - img "Столові прилади RINGEL Oder серветниця (прибори) (RG-9013)" [ref=f2e189]
+              - generic [ref=f2e190]:
+                - heading "Столові прилади RINGEL Oder серветниця (прибори) (RG-9013)" [level=3] [ref=f2e191]
+                - paragraph [ref=f2e192]: RINGEL
+                - generic [ref=f2e193]: 174 UAH
+                - paragraph [ref=f2e195]: В наявності
+          - generic [ref=f2e196]:
+            - button "Додати до обраного" [ref=f2e198]
+            - link "Столові прилади RINGEL Vega Набір столових виделок 6 шт. на бліст. (RG-3118-6/3) Столові прилади RINGEL Vega Набір столових виделок 6 шт. на бліст. (RG-3118-6/3) RINGEL 236 UAH В наявності" [ref=f2e201] [cursor=pointer]:
+              - /url: /product/stolovi-prylady-ringel-vega-nabir-stolovykh-vydelok-6-sht-na-blist-rg-3118-6-3-6853530
+              - img "Столові прилади RINGEL Vega Набір столових виделок 6 шт. на бліст. (RG-3118-6/3)" [ref=f2e203]
+              - generic [ref=f2e204]:
+                - heading "Столові прилади RINGEL Vega Набір столових виделок 6 шт. на бліст. (RG-3118-6/3)" [level=3] [ref=f2e205]
+                - paragraph [ref=f2e206]: RINGEL
+                - generic [ref=f2e207]: 236 UAH
+                - paragraph [ref=f2e209]: В наявності
+          - generic [ref=f2e210]:
+            - button "Додати до обраного" [ref=f2e212]
+            - link "Столові прилади RINGEL Promo Набір столових ложок 12 шт. (RG-3101-12/2b) Столові прилади RINGEL Promo Набір столових ложок 12 шт. (RG-3101-12/2b) RINGEL 622 UAH В наявності" [ref=f2e215] [cursor=pointer]:
+              - /url: /product/stolovi-prylady-ringel-promo-nabir-stolovykh-lozhok-12-sht-rg-3101-12-2b-6883129
+              - img "Столові прилади RINGEL Promo Набір столових ложок 12 шт. (RG-3101-12/2b)" [ref=f2e217]
+              - generic [ref=f2e218]:
+                - heading "Столові прилади RINGEL Promo Набір столових ложок 12 шт. (RG-3101-12/2b)" [level=3] [ref=f2e219]
+                - paragraph [ref=f2e220]: RINGEL
+                - generic [ref=f2e221]: 622 UAH
+                - paragraph [ref=f2e223]: В наявності
+      - generic [ref=f2e224]:
+        - generic [ref=f2e225]:
+          - heading "Відгуки" [level=2] [ref=f2e226]
+          - button "Залишити відгук" [ref=f2e227]
+        - paragraph [ref=f2e228]: Ще немає відгуків — станьте першим, хто залишить відгук про цей товар.
+    - contentinfo [ref=f2e229]:
+      - generic [ref=f2e230]:
+        - generic [ref=f2e231]:
+          - generic [ref=f2e232]:
+            - heading "E-Shop" [level=3] [ref=f2e233]
+            - paragraph [ref=f2e234]: Найкращі товари для вашого життя
+          - generic [ref=f2e235]:
+            - heading "Категорії" [level=4] [ref=f2e236]
+            - list [ref=f2e237]:
+              - listitem [ref=f2e238]:
+                - link "Каталог" [ref=f2e239] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=f2e240]:
+            - heading "Інформація" [level=4] [ref=f2e241]
+            - list [ref=f2e242]:
+              - listitem [ref=f2e243]:
+                - link "Статус замовлення" [ref=f2e244] [cursor=pointer]:
+                  - /url: /orders/lookup
+              - listitem [ref=f2e245]:
+                - link "Контакти" [ref=f2e246] [cursor=pointer]:
+                  - /url: /contacts
+              - listitem [ref=f2e247]:
+                - link "Політика конфіденційності" [ref=f2e248] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=f2e249]:
+                - link "Умови використання" [ref=f2e250] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=f2e251]:
+                - link "magazinujut@gmail.com" [ref=f2e252] [cursor=pointer]:
+                  - /url: mailto:magazinujut@gmail.com
+        - generic [ref=f2e253]:
+          - paragraph [ref=f2e254]:
+            - button "Як покращити сайт?" [ref=f2e255]
+          - paragraph [ref=f2e256]: © 2026 E-Shop. Всі права захищені.
+  - alert [ref=f2e257]
