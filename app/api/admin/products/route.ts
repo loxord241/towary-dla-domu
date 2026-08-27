@@ -89,7 +89,11 @@ export async function GET(request: Request) {
           .maybeSingle();
 
         if (error) {
-          return NextResponse.json({ error: error.message }, { status: 500 });
+          console.error('admin product lookup by slug failed:', error.message);
+          return NextResponse.json(
+            { error: 'Внутрішня помилка сервера' },
+            { status: 500 }
+          );
         }
 
         return NextResponse.json(data ? normalizeProduct(data) : null);

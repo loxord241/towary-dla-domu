@@ -58,7 +58,11 @@ export async function GET(request: Request) {
 
     const { count, error: countError } = await countQuery;
     if (countError) {
-      return NextResponse.json({ error: countError.message }, { status: 500 });
+      console.error('admin orders count failed:', countError.message);
+      return NextResponse.json(
+        { error: 'Внутрішня помилка сервера' },
+        { status: 500 }
+      );
     }
 
     const safeTotal = count ?? 0;
@@ -80,7 +84,11 @@ export async function GET(request: Request) {
 
     const { data, error } = await dataQuery;
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('admin orders list failed:', error.message);
+      return NextResponse.json(
+        { error: 'Внутрішня помилка сервера' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

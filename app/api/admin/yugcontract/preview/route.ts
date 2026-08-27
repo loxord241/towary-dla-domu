@@ -65,11 +65,16 @@ function errorResponse(err: unknown): NextResponse {
         : err.kind === 'rate_limited'
           ? 429
           : 502;
+    // YUGCONTRACT-CURATED-MESSAGE: YugcontractError messages are fixed,
+    // credential-free strings built in app/lib/yugcontract/client.ts.
     return NextResponse.json({ error: err.message }, { status });
   }
   if (err instanceof TypeError) {
     console.error('Yugcontract preview malformed feed:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 502 });
+    return NextResponse.json(
+      { error: 'Не вдалося обробити відповідь Yugcontract' },
+      { status: 502 }
+    );
   }
   console.error('Yugcontract preview unexpected error');
   return NextResponse.json(

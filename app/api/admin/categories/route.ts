@@ -25,7 +25,11 @@ export async function GET(request: Request) {
         .order('sort_order')
         .order('id');
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('admin categories tree failed:', error.message);
+        return NextResponse.json(
+          { error: 'Внутрішня помилка сервера' },
+          { status: 500 }
+        );
       }
       return NextResponse.json({ categories: data ?? [] });
     }

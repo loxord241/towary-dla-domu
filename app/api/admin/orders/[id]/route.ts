@@ -44,13 +44,21 @@ export async function GET(
     ]);
 
     if (orderRes.error) {
-      return NextResponse.json({ error: orderRes.error.message }, { status: 500 });
+      console.error('admin order fetch failed:', orderRes.error.message);
+      return NextResponse.json(
+        { error: 'Внутрішня помилка сервера' },
+        { status: 500 }
+      );
     }
     if (!orderRes.data) {
       return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
     }
     if (itemsRes.error) {
-      return NextResponse.json({ error: itemsRes.error.message }, { status: 500 });
+      console.error('admin order items fetch failed:', itemsRes.error.message);
+      return NextResponse.json(
+        { error: 'Внутрішня помилка сервера' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

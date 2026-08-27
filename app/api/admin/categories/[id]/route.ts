@@ -83,7 +83,11 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('admin category delete failed:', error.message);
+      return NextResponse.json(
+        { error: 'Внутрішня помилка сервера' },
+        { status: 500 }
+      );
     }
     if (!data) {
       return NextResponse.json({ error: 'Категорію не знайдено' }, { status: 404 });

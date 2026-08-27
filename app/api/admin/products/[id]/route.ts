@@ -46,19 +46,35 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     ]);
 
     if (productRes.error) {
-      return NextResponse.json({ error: productRes.error.message }, { status: 500 });
+      console.error('admin product fetch failed:', productRes.error.message);
+      return NextResponse.json(
+        { error: 'Внутрішня помилка сервера' },
+        { status: 500 }
+      );
     }
     if (!productRes.data) {
       return NextResponse.json({ error: 'Товар не знайдено' }, { status: 404 });
     }
     if (imagesRes.error) {
-      return NextResponse.json({ error: imagesRes.error.message }, { status: 500 });
+      console.error('admin product images fetch failed:', imagesRes.error.message);
+      return NextResponse.json(
+        { error: 'Внутрішня помилка сервера' },
+        { status: 500 }
+      );
     }
     if (variantsRes.error) {
-      return NextResponse.json({ error: variantsRes.error.message }, { status: 500 });
+      console.error('admin product variants fetch failed:', variantsRes.error.message);
+      return NextResponse.json(
+        { error: 'Внутрішня помилка сервера' },
+        { status: 500 }
+      );
     }
     if (categoryLinksRes.error) {
-      return NextResponse.json({ error: categoryLinksRes.error.message }, { status: 500 });
+      console.error('admin product links fetch failed:', categoryLinksRes.error.message);
+      return NextResponse.json(
+        { error: 'Внутрішня помилка сервера' },
+        { status: 500 }
+      );
     }
 
     // Direct assignments only; deterministic order for the form.

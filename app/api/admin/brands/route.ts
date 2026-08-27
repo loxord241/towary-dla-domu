@@ -24,7 +24,11 @@ export async function GET(request: Request) {
         .eq('is_active', true)
         .order('name');
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('admin brands list failed:', error.message);
+        return NextResponse.json(
+          { error: 'Внутрішня помилка сервера' },
+          { status: 500 }
+        );
       }
       return NextResponse.json({ brands: data ?? [] });
     }

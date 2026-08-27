@@ -73,7 +73,11 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('admin brand update failed:', error.message);
+      return NextResponse.json(
+        { error: 'Внутрішня помилка сервера' },
+        { status: 500 }
+      );
     }
     if (!data) {
       return NextResponse.json({ error: 'Бренд не знайдено' }, { status: 404 });

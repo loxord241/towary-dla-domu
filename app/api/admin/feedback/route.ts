@@ -23,7 +23,11 @@ export async function GET() {
     .limit(LIST_LIMIT);
 
   if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('admin feedback list failed:', error.message);
+    return Response.json(
+      { error: 'Внутрішня помилка сервера' },
+      { status: 500 }
+    );
   }
 
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -57,7 +61,11 @@ export async function DELETE(request: Request) {
     .eq('id', id);
 
   if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('admin feedback delete failed:', error.message);
+    return Response.json(
+      { error: 'Внутрішня помилка сервера' },
+      { status: 500 }
+    );
   }
 
   return Response.json({ ok: true });
