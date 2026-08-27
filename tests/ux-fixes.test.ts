@@ -122,3 +122,12 @@ test('header: search input has an accessible label; badges hide zero state', () 
   assert.match(cartBadge, /count > 0 &&/);
   assert.match(favBadge, /count > 0 &&/);
 });
+
+// ---- 2026-08-27 stage: sort change resets pagination to page 1
+
+test('catalog: SortSelect builds URLs via the tested buildSortSearchParams helper', () => {
+  const s = src('app/catalog/SortSelect.tsx');
+  assert.match(s, /buildSortSearchParams/, 'sort control must use the shared URL contract');
+  // the old inline builder kept ?page=N on sort change — must not return
+  assert.doesNotMatch(s, /new URLSearchParams\(searchParams\.toString\(\)\)/);
+});

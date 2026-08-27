@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { buildSortSearchParams } from '@/app/lib/filter-url';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Спочатку нові' },
@@ -20,13 +21,10 @@ function SortSelectInner() {
       value={current}
       aria-label="Сортування"
       onChange={(e) => {
-        const params = new URLSearchParams(searchParams.toString());
-        if (e.target.value === 'newest') {
-          params.delete('sort');
-        } else {
-          params.set('sort', e.target.value);
-        }
-        router.push(params.size > 0 ? `/catalog?${params}` : '/catalog');
+        // Sort change always resets to page 1 (URL contract lives in the
+        // pure, unit-tested buildSortSearchParams).
+        const qs = buildSortSearchParams(searchParams, e.target.value);
+        router.push(qs ? `/catalog?${qs}` : '/catalog');
       }}
       className="p-2 border border-gray-300 rounded"
     >

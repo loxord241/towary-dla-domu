@@ -63,3 +63,31 @@ export function buildFilterUrl(
   const qs = buildFilterSearchParams(currentParams, draft);
   return qs ? `/catalog?${qs}` : '/catalog';
 }
+
+/**
+ * Pure URL building for the catalog sort control.
+ *
+ * Contract (2026-08-27 stage): changing sort on a paginated view resets
+ * the result to page 1 (explicitly emitted as page=1) — previously
+ * ?page=2&sort=newest turned into ?page=2&sort=price_asc and showed an
+ * arbitrary slice of the new ordering. Unlike filter apply, ALL current
+ * params are carried through untouched (including non-catalog tags):
+ * this mirrors the previous SortSelect behavior of round-tripping the
+ * full querystring, changing only sort/page semantics.
+ *
+ * `value === 'newest'` removes the explicit sort param; any other value
+ * is stored verbatim (validated against SORT_VALUES by the caller).
+ */
+export function buildSortSearchParams(
+  currentParams: URLSearchParams,
+  value: string
+): string {
+  const params = new URLSearchParams(currentParams.toString());
+  if (value === 'newest') {
+    params.delete('sort');
+  } else {
+    params.set('sort', value);
+  }
+  params.set('page', '1');
+  return params.toString();
+}
