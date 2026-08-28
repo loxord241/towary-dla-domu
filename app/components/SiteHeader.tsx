@@ -20,7 +20,7 @@ export default function SiteHeader() {
           <div className="flex items-center space-x-3">
             <NavDrawer />
             <Link href="/" className="text-xl font-bold text-blue-600">
-              E-Shop
+              Товари для дому
             </Link>
             {/* Избранное доступно через сердечко-бейдж справа (с живым
                 счётчиком) — отдельная текстовая ссылка дублировала бы его. */}
@@ -52,6 +52,15 @@ export default function SiteHeader() {
           </form>
 
           <div className="flex items-center space-x-1">
+            <a
+              href="tel:+380973144221"
+              className="mr-2 hidden text-right text-sm leading-tight text-gray-600 hover:text-blue-600 md:block"
+            >
+              <span className="block text-xs text-gray-500">
+                Телефон для консультації
+              </span>
+              <span className="font-medium">+380 (97) 314 42 21</span>
+            </a>
             <FavoritesBadge />
             <CartBadge />
           </div>

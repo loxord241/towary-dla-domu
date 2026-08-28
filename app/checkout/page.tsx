@@ -3,7 +3,7 @@ import SiteHeader from '@/app/components/SiteHeader';
 import CheckoutForm from './CheckoutForm';
 
 export const metadata: Metadata = {
-  title: 'Оформлення замовлення — E-Shop',
+  title: 'Оформлення замовлення — Товари для дому',
 };
 
 export default function CheckoutPage() {

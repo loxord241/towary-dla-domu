@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import InfoPage from '@/app/components/InfoPage';
 
 export const metadata: Metadata = {
-  title: 'Умови використання — E-Shop',
-  description: 'Умови використання сайту інтернет-магазину E-Shop',
+  title: 'Умови використання — Товари для дому',
+  description: 'Умови використання сайту інтернет-магазину Товари для дому',
 };
 
 export default function Page() {

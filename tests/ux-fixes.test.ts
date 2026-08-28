@@ -78,7 +78,7 @@ test('product: generateMetadata provides unique title/description', () => {
   const product = src('app/product/[slug]/page.tsx');
   assert.match(product, /export async function generateMetadata/);
   assert.match(product, /: Promise<Metadata>/);
-  assert.match(product, /title: `\$\{product\.name\} — E-Shop`/);
+  assert.match(product, /title: `\$\{product\.name\} — Товари для дому`/);
 });
 
 // ---- P6: product page structure

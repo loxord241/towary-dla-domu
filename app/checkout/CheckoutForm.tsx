@@ -911,6 +911,17 @@ export default function CheckoutForm() {
                   <dd>{subtotal.toFixed(2)} {currency}</dd>
                 </div>
               </dl>
+              <p className="mt-3 border-t border-gray-100 pt-3 text-xs leading-relaxed text-gray-500">
+                Для оформлення купівлі товару в оплату частинами від
+                ПриватБанку, А-Банку та Пумб Банку звертатися за номером
+                телефону{' '}
+                <a
+                  href="tel:+380973144221"
+                  className="whitespace-nowrap font-medium text-blue-600 hover:underline"
+                >
+                  +380 (97) 314 42 21
+                </a>
+              </p>
             </>
           )}
         </aside>

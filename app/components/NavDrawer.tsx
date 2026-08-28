@@ -40,6 +40,17 @@ const SHOP_LINKS = [
   { href: '/orders/lookup', label: 'Статус замовлення' },
 ];
 
+/**
+ * Pinned categories shown first in the drawer, above the dictionary list.
+ * Slugs point to the closest existing categories (the first two labels are
+ * merchandising names, not rows in the categories table).
+ */
+const PINNED_CATEGORIES = [
+  { href: '/catalog?category=mala-kukhonna-tekhnika-69', label: 'Дрібна побутова техніка' },
+  { href: '/catalog?category=velyka-pobutova-tekhnika-739', label: 'Велика побутова техніка' },
+  { href: '/catalog?category=hospodarchi-tovary-1451', label: 'Товари для дому' },
+];
+
 interface Dictionaries {
   categories: Category[];
   brands: Brand[];
@@ -220,7 +231,7 @@ function DrawerPanel({
         }`}
       >
         <div className="flex items-center justify-between border-b border-gray-200 p-3">
-          <span className="text-lg font-bold text-blue-600">E-Shop</span>
+          <span className="text-lg font-bold text-blue-600">Товари для дому</span>
           <button
             ref={closeBtnRef}
             type="button"
@@ -247,11 +258,17 @@ function DrawerPanel({
               )
             ) : (
               <>
+                {renderList(PINNED_CATEGORIES)}
                 {renderList(
-                  dicts.categories.slice(0, MAX_LIST_ITEMS).map((c) => ({
-                    href: `/catalog?category=${encodeURIComponent(c.slug)}`,
-                    label: c.name,
-                  }))
+                  dicts.categories
+                    .filter(
+                      (c) => !PINNED_CATEGORIES.some((p) => p.href.endsWith(c.slug))
+                    )
+                    .slice(0, MAX_LIST_ITEMS)
+                    .map((c) => ({
+                      href: `/catalog?category=${encodeURIComponent(c.slug)}`,
+                      label: c.name,
+                    }))
                 )}
                 <Link
                   href="/catalog"

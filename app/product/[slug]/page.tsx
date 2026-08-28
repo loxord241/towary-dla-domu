@@ -36,12 +36,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params
   const product = await getProduct(slug)
-  if (!product) return { title: 'Сторінку не знайдено | E-Shop' }
+  if (!product) return { title: 'Сторінку не знайдено | Товари для дому' }
 
   const description =
     metaDescription(product.short_description) ??
     metaDescription(product.description) ??
-    `Купити ${product.name} в інтернет-магазині E-Shop.`
+    `Купити ${product.name} в інтернет-магазині Товари для дому.`
 
   // Self-canonical plus full OG fields: page-level openGraph REPLACES the
   // layout's (shallow merge), so locale/siteName must be repeated here.
@@ -50,16 +50,16 @@ export async function generateMetadata({
   const canonical = `/product/${slug}`
   const mainImage = getMainPublicImageUrl(product.images)
   return {
-    title: `${product.name} — E-Shop`,
+    title: `${product.name} — Товари для дому`,
     description,
     alternates: { canonical },
     openGraph: {
-      title: `${product.name} — E-Shop`,
+      title: `${product.name} — Товари для дому`,
       description,
       url: canonical,
       locale: 'uk_UA',
       type: 'website',
-      siteName: 'E-Shop',
+      siteName: 'Товари для дому',
       images: mainImage ? [mainImage] : [],
     },
   }

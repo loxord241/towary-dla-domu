@@ -78,12 +78,12 @@ test('SEO: truncateQuery strips control chars, collapses whitespace, caps length
   assert.equal(truncateQuery('%,(")'), '', 'specials-only query collapses to nothing');
 });
 
-test('SEO: metadata builder — category title follows «X — купити в E-Shop»', () => {
+test('SEO: metadata builder — category title follows «X — купити в Товари для дому»', () => {
   const m = buildCatalogViewMetadata({
     input: { categorySlug: 'blendery-1402', categoryFound: true },
     categoryName: 'Блендери',
   });
-  assert.equal(m.title, 'Блендери — купити в E-Shop');
+  assert.equal(m.title, 'Блендери — купити в Товари для дому');
   assert.ok(String(m.description).includes('Блендери'));
   assert.ok(!m.robots, 'indexable view emits no robots override');
   assert.deepEqual(m.alternates, { canonical: '/catalog?category=blendery-1402' });
@@ -94,10 +94,10 @@ test('SEO: metadata builder — brand title and search title', () => {
     input: { brandSlug: 'tefal', brandFound: true },
     brandName: 'TEFAL',
   });
-  assert.equal(b.title, 'TEFAL — купити в E-Shop');
+  assert.equal(b.title, 'TEFAL — купити в Товари для дому');
 
   const s = buildCatalogViewMetadata({ input: { search: 'мультипіч tefal' } });
-  assert.equal(s.title, 'Пошук: «мультипіч tefal» | E-Shop');
+  assert.equal(s.title, 'Пошук: «мультипіч tefal» | Товари для дому');
   assert.deepEqual(s.robots, { index: false, follow: true });
   assert.equal(s.alternates, undefined);
 });
@@ -116,7 +116,7 @@ test('SEO: unknown category falls back to generic catalog copy with noindex', ()
 });
 
 test('SEO: SITE_NAME is the shop brand used across builders', () => {
-  assert.equal(SITE_NAME, 'E-Shop');
+  assert.equal(SITE_NAME, 'Товари для дому');
 });
 
 test('SEO: home metadata is unique vs root layout title (static source check)', () => {

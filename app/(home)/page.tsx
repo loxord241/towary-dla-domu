@@ -14,17 +14,17 @@ import ProductCard from '@/app/components/ProductCard'
 // through to the root-layout fallback title shared with every other route.
 // Copy reuses the hero text already rendered on this page — nothing invented.
 export const metadata: Metadata = {
-  title: 'Інтернет-магазин товарів для дому | E-Shop',
+  title: 'Інтернет-магазин товарів для дому | Товари для дому',
   description:
     'Найкращі товари за найкращими цінами — з доставкою по всій Україні.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'Інтернет-магазин товарів для дому | E-Shop',
+    title: 'Інтернет-магазин товарів для дому | Товари для дому',
     description:
       'Найкращі товари за найкращими цінами — з доставкою по всій Україні.',
     locale: 'uk_UA',
     type: 'website',
-    siteName: 'E-Shop',
+    siteName: 'Товари для дому',
     images: ['/og-image.png'],
   },
 }
@@ -47,8 +47,10 @@ export default async function Home() {
       {/* Hero */}
       <section className="bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-600 text-white">
         <div className="container mx-auto px-4 py-16 text-center md:py-20">
-          <h1 className="mx-auto max-w-2xl text-3xl font-extrabold tracking-tight md:text-4xl">
-            Ласкаво просимо до E-Shop
+          {/* clamp keeps «Товари для дому» on a single line: the fluid size
+              scales down on narrow screens, nowrap forbids the orphan wrap. */}
+          <h1 className="whitespace-nowrap text-[clamp(0.9rem,4.6vw,2.25rem)] font-extrabold tracking-tight">
+            Ласкаво просимо до «Товари для дому»
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-lg text-blue-100">
             Найкращі товари за найкращими цінами — з доставкою по всій Україні
@@ -192,6 +194,14 @@ export default async function Home() {
             </div>
           )}
         </div>
+      </section>
+
+      {/* Офлайн-магазин: коротка довідка перед футером */}
+      <section className="container mx-auto px-4 pb-10">
+        <p className="mx-auto max-w-2xl text-center text-sm text-gray-600">
+          Наш офлайн магазин «Товари для дому» знаходиться за адресою: м. Кривий
+          Ріг, вул. Гетьмана Івана Мазепи, 87А.
+        </p>
       </section>
 
       <div className="mt-auto">

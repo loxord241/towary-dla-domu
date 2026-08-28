@@ -19,16 +19,16 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
   ),
-  title: "E-Shop — Інтернет-магазин",
+  title: "Товари для дому — Інтернет-магазин",
   description:
     "Найкращі товари за найкращими цінами — з доставкою по всій Україні",
   openGraph: {
-    title: "E-Shop — Інтернет-магазин",
+    title: "Товари для дому — Інтернет-магазин",
     description:
       "Найкращі товари за найкращими цінами — з доставкою по всій Україні",
     locale: "uk_UA",
     type: "website",
-    siteName: "E-Shop",
+    siteName: "Товари для дому",
     // Default OG image for every page that does not override openGraph.
     // Committed static asset — resolvable by social crawlers without JS,
     // same origin as the site itself. Resolved against metadataBase.

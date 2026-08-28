@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import InfoPage from '@/app/components/InfoPage';
 
 export const metadata: Metadata = {
-  title: 'Політика конфіденційності — E-Shop',
-  description: 'Політика конфіденційності інтернет-магазину E-Shop',
+  title: 'Політика конфіденційності — Товари для дому',
+  description: 'Політика конфіденційності інтернет-магазину Товари для дому',
 };
 
 export default function Page() {

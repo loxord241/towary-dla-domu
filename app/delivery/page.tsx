@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import InfoPage from '@/app/components/InfoPage';
 
 export const metadata: Metadata = {
-  title: 'Доставка та оплата — E-Shop',
-  description: 'Умови доставки та оплати замовлень інтернет-магазину E-Shop',
+  title: 'Доставка та оплата — Товари для дому',
+  description: 'Умови доставки та оплати замовлень інтернет-магазину Товари для дому',
 };
 
 export default function Page() {

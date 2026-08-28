@@ -24,7 +24,7 @@ export default function SiteFooter({ categories }: SiteFooterProps) {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <h3 className="text-xl font-bold mb-4">E-Shop</h3>
+            <h3 className="text-xl font-bold mb-4">Товари для дому</h3>
             <p className="text-gray-300">Найкращі товари для вашого життя</p>
           </div>
 
@@ -86,7 +86,7 @@ export default function SiteFooter({ categories }: SiteFooterProps) {
           <p className="mb-3">
             <FeedbackModal label="Як покращити сайт?" />
           </p>
-          <p>&copy; {new Date().getFullYear()} E-Shop. Всі права захищені.</p>
+          <p>&copy; {new Date().getFullYear()} Товари для дому. Всі права захищені.</p>
         </div>
       </div>
     </footer>

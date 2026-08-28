@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import InfoPage from '@/app/components/InfoPage';
 
 export const metadata: Metadata = {
-  title: 'Повернення — E-Shop',
-  description: 'Умови повернення та обміну товарів в інтернет-магазині E-Shop',
+  title: 'Повернення — Товари для дому',
+  description: 'Умови повернення та обміну товарів в інтернет-магазині Товари для дому',
 };
 
 export default function Page() {

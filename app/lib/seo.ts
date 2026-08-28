@@ -13,7 +13,7 @@ import type { Metadata } from 'next';
  * (/catalog), not missing resources (approved decision A of the spec).
  */
 
-export const SITE_NAME = 'E-Shop';
+export const SITE_NAME = 'Товари для дому';
 
 /** Default sort value of /catalog — anything else is a duplicate-content view. */
 const DEFAULT_SORT = 'newest';
@@ -114,7 +114,7 @@ export function buildCatalogViewMetadata(
 
   let title = `Каталог товарів | ${SITE_NAME}`;
   let description =
-    'Каталог товарів інтернет-магазину E-Shop з фільтрами та сортуванням.';
+    'Каталог товарів інтернет-магазину Товари для дому з фільтрами та сортуванням.';
 
   if (input.search) {
     const q = truncateQuery(input.search);
