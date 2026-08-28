@@ -1,0 +1,88 @@
+- generic [active] [ref=f5e1]:
+  - generic [ref=f5e2]:
+    - banner [ref=f5e3]:
+      - generic [ref=f5e5]:
+        - generic [ref=f5e6]:
+          - button "Відкрити меню" [ref=f5e7]
+          - link "E-Shop" [ref=f5e9] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f5e10]:
+            - link "Каталог" [ref=f5e11] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f5e13]:
+          - searchbox "Пошук" [ref=f5e14]
+          - button "Шукати" [ref=f5e15]
+        - generic [ref=f5e19]:
+          - 'link "Обране, товарів: 0" [ref=f5e20] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 1" [ref=f5e23] [cursor=pointer]':
+            - /url: /cart
+            - generic [ref=f5e28]: "1"
+    - generic [ref=f5e29]:
+      - heading "Оформлення замовлення" [level=1] [ref=f5e30]
+      - generic [ref=f5e31]:
+        - group [ref=f5e33]:
+          - generic [ref=f5e34]:
+            - paragraph [ref=f5e35]: 1. Контактні дані
+            - generic [ref=f5e36]:
+              - generic [ref=f5e37]:
+                - generic [ref=f5e38]: Ім’я *
+                - textbox "Ім’я *" [ref=f5e39]
+              - generic [ref=f5e40]:
+                - generic [ref=f5e41]: Прізвище *
+                - textbox "Прізвище *" [ref=f5e42]
+              - generic [ref=f5e43]:
+                - generic [ref=f5e44]: По батькові
+                - textbox "По батькові" [ref=f5e45]
+          - generic [ref=f5e46]:
+            - generic [ref=f5e47]: Email *
+            - textbox "Email *" [ref=f5e48]
+          - generic [ref=f5e49]:
+            - generic [ref=f5e50]: Телефон
+            - generic [ref=f5e51]:
+              - generic [ref=f5e52]: "+380"
+              - textbox "Номер телефону після +380" [ref=f5e53]:
+                - /placeholder: XX XXX XX XX
+          - generic [ref=f5e54]:
+            - paragraph [ref=f5e55]: 2. Доставка (Нова Пошта)
+            - generic [ref=f5e56]:
+              - generic [ref=f5e57] [cursor=pointer]:
+                - radio "Нова Пошта — Відділення" [ref=f5e58]
+                - text: Нова Пошта — Відділення
+              - generic [ref=f5e59] [cursor=pointer]:
+                - radio "Нова Пошта — Поштомат" [ref=f5e60]
+                - text: Нова Пошта — Поштомат
+              - generic [ref=f5e61] [cursor=pointer]:
+                - radio "Нова Пошта — Кур’єр" [ref=f5e62]
+                - text: Нова Пошта — Кур’єр
+            - generic [ref=f5e63]:
+              - generic [ref=f5e64]: Населений пункт *
+              - textbox "Населений пункт *" [ref=f5e65]:
+                - /placeholder: Почніть вводити назву міста…
+                - text: місто Кривий Ріг
+          - generic [ref=f5e66]:
+            - generic [ref=f5e67]: Примітка до замовлення
+            - textbox "Примітка до замовлення" [ref=f5e68]
+          - paragraph [ref=f5e69]: Після відправки з вами зв’яжеться менеджер для підтвердження та оплати.
+          - button "Підтвердити замовлення" [ref=f5e70]
+        - complementary "Склад замовлення" [ref=f5e71]:
+          - heading "Ваше замовлення" [level=2] [ref=f5e72]
+          - list [ref=f5e93]:
+            - listitem [ref=f5e94]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=f5e95]
+              - generic [ref=f5e96]:
+                - generic [ref=f5e97]: Парова щітка TEFAL DT2026E1
+                - generic [ref=f5e98]: 1 шт
+              - generic [ref=f5e99]: 1839.00 UAH
+          - generic [ref=f5e73]:
+            - generic [ref=f5e74]:
+              - term [ref=f5e75]: Товари
+              - definition [ref=f5e76]: 1839.00 UAH
+            - generic [ref=f5e77]:
+              - term [ref=f5e78]: Доставка
+              - definition [ref=f5e79]: за тарифами перевізника
+            - generic [ref=f5e80]:
+              - term [ref=f5e81]: До сплати
+              - definition [ref=f5e82]: 1839.00 UAH
+  - button "Open Next.js Dev Tools" [ref=f5e105] [cursor=pointer]
+  - alert [ref=f5e83]

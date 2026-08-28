@@ -159,6 +159,11 @@ export default function CheckoutForm() {
   // other field's in-flight debounce timer.
   const settlementDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streetDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Sequence guard: each settlement search bumps the counter; a response
+  // from an OUTDATED request (slow network, out-of-order arrival) is
+  // dropped instead of overwriting fresher results — otherwise the
+  // dropdown can vanish or show another query's list mid-typing.
+  const settlementRequestSeq = useRef(0);
 
   // Drop pending debounce timers when the form unmounts.
   useEffect(() => {
@@ -611,21 +616,27 @@ export default function CheckoutForm() {
                   if (settlementDebounceRef.current) clearTimeout(settlementDebounceRef.current);
                   if (q.trim().length >= 2) {
                     setSettlementLoading(true);
+                    const seq = ++settlementRequestSeq.current;
                     settlementDebounceRef.current = setTimeout(() => {
                       searchSettlementsApi(
                         q.trim(),
                         (found) => {
+                          if (seq !== settlementRequestSeq.current) return; // stale response
                           setSettlementResults(found);
                           setSettlementOpen(true);
                           setSettlementLoading(false);
                         },
                         () => {
+                          if (seq !== settlementRequestSeq.current) return; // stale response
                           setSettlementResults([]);
                           setSettlementLoading(false);
                         }
                       );
                     }, 300);
                   } else {
+                    // Query invalidated (too short): bump the sequence so any
+                    // in-flight response is dropped, and reset list state.
+                    settlementRequestSeq.current += 1;
                     setSettlementLoading(false);
                     setSettlementResults([]);
                   }
@@ -648,6 +659,10 @@ export default function CheckoutForm() {
                           type="button"
                           className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
                           onClick={() => {
+                            // Selection is final: drop any in-flight search
+                            // response so it can't re-open the dropdown.
+                            settlementRequestSeq.current += 1;
+                            if (settlementDebounceRef.current) clearTimeout(settlementDebounceRef.current);
                             setSettlement(s);
                             setSettlementQuery(s.name);
                             setSettlementOpen(false);

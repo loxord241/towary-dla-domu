@@ -60,9 +60,9 @@
     "semantic_hash": ""
   },
   "app/admin/(dashboard)/orders/page.tsx": {
-    "mtime": 1787856799.1742384,
-    "seen": 1787856918.2507398,
-    "ast_hash": "2ae84096db199218bb9a3f910a1efa27",
+    "mtime": 1787910291.8096123,
+    "seen": 1787910577.5676043,
+    "ast_hash": "94623e52d3cc7757804a035cc62cdbe4",
     "semantic_hash": ""
   },
   "app/admin/(dashboard)/page.tsx": {
@@ -72,9 +72,9 @@
     "semantic_hash": ""
   },
   "app/admin/(dashboard)/products/page.tsx": {
-    "mtime": 1787761015.1618288,
-    "seen": 1787763651.900246,
-    "ast_hash": "530665e5a19e6d6d7e5902a571101bd8",
+    "mtime": 1787910307.9296083,
+    "seen": 1787910577.5676079,
+    "ast_hash": "a744d8a025c78adeaa07836be5d90980",
     "semantic_hash": ""
   },
   "app/admin/(dashboard)/variants/page.tsx": {
@@ -258,9 +258,9 @@
     "semantic_hash": ""
   },
   "app/api/orders/route.ts": {
-    "mtime": 1787908199.8061123,
-    "seen": 1787908667.1735554,
-    "ast_hash": "4b3bc03d07d035f6fbd12bbad24ea546",
+    "mtime": 1787910172.5976408,
+    "seen": 1787910577.567641,
+    "ast_hash": "e3bfe27df375e6bba82e4ce828b83abc",
     "semantic_hash": ""
   },
   "app/api/reviews/route.ts": {
@@ -306,9 +306,9 @@
     "semantic_hash": ""
   },
   "app/checkout/CheckoutForm.tsx": {
-    "mtime": 1787908561.7940254,
-    "seen": 1787908667.1735628,
-    "ast_hash": "7abfc2a2269ea013da813591937eb0be",
+    "mtime": 1787910424.9615805,
+    "seen": 1787910577.5676484,
+    "ast_hash": "3cff54415a2987c6994453e415120d82",
     "semantic_hash": ""
   },
   "app/checkout/layout.tsx": {
@@ -1146,9 +1146,9 @@
     "semantic_hash": ""
   },
   "tests/featured-limit.test.ts": {
-    "mtime": 1787741280.1865413,
-    "seen": 1787763651.9003575,
-    "ast_hash": "29d03cb4260d21dc6dfd25f13fee12d7",
+    "mtime": 1787910317.3816063,
+    "seen": 1787910577.5678034,
+    "ast_hash": "f4308d2ae89d704ae30c053ebf4a42b5",
     "semantic_hash": ""
   },
   "tests/feedback.test.ts": {
@@ -2805,6 +2805,18 @@
     "mtime": 1787903204.8433049,
     "seen": 1787908667.1738489,
     "ast_hash": "c09a1b9ca35ba643cbd0c2b87ea8557e",
+    "semantic_hash": ""
+  },
+  "database/migrations/027_customer_names.sql": {
+    "mtime": 1787910146.7528076,
+    "seen": 1787910577.5677452,
+    "ast_hash": "332fd4f6867e05c85b9cd2ddfbd337a6",
+    "semantic_hash": ""
+  },
+  "tests/checkout-customer-names.test.ts": {
+    "mtime": 1787910513.1935596,
+    "seen": 1787910577.5677998,
+    "ast_hash": "36e6558286a2203c41fb88866cf0b621",
     "semantic_hash": ""
   }
 }
