@@ -3004,5 +3004,41 @@
     "seen": 1787917440.4245627,
     "ast_hash": "e63f75372b689dad1c57fdd341e3af62",
     "semantic_hash": ""
+  },
+  "scripts/windows/install-yugcontract-task.ps1": {
+    "mtime": 1787930145.900934,
+    "seen": 1787930593.6674347,
+    "ast_hash": "7be224e560f92ee8d4b671a7e75dfc19",
+    "semantic_hash": ""
+  },
+  "scripts/windows/yugcontract-sync.ps1": {
+    "mtime": 1787930104.0489435,
+    "seen": 1787930593.667436,
+    "ast_hash": "ffb7dedc3f59a750396e692ba43cee4f",
+    "semantic_hash": ""
+  },
+  "docs/windows-sync.md": {
+    "mtime": 1787930177.2809265,
+    "seen": 1787930593.6676207,
+    "ast_hash": "ea94689e0f91e42f010098df9bda5274",
+    "semantic_hash": ""
+  },
+  "scripts/wsl/install-yugcontract-timer.sh": {
+    "mtime": 1787931513.6606042,
+    "seen": 1787931792.3275266,
+    "ast_hash": "de74eef3f86a571c6bc07e8e9b513d71",
+    "semantic_hash": ""
+  },
+  "scripts/wsl/yugcontract-sync.sh": {
+    "mtime": 1787931489.4086115,
+    "seen": 1787931792.3275282,
+    "ast_hash": "475bd9ae38be1422a4402e25a7ddb28f",
+    "semantic_hash": ""
+  },
+  "docs/wsl-sync.md": {
+    "mtime": 1787931544.0765996,
+    "seen": 1787931792.3277566,
+    "ast_hash": "f3fd2aa214227018ee0e4770f8f9bb9d",
+    "semantic_hash": ""
   }
 }
