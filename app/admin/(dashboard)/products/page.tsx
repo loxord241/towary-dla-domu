@@ -599,7 +599,7 @@ export default function ProductsAdminPage() {
                     </span>
                     {product.is_featured && (
                       <span className="ml-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                        Вибраний
+                        Обрані
                       </span>
                     )}
                   </td>
@@ -780,7 +780,7 @@ export default function ProductsAdminPage() {
                       onChange={handleCheckbox}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
-                    <span className="ml-2">Популярні товари</span>
+                    <span className="ml-2">Обрані</span>
                   </label>
                   <p className="text-xs text-gray-500">
                     Обрано: {featuredCount ?? '…'} / {MAX_FEATURED_PRODUCTS} · блок

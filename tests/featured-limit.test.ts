@@ -110,7 +110,10 @@ test('FEATURED UI: badge reflects server row state on every page/search result',
 test('FEATURED UI: modal shows counter, hint, disables at limit — no silent unselect', () => {
   const ui = src('app/admin/(dashboard)/products/page.tsx');
   assert.match(ui, /Обрано:/);
-  assert.match(ui, /Популярні товари/);
+  // «Обрані» is the checkbox label — restored after it was renamed to
+  // «Популярні товари» (which made the option unrecognizable).
+  assert.match(ui, />Обрані</);
+  assert.match(ui, /Популярні товари/, 'home-block hint stays');
   assert.match(ui, /featured-count/);
   assert.match(ui, /disabled=/, 'checkbox blocked at limit');
   assert.match(ui, /Ліміт/, 'explicit message instead of silent auto-removal');

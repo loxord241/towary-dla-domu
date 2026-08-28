@@ -71,7 +71,26 @@ export async function POST(request: Request) {
 
   // ---- contact ----
   const contact = (b.contact ?? {}) as Record<string, unknown>;
-  const name = typeof contact.name === 'string' ? contact.name.trim() : '';
+  // Structured ПІБ (optional): composed server-side into `name`; legacy
+  // single-string `name` payloads keep working unchanged.
+  const firstName =
+    typeof contact.firstName === 'string' ? contact.firstName.trim() : '';
+  const lastName =
+    typeof contact.lastName === 'string' ? contact.lastName.trim() : '';
+  const patronymic =
+    typeof contact.patronymic === 'string' ? contact.patronymic.trim() : '';
+  if (firstName.length > 120 || lastName.length > 120 || patronymic.length > 120) {
+    return NextResponse.json({ error: 'Вкажіть коректне ім’я (до 120 символів)' }, { status: 400 });
+  }
+  const composedName = [lastName, firstName, patronymic]
+    .filter((part) => part !== '')
+    .join(' ');
+  const name =
+    composedName !== ''
+      ? composedName
+      : typeof contact.name === 'string'
+        ? contact.name.trim()
+        : '';
   const email =
     typeof contact.email === 'string' ? contact.email.trim().toLowerCase() : '';
   const phone = typeof contact.phone === 'string' ? contact.phone.trim() : '';
@@ -84,6 +103,15 @@ export async function POST(request: Request) {
   }
   if (phone.length > 40) {
     return NextResponse.json({ error: 'Телефон задовгий' }, { status: 400 });
+  }
+  // Strengthened (not weakened): a provided phone must be a normalized UA
+  // E.164 number; the checkout normalizes it, older clients sending '' are
+  // still accepted (phone remains optional).
+  if (phone !== '' && !/^\+380\d{9}$/.test(phone)) {
+    return NextResponse.json(
+      { error: 'Вкажіть коректний номер телефону у форматі +380XXXXXXXXX' },
+      { status: 400 }
+    );
   }
 
   // ---- shipping ----
@@ -164,6 +192,10 @@ export async function POST(request: Request) {
       email,
       name,
       phone,
+      // Optional structured ПІБ; place_order stores them in customer_info.
+      first_name: firstName,
+      last_name: lastName,
+      patronymic,
       shipping_info: shippingInfoJson,
       items: items.map((i) => ({
         product_id: i.productId,

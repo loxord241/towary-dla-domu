@@ -15,7 +15,13 @@ interface OrderListRow {
   payment_status: string;
   total_amount: number;
   currency: string;
-  customer_info: { name?: string; phone?: string | null } | null;
+  customer_info: {
+    name?: string;
+    first_name?: string;
+    last_name?: string;
+    patronymic?: string;
+    phone?: string | null;
+  } | null;
   created_at: string;
 }
 
@@ -38,7 +44,13 @@ interface OrderDetails {
   shipping_total: number;
   total_amount: number;
   currency: string;
-  customer_info: { name?: string; phone?: string | null } | null;
+  customer_info: {
+    name?: string;
+    first_name?: string;
+    last_name?: string;
+    patronymic?: string;
+    phone?: string | null;
+  } | null;
   shipping_info: Record<string, string> | null;
   created_at: string;
   updated_at: string;
@@ -382,6 +394,19 @@ export default function OrdersAdminPage() {
                       ? ` · ${details.order.customer_info.phone}`
                       : ''}
                   </p>
+                  {(details.order.customer_info?.last_name ||
+                    details.order.customer_info?.first_name ||
+                    details.order.customer_info?.patronymic) && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {[
+                        details.order.customer_info?.last_name,
+                        details.order.customer_info?.first_name,
+                        details.order.customer_info?.patronymic,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                  )}
                 </div>
                 <div className="col-span-2">
                   <p className="text-gray-500">Доставка</p>

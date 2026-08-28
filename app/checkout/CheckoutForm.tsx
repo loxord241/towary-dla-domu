@@ -58,6 +58,20 @@ const isLockerCategory = (category: string | null): boolean =>
 
 // Module-scope loaders (project react-hooks pattern): state updates happen
 // inside async callbacks, never synchronously in an effect body.
+
+/** Keep only the 9 national digits after +380. Handles pasted
+ * "+380971234567" / "380971234567" / "0971234567" / "971234567". */
+export function normalizeUaPhoneDigits(raw: string): string {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('380')) digits = digits.slice(3);
+  else if (digits.startsWith('0')) digits = digits.slice(1);
+  return digits.slice(0, 9);
+}
+
+/** E.164 value sent to the backend; '' when the field was left empty. */
+export function toE164Ua(digits: string): string {
+  return digits.length === 9 ? `+380${digits}` : '';
+}
 async function searchSettlementsApi(
   q: string,
   onData: (items: NpSettlement[]) => void,
@@ -114,9 +128,15 @@ export default function CheckoutForm() {
   const router = useRouter();
   const { items, hydrated, clearCart } = useCart();
 
-  const [name, setName] = useState('');
+  // Structured ПІБ; the composed full name is also sent as `name` so the
+  // request stays valid against the legacy server contract.
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [patronymic, setPatronymic] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  // National significant digits only (9 after +380); the prefix is rendered
+  // as a fixed part of the field and never typed by the user.
+  const [phoneDigits, setPhoneDigits] = useState('');
   const [notes, setNotes] = useState('');
 
   // --- Nova Post delivery choice (stage 2G) ---
@@ -125,6 +145,7 @@ export default function CheckoutForm() {
   const [settlementQuery, setSettlementQuery] = useState('');
   const [settlementResults, setSettlementResults] = useState<NpSettlement[]>([]);
   const [settlementOpen, setSettlementOpen] = useState(false);
+  const [settlementLoading, setSettlementLoading] = useState(false);
   const [divisions, setDivisions] = useState<NpDivision[]>([]);
   const [division, setDivision] = useState<NpDivision | null>(null);
   const [street, setStreet] = useState<NpStreet | null>(null);
@@ -134,13 +155,27 @@ export default function CheckoutForm() {
   const [building, setBuilding] = useState('');
   const [flat, setFlat] = useState('');
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Separate debouncers: a shared ref let typing in one field cancel the
+  // other field's in-flight debounce timer.
+  const settlementDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const streetDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Drop pending debounce timers when the form unmounts.
+  useEffect(() => {
+    return () => {
+      if (settlementDebounceRef.current) clearTimeout(settlementDebounceRef.current);
+      if (streetDebounceRef.current) clearTimeout(streetDebounceRef.current);
+    };
+  }, []);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{
-    name?: string;
+    firstName?: string;
+    lastName?: string;
+    patronymic?: string;
     email?: string;
+    phone?: string;
   }>({});
   const [lines, setLines] = useState<CartPreviewLine[]>([]);
 
@@ -247,17 +282,38 @@ export default function CheckoutForm() {
     setError(null);
 
     // Client-side pass for instant feedback; the server re-validates.
-    const errs: { name?: string; email?: string } = {};
-    if (name.trim().length === 0) errs.name = 'Вкажіть ім’я';
-    else if (name.trim().length > 120) errs.name = 'Максимум 120 символів';
+    const errs: {
+      firstName?: string;
+      lastName?: string;
+      patronymic?: string;
+      email?: string;
+      phone?: string;
+    } = {};
+    const firstTrimmed = firstName.trim();
+    const lastTrimmed = lastName.trim();
+    const patronymicTrimmed = patronymic.trim();
+    if (firstTrimmed.length === 0) errs.firstName = 'Вкажіть ім’я';
+    else if (firstTrimmed.length > 120) errs.firstName = 'Максимум 120 символів';
+    if (lastTrimmed.length === 0) errs.lastName = 'Вкажіть прізвище';
+    else if (lastTrimmed.length > 120) errs.lastName = 'Максимум 120 символів';
+    if (patronymicTrimmed.length > 120) errs.patronymic = 'Максимум 120 символів';
     const emailTrimmed = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailTrimmed))
       errs.email = 'Вкажіть коректний email';
+    if (phoneDigits.length > 0 && phoneDigits.length < 9)
+      errs.phone = 'Вкажіть повний номер після +380';
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
       return;
     }
     setFieldErrors({});
+
+    // Composed ПІБ keeps the legacy single-string `name` contract alive;
+    // structured parts travel alongside for customer_info.
+    const name = [lastTrimmed, firstTrimmed, patronymicTrimmed]
+      .filter((part) => part !== '')
+      .join(' ');
+    const phone = toE164Ua(phoneDigits);
 
     const delivery = deliveryObject();
     if (!delivery) {
@@ -282,7 +338,14 @@ export default function CheckoutForm() {
         // structured delivery object carries Nova Post ids only — money and
         // payer fields are structurally impossible in this contract.
         body: JSON.stringify({
-          contact: { name, email, phone },
+          contact: {
+            name,
+            firstName: firstTrimmed,
+            lastName: lastTrimmed,
+            patronymic: patronymicTrimmed,
+            email,
+            phone,
+          },
           shipping: {
             city: settlement?.name ?? '',
             address: displayAddress(),
@@ -337,27 +400,79 @@ export default function CheckoutForm() {
             <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-400">
               1. Контактні дані
             </p>
-            <label htmlFor="co-name" className="label">
-              Ім’я *
-            </label>
-            <input
-              id="co-name"
-              type="text"
-              required
-              maxLength={120}
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (fieldErrors.name)
-                  setFieldErrors((prev) => ({ ...prev, name: undefined }));
-              }}
-              aria-invalid={Boolean(fieldErrors.name)}
-              aria-describedby={fieldErrors.name ? 'err-name' : undefined}
-              className={inputClass}
-            />
-            {fieldErrors.name && (
-              <p id="err-name" className="field-error">{fieldErrors.name}</p>
-            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="co-first-name" className="label">
+                  Ім’я *
+                </label>
+                <input
+                  id="co-first-name"
+                  type="text"
+                  required
+                  maxLength={120}
+                  value={firstName}
+                  onChange={(e) => {
+                    setFirstName(e.target.value);
+                    if (fieldErrors.firstName)
+                      setFieldErrors((prev) => ({ ...prev, firstName: undefined }));
+                  }}
+                  aria-invalid={Boolean(fieldErrors.firstName)}
+                  aria-describedby={fieldErrors.firstName ? 'err-first-name' : undefined}
+                  className={inputClass}
+                />
+                {fieldErrors.firstName && (
+                  <p id="err-first-name" className="field-error">{fieldErrors.firstName}</p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="co-last-name" className="label">
+                  Прізвище *
+                </label>
+                <input
+                  id="co-last-name"
+                  type="text"
+                  required
+                  maxLength={120}
+                  value={lastName}
+                  onChange={(e) => {
+                    setLastName(e.target.value);
+                    if (fieldErrors.lastName)
+                      setFieldErrors((prev) => ({ ...prev, lastName: undefined }));
+                  }}
+                  aria-invalid={Boolean(fieldErrors.lastName)}
+                  aria-describedby={fieldErrors.lastName ? 'err-last-name' : undefined}
+                  className={inputClass}
+                />
+                {fieldErrors.lastName && (
+                  <p id="err-last-name" className="field-error">{fieldErrors.lastName}</p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="co-patronymic" className="label">
+                  По батькові
+                </label>
+                <input
+                  id="co-patronymic"
+                  type="text"
+                  maxLength={120}
+                  value={patronymic}
+                  onChange={(e) => {
+                    setPatronymic(e.target.value);
+                    if (fieldErrors.patronymic)
+                      setFieldErrors((prev) => ({ ...prev, patronymic: undefined }));
+                  }}
+                  aria-invalid={Boolean(fieldErrors.patronymic)}
+                  aria-describedby={fieldErrors.patronymic ? 'err-patronymic' : undefined}
+                  className={inputClass}
+                />
+                {fieldErrors.patronymic && (
+                  <p id="err-patronymic" className="field-error">{fieldErrors.patronymic}</p>
+                )}
+              </div>
+            </div>
           </div>
 
           <div>
@@ -388,14 +503,38 @@ export default function CheckoutForm() {
             <label htmlFor="co-phone" className="label">
               Телефон
             </label>
-            <input
-              id="co-phone"
-              type="tel"
-              maxLength={40}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className={inputClass}
-            />
+            {/* Fixed +380 prefix: the user only ever types the 9 national
+                digits. Paste of "0971234567" / "+380971234567" is normalized
+                by normalizeUaPhoneDigits; the submitted value is E.164. */}
+            <div className="flex items-stretch w-full border border-gray-300 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+              <span
+                aria-hidden="true"
+                className="flex items-center px-3 bg-gray-100 text-gray-500 border-r border-gray-300 select-none"
+              >
+                +380
+              </span>
+              <input
+                id="co-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel-national"
+                aria-label="Номер телефону після +380"
+                placeholder="XX XXX XX XX"
+                maxLength={9}
+                value={phoneDigits}
+                onChange={(e) => {
+                  setPhoneDigits(normalizeUaPhoneDigits(e.target.value));
+                  if (fieldErrors.phone)
+                    setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                }}
+                aria-invalid={Boolean(fieldErrors.phone)}
+                aria-describedby={fieldErrors.phone ? 'err-phone' : undefined}
+                className="min-w-0 flex-1 p-2 outline-none border-0 focus:ring-0"
+              />
+            </div>
+            {fieldErrors.phone && (
+              <p id="err-phone" className="field-error">{fieldErrors.phone}</p>
+            )}
           </div>
 
           <div className="pt-2 border-t border-gray-100 mt-2">
@@ -469,55 +608,75 @@ export default function CheckoutForm() {
                   setStreetQuery('');
                   setStreetResults([]);
                   setSettlementOpen(true);
-                  if (debounceRef.current) clearTimeout(debounceRef.current);
+                  if (settlementDebounceRef.current) clearTimeout(settlementDebounceRef.current);
                   if (q.trim().length >= 2) {
-                    debounceRef.current = setTimeout(() => {
+                    setSettlementLoading(true);
+                    settlementDebounceRef.current = setTimeout(() => {
                       searchSettlementsApi(
                         q.trim(),
                         (found) => {
                           setSettlementResults(found);
                           setSettlementOpen(true);
+                          setSettlementLoading(false);
                         },
-                        () => setSettlementResults([])
+                        () => {
+                          setSettlementResults([]);
+                          setSettlementLoading(false);
+                        }
                       );
                     }, 300);
                   } else {
+                    setSettlementLoading(false);
                     setSettlementResults([]);
                   }
                 }}
                 className={inputClass}
               />
-              {settlementOpen && settlementResults.length > 0 && !settlement && (
-                <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                  {settlementResults.map((s) => (
-                    <li key={s.id}>
-                      <button
-                        type="button"
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
-                        onClick={() => {
-                          setSettlement(s);
-                          setSettlementQuery(s.name);
-                          setSettlementOpen(false);
-                          setSettlementResults([]);
-                          if (deliveryType && deliveryType !== 'nova_poshta_courier') {
-                            fetchDivisionsApi(
-                              s.id,
-                              (items) => setDivisions(items),
-                              () => setDivisions([])
-                            );
-                          }
-                        }}
-                      >
-                        <span className="block">{s.name}</span>
-                        {(s.regionName || s.regionParentName) && (
-                          <span className="block text-xs text-gray-400">
-                            {[s.regionParentName, s.regionName].filter(Boolean).join(', ')}
-                          </span>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+              {/* Autocomplete states: results, loading, empty — free text is
+                  never treated as a chosen settlement (id comes only from a
+                  list click, so the submit gate stays strict). */}
+              {settlementOpen && !settlement && settlementQuery.trim().length >= 2 && (
+                settlementLoading ? (
+                  <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-400 shadow-lg" role="status">
+                    Шукаємо…
+                  </p>
+                ) : settlementResults.length > 0 ? (
+                  <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                    {settlementResults.map((s) => (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
+                          onClick={() => {
+                            setSettlement(s);
+                            setSettlementQuery(s.name);
+                            setSettlementOpen(false);
+                            setSettlementResults([]);
+                            setSettlementLoading(false);
+                            if (deliveryType && deliveryType !== 'nova_poshta_courier') {
+                              fetchDivisionsApi(
+                                s.id,
+                                (items) => setDivisions(items),
+                                () => setDivisions([])
+                              );
+                            }
+                          }}
+                        >
+                          <span className="block">{s.name}</span>
+                          {(s.regionName || s.regionParentName) && (
+                            <span className="block text-xs text-gray-400">
+                              {[s.regionParentName, s.regionName].filter(Boolean).join(', ')}
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-400 shadow-lg">
+                    Нічого не знайдено — спробуйте іншу назву
+                  </p>
+                )
               )}
             </div>
 
@@ -585,9 +744,9 @@ export default function CheckoutForm() {
                       setStreetQuery(q);
                       setStreet(null);
                       setStreetOpen(true);
-                      if (debounceRef.current) clearTimeout(debounceRef.current);
+                      if (streetDebounceRef.current) clearTimeout(streetDebounceRef.current);
                       if (settlement && q.trim().length >= 2) {
-                        debounceRef.current = setTimeout(() => {
+                        streetDebounceRef.current = setTimeout(() => {
                           searchStreetsApi(
                             settlement.id,
                             q.trim(),
