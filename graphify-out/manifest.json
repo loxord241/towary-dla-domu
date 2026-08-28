@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "app/(home)/page.tsx": {
-    "mtime": 1787823358.6182244,
-    "seen": 1787824006.1522179,
-    "ast_hash": "0285f77ea330e520c8f78cdb3660b7f8",
+    "mtime": 1787913567.1968305,
+    "seen": 1787913688.0077024,
+    "ast_hash": "8612cd6919adfaa8acf5ff0837c77244",
     "semantic_hash": ""
   },
   "app/about/page.tsx": {
@@ -72,9 +72,9 @@
     "semantic_hash": ""
   },
   "app/admin/(dashboard)/products/page.tsx": {
-    "mtime": 1787910307.9296083,
-    "seen": 1787910577.5676079,
-    "ast_hash": "a744d8a025c78adeaa07836be5d90980",
+    "mtime": 1787913505.6448452,
+    "seen": 1787913688.0077133,
+    "ast_hash": "ce78c2776cd035cb1449278cfb054030",
     "semantic_hash": ""
   },
   "app/admin/(dashboard)/variants/page.tsx": {
@@ -168,9 +168,9 @@
     "semantic_hash": ""
   },
   "app/api/admin/products/[id]/route.ts": {
-    "mtime": 1787823183.5902658,
-    "seen": 1787824006.1522434,
-    "ast_hash": "9d4e000af1930862624481002e0e8c7d",
+    "mtime": 1787913447.832859,
+    "seen": 1787913688.0077302,
+    "ast_hash": "a733e195d8ea473913a27de81f12b4e2",
     "semantic_hash": ""
   },
   "app/api/admin/products/[id]/variants/[variantId]/route.ts": {
@@ -186,9 +186,9 @@
     "semantic_hash": ""
   },
   "app/api/admin/products/route.ts": {
-    "mtime": 1787823154.1790805,
-    "seen": 1787824006.152246,
-    "ast_hash": "63be4a6db793df61b20f2dfaaf7175f9",
+    "mtime": 1787913433.3648624,
+    "seen": 1787913688.0077333,
+    "ast_hash": "e6df3851327dd289966b6a6031922053",
     "semantic_hash": ""
   },
   "app/api/admin/reviews/[id]/route.ts": {
@@ -564,9 +564,9 @@
     "semantic_hash": ""
   },
   "app/lib/catalog.ts": {
-    "mtime": 1787761698.2616658,
-    "seen": 1787763651.9002988,
-    "ast_hash": "f032b582b811badf15bd3b096cbfbff0",
+    "mtime": 1787913389.6368725,
+    "seen": 1787913688.0077944,
+    "ast_hash": "e122fc577e5250b477e96e6db0e9d497",
     "semantic_hash": ""
   },
   "app/lib/category-tree.ts": {
@@ -1146,9 +1146,9 @@
     "semantic_hash": ""
   },
   "tests/featured-limit.test.ts": {
-    "mtime": 1787910317.3816063,
-    "seen": 1787910577.5678034,
-    "ast_hash": "f4308d2ae89d704ae30c053ebf4a42b5",
+    "mtime": 1787913512.1168437,
+    "seen": 1787913688.007933,
+    "ast_hash": "ede066ed0da9bf543813b06641df7be3",
     "semantic_hash": ""
   },
   "tests/feedback.test.ts": {
@@ -1236,9 +1236,9 @@
     "semantic_hash": ""
   },
   "tests/popular-products.test.ts": {
-    "mtime": 1787741060.3545935,
-    "seen": 1787763651.9003658,
-    "ast_hash": "a1d34b53c8ab35bb958412bd9ab732f1",
+    "mtime": 1787913610.3808203,
+    "seen": 1787913688.0079637,
+    "ast_hash": "2772abb3722378dc2f433a03e2fcde87",
     "semantic_hash": ""
   },
   "tests/product-description.test.ts": {
@@ -1320,9 +1320,9 @@
     "semantic_hash": ""
   },
   "tests/ux-fixes.test.ts": {
-    "mtime": 1787822846.2143474,
-    "seen": 1787824006.1524136,
-    "ast_hash": "17299470676b2bf05ee555aa8ba12d4b",
+    "mtime": 1787913647.4528112,
+    "seen": 1787913688.0079796,
+    "ast_hash": "67eaa9e6455411f9ee9274a7215c31f0",
     "semantic_hash": ""
   },
   "tests/yugcontract-categories.test.ts": {
@@ -2907,6 +2907,90 @@
     "mtime": 1787911516.836343,
     "seen": 1787911818.047786,
     "ast_hash": "92d8bba6fdbdab7281be39ba3b017c22",
+    "semantic_hash": ""
+  },
+  "database/migrations/028_product_is_selected.sql": {
+    "mtime": 1787913357.347009,
+    "seen": 1787913688.007868,
+    "ast_hash": "fd639b26b4145b709c5926aa4511b6b8",
+    "semantic_hash": ""
+  },
+  "tests/curated-selected.test.ts": {
+    "mtime": 1787913536.380838,
+    "seen": 1787913688.0079303,
+    "ast_hash": "0acf2861b5efcfb22ee478ef10b20fd1",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-28T10-15-35-015Z.yml": {
+    "mtime": 1787912135.0157678,
+    "seen": 1787913688.0081139,
+    "ast_hash": "c0f70c1e9a535fc6349e1601ea038217",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-28T10-15-45-282Z.yml": {
+    "mtime": 1787912145.2834349,
+    "seen": 1787913688.008115,
+    "ast_hash": "b10da546944297e3183702578db5f3dd",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-28T10-15-51-067Z.yml": {
+    "mtime": 1787912151.0651689,
+    "seen": 1787913688.0081155,
+    "ast_hash": "a4c20d2d8cdfe665ff080895104c765c",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-28T10-15-57-082Z.yml": {
+    "mtime": 1787912157.0829802,
+    "seen": 1787913688.008116,
+    "ast_hash": "a4c20d2d8cdfe665ff080895104c765c",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-28T10-27-08-101Z.yml": {
+    "mtime": 1787912828.1022754,
+    "seen": 1787913688.0081165,
+    "ast_hash": "3a72595b73d86a8b8afabae93c7f2b47",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-28T10-27-14-647Z.yml": {
+    "mtime": 1787912834.647698,
+    "seen": 1787913688.008117,
+    "ast_hash": "10fc4138e659cac823e8650edfd4a417",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-28T10-27-20-759Z.yml": {
+    "mtime": 1787912840.759798,
+    "seen": 1787913688.0081177,
+    "ast_hash": "10fc4138e659cac823e8650edfd4a417",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-28T10-27-36-826Z.yml": {
+    "mtime": 1787912856.827266,
+    "seen": 1787913688.0081184,
+    "ast_hash": "efd7e2cad37c3365e2a9d61ebad9a6bd",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-28T10-27-44-184Z.yml": {
+    "mtime": 1787912864.1854765,
+    "seen": 1787913688.0081189,
+    "ast_hash": "efd7e2cad37c3365e2a9d61ebad9a6bd",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-28T10-28-03-173Z.yml": {
+    "mtime": 1787912883.173836,
+    "seen": 1787913688.0081193,
+    "ast_hash": "9e350f35387f0d901b9a628b24ee7b05",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-28T10-28-13-065Z.yml": {
+    "mtime": 1787912893.0660632,
+    "seen": 1787913688.0081198,
+    "ast_hash": "7edc1c9b868be3abbb5a726e23778f7a",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-28T10-28-20-487Z.yml": {
+    "mtime": 1787912900.488377,
+    "seen": 1787913688.00812,
+    "ast_hash": "7edc1c9b868be3abbb5a726e23778f7a",
     "semantic_hash": ""
   }
 }

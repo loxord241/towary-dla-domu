@@ -92,10 +92,13 @@ test('POPULAR: home hides the whole section when nothing is featured', () => {
   assert.match(page, /popularProducts\.length > 0 && \(/, 'conditional render');
 });
 
-test('POPULAR: existing «Вибрані товари» block survives unchanged', () => {
+test('POPULAR: existing «Обрані товари» block survives unchanged', () => {
   const page = src('app/(home)/page.tsx');
-  assert.match(page, /Вибрані товари/);
-  assert.match(page, /fetchFeaturedProducts\(\)/);
+  // Superseded 2026-08-28: the first home section is now driven by the
+  // independent is_selected flag (migration 028), NOT by is_featured —
+  // see curated-selected.test.ts.
+  assert.match(page, /Обрані товари/);
+  assert.match(page, /fetchSelectedProducts\(\)/);
   assert.match(page, /Добірка найкращих товарів/, 'empty-state promo banner kept');
 });
 

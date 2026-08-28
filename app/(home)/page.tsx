@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import {
-  fetchFeaturedProducts,
+  fetchSelectedProducts,
   fetchPopularProducts,
   fetchActiveCategories,
 } from '@/app/lib/catalog'
@@ -34,8 +34,8 @@ export const metadata: Metadata = {
 export const revalidate = 60
 
 export default async function Home() {
-  const [featuredProducts, popularProducts, categories] = await Promise.all([
-    fetchFeaturedProducts(),
+  const [selectedProducts, popularProducts, categories] = await Promise.all([
+    fetchSelectedProducts(),
     fetchPopularProducts(),
     fetchActiveCategories(),
   ])
@@ -72,11 +72,12 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Featured Products */}
+      {/* Обрані товари — purely admin-curated via the SEPARATE is_selected
+          flag (migration 028); is_featured stays on the popular shelf. */}
       <section className="container mx-auto px-4 py-12">
         <div className="mb-6 flex items-end justify-between">
           <h2 className="text-2xl font-bold tracking-tight text-gray-900">
-            Вибрані товари
+            Обрані товари
           </h2>
           <Link
             href="/catalog"
@@ -86,11 +87,11 @@ export default async function Home() {
           </Link>
         </div>
 
-        {featuredProducts.length === 0 ? (
+        {selectedProducts.length === 0 ? (
           // Intentional promo banner, not an empty-state box: the section must
-          // look designed while no product is flagged is_featured yet (admins
+          // look designed while no product is flagged is_selected yet (admins
           // flag them via /admin/products). The grid below activates
-          // automatically as soon as featured data exists.
+          // automatically as soon as selected data exists.
           <div className="flex flex-col items-start justify-between gap-4 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 px-6 py-8 sm:flex-row sm:items-center">
             <div>
               <p className="text-lg font-semibold text-gray-900">
@@ -106,7 +107,7 @@ export default async function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {featuredProducts.map((product, idx) => (
+            {selectedProducts.map((product, idx) => (
               <ProductCard
                 key={product.id}
                 product={product}

@@ -45,6 +45,8 @@ export interface Product {
   availability_status: string;
   is_active: boolean;
   is_featured: boolean;
+  /** Admin-curated «Обрані товари» home section — independent of is_featured. */
+  is_selected: boolean;
   created_at: string;
   updated_at: string;
   images: ProductImage[];
@@ -151,6 +153,7 @@ function normalizeProduct(row: ProductJoinedRow): Product {
 
 async function fetchProducts(options: {
   featuredOnly?: boolean;
+  selectedOnly?: boolean;
 }): Promise<Product[]> {
   // Full read via paged windows: PostgREST caps ANY single response at
   // 1000 rows, so the previous unbounded select would silently truncate
@@ -170,6 +173,9 @@ async function fetchProducts(options: {
       .eq('is_active', true);
     if (options.featuredOnly) {
       query = query.eq('is_featured', true);
+    }
+    if (options.selectedOnly) {
+      query = query.eq('is_selected', true);
     }
     const { data, error } = await query
       .order('created_at', { ascending: false })
@@ -613,6 +619,11 @@ export async function fetchReviewSummary(
  */
 export async function fetchFeaturedProducts(): Promise<Product[]> {
   return fetchProducts({ featuredOnly: true });
+}
+
+/** Same paged eligibility as the featured reader, for «Обрані товари». */
+export async function fetchSelectedProducts(): Promise<Product[]> {
+  return fetchProducts({ selectedOnly: true });
 }
 
 /** Hard cap for the home «Популярні товари» shelf — bounded by design. */

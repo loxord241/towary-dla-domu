@@ -1,0 +1,128 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - button "Відкрити меню" [ref=e7]
+          - link "E-Shop" [ref=e9] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=e10]:
+            - link "Каталог" [ref=e11] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=e13]:
+          - searchbox "Пошук" [ref=e14]
+          - button "Шукати" [ref=e15]
+        - generic [ref=e19]:
+          - 'link "Обране, товарів: 0" [ref=e20] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 1" [ref=e23] [cursor=pointer]':
+            - /url: /cart
+            - generic [ref=e28]: "1"
+    - generic [ref=e29]:
+      - heading "Оформлення замовлення" [level=1] [ref=e30]
+      - generic [ref=e31]:
+        - group [ref=e33]:
+          - generic [ref=e34]:
+            - paragraph [ref=e35]: 1. Контактні дані
+            - generic [ref=e36]:
+              - generic [ref=e37]:
+                - generic [ref=e38]: Ім’я *
+                - textbox "Ім’я *" [ref=e39]
+              - generic [ref=e40]:
+                - generic [ref=e41]: Прізвище *
+                - textbox "Прізвище *" [ref=e42]
+              - generic [ref=e43]:
+                - generic [ref=e44]: По батькові
+                - textbox "По батькові" [ref=e45]
+          - generic [ref=e46]:
+            - generic [ref=e47]: Email *
+            - textbox "Email *" [ref=e48]
+          - generic [ref=e49]:
+            - generic [ref=e50]: Телефон
+            - generic [ref=e51]:
+              - generic [ref=e52]: "+380"
+              - textbox "Номер телефону після +380" [ref=e53]:
+                - /placeholder: XX XXX XX XX
+          - generic [ref=e54]:
+            - paragraph [ref=e55]: 2. Доставка (Нова Пошта)
+            - generic [ref=e56]:
+              - generic [ref=e57] [cursor=pointer]:
+                - radio "Нова Пошта — Відділення" [ref=e58]
+                - text: Нова Пошта — Відділення
+              - generic [ref=e59] [cursor=pointer]:
+                - radio "Нова Пошта — Поштомат" [ref=e60]
+                - text: Нова Пошта — Поштомат
+              - generic [ref=e61] [cursor=pointer]:
+                - radio "Нова Пошта — Кур’єр" [ref=e62]
+                - text: Нова Пошта — Кур’єр
+            - generic [ref=e63]:
+              - generic [ref=e64]: Населений пункт *
+              - textbox "Населений пункт *" [active] [ref=e65]:
+                - /placeholder: Почніть вводити назву міста…
+                - text: Крив
+              - list [ref=e84]:
+                - listitem [ref=e85]:
+                  - button "село Кривеньке Тернопільська область, Чортківський район" [ref=e86]:
+                    - generic [ref=e87]: село Кривеньке
+                    - generic [ref=e88]: Тернопільська область, Чортківський район
+                - listitem [ref=e89]:
+                  - button "село Криворізьке Дніпропетровська область, Васильківський район" [ref=e90]:
+                    - generic [ref=e91]: село Криворізьке
+                    - generic [ref=e92]: Дніпропетровська область, Васильківський район
+                - listitem [ref=e93]:
+                  - button "село Хутори-Кривошиїнецькі Вінницька область, Хмільницький район" [ref=e94]:
+                    - generic [ref=e95]: село Хутори-Кривошиїнецькі
+                    - generic [ref=e96]: Вінницька область, Хмільницький район
+                - listitem [ref=e97]:
+                  - button "село Кривицьке Чернігівська область, Чернігівський район" [ref=e98]:
+                    - generic [ref=e99]: село Кривицьке
+                    - generic [ref=e100]: Чернігівська область, Чернігівський район
+                - listitem [ref=e101]:
+                  - button "село Криворіжжя Донецька область, Добропільський район" [ref=e102]:
+                    - generic [ref=e103]: село Криворіжжя
+                    - generic [ref=e104]: Донецька область, Добропільський район
+                - listitem [ref=e105]:
+                  - button "село Криворіжжя Миколаївська область, Новоодеський район" [ref=e106]:
+                    - generic [ref=e107]: село Криворіжжя
+                    - generic [ref=e108]: Миколаївська область, Новоодеський район
+                - listitem [ref=e109]:
+                  - button "село Кривопілля Івано-Франківська область, Верховинський район" [ref=e110]:
+                    - generic [ref=e111]: село Кривопілля
+                    - generic [ref=e112]: Івано-Франківська область, Верховинський район
+                - listitem [ref=e113]:
+                  - button "місто Кривий Ріг Дніпропетровська область, Криворізький район" [ref=e114]:
+                    - generic [ref=e115]: місто Кривий Ріг
+                    - generic [ref=e116]: Дніпропетровська область, Криворізький район
+                - listitem [ref=e117]:
+                  - button "селище міського типу Криве Озеро Миколаївська область, Кривоозерський район" [ref=e118]:
+                    - generic [ref=e119]: селище міського типу Криве Озеро
+                    - generic [ref=e120]: Миколаївська область, Кривоозерський район
+                - listitem [ref=e121]:
+                  - button "село Крива Руда Полтавська область, Семенівський район" [ref=e122]:
+                    - generic [ref=e123]: село Крива Руда
+                    - generic [ref=e124]: Полтавська область, Семенівський район
+          - generic [ref=e66]:
+            - generic [ref=e67]: Примітка до замовлення
+            - textbox "Примітка до замовлення" [ref=e68]
+          - paragraph [ref=e69]: Після відправки з вами зв’яжеться менеджер для підтвердження та оплати.
+          - button "Підтвердити замовлення" [ref=e70]
+        - complementary "Склад замовлення" [ref=e71]:
+          - heading "Ваше замовлення" [level=2] [ref=e72]
+          - list [ref=e125]:
+            - listitem [ref=e126]:
+              - img "Парова щітка TEFAL DT2026E1" [ref=e127]
+              - generic [ref=e128]:
+                - generic [ref=e129]: Парова щітка TEFAL DT2026E1
+                - generic [ref=e130]: 1 шт
+              - generic [ref=e131]: 1839.00 UAH
+          - generic [ref=e73]:
+            - generic [ref=e74]:
+              - term [ref=e75]: Товари
+              - definition [ref=e76]: 1839.00 UAH
+            - generic [ref=e77]:
+              - term [ref=e78]: Доставка
+              - definition [ref=e79]: за тарифами перевізника
+            - generic [ref=e80]:
+              - term [ref=e81]: До сплати
+              - definition [ref=e82]: 1839.00 UAH
+  - alert [ref=e83]

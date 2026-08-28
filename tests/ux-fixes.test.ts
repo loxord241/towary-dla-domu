@@ -23,9 +23,11 @@ test('home: featured empty state is a designed promo banner, not a bare EmptySta
   const home = src('app/(home)/page.tsx');
   // the empty branch must keep the section useful: explicit copy + catalog CTA
   assert.match(home, /Добірка найкращих товарів/);
-  assert.match(home, /featuredProducts\.length === 0/);
+  // Superseded 2026-08-28: the section variable is selectedProducts (the
+  // block is driven by the independent is_selected flag, migration 028).
+  assert.match(home, /selectedProducts\.length === 0/);
   // and the populated branch still renders the product grid
-  assert.match(home, /featuredProducts\.map/);
+  assert.match(home, /selectedProducts\.map/);
 });
 
 // ---- P3: interactive hit targets are at least 24x24 CSS px

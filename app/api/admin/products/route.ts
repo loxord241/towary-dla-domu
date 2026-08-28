@@ -208,6 +208,9 @@ export async function POST(request: Request) {
         brand_id: uuidOrNull(body.brand_id),
         is_active: body.is_active === undefined ? true : Boolean(body.is_active),
         is_featured: wantsFeatured,
+        // Independent «Обрані» flag (migration 028) — no shared state with
+        // the featured max-8 rule.
+        is_selected: Boolean(body.is_selected),
       })
       .select(PRODUCT_SELECT)
       .returns<ProductJoinedRow[]>()

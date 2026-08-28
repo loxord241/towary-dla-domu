@@ -143,6 +143,7 @@ interface ProductFormState {
   availability_status: string;
   is_active: boolean;
   is_featured: boolean;
+  is_selected: boolean;
 }
 
 const EMPTY_FORM: ProductFormState = {
@@ -160,6 +161,7 @@ const EMPTY_FORM: ProductFormState = {
   availability_status: 'in_stock',
   is_active: true,
   is_featured: false,
+  is_selected: false,
 };
 
 export default function ProductsAdminPage() {
@@ -313,6 +315,7 @@ export default function ProductsAdminPage() {
         availability_status: p.availability_status || 'in_stock',
         is_active: Boolean(p.is_active),
         is_featured: Boolean(p.is_featured),
+        is_selected: Boolean(p.is_selected),
       });
 
       setFormError(null);
@@ -374,6 +377,7 @@ export default function ProductsAdminPage() {
         availability_status: formData.availability_status,
         is_active: formData.is_active,
         is_featured: formData.is_featured,
+        is_selected: formData.is_selected,
       });
 
       const response = await fetch(
@@ -598,6 +602,11 @@ export default function ProductsAdminPage() {
                       {product.is_active ? 'Активний' : 'Прихований'}
                     </span>
                     {product.is_featured && (
+                      <span className="ml-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        Популярний
+                      </span>
+                    )}
+                    {product.is_selected && (
                       <span className="ml-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                         Обрані
                       </span>
@@ -780,7 +789,7 @@ export default function ProductsAdminPage() {
                       onChange={handleCheckbox}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
-                    <span className="ml-2">Обрані</span>
+                    <span className="ml-2">Популярні товари</span>
                   </label>
                   <p className="text-xs text-gray-500">
                     Обрано: {featuredCount ?? '…'} / {MAX_FEATURED_PRODUCTS} · блок
@@ -794,6 +803,20 @@ export default function ProductsAdminPage() {
                         обрати цей.
                       </p>
                     )}
+                  <label className="inline-flex items-center text-sm font-medium text-gray-700">
+                    <input
+                      type="checkbox"
+                      name="is_selected"
+                      checked={formData.is_selected}
+                      onChange={handleCheckbox}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2">Обрані</span>
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    Окремий блок «Обрані товари» на головній сторінці — не
+                    залежить від «Популярні товари».
+                  </p>
                 </div>
               </fieldset>
 

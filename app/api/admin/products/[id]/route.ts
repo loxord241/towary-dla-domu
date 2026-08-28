@@ -227,6 +227,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       }
     }
 
+    if ('is_selected' in body) {
+      // Independent «Обрані» flag (migration 028): plain boolean, no
+      // shared state with the featured max-8 rule.
+      patch.is_selected = Boolean(body.is_selected);
+    }
+
     if (Object.keys(patch).length === 0) {
       return NextResponse.json({ error: 'Немає полів для оновлення' }, { status: 400 });
     }
