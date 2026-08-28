@@ -230,8 +230,7 @@ function DrawerPanel({
           shown ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between border-b border-gray-200 p-3">
-          <span className="text-lg font-bold text-blue-600">Товари для дому</span>
+        <div className="flex items-center justify-end border-b border-gray-200 p-3">
           <button
             ref={closeBtnRef}
             type="button"
@@ -248,37 +247,16 @@ function DrawerPanel({
             <h2 className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
               Категорії
             </h2>
-            {!dicts ? (
-              loadFailed ? (
-                <p className="px-3 py-2 text-sm text-gray-500">
-                  Не вдалося завантажити категорії.
-                </p>
-              ) : (
-                skeleton('w-3/4')
-              )
-            ) : (
-              <>
-                {renderList(PINNED_CATEGORIES)}
-                {renderList(
-                  dicts.categories
-                    .filter(
-                      (c) => !PINNED_CATEGORIES.some((p) => p.href.endsWith(c.slug))
-                    )
-                    .slice(0, MAX_LIST_ITEMS)
-                    .map((c) => ({
-                      href: `/catalog?category=${encodeURIComponent(c.slug)}`,
-                      label: c.name,
-                    }))
-                )}
-                <Link
-                  href="/catalog"
-                  className={`${linkClass} font-medium text-blue-700`}
-                  onClick={closeAfterNavigate}
-                >
-                  Усі категорії →
-                </Link>
-              </>
-            )}
+            {/* Only the pinned merchandising categories — the long dictionary
+                list intentionally does not appear in the drawer. */}
+            {renderList(PINNED_CATEGORIES)}
+            <Link
+              href="/catalog"
+              className={`${linkClass} font-medium text-blue-700`}
+              onClick={closeAfterNavigate}
+            >
+              Усі категорії →
+            </Link>
           </section>
 
           <section>
