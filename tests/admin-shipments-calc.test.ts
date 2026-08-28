@@ -23,7 +23,12 @@ function shipment(overrides: Partial<ShipmentForCalc> = {}): ShipmentForCalc {
     shipment_index: 1,
     status: 'planned',
     service_type: 'nova_poshta_warehouse',
+    city_ref: null,
+    city_name: null,
     warehouse_ref: '11198',
+    street_name: null,
+    building: null,
+    flat: null,
     parcels: [
       {
         parcel_index: 1,
@@ -63,12 +68,14 @@ describe('buildCalculationInput', () => {
     if (!res.ok) assert.equal(res.reason, 'not_planned');
   });
 
-  test('skips courier shipments (courier calculation not implemented)', () => {
+  test('courier shipments are supported since stage 2G (structured address required)', () => {
+    // Without structured street/building the courier input is skipped
+    // fail-closed (bad_destination) — never resolved by free text.
     const res = buildCalculationInput(
       shipment({ service_type: 'nova_poshta_courier', warehouse_ref: null })
     );
     assert.equal(res.ok, false);
-    if (!res.ok) assert.equal(res.reason, 'courier_not_supported');
+    if (!res.ok) assert.equal(res.reason, 'bad_destination');
   });
 
   test('skips shipments without parcels', () => {
@@ -165,6 +172,7 @@ describe('toProviderBody sender division (live-verified requirement)', () => {
       },
     ],
     recipientDivisionId: 11198,
+    recipientSettlementId: null,
     recipientAddress: null,
   };
 

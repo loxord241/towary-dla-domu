@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { orderAccessToken } from '@/app/lib/order-token';
 import { enforceRateLimit } from '@/app/lib/rate-limit';
+import { sanitizeDelivery } from '@/app/lib/checkout-delivery';
 
 /**
  * POST /api/orders — guest checkout.
@@ -86,7 +87,23 @@ export async function POST(request: Request) {
   }
 
   // ---- shipping ----
-  const shippingInfo = sanitizeShippingInfo(b.shipping);
+  const shippingRaw = (b.shipping ?? {}) as Record<string, unknown>;
+  // Structured Nova Post delivery choice (stage 2G): strictly whitelisted
+  // ids/text only — money/payer fields are structurally impossible.
+  const delivery = sanitizeDelivery(shippingRaw.delivery);
+  if (delivery.kind === 'invalid') {
+    return NextResponse.json(
+      { error: 'Некоректні дані доставки' },
+      { status: 400 }
+    );
+  }
+  const shippingStrings: Record<string, unknown> = { ...shippingRaw };
+  delete shippingStrings.delivery;
+  const shippingInfo = sanitizeShippingInfo(shippingStrings);
+  const shippingInfoJson: Record<string, unknown> = { ...(shippingInfo ?? {}) };
+  if (delivery.kind === 'ok') {
+    shippingInfoJson.delivery = delivery.value;
+  }
 
   // ---- items ----
   const rawItems = b.items;
@@ -147,7 +164,7 @@ export async function POST(request: Request) {
       email,
       name,
       phone,
-      shipping_info: shippingInfo ?? {},
+      shipping_info: shippingInfoJson,
       items: items.map((i) => ({
         product_id: i.productId,
         variant_id: i.variantId,

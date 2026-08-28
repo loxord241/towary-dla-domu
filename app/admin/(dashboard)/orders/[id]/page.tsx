@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { prefillShipmentDraft } from '@/app/lib/admin-shipment-prefill';
 
 /**
  * Stage 2D — admin shipment planner. The manager manually distributes order
@@ -55,6 +56,9 @@ interface ServerShipment {
   warehouse_ref: string | null;
   warehouse_name: string | null;
   address: string | null;
+  street_name: string | null;
+  building: string | null;
+  flat: string | null;
   status: string;
   cod_amount: number;
   delivery_cost_estimated: number | null;
@@ -84,6 +88,9 @@ interface PlanShipment {
   warehouse_ref: string;
   warehouse_name: string;
   address: string;
+  street_name: string;
+  building: string;
+  flat: string;
   cod_amount: string;
   status: string;
   ttn_number: string | null;
@@ -127,6 +134,9 @@ function emptyShipment(): PlanShipment {
     warehouse_ref: '',
     warehouse_name: '',
     address: '',
+    street_name: '',
+    building: '',
+    flat: '',
     cod_amount: '0',
     status: 'planned',
     ttn_number: null,
@@ -146,6 +156,9 @@ function shipmentFromServer(s: ServerShipment): PlanShipment {
     warehouse_ref: s.warehouse_ref ?? '',
     warehouse_name: s.warehouse_name ?? '',
     address: s.address ?? '',
+    street_name: s.street_name ?? '',
+    building: s.building ?? '',
+    flat: s.flat ?? '',
     cod_amount: String(s.cod_amount ?? '0'),
     status: s.status ?? 'planned',
     ttn_number: s.ttn_number ?? null,
@@ -164,6 +177,23 @@ function shipmentFromServer(s: ServerShipment): PlanShipment {
       insurance_cost: String(p.insurance_cost),
       description: p.description ?? '',
     })),
+  };
+}
+
+function prefillFromServer(
+  pf: import('@/app/lib/admin-shipment-prefill').PrefilledShipment
+): PlanShipment {
+  return {
+    ...emptyShipment(),
+    service_type: pf.service_type,
+    city_ref: pf.city_ref,
+    city_name: pf.city_name,
+    warehouse_ref: pf.warehouse_ref ?? '',
+    warehouse_name: pf.warehouse_name ?? '',
+    address: pf.address ?? '',
+    street_name: pf.street_name ?? '',
+    building: pf.building ?? '',
+    flat: pf.flat ?? '',
   };
 }
 
@@ -242,6 +272,9 @@ function buildPlanPayload(shipments: PlanShipment[]) {
       warehouse_ref: s.warehouse_ref || null,
       warehouse_name: s.warehouse_name || null,
       address: s.address || null,
+      street_name: s.street_name || null,
+      building: s.building || null,
+      flat: s.flat || null,
       cod_amount: Number(s.cod_amount) || 0,
       items: s.items.map((it) => ({
         order_item_id: it.order_item_id,
@@ -290,7 +323,17 @@ export default function ShipmentPlannerPage() {
       setOrder(o);
       setItems(serverItems);
       setEditable(canEdit);
-      setDraft(shipments.map(shipmentFromServer));
+      // Stage 2G: prefill the first planned row from the structured
+      // checkout delivery choice — only when the plan is still empty.
+      const prefilled =
+        shipments.length === 0 && canEdit
+          ? prefillShipmentDraft(o.shipping_info).map(prefillFromServer)
+          : [];
+      setDraft(
+        shipments.length > 0
+          ? shipments.map(shipmentFromServer)
+          : prefilled
+      );
       setError(null);
       setNotice(null);
       setCalcResults({});
@@ -676,6 +719,9 @@ export default function ShipmentPlannerPage() {
                       warehouse_ref: '',
                       warehouse_name: '',
                       address: '',
+                      street_name: '',
+                      building: '',
+                      flat: '',
                     })
                   }
                   className="input"
@@ -731,16 +777,43 @@ export default function ShipmentPlannerPage() {
                   )}
                 </label>
               ) : (
-                <label className="block md:col-span-2">
+                <div className="block md:col-span-2 space-y-2">
                   <span className="text-gray-500 block mb-1">Адреса кур&apos;єрської доставки</span>
+                  <input
+                    type="text"
+                    value={shipment.street_name}
+                    disabled={!editable}
+                    placeholder="Вулиця"
+                    onChange={(e) => updateShipment(idx, { street_name: e.target.value })}
+                    className="input"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={shipment.building}
+                      disabled={!editable}
+                      placeholder="Будинок"
+                      onChange={(e) => updateShipment(idx, { building: e.target.value })}
+                      className="input"
+                    />
+                    <input
+                      type="text"
+                      value={shipment.flat}
+                      disabled={!editable}
+                      placeholder="Квартира (опц.)"
+                      onChange={(e) => updateShipment(idx, { flat: e.target.value })}
+                      className="input"
+                    />
+                  </div>
                   <input
                     type="text"
                     value={shipment.address}
                     disabled={!editable}
+                    placeholder="Адреса для відображення"
                     onChange={(e) => updateShipment(idx, { address: e.target.value })}
                     className="input"
                   />
-                </label>
+                </div>
               )}
 
               <label className="block">

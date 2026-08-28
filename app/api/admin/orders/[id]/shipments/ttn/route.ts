@@ -42,13 +42,17 @@ import {
  *   row to 'planned' (cleared ttn fields and delivery_cost) — only while
  *   status = 'created'; the provider delete must succeed BEFORE the DB reset.
  *
- * No invoice, no COD, courier not supported. Checkout/payment/tracking are
- * untouched.
+ * Stage 2G: courier shipments are supported — recipient built from the
+ * settlementId (city_ref) + structured address parts (migration 026).
+ * ⚠️ The courier POST /shipments branch has NOT been live-tested (would
+ * create a real TTN): the FIRST courier TTN must be created against the
+ * sandbox, then verified (201 → DB row → clientOrder reconciliation →
+ * rollback DELETE by ttn_ref → back to 'planned') before production use.
+ * Warehouse/payment/tracking flows are untouched.
  */
 
 const INVALID_MESSAGES: Record<string, string> = {
   not_planned: 'Відправлення не в статусі planned',
-  courier_not_supported: 'ТТН для кур’єрської доставки поки недоступна',
   bad_destination: 'Некоректне відділення призначення',
   no_parcels: 'Немає місць (посилок) у відправленні',
   bad_recipient_name: 'Некоректне ім’я отримувача в замовленні',
@@ -60,7 +64,12 @@ interface ShipmentRow {
   shipment_index: number;
   status: string;
   service_type: string;
+  city_ref: string | null;
+  city_name: string | null;
   warehouse_ref: string | null;
+  street_name: string | null;
+  building: string | null;
+  flat: string | null;
   ttn_ref: string | null;
   ttn_number: string | null;
   order_shipment_parcels: {
@@ -83,8 +92,8 @@ interface OrderRow {
 }
 
 const SHIPMENT_SELECT = `
-  id, shipment_index, status, service_type, warehouse_ref, ttn_ref,
-  ttn_number,
+  id, shipment_index, status, service_type, city_ref, city_name,
+  warehouse_ref, street_name, building, flat, ttn_ref, ttn_number,
   order_shipment_parcels(parcel_index, cargo_category, actual_weight_grams,
     width_mm, length_mm, height_mm, insurance_cost),
   order_shipment_items(quantity, order_items(product_name))
@@ -194,7 +203,12 @@ export async function POST(
         shipment_id: shipment.id,
         status: shipment.status,
         service_type: shipment.service_type,
+        city_ref: shipment.city_ref,
+        city_name: shipment.city_name,
         warehouse_ref: shipment.warehouse_ref,
+        street_name: shipment.street_name,
+        building: shipment.building,
+        flat: shipment.flat,
         parcels: shipment.order_shipment_parcels ?? [],
         productNames: (shipment.order_shipment_items ?? []).map(
           (si) => si.order_items?.product_name ?? ''
@@ -256,7 +270,7 @@ export async function POST(
       case 'invalid':
         return NextResponse.json(
           { error: INVALID_MESSAGES[outcome.reason] ?? 'Некоректні дані відправлення' },
-          { status: outcome.reason === 'not_planned' || outcome.reason === 'courier_not_supported' ? 409 : 400 }
+          { status: outcome.reason === 'not_planned' ? 409 : 400 }
         );
       case 'provider_rejected':
         return NextResponse.json(

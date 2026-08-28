@@ -45,6 +45,9 @@ export interface ShipmentPlanInput {
   warehouse_ref: string | null;
   warehouse_name: string | null;
   address: string | null;
+  street_name: string | null;
+  building: string | null;
+  flat: string | null;
   cod_amount: number;
   items: ShipmentPlanItemInput[];
   parcels: ShipmentPlanParcelInput[];
@@ -136,10 +139,24 @@ function parseShipment(raw: unknown, position: number): ShipmentPlanInput | stri
   const warehouseName = strOrNull(raw.warehouse_name, 200) ?? null;
   const address = strOrNull(raw.address, 300) ?? null;
 
+  // Structured courier address (stage 2G, migration 026): optional for
+  // courier shipments, forbidden for warehouse ones.
+  const optPart = (value: unknown, max: number): string | null | undefined =>
+    value === undefined ? null : strOrNull(value, max);
+  const streetName = optPart(raw.street_name, 100);
+  if (streetName === undefined) return `${label}: некоректна назва вулиці`;
+  const building = optPart(raw.building, 100);
+  if (building === undefined) return `${label}: некоректний будинок`;
+  const flat = optPart(raw.flat, 10);
+  if (flat === undefined) return `${label}: некоректна квартира`;
+
   // Destination XOR (mirrors chk_order_shipments_destination).
   if (serviceType === 'nova_poshta_warehouse') {
     if (!warehouseRef) return `${label}: оберіть відділення`;
     if (address) return `${label}: відділення не може мати адресу кур'єрської доставки`;
+    if (streetName || building || flat) {
+      return `${label}: відділення не може мати адресу кур'єрської доставки`;
+    }
   } else {
     if (!address) return `${label}: вкажіть адресу доставки кур'єром`;
     if (warehouseRef) return `${label}: кур'єрська доставка не може мати відділення`;
@@ -192,6 +209,9 @@ function parseShipment(raw: unknown, position: number): ShipmentPlanInput | stri
     warehouse_ref: warehouseRef,
     warehouse_name: warehouseName,
     address,
+    street_name: streetName,
+    building,
+    flat,
     cod_amount: codAmount,
     items,
     parcels,

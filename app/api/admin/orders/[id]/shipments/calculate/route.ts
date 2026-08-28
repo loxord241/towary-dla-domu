@@ -8,19 +8,21 @@ import { NovaPostError } from '@/app/lib/delivery/novapost/errors';
 import { readNovaPostSenderDivisionId } from '@/app/lib/delivery/novapost/config';
 
 /**
- * Stage 2E — admin delivery cost calculation (WAREHOUSE shipments only).
+ * Stage 2E + 2G — admin delivery cost calculation.
  *
  * POST /api/admin/orders/[id]/shipments/calculate
- *   For every planned warehouse shipment with parcels: builds the request
- *   from DB data (sender division from the server-side env, recipient
- *   division from warehouse_ref, parcels from order_shipment_parcels),
- *   calls the read-only POST /shipments/calculations proxy and persists
- *   ONLY delivery_cost_estimated (cod_amount and the COD/allocation
- *   invariants are untouched; ttn_* is never written).
+ *   For every planned shipment with parcels: builds the request from DB
+ *   data (sender division from the server-side env; warehouse recipient by
+ *   divisionId from warehouse_ref; courier recipient by
+ *   recipient.settlementId from city_ref + structured address parts —
+ *   stage 2G, live-verified locator), calls the read-only
+ *   POST /shipments/calculations proxy and persists ONLY
+ *   delivery_cost_estimated (cod_amount and the COD/allocation invariants
+ *   are untouched; ttn_* is never written).
  *
- * Fail-closed rules (verified live 2026-08-27):
- *   - courier shipments are skipped: NP resolves recipient cities against
- *     its internal dictionary and rejects free-text cities;
+ * Fail-closed rules (verified live 2026-08-27/28):
+ *   - courier shipments without structured street/building are skipped:
+ *     NP resolves cities only by settlementId, free text is rejected;
  *   - the quote must contain exactly one valid service row.
  */
 
@@ -48,7 +50,7 @@ export async function POST(
     const shipmentsRes = await ctx.serviceClient
       .from('order_shipments')
       .select(
-        'id, shipment_index, status, service_type, warehouse_ref, order_shipment_parcels(parcel_index, cargo_category, actual_weight_grams, width_mm, length_mm, height_mm, insurance_cost)'
+        'id, shipment_index, status, service_type, city_ref, city_name, warehouse_ref, street_name, building, flat, order_shipment_parcels(parcel_index, cargo_category, actual_weight_grams, width_mm, length_mm, height_mm, insurance_cost)'
       )
       .eq('order_id', id)
       .order('shipment_index');
@@ -62,7 +64,12 @@ export async function POST(
       shipment_index: number;
       status: string;
       service_type: string;
+      city_ref: string | null;
+      city_name: string | null;
       warehouse_ref: string | null;
+      street_name: string | null;
+      building: string | null;
+      flat: string | null;
       order_shipment_parcels: {
         parcel_index: number;
         cargo_category: string;
@@ -84,7 +91,12 @@ export async function POST(
         shipment_index: row.shipment_index,
         status: row.status,
         service_type: row.service_type,
+        city_ref: row.city_ref,
+        city_name: row.city_name,
         warehouse_ref: row.warehouse_ref,
+        street_name: row.street_name,
+        building: row.building,
+        flat: row.flat,
         parcels: row.order_shipment_parcels ?? [],
       });
       if (!built.ok) {

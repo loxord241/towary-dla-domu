@@ -40,7 +40,14 @@ export interface TtnSourceShipment {
   shipment_id: string;
   status: string;
   service_type: string;
+  /** Nova Post settlementId (numeric text) — courier locator (stage 2G). */
+  city_ref: string | null;
+  city_name: string | null;
   warehouse_ref: string | null;
+  /** Structured courier address parts (migration 026). */
+  street_name: string | null;
+  building: string | null;
+  flat: string | null;
   parcels: TtnParcelRow[];
   productNames: string[];
   recipientName: string | null;
@@ -53,6 +60,24 @@ export interface TtnSender {
   phone: string;
 }
 
+/**
+ * Recipient location branch: warehouse → divisionId; courier →
+ * settlementId + addressParts (live-verified locator, stage 2G).
+ */
+export type NpRecipient = {
+  name: string;
+  phone: string;
+  countryCode: 'UA';
+  divisionId?: number;
+  settlementId?: number;
+  addressParts?: {
+    city?: string;
+    street: string;
+    building: string;
+    flat?: string;
+  };
+};
+
 export interface NpShipmentPayload {
   clientOrder: string;
   payerType: 'Recipient';
@@ -62,12 +87,7 @@ export interface NpShipmentPayload {
     countryCode: 'UA';
     divisionId: number;
   };
-  recipient: {
-    name: string;
-    phone: string;
-    countryCode: 'UA';
-    divisionId: number;
-  };
+  recipient: NpRecipient;
   parcels: {
     rowNumber: number;
     cargoCategory: string;
@@ -82,7 +102,6 @@ export interface NpShipmentPayload {
 
 export type TtnBuildSkipReason =
   | 'not_planned'
-  | 'courier_not_supported'
   | 'bad_destination'
   | 'no_parcels'
   | 'bad_recipient_name'
@@ -122,16 +141,57 @@ export function buildShipmentTtnPayload(
   if (s.status !== 'planned') {
     return { ok: false, reason: 'not_planned' };
   }
-  if (s.service_type !== 'nova_poshta_warehouse') {
-    return { ok: false, reason: 'courier_not_supported' };
-  }
-  const divisionId = Number(s.warehouse_ref);
-  if (!s.warehouse_ref || !Number.isInteger(divisionId) || divisionId < 1) {
-    return { ok: false, reason: 'bad_destination' };
-  }
   if (s.parcels.length === 0) {
     return { ok: false, reason: 'no_parcels' };
   }
+
+  let recipient: NpRecipient | null = null;
+
+  if (s.service_type === 'nova_poshta_warehouse') {
+    const divisionId = Number(s.warehouse_ref);
+    if (!s.warehouse_ref || !Number.isInteger(divisionId) || divisionId < 1) {
+      return { ok: false, reason: 'bad_destination' };
+    }
+    recipient = {
+      name: '',
+      phone: '',
+      countryCode: 'UA',
+      divisionId,
+    };
+  } else if (s.service_type === 'nova_poshta_courier') {
+    // Stage 2G (live-verified): the courier recipient is resolved ONLY via
+    // settlementId + addressParts; street/building come from the
+    // structured checkout/admin data, never parsed out of the display
+    // `address` string. POST /shipments has NOT been live-tested with this
+    // branch — the first courier TTN must go through the sandbox and use
+    // the clientOrder adopt/reconcile + Ref-ID rollback paths.
+    const settlementId = Number(s.city_ref);
+    const street = (s.street_name ?? '').trim();
+    const building = (s.building ?? '').trim();
+    if (!s.city_ref || !Number.isInteger(settlementId) || settlementId < 1) {
+      return { ok: false, reason: 'bad_destination' };
+    }
+    if (street.length === 0 || building.length === 0) {
+      return { ok: false, reason: 'bad_destination' };
+    }
+    const city = (s.city_name ?? '').trim();
+    const flat = (s.flat ?? '').trim();
+    recipient = {
+      name: '',
+      phone: '',
+      countryCode: 'UA',
+      settlementId,
+      addressParts: {
+        ...(city.length > 0 ? { city } : {}),
+        street,
+        building,
+        ...(flat.length > 0 ? { flat } : {}),
+      },
+    };
+  } else {
+    return { ok: false, reason: 'bad_destination' };
+  }
+
   const senderPhone = normalizePhone(sender.phone);
   if (!senderPhone) {
     return { ok: false, reason: 'bad_recipient_phone' };
@@ -145,6 +205,8 @@ export function buildShipmentTtnPayload(
   if (!recipientPhone) {
     return { ok: false, reason: 'bad_recipient_phone' };
   }
+  recipient.name = recipientName;
+  recipient.phone = recipientPhone;
 
   const parcelDescription = buildParcelDescription(s.productNames);
   return {
@@ -159,12 +221,7 @@ export function buildShipmentTtnPayload(
         countryCode: 'UA',
         divisionId: sender.divisionId,
       },
-      recipient: {
-        name: recipientName,
-        phone: recipientPhone,
-        countryCode: 'UA',
-        divisionId,
-      },
+      recipient,
       parcels: s.parcels.map((p) => ({
         rowNumber: p.parcel_index,
         cargoCategory: p.cargo_category,

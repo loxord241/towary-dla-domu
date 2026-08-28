@@ -76,7 +76,12 @@ function source(overrides: Partial<TtnSourceShipment> = {}): TtnSourceShipment {
     shipment_id: '0f0a1b2c-3d4e-5f60-7182-93a4b5c6d7e8',
     status: 'planned',
     service_type: 'nova_poshta_warehouse',
+    city_ref: null,
+    city_name: null,
     warehouse_ref: '7162',
+    street_name: null,
+    building: null,
+    flat: null,
     parcels: [PARCEL],
     productNames: ['Чашка керамічна', 'Тарілка'],
     recipientName: 'Олена Тест',
@@ -185,13 +190,13 @@ describe('buildShipmentTtnPayload (sandbox-verified domestic UA warehouse)', () 
     );
   });
 
-  test('courier shipments are rejected (not supported in 2F)', () => {
+  test('courier without structured settlement/address is rejected fail-closed (stage 2G)', () => {
     const built = buildShipmentTtnPayload(
       source({ service_type: 'nova_poshta_courier', warehouse_ref: null }),
       SENDER
     );
     assert.ok(!built.ok);
-    assert.equal(built.reason, 'courier_not_supported');
+    assert.equal(built.reason, 'bad_destination');
   });
 
   test('non-planned shipments are rejected', () => {
@@ -300,7 +305,7 @@ describe('createTtnForShipment orchestration', () => {
     const np = fakeNp();
     const outcome = await createTtnForShipment({
       ...deps(np),
-      built: { ok: false as const, reason: 'courier_not_supported' as const },
+      built: { ok: false as const, reason: 'bad_destination' as const },
     });
     assert.equal(outcome.kind, 'invalid');
     assert.equal(np.createCalls.length, 0);

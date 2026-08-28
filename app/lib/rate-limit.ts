@@ -140,6 +140,7 @@ export const RATE_RULES = {
   // delivery cost calls the provider calculation endpoint (heaviest).
   novaPoshtaSettlements: [{ max: 60, windowMs: 60_000 }],
   novaPoshtaDivisions: [{ max: 90, windowMs: 60_000 }],
+  novaPoshtaStreets: [{ max: 90, windowMs: 60_000 }],
   novaPoshtaDeliveryCost: [{ max: 12, windowMs: 60_000 }],
 } as const;
 

@@ -41,8 +41,14 @@ export interface ParsedCalculation {
     insuranceCost: number | null;
   }[];
   recipientDivisionId: number | null;
+  /**
+   * Courier locator (stage 2G, live-verified): the ONLY working city
+   * resolution is the integer GET /settlements id sent as
+   * recipient.settlementId; addressParts city text is display-only.
+   */
+  recipientSettlementId: number | null;
   recipientAddress: {
-    city: string;
+    city: string | null;
     street: string;
     building: string;
     flat: string | null;
@@ -139,9 +145,21 @@ export function parseDeliveryCostBody(body: unknown): ParsedCalculation | null {
     recipientDivisionId = raw.recipientDivisionId;
   }
 
+  let recipientSettlementId: number | null = null;
+  if (raw.recipientSettlementId !== undefined && raw.recipientSettlementId !== null) {
+    if (
+      typeof raw.recipientSettlementId !== 'number' ||
+      !Number.isInteger(raw.recipientSettlementId) ||
+      raw.recipientSettlementId < 1
+    ) {
+      return null;
+    }
+    recipientSettlementId = raw.recipientSettlementId;
+  }
+
   let recipientAddress: ParsedCalculation['recipientAddress'] = null;
   if (raw.recipientAddress !== undefined && raw.recipientAddress !== null) {
-    if (recipientDivisionId !== null) return null; // XOR: division OR address
+    if (recipientDivisionId !== null) return null; // XOR: division OR address/settlement
     if (typeof raw.recipientAddress !== 'object') return null;
     const a = raw.recipientAddress as Record<string, unknown>;
     const requiredText = (value: unknown): string | null =>
@@ -150,16 +168,19 @@ export function parseDeliveryCostBody(body: unknown): ParsedCalculation | null {
       value.length <= ADDRESS_TEXT_MAX
         ? value.trim()
         : null;
-    const city = requiredText(a.city);
-    const street = requiredText(a.street);
-    const building = requiredText(a.building);
-    if (city === null || street === null || building === null) return null;
     const optionalText = (value: unknown, max: number): string | null =>
       typeof value === 'string' &&
       value.trim().length > 0 &&
       value.length <= max
         ? value.trim()
         : null;
+    const street = requiredText(a.street);
+    const building = requiredText(a.building);
+    if (street === null || building === null) return null;
+    // With a settlementId the city text is display-only (the provider
+    // ignores it); the legacy free-text branch still requires a city.
+    const city = optionalText(a.city, ADDRESS_TEXT_MAX);
+    if (recipientSettlementId === null && city === null) return null;
     recipientAddress = {
       city,
       street,
@@ -169,9 +190,10 @@ export function parseDeliveryCostBody(body: unknown): ParsedCalculation | null {
     };
   }
 
+  if (recipientSettlementId !== null && recipientAddress === null) return null;
   if (recipientDivisionId === null && recipientAddress === null) return null;
 
-  return { parcels, recipientDivisionId, recipientAddress };
+  return { parcels, recipientDivisionId, recipientSettlementId, recipientAddress };
 }
 
 export function toProviderBody(
@@ -192,6 +214,19 @@ export function toProviderBody(
   };
   if (parsed.recipientDivisionId !== null) {
     recipient.divisionId = parsed.recipientDivisionId;
+  } else if (parsed.recipientSettlementId !== null && parsed.recipientAddress) {
+    // Courier branch (stage 2G, live-verified): the settlementId integer is
+    // the ONLY city resolution key; addressParts.city is display text the
+    // provider stores but never validates.
+    const a = parsed.recipientAddress;
+    recipient.settlementId = parsed.recipientSettlementId;
+    recipient.addressParts = {
+      ...(a.city ? { city: a.city } : {}),
+      street: a.street,
+      building: a.building,
+      ...(a.flat ? { flat: a.flat } : {}),
+      ...(a.postCode ? { postCode: a.postCode } : {}),
+    };
   } else if (parsed.recipientAddress) {
     const a = parsed.recipientAddress;
     recipient.addressParts = {

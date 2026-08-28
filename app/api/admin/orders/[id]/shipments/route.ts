@@ -25,8 +25,8 @@ const ITEM_FIELDS =
 
 const SHIPMENT_SELECT = `
   id, shipment_index, service_type, city_ref, city_name, warehouse_ref,
-  warehouse_name, address, status, cod_amount, delivery_cost_estimated,
-  ttn_number, delivery_cost,
+  warehouse_name, address, street_name, building, flat, status, cod_amount,
+  delivery_cost_estimated, ttn_number, delivery_cost,
   order_shipment_items(order_item_id, quantity),
   order_shipment_parcels(parcel_index, cargo_category, actual_weight_grams,
     width_mm, length_mm, height_mm, insurance_cost, description)
