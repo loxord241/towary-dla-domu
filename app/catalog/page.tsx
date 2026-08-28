@@ -313,7 +313,7 @@ export default async function CatalogPage({
                       key={product.id}
                       product={product}
                       imageUrl={getMainPublicImageUrl(product.images)}
-                      priority={idx < 6}
+                      eager={idx < 6}
                     />
                   ))}
                 </div>

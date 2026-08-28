@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { cache } from 'react';
 // Explicit .ts extension: required by node:test ESM resolution and allowed
 // by allowImportingTsExtensions for the Next bundler.
 import { collectSubtreeIds } from './category-tree.ts';
@@ -276,25 +277,21 @@ const CATALOG_MAX_PAGE_SIZE = 50;
  * `!inner` they degrade to left-join semantics that keep non-matching
  * rows (verified against the live database 2026-08). Returns null when
  * the slug does not exist.
+ *
+ * Perf audit Step 3 (2026-08-28): the slug lookups are React `cache()`d —
+ * generateMetadata and the page render resolve the SAME slug through ONE
+ * request per render instead of duplicated reads (per-request memo only;
+ * nothing is cached across requests).
  */
+const lookupCategoryBySlugCached = cache(fetchCategoryBySlugUncached);
+const lookupBrandBySlugCached = cache(fetchBrandBySlugUncached);
+
 async function findCategoryIdBySlug(slug: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('categories')
-    .select('id')
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .maybeSingle();
-  return data?.id ?? null;
+  return (await lookupCategoryBySlugCached(slug))?.id ?? null;
 }
 
 async function findBrandIdBySlug(slug: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('brands')
-    .select('id')
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .maybeSingle();
-  return data?.id ?? null;
+  return (await lookupBrandBySlugCached(slug))?.id ?? null;
 }
 
 /**
@@ -302,7 +299,7 @@ async function findBrandIdBySlug(slug: string): Promise<string | null> {
  * generateMetadata). Single indexed selects; return null for unknown or
  * inactive slugs.
  */
-export async function fetchCategoryBySlug(
+async function fetchCategoryBySlugUncached(
   slug: string
 ): Promise<{ id: string; name: string; slug: string } | null> {
   const { data } = await supabase
@@ -314,7 +311,7 @@ export async function fetchCategoryBySlug(
   return data ?? null;
 }
 
-export async function fetchBrandBySlug(
+async function fetchBrandBySlugUncached(
   slug: string
 ): Promise<{ id: string; name: string; slug: string } | null> {
   const { data } = await supabase
@@ -325,6 +322,9 @@ export async function fetchBrandBySlug(
     .maybeSingle();
   return data ?? null;
 }
+
+export const fetchCategoryBySlug = lookupCategoryBySlugCached;
+export const fetchBrandBySlug = lookupBrandBySlugCached;
 export interface CatalogPage {
   products: Product[];
   total: number;
@@ -571,33 +571,36 @@ export interface ReviewSummary {
 }
 
 /**
- * Average + star distribution via five indexed head-counts (no review rows
- * cross the wire regardless of how many exist).
+ * Average + star distribution via ONE read-only RPC (migration 029,
+ * perf audit Step 2 2026-08-28): replaces the previous five separate
+ * head-count requests (one per rating) with a single group-by call.
+ * The RPC is SECURITY INVOKER, so the anonymous role's RLS policy
+ * (product_reviews_public_read_published) still governs visibility —
+ * no rows can cross the wire, only ≤5 aggregated counts.
  */
 export async function fetchReviewSummary(
   productId: string
 ): Promise<ReviewSummary> {
-  const results = await Promise.all(
-    ([1, 2, 3, 4, 5] as const).map(async (rating) => {
-      const { count, error } = await supabase
-        .from('product_reviews')
-        .select('id', { count: 'exact', head: true })
-        .eq('product_id', productId)
-        .eq('status', 'published')
-        .eq('rating', rating);
-      if (error) {
-        throw new Error(`Failed to summarize rating ${rating}: ${error.message}`);
-      }
-      return count ?? 0;
-    })
-  );
+  const { data, error } = await supabase.rpc('product_review_summary', {
+    p_product_id: productId,
+  });
+  if (error) {
+    throw new Error(`Failed to summarize ratings: ${error.message}`);
+  }
+
+  type SummaryRow = { rating: number | string; review_count: number | string };
+  const rows = (data ?? []) as SummaryRow[];
+  const countFor = (rating: number): number => {
+    const row = rows.find((entry) => Number(entry.rating) === rating);
+    return row ? Number(row.review_count) : 0;
+  };
 
   const distribution: ReviewSummary['distribution'] = [
-    results[0],
-    results[1],
-    results[2],
-    results[3],
-    results[4],
+    countFor(1),
+    countFor(2),
+    countFor(3),
+    countFor(4),
+    countFor(5),
   ];
   const total = distribution.reduce((sum, n) => sum + n, 0);
   const weighted =
@@ -664,7 +667,18 @@ export async function fetchPopularProducts(
   return (data ?? []).map(normalizeProduct);
 }
 
+/**
+ * Active categories — React `cache()`d per request (perf audit Step 3):
+ * the catalog page, the category-subtree expansion inside
+ * fetchCatalogProducts and the related-products leg all need the SAME
+ * dictionary read; within one render it now executes once. Nothing is
+ * cached across requests, so admin edits stay immediately visible.
+ */
 export async function fetchActiveCategories(): Promise<Category[]> {
+  return fetchActiveCategoriesCached();
+}
+
+const fetchActiveCategoriesCached = cache(async (): Promise<Category[]> => {
   const { data, error } = await supabase
     .from('categories')
     .select('*')
@@ -681,12 +695,16 @@ export async function fetchActiveCategories(): Promise<Category[]> {
   }
 
   return data ?? [];
-}
+});
 
 /**
  * Active brands.
  */
 export async function fetchActiveBrands(): Promise<Brand[]> {
+  return fetchActiveBrandsCached();
+}
+
+const fetchActiveBrandsCached = cache(async (): Promise<Brand[]> => {
   const { data, error } = await supabase
     .from('brands')
     .select('*')
@@ -699,7 +717,7 @@ export async function fetchActiveBrands(): Promise<Brand[]> {
   }
 
   return data ?? [];
-}
+});
 
 /**
  * Find an active product by slug with category, brand, images and variants.

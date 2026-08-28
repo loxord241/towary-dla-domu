@@ -27,13 +27,15 @@ export interface ProductCardData {
 export default function ProductCard({
   product,
   imageUrl,
-  priority = false,
+  eager = false,
 }: {
   product: ProductCardData;
   imageUrl?: string | null;
-  /** Above-the-fold boost for the first grid row(s) only; every other card
-   *  keeps next/image native lazy-loading. */
-  priority?: boolean;
+  /** Above-the-fold boost for the first grid row(s) only: eager load with
+   *  high fetch priority (Next 16 replacement for the deprecated `priority`
+   *  prop — docs recommend loading="eager" for multiple above-fold images).
+   *  Every other card keeps next/image native lazy-loading. */
+  eager?: boolean;
 }) {
   const outOfStock = product.availability_status === 'out_of_stock';
   const hasDiscount =
@@ -58,8 +60,9 @@ export default function ProductCard({
               alt={product.name}
               width={400}
               height={300}
-              priority={priority}
-              unoptimized
+              loading={eager ? "eager" : "lazy"}
+              fetchPriority={eager ? "high" : "auto"}
+              sizes="(max-width: 640px) 92vw, (max-width: 768px) 45vw, 33vw"
               // object-contain: the WHOLE supplier photo must fit inside the
               // card (object-cover was cropping product photos).
               className="h-48 w-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.03]"

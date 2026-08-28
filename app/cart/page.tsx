@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import SiteHeader from '@/app/components/SiteHeader'
@@ -20,6 +20,30 @@ function availabilityLabel(status: string | null): string {
   return 'Обмежена наявність';
 }
 
+/**
+ * Debounce for preview refreshes (perf audit Step 4): every quantity click
+ * mutates `items`, which re-runs the effect — without the delay each +/-
+ * press fired its own POST /api/cart-preview. The FIRST load (no lines yet)
+ * stays immediate. Race safety is unchanged: the effect cleanup disposes
+ * the pending timer AND aborts the superseded request, so the freshest
+ * quantity always wins.
+ */
+const PREVIEW_DEBOUNCE_MS = 350;
+
+function CartLineSkeleton() {
+  return (
+    <div className="card flex flex-col items-start gap-4 p-4 sm:flex-row sm:items-center">
+      <div className="skeleton h-20 w-20 rounded" />
+      <div className="flex-1 space-y-2">
+        <div className="skeleton h-4 w-3/4" />
+        <div className="skeleton h-3 w-1/2" />
+      </div>
+      <div className="skeleton h-8 w-24 rounded-lg" />
+      <div className="skeleton h-5 w-20" />
+    </div>
+  );
+}
+
 export default function CartPage() {
   const { items, hydrated, updateQuantity, removeItem, clearCart } = useCart();
 
@@ -27,32 +51,47 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // First preview fetch runs immediately; later refreshes are debounced.
+  const firstLoadRef = useRef(true);
+  // Abort handle of the in-flight preview request (see effect below).
+  const disposeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!hydrated || items.length === 0) return;
     let cancelled = false;
     // fetchCartPreview is time-bounded and always ends in onDone(); dispose()
-    // aborts superseded requests (e.g. quantity changed mid-flight).
-    const dispose = fetchCartPreview(
-      items.map((i) => ({ productId: i.productId, variantId: i.variantId })),
-      {
-        onData: (data) => {
-          if (!cancelled) {
-            setLines(data);
-            setError(null);
-          }
-        },
-        onError: (message) => {
-          if (!cancelled) setError(message);
-        },
-        onDone: () => {
-          if (!cancelled) setLoading(false);
-        },
-      }
-    );
+    // aborts superseded requests (e.g. quantity changed mid-flight) and the
+    // cleanup also clears the debounce timer, so a stale response can never
+    // land. First load stays immediate; subsequent refreshes (quantity
+    // clicks, retries) are debounced.
+    const delay = firstLoadRef.current ? 0 : PREVIEW_DEBOUNCE_MS;
+    firstLoadRef.current = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      const dispose = fetchCartPreview(
+        items.map((i) => ({ productId: i.productId, variantId: i.variantId })),
+        {
+          onData: (data) => {
+            if (!cancelled) {
+              setLines(data);
+              setError(null);
+            }
+          },
+          onError: (message) => {
+            if (!cancelled) setError(message);
+          },
+          onDone: () => {
+            if (!cancelled) setLoading(false);
+          },
+        }
+      );
+      disposeRef.current = dispose;
+    }, delay);
     return () => {
       cancelled = true;
-      dispose();
+      clearTimeout(timer);
+      disposeRef.current?.();
+      disposeRef.current = null;
     };
   }, [hydrated, items, attempt]);
 
@@ -83,13 +122,32 @@ export default function CartPage() {
   );
   const currency = purchasableRows[0]?.preview?.currency ?? '';
 
+  // First load: skeleton rows instead of a full-page spinner (perf audit
+  // Step 4) — the header, title and summary layout stay in place, so the
+  // content settles instead of "blank page → sudden pop-in".
   if (!hydrated || (loading && items.length > 0)) {
     return (
       <div className="min-h-screen bg-gray-50">
         <SiteHeader />
-        <div className="container mx-auto px-4 py-16 flex justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+        <div className="container mx-auto px-4 py-8">
+          <h1 className="text-2xl font-bold mb-6">Кошик</h1>
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="lg:w-2/3 space-y-3" aria-hidden>
+              {Array.from({ length: Math.min(Math.max(items.length, 2), 4) }).map((_, i) => (
+                <CartLineSkeleton key={i} />
+              ))}
+            </div>
+            <div className="lg:w-1/3">
+              <div className="card p-6 space-y-3">
+                <div className="skeleton h-5 w-24" />
+                <div className="skeleton h-4 w-32" />
+                <div className="skeleton h-6 w-40" />
+                <div className="skeleton h-12 w-full rounded-lg" />
+              </div>
+            </div>
+          </div>
         </div>
+        <SiteFooter />
       </div>
     );
   }
@@ -148,7 +206,7 @@ export default function CartPage() {
                         alt={preview.name ?? ''}
                         width={80}
                         height={80}
-                        unoptimized
+                        sizes="80px"
                         className="w-20 h-20 object-cover rounded"
                       />
                     ) : (

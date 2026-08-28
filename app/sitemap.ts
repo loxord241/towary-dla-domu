@@ -12,7 +12,14 @@ import { collectPaged } from '@/app/lib/seo-sitemap';
  * are never listed. Product reads walk bounded 1000-row windows with a
  * deterministic id order (see seo-sitemap.collectPaged).
  */
-export const dynamic = 'force-dynamic';
+// Perf audit Step 4 (2026-08-28): the sitemap was force-dynamic — a full
+// paged product scan (2.1s TTFB, ~940KB) on EVERY crawler hit. Product and
+// category URLs are deterministic slugs and `lastModified` comes from real
+// updated_at values, so a daily ISR window keeps every URL correct while
+// serving repeats from the edge cache. The importer runs every 6 hours;
+// a day of URL-set staleness is acceptable for SEO (no wrong URLs — only
+// newly-imported products may appear up to a day later).
+export const revalidate = 86400;
 
 interface SitemapProductRow {
   slug: string;

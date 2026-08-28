@@ -13,6 +13,7 @@ const SUPABASE_HOST = (() => {
 // Yugcontract product imagery is hotlinked (import architecture); social
 // cards and next/image requests must stay allowed in img-src.
 const YUGCONTRACT_IMAGE_ORIGIN = "https://b2b.yugcontract.ua";
+const YUGCONTRACT_IMAGE_ORIGIN_HOST = "b2b.yugcontract.ua";
 
 /**
  * CSP ENFORCING (2026-08-27 security hardening stage).
@@ -71,6 +72,29 @@ function buildCsp(isDev: boolean): string {
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: {
+    // Trusted external image hosts only (performance audit 2026-08-28,
+    // Step 1). Yugcontract product imagery is hotlinked by the import
+    // architecture; Supabase Storage covers admin-uploaded relative paths
+    // (getPublicImageUrl in app/lib/supabase-storage.ts). Everything else
+    // is rejected with 400 by the optimizer.
+    remotePatterns: [
+      { protocol: "https", hostname: YUGCONTRACT_IMAGE_ORIGIN_HOST, pathname: "/**" },
+      ...(SUPABASE_HOST
+        ? [
+            {
+              protocol: "https" as const,
+              hostname: SUPABASE_HOST,
+              pathname: "/storage/v1/object/public/**",
+            },
+          ]
+        : []),
+    ],
+    // Upstream (Yugcontract) sends no Cache-Control, so this TTL governs the
+    // optimizer cache. Import imagery is effectively immutable — one day
+    // avoids revalidating the slow upstream every default 4h window.
+    minimumCacheTTL: 86400,
+  },
   async headers() {
     // Read at call time (not module load) so the enforcing policy can be
     // exercised for both environments in tests.

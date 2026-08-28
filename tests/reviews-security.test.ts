@@ -87,15 +87,27 @@ test('REVIEWS CATALOG: public reader filters published and paginates determinist
   assert.doesNotMatch(fn, /select\('\*'\)/, 'column whitelist only');
 });
 
-test('REVIEWS CATALOG: summary uses indexed head-counts (no row payload)', () => {
+test('REVIEWS CATALOG: summary uses one aggregated read (no row payload)', () => {
   const lib = src('app/lib/catalog.ts');
   const fn = lib.slice(
     lib.indexOf('async function fetchReviewSummary'),
     lib.indexOf('export async function fetchFeaturedProducts')
   );
-  assert.match(fn, /count: 'exact', head: true/);
-  assert.match(fn, /\.eq\('rating', rating\)/);
+  // Perf audit Step 2 (migration 029): the five per-rating head-counts were
+  // replaced by ONE SECURITY INVOKER group-by RPC — still no review rows
+  // cross the wire, only ≤5 aggregated counts.
+  assert.match(fn, /rpc\('product_review_summary'/);
+  assert.doesNotMatch(fn, /\.from\('product_reviews'\)/, 'no direct row reads in summary');
   assert.doesNotMatch(fn, /for\s*\(\s*;;\)/, 'no unbounded loops');
+
+  // Migration must keep the RPC read-only and RLS-safe (invoker role).
+  const migration = readFileSync(
+    'database/migrations/029_product_review_summary_rpc.sql',
+    'utf8'
+  );
+  assert.match(migration, /security invoker/);
+  assert.match(migration, /status = 'published'/);
+  assert.match(migration, /grant execute on function public\.product_review_summary\(uuid\) to anon/);
 });
 
 test('REVIEWS CATALOG: page size constant is 10', () => {
@@ -228,12 +240,18 @@ test('PRODUCT PAGE: wires section with searchParams-driven page', () => {
 test('PRODUCT PAGE: unapplied migration degrades to empty reviews, never a broken page', () => {
   const page = src('app/product/[slug]/page.tsx');
   // Storage for reviews is applied via a manual migration; until then the
-  // reads fail. Reviews are supplementary — the page must survive.
-  const tryPart = page.slice(
-    page.indexOf('try {'),
+  // reads fail. Reviews are supplementary — the page must survive. Since the
+  // perf-audit Step 2 the reads run under Promise.allSettled, so a rejection
+  // degrades to the empty state instead of breaking the page.
+  const guardPart = page.slice(
+    page.indexOf('Promise.allSettled('),
     page.indexOf('const galleryUrls')
   );
-  assert.ok(tryPart.includes('catch'), 'reads wrapped in try/catch');
+  assert.ok(
+    guardPart.includes("reviewsSettled.status === 'fulfilled'") &&
+      guardPart.includes('reviews unavailable'),
+    'allSettled-guarded reads with honest fallback'
+  );
   assert.match(page, /console\.error\('reviews unavailable/, 'honest server log');
   assert.match(page, /EMPTY_REVIEW_SUMMARY|total: 0/, 'empty-state fallback');
 });

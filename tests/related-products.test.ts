@@ -80,7 +80,14 @@ test('RELATED: component uses h2 (H1-invariant safe), hides when empty, reuses P
 test('RELATED: page degrades on read failure and renders before reviews', () => {
   const page = readFileSync('app/product/[slug]/page.tsx', 'utf8');
   assert.match(page, /let relatedProducts: Product\[\] = \[\]/);
-  assert.match(page, /await fetchRelatedProducts\(product\)/);
+  // Perf audit Step 2: related runs in the SAME parallel wave as reviews
+  // (Promise.allSettled) instead of a sequential post-reviews waterfall.
+  assert.match(page, /await Promise\.allSettled\(/);
+  assert.match(page, /fetchRelatedProducts\(product\)/);
+  assert.match(
+    page,
+    /relatedSettled\.status === 'fulfilled'[\s\S]*?relatedProducts = relatedSettled\.value/
+  );
   assert.match(page, /console\.error\('related products unavailable:'/);
   assert.match(page, /<RelatedProducts products=\{relatedProducts\} \/>/);
   const rel = page.indexOf('<RelatedProducts');

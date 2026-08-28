@@ -112,7 +112,7 @@ export default async function Home() {
                 key={product.id}
                 product={product}
                 imageUrl={getMainPublicImageUrl(product.images)}
-                priority={idx < 4}
+                  eager={idx < 4}
               />
             ))}
           </div>

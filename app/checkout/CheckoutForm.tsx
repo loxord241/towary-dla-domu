@@ -880,7 +880,7 @@ export default function CheckoutForm() {
                         alt={preview.name ?? ''}
                         width={48}
                         height={48}
-                        unoptimized
+                        sizes="48px"
                         className="h-12 w-12 rounded-lg border border-gray-100 object-cover"
                       />
                     )}

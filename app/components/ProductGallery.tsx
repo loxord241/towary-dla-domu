@@ -28,15 +28,16 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
   return (
     <div>
       <div className="relative">
-        {/* Above-the-fold LCP image: priority disables the default lazy-load
-            and adds fetchpriority=high (2026-08 UX audit). */}
+        {/* Above-the-fold LCP image: preload inserts a <head> link so the
+            fetch starts before hydration (Next 16 replacement for the
+            deprecated `priority` prop; 2026-08 UX audit + perf audit). */}
         <Image
           src={main.url}
           alt={main.alt}
           width={960}
           height={768}
-          priority
-          unoptimized
+          preload
+          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 100vw, 50vw"
           className="w-full h-96 object-contain"
         />
         {images.length > 1 && (
@@ -93,7 +94,7 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
                 alt={img.alt}
                 width={80}
                 height={80}
-                unoptimized
+                sizes="80px"
                 className="w-20 h-20 object-cover rounded"
               />
             </button>

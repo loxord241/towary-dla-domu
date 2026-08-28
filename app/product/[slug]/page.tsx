@@ -92,18 +92,28 @@ export default async function ProductPage({
   const reviewsPage =
     Number.isInteger(rawReviewsPage) && rawReviewsPage > 0 ? rawReviewsPage : 1
 
+  // Supplementary content (perf audit Step 2 2026-08-28): reviews, summary
+  // and related products depend ONLY on `product`, so they all run in ONE
+  // parallel wave instead of reviews-first-then-related waterfall. Each part
+  // keeps its own degradation contract: a reviews failure degrades to an
+  // empty state, a related failure hides the block — neither breaks the page.
+  const [reviewsSettled, relatedSettled] = await Promise.allSettled([
+    Promise.all([
+      fetchReviewSummary(product.id),
+      fetchPublishedReviews(product.id, reviewsPage),
+    ]),
+    fetchRelatedProducts(product),
+  ]);
+
   // Reviews are supplementary content: until migration 015 is applied (or
   // during a storage hiccup) the reads fail — degrade to an empty state and
   // log honestly instead of breaking the whole product page.
   let reviewSummary: ReviewSummary
   let reviewsData: ReviewsPageData
-  try {
-    ;[reviewSummary, reviewsData] = await Promise.all([
-      fetchReviewSummary(product.id),
-      fetchPublishedReviews(product.id, reviewsPage),
-    ])
-  } catch (err) {
-    console.error('reviews unavailable:', err)
+  if (reviewsSettled.status === 'fulfilled') {
+    ;[reviewSummary, reviewsData] = reviewsSettled.value
+  } else {
+    console.error('reviews unavailable:', reviewsSettled.reason)
     reviewSummary = { total: 0, average: null, distribution: [0, 0, 0, 0, 0] }
     reviewsData = { reviews: [], total: 0, page: 1, pageSize: 10 }
   }
@@ -111,10 +121,10 @@ export default async function ProductPage({
   // Related products are supplementary content: a failed read degrades to a
   // hidden block instead of failing the whole page (same contract as reviews).
   let relatedProducts: Product[] = []
-  try {
-    relatedProducts = await fetchRelatedProducts(product)
-  } catch (err) {
-    console.error('related products unavailable:', err)
+  if (relatedSettled.status === 'fulfilled') {
+    relatedProducts = relatedSettled.value
+  } else {
+    console.error('related products unavailable:', relatedSettled.reason)
   }
 
   const galleryUrls = getPublicImageUrls(product.images)
