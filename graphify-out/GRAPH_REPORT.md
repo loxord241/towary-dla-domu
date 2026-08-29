@@ -1,7 +1,7 @@
 # Graph Report - my-shop  (2026-08-29)
 
 ## Corpus Check
-- 383 files · ~473,532 words
+- 383 files · ~473,548 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `38335c40`
+- Built from commit: `48b350d3`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -371,8 +371,8 @@ Cohesion: 0.20
 Nodes (16): ALLOWED_AVAILABILITY, GET(), isValidCurrency(), PUT(), fetchAllJoined(), GET(), POST(), parseCategoryIds() (+8 more)
 
 ### Community 37 - "delivery-cost.ts"
-Cohesion: 0.15
-Nodes (20): POST(), POST(), buildCalculationInput(), CalcInputResult, CalcSkipReason, selectDeliveryService(), ServiceSelection, ShipmentForCalc (+12 more)
+Cohesion: 0.14
+Nodes (21): POST(), POST(), buildCalculationInput(), CalcInputResult, CalcSkipReason, selectDeliveryService(), ServiceSelection, ShipmentForCalc (+13 more)
 
 ### Community 38 - "FeedbackModal.tsx"
 Cohesion: 0.17
@@ -488,7 +488,7 @@ Nodes (6): callbackBody(), cbBody(), CFG, makeDeps(), makeGateway(), Row
 
 ### Community 67 - "ttn/route.ts"
 Cohesion: 0.07
-Nodes (45): DELETE(), INVALID_MESSAGES, novaPostFailureResponse(), OrderRow, parseBodyShipmentId(), POST(), providerAdapter(), readShipmentRow() (+37 more)
+Nodes (44): DELETE(), INVALID_MESSAGES, novaPostFailureResponse(), OrderRow, parseBodyShipmentId(), POST(), providerAdapter(), readShipmentRow() (+36 more)
 
 ### Community 68 - "Global Constraints"
 Cohesion: 0.20

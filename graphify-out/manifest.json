@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "app/layout.tsx": {
-    "mtime": 1787950143.4999847,
-    "seen": 1787997227.482856,
-    "ast_hash": "cf91287b3768492ee6468c4d641b5268",
+    "mtime": 1788006009.5395756,
+    "seen": 1788006065.9471269,
+    "ast_hash": "fee9b8221fbf27a3749a0c282e0117a4",
     "semantic_hash": ""
   },
   "app/lib/admin-api.ts": {
