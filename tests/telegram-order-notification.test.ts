@@ -268,22 +268,37 @@ test('SECURITY: failure log line contains only order number + reason', async () 
 // ---- env validation --------------------------------------------------------
 
 test('CONFIG: both env vars missing → disabled', () => {
-  assert.deepEqual(resolveTelegramOrderConfig(), { enabled: false });
+  assert.deepEqual(resolveTelegramOrderConfig(), { enabled: false, chatIds: [] });
 });
 
 test('CONFIG: token without chat id → disabled; chat id without token → disabled', () => {
   process.env.TELEGRAM_BOT_TOKEN = TOKEN;
-  assert.deepEqual(resolveTelegramOrderConfig(), { enabled: false });
+  assert.deepEqual(resolveTelegramOrderConfig(), { enabled: false, chatIds: [] });
   delete process.env.TELEGRAM_BOT_TOKEN;
   process.env.TELEGRAM_ORDER_CHAT_ID = CHAT_ID;
-  assert.deepEqual(resolveTelegramOrderConfig(), { enabled: false });
+  assert.deepEqual(resolveTelegramOrderConfig(), { enabled: false, chatIds: [] });
 });
 
-test('CONFIG: both present → enabled (values not exposed by the flag check)', () =>
+test('CONFIG: single chat id → enabled with one recipient', () =>
   withTelegramEnv(() => {
     const config = resolveTelegramOrderConfig();
     assert.equal(config.enabled, true);
+    assert.deepEqual(config.chatIds, [CHAT_ID]);
   }));
+
+test('CONFIG: comma-separated chat ids → enabled with all recipients (whitespace/empty entries tolerated)', () =>
+  withTelegramEnv(() => {
+    process.env.TELEGRAM_ORDER_CHAT_ID = ` ${CHAT_ID} , 111 , ,222,`;
+    const config = resolveTelegramOrderConfig();
+    assert.equal(config.enabled, true);
+    assert.deepEqual(config.chatIds, [CHAT_ID, '111', '222']);
+  }));
+
+test('CONFIG: empty/whitespace-only chat id list → disabled', () => {
+  process.env.TELEGRAM_BOT_TOKEN = TOKEN;
+  process.env.TELEGRAM_ORDER_CHAT_ID = ' , , ';
+  assert.deepEqual(resolveTelegramOrderConfig(), { enabled: false, chatIds: [] });
+});
 
 test('DISABLED: no Telegram request is made when configuration is absent', async () => {
   const stub = stubFetch(() => okResponse());
@@ -327,6 +342,52 @@ test('CLIENT: message text in body is built from the order data', async () =>
       assert.equal(body.chat_id, CHAT_ID);
       assert.ok(body.text.includes('ORD-20260829-ABC123'));
       assert.ok(body.text.includes('🛒 НОВЕ ЗАМОВЛЕННЯ'));
+    } finally {
+      stub.restore();
+    }
+  }));
+
+test('CLIENT: one fetch per configured recipient — correct chat_id for each', async () =>
+  withTelegramEnv(async () => {
+    process.env.TELEGRAM_ORDER_CHAT_ID = `${CHAT_ID}, 777777`;
+    const stub = stubFetch(() => okResponse());
+    try {
+      const result = await sendTelegramOrderMessage(BASE_DATA);
+      assert.equal(result.sent, true);
+      assert.equal(stub.calls.length, 2);
+      const chatIds = stub.calls.map(
+        (c) => (JSON.parse(String(c.init.body)) as { chat_id: string }).chat_id
+      );
+      assert.deepEqual(chatIds, [CHAT_ID, '777777']);
+    } finally {
+      stub.restore();
+    }
+  }));
+
+test('CLIENT: partial failure — sends to all, reports failure without secrets', async () =>
+  withTelegramEnv(async () => {
+    process.env.TELEGRAM_ORDER_CHAT_ID = `${CHAT_ID}, 777777`;
+    const stub = stubFetch((_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { chat_id: string };
+      return body.chat_id === '777777'
+        ? new Response(JSON.stringify({ ok: false, error_code: 400 }), { status: 200 })
+        : okResponse();
+    });
+    try {
+      const logs: string[] = [];
+      const original = console.error;
+      console.error = (...parts: unknown[]) => logs.push(parts.join(' '));
+      let result;
+      try {
+        result = await sendTelegramOrderMessage(BASE_DATA);
+      } finally {
+        console.error = original;
+      }
+      assert.equal(stub.calls.length, 2);
+      assert.equal(result.sent, false);
+      assert.equal(result.detail, 'recipients:1/2');
+      assert.ok(logs.some((l) => l.includes('recipient 2/2')));
+      assert.ok(!logs.some((l) => l.includes(TOKEN)));
     } finally {
       stub.restore();
     }

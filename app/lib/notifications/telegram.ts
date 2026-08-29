@@ -12,9 +12,10 @@
  *    leaves the server (the bot token is part of the endpoint URL only);
  *  - plain-text messages (no parse_mode) — user-controlled text cannot
  *    break any formatting, so no escaping is required by design;
- *  - at-most-once per created order: exactly one HTTP call, no retry loop
- *    (a checkout retry creates a NEW order number, so per-order duplicates
- *    cannot originate from this module).
+ *  - at-most-once per created order per recipient: exactly one HTTP call
+ *    per configured chat id, no retry loop (a checkout retry creates a NEW
+ *    order number, so per-order duplicates cannot originate from this
+ *    module); TELEGRAM_ORDER_CHAT_ID accepts a comma-separated list.
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -60,18 +61,23 @@ export interface TelegramSendResult {
 export interface TelegramOrderConfig {
   enabled: boolean;
   token?: string;
-  chatId?: string;
+  chatIds: string[];
 }
 
 /**
- * Both env vars required; any missing/pairing combination → disabled.
- * Never returns the values themselves to callers that only need the flag.
+ * TELEGRAM_ORDER_CHAT_ID accepts a comma-separated list of chat ids
+ * (e.g. "907687581,-1001234567890") — every recipient gets the message.
+ * Whitespace and empty entries are tolerated. Token + at least one
+ * recipient required to enable; values are never exposed by the flag check.
  */
 export function resolveTelegramOrderConfig(): TelegramOrderConfig {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
-  const chatId = process.env.TELEGRAM_ORDER_CHAT_ID?.trim();
-  if (!token || !chatId) return { enabled: false };
-  return { enabled: true, token, chatId };
+  const chatIds = (process.env.TELEGRAM_ORDER_CHAT_ID ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => id !== '');
+  if (!token || chatIds.length === 0) return { enabled: false, chatIds: [] };
+  return { enabled: true, token, chatIds };
 }
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -158,34 +164,26 @@ const TELEGRAM_TIMEOUT_MS = 4000;
 const TELEGRAM_API_BASE = 'https://api.telegram.org';
 
 /**
- * One HTTP call, bounded by an AbortController timeout; no retry (the
- * notification is best-effort — a retry would double the latency budget of
- * post-response work for a secondary side effect).
- *
- * Log line contains ONLY the order number + reason/detail (status code or
- * error name) — never the token, the URL, the message text or customer data.
+ * One HTTP call to one recipient, bounded by an AbortController timeout.
+ * No retry (the notification is best-effort — a retry would double the
+ * latency budget of post-response work for a secondary side effect).
  */
-export async function sendTelegramOrderMessage(
-  data: OrderNotificationData,
-  config: TelegramOrderConfig = resolveTelegramOrderConfig()
+async function postTelegramMessage(
+  token: string,
+  chatId: string,
+  text: string
 ): Promise<TelegramSendResult> {
-  if (!config.enabled) return { sent: false, reason: 'disabled' };
-
-  const text = buildOrderNotificationMessage(
-    data,
-    process.env.NEXT_PUBLIC_SITE_URL
-  );
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TELEGRAM_TIMEOUT_MS);
   let result: TelegramSendResult;
   try {
     const response = await fetch(
-      `${TELEGRAM_API_BASE}/bot${config.token}/sendMessage`,
+      `${TELEGRAM_API_BASE}/bot${token}/sendMessage`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // Token deliberately NOT in the body — it is part of the endpoint path only.
-        body: JSON.stringify({ chat_id: config.chatId, text }),
+        body: JSON.stringify({ chat_id: chatId, text }),
         signal: controller.signal,
       }
     );
@@ -224,12 +222,48 @@ export async function sendTelegramOrderMessage(
   } finally {
     clearTimeout(timer);
   }
-  if (!result.sent) {
-    console.error(
-      `telegram notification failed for order ${data.orderNumber}: ${result.reason}${result.detail ? ` (${result.detail})` : ''}`
-    );
-  }
   return result;
+}
+
+/**
+ * Sends the same message to EVERY configured recipient. sent=true only when
+ * all recipients succeeded; per-recipient failures are logged (recipient
+ * index only — never the chat id, token, message text or customer data).
+ */
+export async function sendTelegramOrderMessage(
+  data: OrderNotificationData,
+  config: TelegramOrderConfig = resolveTelegramOrderConfig()
+): Promise<TelegramSendResult> {
+  if (!config.enabled) return { sent: false, reason: 'disabled' };
+
+  const text = buildOrderNotificationMessage(
+    data,
+    process.env.NEXT_PUBLIC_SITE_URL
+  );
+  const total = config.chatIds.length;
+  let okCount = 0;
+  let firstFailure: TelegramSendResult | undefined;
+  for (let index = 0; index < total; index++) {
+    const result = await postTelegramMessage(
+      config.token!,
+      config.chatIds[index],
+      text
+    );
+    if (result.sent) {
+      okCount++;
+    } else {
+      firstFailure ??= result;
+      console.error(
+        `telegram notification failed for order ${data.orderNumber} (recipient ${index + 1}/${total}): ${result.reason}${result.detail ? ` (${result.detail})` : ''}`
+      );
+    }
+  }
+  if (okCount === total) return { sent: true };
+  return {
+    sent: false,
+    reason: firstFailure?.reason,
+    detail: `recipients:${okCount}/${total}`,
+  };
 }
 
 function asNumber(value: unknown): number {

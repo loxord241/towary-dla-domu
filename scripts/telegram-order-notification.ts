@@ -66,7 +66,7 @@ if (args.includes('--check-config')) {
   const config = resolveTelegramOrderConfig();
   console.log(
     config.enabled
-      ? 'Telegram notifications: enabled (both env vars present; values not shown)'
+      ? `Telegram notifications: enabled (${config.chatIds.length} recipient(s); values not shown)`
       : 'Telegram notifications: disabled (TELEGRAM_BOT_TOKEN and/or TELEGRAM_ORDER_CHAT_ID missing)'
   );
   process.exit(0);
