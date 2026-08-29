@@ -335,8 +335,12 @@ function FiltersSheet({
     };
   }, [onClose]);
 
+  // z-50 puts the sheet above the sticky header (z-40): nothing in the
+  // header needs to stay clickable while filters are open, and at z-30
+  // the tall mobile header covered the sheet's ✕ and the «Категорії»
+  // block. Parity with Modal / ReviewFormModal / FeedbackModal.
   return createPortal(
-    <div className="fixed inset-0 z-30">
+    <div className="fixed inset-0 z-50">
       <div
         className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ease-out motion-reduce:transition-none ${
           shown ? 'opacity-100' : 'pointer-events-none opacity-0'

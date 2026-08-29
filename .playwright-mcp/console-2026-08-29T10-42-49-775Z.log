@@ -1,0 +1,80 @@
+[     817ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/catalog:0
+[     817ms] [ERROR] Ignoring duplicate Content-Security-Policy directive 'connect-src'. @ http://localhost:3000/catalog:0
+[     895ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/node_modules_react-dom_0kla17-._.js:15093
+[     929ms] [ERROR] Refused to execute script from 'http://localhost:3000/_next/static/development/_clientMiddlewareManifest.js' because its MIME type ('application/json') is not executable, and strict MIME type checking is enabled. @ http://localhost:3000/catalog:0
+[     935ms] Error: ./app/catalog/CatalogFilters.tsx:343:10
+Error: Expected ',', got 'ident'
+  341 |         the tall mobile header covered the sheet's ✕ and the «Категорії»
+  342 |         block. Parity with Modal / ReviewFormModal / FeedbackModal. */}
+> 343 |     <div className="fixed inset-0 z-50">
+      |          ^^^^^^^^^
+  344 |       <div
+  345 |         className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ease-out...
+  346 |           shown ? 'opacity-100' : 'pointer-events-none opacity-0'
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./app/catalog/CatalogFilters.tsx
+    ./app/catalog/page.tsx
+
+
+    at <unknown> (Error: ./app/catalog/CatalogFilters.tsx:343:10)
+    at Object.getCompilationErrors (file:///home/loxord/projects/my-shop/node_modules/next/dist/server/dev/hot-reloader-turbopack.js:1417:59)
+    at DevBundlerService.getCompilationError (file:///home/loxord/projects/my-shop/node_modules/next/dist/server/lib/dev-bundler-service.js:59:55)
+    at DevServer.getCompilationError (file:///home/loxord/projects/my-shop/node_modules/next/dist/server/dev/next-dev-server.js:754:42)
+    at DevServer.findPageComponents (file:///home/loxord/projects/my-shop/node_modules/next/dist/server/dev/next-dev-server.js:724:43)
+    at async DevServer.renderErrorToResponseImpl (file:///home/loxord/projects/my-shop/node_modules/next/dist/server/base-server.js:1828:26)
+[     932ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_1gdrd03._.js:756
+[     991ms] [ERROR] ./app/catalog/CatalogFilters.tsx:343:10
+Error: Expected ',', got 'ident'
+  341 |         the tall mobile header covered the sheet's ✕ and the «Категорії»
+  342 |         block. Parity with Modal / ReviewFormModal / FeedbackModal. */}
+> 343 |     <div className="fixed inset-0 z-50">
+      |          ^^^^^^^^^
+  344 |       <div
+  345 |         className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ease-out...
+  346 |           shown ? 'opacity-100' : 'pointer-events-none opacity-0'
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./app/catalog/CatalogFilters.tsx
+    ./app/catalog/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_1gdrd03._.js:1817
+[    1044ms] [ERROR] ./app/catalog/CatalogFilters.tsx:343:10
+Error: Expected ',', got 'ident'
+  341 |         the tall mobile header covered the sheet's ✕ and the «Категорії»
+  342 |         block. Parity with Modal / ReviewFormModal / FeedbackModal. */}
+> 343 |     <div className="fixed inset-0 z-50">
+      |          ^^^^^^^^^
+  344 |       <div
+  345 |         className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ease-out...
+  346 |           shown ? 'opacity-100' : 'pointer-events-none opacity-0'
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./app/catalog/CatalogFilters.tsx
+    ./app/catalog/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_1gdrd03._.js:1817
+[    1235ms] [ERROR] ./app/catalog/CatalogFilters.tsx:343:10
+Error: Expected ',', got 'ident'
+  341 |         the tall mobile header covered the sheet's ✕ and the «Категорії»
+  342 |         block. Parity with Modal / ReviewFormModal / FeedbackModal. */}
+> 343 |     <div className="fixed inset-0 z-50">
+      |          ^^^^^^^^^
+  344 |       <div
+  345 |         className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ease-out...
+  346 |           shown ? 'opacity-100' : 'pointer-events-none opacity-0'
+
+Parsing ecmascript source code failed
+
+Import trace:
+  Server Component:
+    ./app/catalog/CatalogFilters.tsx
+    ./app/catalog/page.tsx @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_1gdrd03._.js:1817
+[  111877ms] [ERROR] Ignoring duplicate Content-Security-Policy directive 'connect-src'. @ http://localhost:3000/catalog:0
+[  111929ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
+[  111944ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776

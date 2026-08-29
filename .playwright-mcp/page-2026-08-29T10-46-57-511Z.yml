@@ -1,0 +1,225 @@
+- generic [ref=f2e1]:
+  - button "Open Next.js Dev Tools" [ref=f2e7] [cursor=pointer]
+  - alert [ref=f2e11]: Кухонне приладдя
+  - generic [ref=f2e12]:
+    - banner [ref=f2e13]:
+      - generic [ref=f2e15]:
+        - generic [ref=f2e16]:
+          - button "Відкрити меню" [ref=f2e17]
+          - link "Товари для дому" [ref=f2e19] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f2e20]:
+            - link "Каталог" [ref=f2e21] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f2e23]:
+          - searchbox "Пошук" [ref=f2e24]
+          - button "Шукати" [ref=f2e25]
+        - generic [ref=f2e29]:
+          - 'link "Обране, товарів: 0" [ref=f2e30] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 0" [ref=f2e33] [cursor=pointer]':
+            - /url: /cart
+    - generic [ref=f2e39]:
+      - complementary [ref=f2e40]:
+        - button "Фільтри 1" [active] [ref=f2e373] [cursor=pointer]:
+          - generic [ref=f2e43]:
+            - text: Фільтри
+            - generic [ref=f2e374]: "1"
+      - main [ref=f2e48]:
+        - generic [ref=f2e49]:
+          - generic [ref=f2e50]:
+            - heading "Кухонне приладдя" [level=1] [ref=f2e375]
+            - generic [ref=f2e52]: "Знайдено: 215"
+          - generic [ref=f2e53]:
+            - generic [ref=f2e376]:
+              - generic [ref=f2e377]: "Фільтри:"
+              - 'link "Прибрати фільтр Категорія: Кухонне приладдя" [ref=f2e378] [cursor=pointer]':
+                - /url: /catalog
+                - text: "Категорія: Кухонне приладдя"
+                - generic [ref=f2e379]: ×
+              - link "Скинути всі" [ref=f2e380] [cursor=pointer]:
+                - /url: /catalog
+            - combobox "Сортування" [ref=f2e54]:
+              - option "Спочатку нові" [selected]
+              - option "Ціна ▲"
+              - option "Ціна ▼"
+              - option "Назва А–Я"
+          - generic [ref=f2e55]:
+            - generic [ref=f2e381]:
+              - button "Додати до обраного" [ref=f2e383]
+              - link "Кух.прилад RINGEL Grey line Вінчик силікон/дерево 32 см (RG-5128/5) Кух.прилад RINGEL Grey line Вінчик силікон/дерево 32 см (RG-5128/5) RINGEL 206 UAH В наявності" [ref=f2e386] [cursor=pointer]:
+                - /url: /product/kukh-prylad-ringel-grey-line-vinchyk-sylikon-derevo-32-sm-rg-5128-5-6853990
+                - img "Кух.прилад RINGEL Grey line Вінчик силікон/дерево 32 см (RG-5128/5)" [ref=f2e388]
+                - generic [ref=f2e389]:
+                  - heading "Кух.прилад RINGEL Grey line Вінчик силікон/дерево 32 см (RG-5128/5)" [level=3] [ref=f2e390]
+                  - paragraph [ref=f2e391]: RINGEL
+                  - generic [ref=f2e392]: 206 UAH
+                  - paragraph [ref=f2e394]: В наявності
+            - generic [ref=f2e395]:
+              - button "Додати до обраного" [ref=f2e397]
+              - link "Миска IQ Be Chef 16 см (1.5 л) нерж з кришкою (IQ-9144-16) Немає в наявності Миска IQ Be Chef 16 см (1.5 л) нерж з кришкою (IQ-9144-16) IQ 579 UAH" [ref=f2e400] [cursor=pointer]:
+                - /url: /product/myska-iq-be-chef-16-sm-1-5-l-nerzh-z-kryshkoiu-iq-9144-16-6998865
+                - generic [ref=f2e401]:
+                  - img "Миска IQ Be Chef 16 см (1.5 л) нерж з кришкою (IQ-9144-16)" [ref=f2e402]
+                  - generic [ref=f2e403]: Немає в наявності
+                - generic [ref=f2e404]:
+                  - heading "Миска IQ Be Chef 16 см (1.5 л) нерж з кришкою (IQ-9144-16)" [level=3] [ref=f2e405]
+                  - paragraph [ref=f2e406]: IQ
+                  - generic [ref=f2e407]: 579 UAH
+            - generic [ref=f2e409]:
+              - button "Додати до обраного" [ref=f2e411]
+              - link "Дошка обробна IQ Be Trendy 25*20*2 (IQ-5040/4) Дошка обробна IQ Be Trendy 25*20*2 (IQ-5040/4) IQ 439 UAH В наявності" [ref=f2e414] [cursor=pointer]:
+                - /url: /product/doshka-obrobna-iq-be-trendy-25-20-2-iq-5040-4-6805311
+                - img "Дошка обробна IQ Be Trendy 25*20*2 (IQ-5040/4)" [ref=f2e416]
+                - generic [ref=f2e417]:
+                  - heading "Дошка обробна IQ Be Trendy 25*20*2 (IQ-5040/4)" [level=3] [ref=f2e418]
+                  - paragraph [ref=f2e419]: IQ
+                  - generic [ref=f2e420]: 439 UAH
+                  - paragraph [ref=f2e422]: В наявності
+            - generic [ref=f2e423]:
+              - button "Додати до обраного" [ref=f2e425]
+              - link "Миска IQ Be Chef 20 см (3.0 л) нерж з кришкою (IQ-9144-20) Немає в наявності Миска IQ Be Chef 20 см (3.0 л) нерж з кришкою (IQ-9144-20) IQ 789 UAH" [ref=f2e428] [cursor=pointer]:
+                - /url: /product/myska-iq-be-chef-20-sm-3-0-l-nerzh-z-kryshkoiu-iq-9144-20-6998866
+                - generic [ref=f2e429]:
+                  - img "Миска IQ Be Chef 20 см (3.0 л) нерж з кришкою (IQ-9144-20)" [ref=f2e430]
+                  - generic [ref=f2e431]: Немає в наявності
+                - generic [ref=f2e432]:
+                  - heading "Миска IQ Be Chef 20 см (3.0 л) нерж з кришкою (IQ-9144-20)" [level=3] [ref=f2e433]
+                  - paragraph [ref=f2e434]: IQ
+                  - generic [ref=f2e435]: 789 UAH
+            - generic [ref=f2e437]:
+              - button "Додати до обраного" [ref=f2e439]
+              - link "Миска VIOLET HOUSE RANDOM WAVY 0179 кругла з/к 4,5 л (0179 RANDOM WAVY) Миска VIOLET HOUSE RANDOM WAVY 0179 кругла з/к 4,5 л (0179 RANDOM WAVY) VIOLET HOUSE 235 UAH В наявності" [ref=f2e442] [cursor=pointer]:
+                - /url: /product/myska-violet-house-random-wavy-0179-kruhla-z-k-4-5-l-0179-random-wavy-7249019
+                - img "Миска VIOLET HOUSE RANDOM WAVY 0179 кругла з/к 4,5 л (0179 RANDOM WAVY)" [ref=f2e444]
+                - generic [ref=f2e445]:
+                  - heading "Миска VIOLET HOUSE RANDOM WAVY 0179 кругла з/к 4,5 л (0179 RANDOM WAVY)" [level=3] [ref=f2e446]
+                  - paragraph [ref=f2e447]: VIOLET HOUSE
+                  - generic [ref=f2e448]: 235 UAH
+                  - paragraph [ref=f2e450]: В наявності
+            - generic [ref=f2e451]:
+              - button "Додати до обраного" [ref=f2e453]
+              - link "Кух.прилад HEREVIN Green Ручний міксер 1.6 л (163100-800) Кух.прилад HEREVIN Green Ручний міксер 1.6 л (163100-800) HEREVIN 499 UAH В наявності" [ref=f2e456] [cursor=pointer]:
+                - /url: /product/kukh-prylad-herevin-green-ruchnyi-mikser-1-6-l-163100-800-7182667
+                - img "Кух.прилад HEREVIN Green Ручний міксер 1.6 л (163100-800)" [ref=f2e458]
+                - generic [ref=f2e459]:
+                  - heading "Кух.прилад HEREVIN Green Ручний міксер 1.6 л (163100-800)" [level=3] [ref=f2e460]
+                  - paragraph [ref=f2e461]: HEREVIN
+                  - generic [ref=f2e462]: 499 UAH
+                  - paragraph [ref=f2e464]: В наявності
+            - generic [ref=f2e465]:
+              - button "Додати до обраного" [ref=f2e467]
+              - link "Кух.прилад VIOLET HOUSE 0697 сушарка для посуду розсувна BEIGE (0697 BEIGE) Кух.прилад VIOLET HOUSE 0697 сушарка для посуду розсувна BEIGE (0697 BEIGE) VIOLET HOUSE 559 UAH В наявності" [ref=f2e470] [cursor=pointer]:
+                - /url: /product/kukh-prylad-violet-house-0697-susharka-dlia-posudu-rozsuvna-beige-0697-beige-7249014
+                - img "Кух.прилад VIOLET HOUSE 0697 сушарка для посуду розсувна BEIGE (0697 BEIGE)" [ref=f2e472]
+                - generic [ref=f2e473]:
+                  - heading "Кух.прилад VIOLET HOUSE 0697 сушарка для посуду розсувна BEIGE (0697 BEIGE)" [level=3] [ref=f2e474]
+                  - paragraph [ref=f2e475]: VIOLET HOUSE
+                  - generic [ref=f2e476]: 559 UAH
+                  - paragraph [ref=f2e478]: В наявності
+            - generic [ref=f2e479]:
+              - button "Додати до обраного" [ref=f2e481]
+              - link "Кух.прилад HEREVIN Popcorn Box 1.6 л Контейнер для попкорну (161966-002) Кух.прилад HEREVIN Popcorn Box 1.6 л Контейнер для попкорну (161966-002) HEREVIN 109 UAH В наявності" [ref=f2e484] [cursor=pointer]:
+                - /url: /product/kukh-prylad-herevin-popcorn-box-1-6-l-konteiner-dlia-popkornu-161966-002-7182669
+                - img "Кух.прилад HEREVIN Popcorn Box 1.6 л Контейнер для попкорну (161966-002)" [ref=f2e486]
+                - generic [ref=f2e487]:
+                  - heading "Кух.прилад HEREVIN Popcorn Box 1.6 л Контейнер для попкорну (161966-002)" [level=3] [ref=f2e488]
+                  - paragraph [ref=f2e489]: HEREVIN
+                  - generic [ref=f2e490]: 109 UAH
+                  - paragraph [ref=f2e492]: В наявності
+            - generic [ref=f2e493]:
+              - button "Додати до обраного" [ref=f2e495]
+              - link "Тортівниця пл. VIOLET HOUSE 0036 Каризма Antrasit квадратна з/к 13х38х38 см (0036 Каризма Antrasit квадратная с/к) Тортівниця пл. VIOLET HOUSE 0036 Каризма Antrasit квадратна з/к 13х38х38 см (0036 Каризма Antrasit квадратная с/к) VIOLET HOUSE 599 UAH В наявності" [ref=f2e498] [cursor=pointer]:
+                - /url: /product/tortivnytsia-pl-violet-house-0036-karyzma-antrasit-kvadratna-z-k-13kh38kh38-sm-0-7181048
+                - img "Тортівниця пл. VIOLET HOUSE 0036 Каризма Antrasit квадратна з/к 13х38х38 см (0036 Каризма Antrasit квадратная с/к)" [ref=f2e500]
+                - generic [ref=f2e501]:
+                  - heading "Тортівниця пл. VIOLET HOUSE 0036 Каризма Antrasit квадратна з/к 13х38х38 см (0036 Каризма Antrasit квадратная с/к)" [level=3] [ref=f2e502]
+                  - paragraph [ref=f2e503]: VIOLET HOUSE
+                  - generic [ref=f2e504]: 599 UAH
+                  - paragraph [ref=f2e506]: В наявності
+            - generic [ref=f2e507]:
+              - button "Додати до обраного" [ref=f2e509]
+              - link "Кух.прилад HEREVIN контейнер для іжі собак 7.3 л (161158-002) Кух.прилад HEREVIN контейнер для іжі собак 7.3 л (161158-002) HEREVIN 259 UAH В наявності" [ref=f2e512] [cursor=pointer]:
+                - /url: /product/kukh-prylad-herevin-konteiner-dlia-izhi-sobak-7-3-l-161158-002-7182672
+                - img "Кух.прилад HEREVIN контейнер для іжі собак 7.3 л (161158-002)" [ref=f2e514]
+                - generic [ref=f2e515]:
+                  - heading "Кух.прилад HEREVIN контейнер для іжі собак 7.3 л (161158-002)" [level=3] [ref=f2e516]
+                  - paragraph [ref=f2e517]: HEREVIN
+                  - generic [ref=f2e518]: 259 UAH
+                  - paragraph [ref=f2e520]: В наявності
+            - generic [ref=f2e521]:
+              - button "Додати до обраного" [ref=f2e523]
+              - link "Дошка обробна VIVA зі сланцю кругл. 25 см (SLR25) Дошка обробна VIVA зі сланцю кругл. 25 см (SLR25) VIVA 189 UAH В наявності" [ref=f2e526] [cursor=pointer]:
+                - /url: /product/doshka-obrobna-viva-zi-slantsiu-kruhl-25-sm-slr25-7203886
+                - img "Дошка обробна VIVA зі сланцю кругл. 25 см (SLR25)" [ref=f2e528]
+                - generic [ref=f2e529]:
+                  - heading "Дошка обробна VIVA зі сланцю кругл. 25 см (SLR25)" [level=3] [ref=f2e530]
+                  - paragraph [ref=f2e531]: VIVA
+                  - generic [ref=f2e532]: 189 UAH
+                  - paragraph [ref=f2e534]: В наявності
+            - generic [ref=f2e535]:
+              - button "Додати до обраного" [ref=f2e537]
+              - link "Кух.прилад VIOLET HOUSE 0697 сушарка для посуду розсувна WHITE (0697 WHITE) Кух.прилад VIOLET HOUSE 0697 сушарка для посуду розсувна WHITE (0697 WHITE) VIOLET HOUSE 559 UAH В наявності" [ref=f2e540] [cursor=pointer]:
+                - /url: /product/kukh-prylad-violet-house-0697-susharka-dlia-posudu-rozsuvna-white-0697-white-7259417
+                - img "Кух.прилад VIOLET HOUSE 0697 сушарка для посуду розсувна WHITE (0697 WHITE)" [ref=f2e542]
+                - generic [ref=f2e543]:
+                  - heading "Кух.прилад VIOLET HOUSE 0697 сушарка для посуду розсувна WHITE (0697 WHITE)" [level=3] [ref=f2e544]
+                  - paragraph [ref=f2e545]: VIOLET HOUSE
+                  - generic [ref=f2e546]: 559 UAH
+                  - paragraph [ref=f2e548]: В наявності
+          - navigation [ref=f2e224]:
+            - generic [ref=f2e225]: ← Назад
+            - generic [ref=f2e226]:
+              - text: Сторінка 1 із 18
+              - generic [ref=f2e227]: · знайдено 215
+            - link "Далі →" [ref=f2e228] [cursor=pointer]:
+              - /url: /catalog?category=kukhonne-pryladdia-884&page=2
+    - contentinfo [ref=f2e229]:
+      - generic [ref=f2e230]:
+        - generic [ref=f2e231]:
+          - generic [ref=f2e232]:
+            - heading "Товари для дому" [level=3] [ref=f2e233]
+            - paragraph [ref=f2e234]: Найкращі товари для вашого життя
+          - generic [ref=f2e235]:
+            - heading "Категорії" [level=4] [ref=f2e236]
+            - list [ref=f2e237]:
+              - listitem [ref=f2e238]:
+                - link "Електричні" [ref=f2e239] [cursor=pointer]:
+                  - /url: /catalog?category=elektrychni-1538
+              - listitem [ref=f2e240]:
+                - link "Електропечі" [ref=f2e241] [cursor=pointer]:
+                  - /url: /catalog?category=elektropechi-1419
+              - listitem [ref=f2e242]:
+                - link "Комплекти" [ref=f2e243] [cursor=pointer]:
+                  - /url: /catalog?category=komplekty-1646
+              - listitem [ref=f2e244]:
+                - link "Мірні склянки й кухлі" [ref=f2e245] [cursor=pointer]:
+                  - /url: /catalog?category=mirni-sklianky-i-kukhli-1349
+              - listitem [ref=f2e246]:
+                - link "Кухонне приладдя" [ref=f2e247] [cursor=pointer]:
+                  - /url: /catalog?category=kukhonne-pryladdia-884
+              - listitem [ref=f2e248]:
+                - link "Усі категорії →" [ref=f2e249] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=f2e250]:
+            - heading "Інформація" [level=4] [ref=f2e251]
+            - list [ref=f2e252]:
+              - listitem [ref=f2e253]:
+                - link "Статус замовлення" [ref=f2e254] [cursor=pointer]:
+                  - /url: /orders/lookup
+              - listitem [ref=f2e255]:
+                - link "Контакти" [ref=f2e256] [cursor=pointer]:
+                  - /url: /contacts
+              - listitem [ref=f2e257]:
+                - link "Політика конфіденційності" [ref=f2e258] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=f2e259]:
+                - link "Умови використання" [ref=f2e260] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=f2e261]:
+                - link "magazinujut@gmail.com" [ref=f2e262] [cursor=pointer]:
+                  - /url: mailto:magazinujut@gmail.com
+        - generic [ref=f2e263]:
+          - paragraph [ref=f2e264]:
+            - button "Як покращити сайт?" [ref=f2e265]
+          - paragraph [ref=f2e266]: © 2026 Товари для дому. Всі права захищені.
