@@ -102,7 +102,11 @@ test('ORDER-SEC: order creation uses anon client, place_order RPC, strict output
 
 test('ORDER-SEC: creation response exposes only number/total/currency/token', () => {
   const r = src('app/api/orders/route.ts');
-  const body = r.slice(r.indexOf('NextResponse.json', r.indexOf("status: 201") - 400));
+  // The FINAL response is the last NextResponse.json in the file (earlier
+  // ones are early error returns). F2 changed the literal `status: 201`
+  // into `created ? 201 : 200`, so the old positional anchor broke — this
+  // anchor is robust either way and pins the same contract.
+  const body = r.slice(r.lastIndexOf('NextResponse.json'));
   for (const field of ['orderNumber', 'accessToken']) {
     assert.match(body, new RegExp(field));
   }

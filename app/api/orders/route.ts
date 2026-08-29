@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { orderAccessToken } from '@/app/lib/order-token';
 import { enforceRateLimit } from '@/app/lib/rate-limit';
 import { sanitizeDelivery } from '@/app/lib/checkout-delivery';
+import { parseIdempotencyKey } from '@/app/lib/idempotency';
 import { sendTelegramOrderNotification } from '@/app/lib/notifications/telegram';
 
 /**
@@ -58,6 +59,15 @@ function sanitizeShippingInfo(raw: unknown): Record<string, string> | null {
 export async function POST(request: Request) {
   const limited = enforceRateLimit(request, 'orders');
   if (limited) return limited;
+
+  // F2 idempotency: optional Idempotency-Key header. Missing/empty keeps
+  // the legacy path; an invalid key is rejected before any DB work. The
+  // key itself is forwarded to place_order(), which enforces dedup at the
+  // DB level (partial unique index) — replay-safe across Vercel instances.
+  const idem = parseIdempotencyKey(request.headers.get('idempotency-key'));
+  if (!idem.ok) {
+    return NextResponse.json({ error: idem.error }, { status: 400 });
+  }
 
   let body: unknown;
   try {
@@ -204,6 +214,7 @@ export async function POST(request: Request) {
         quantity: i.quantity,
       })),
     },
+    p_idempotency_key: idem.key,
   });
 
   if (error) {
@@ -236,7 +247,14 @@ export async function POST(request: Request) {
   }
 
   const result = data as
-    | { order_id?: string; order_number?: string; total?: number; currency?: string }
+    | {
+        order_id?: string;
+        order_number?: string;
+        total?: number;
+        currency?: string;
+        // F2: place_order marks a genuine creation vs an idempotent replay.
+        created?: boolean;
+      }
     | null;
 
   if (!result?.order_number) {
@@ -248,11 +266,17 @@ export async function POST(request: Request) {
   }
 
   const orderNumber: string = result.order_number;
+  // A replay (created=false) returns the ALREADY committed order — its
+  // notification was scheduled by the original request. Re-scheduling it
+  // would send a duplicate Telegram message.
+  const created = result.created !== false;
 
   // Secondary side effect, strictly AFTER the order is committed: runs once
   // the response is sent (next/server `after`), never blocks checkout and
   // can never affect the order — sendTelegramOrderNotification never throws.
-  after(() => sendTelegramOrderNotification(orderNumber));
+  if (created) {
+    after(() => sendTelegramOrderNotification(orderNumber));
+  }
 
   return NextResponse.json(
     {
@@ -261,6 +285,8 @@ export async function POST(request: Request) {
       currency: result.currency,
       accessToken: orderAccessToken(result.order_number),
     },
-    { status: 201 }
+    // 201 for a genuine creation; 200 for an idempotent replay of the same
+    // order (body shape identical — the client contract is preserved).
+    { status: created ? 201 : 200 }
   );
 }
