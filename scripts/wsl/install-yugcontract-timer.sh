@@ -72,6 +72,9 @@ Description=Read-only catalog health check (PASS/WARN/FAIL exit 0/1/2)
 # stuck-batch check simply stays quiet; a crashed sync is caught by
 # OnFailure above and by the last-success age check here.
 After=yugcontract-sync.service
+# F3: a FAIL exit (2) must notify, not just sit in the journal — the same
+# failure handler as the sync unit (webhook via YUGCONTRACT_ALERT_WEBHOOK_URL).
+OnFailure=yugcontract-sync-failure.service
 
 [Service]
 Type=oneshot
