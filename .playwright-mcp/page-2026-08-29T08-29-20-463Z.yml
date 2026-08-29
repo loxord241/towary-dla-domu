@@ -1,0 +1,207 @@
+- generic [active] [ref=f3e1]:
+  - alert [ref=f3e2]
+  - generic [ref=f3e3]:
+    - banner [ref=f3e4]:
+      - generic [ref=f3e6]:
+        - generic [ref=f3e7]:
+          - button "Відкрити меню" [ref=f3e8]
+          - link "Товари для дому" [ref=f3e10] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f3e11]:
+            - link "Каталог" [ref=f3e12] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f3e14]:
+          - searchbox "Пошук" [ref=f3e15]
+          - button "Шукати" [ref=f3e16]
+        - generic [ref=f3e20]:
+          - 'link "Обране, товарів: 0" [ref=f3e21] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 1" [ref=f3e24] [cursor=pointer]':
+            - /url: /cart
+            - generic [ref=f3e29]: "1"
+    - main [ref=f3e30]:
+      - navigation "Навігація" [ref=f3e31]:
+        - link "Каталог" [ref=f3e32] [cursor=pointer]:
+          - /url: /catalog
+        - text: /
+        - link "Мультиварки" [ref=f3e33] [cursor=pointer]:
+          - /url: /catalog?category=multyvarky-1406
+        - text: /Мультиварки RUSSELL HOBBS 23570-56 Healthy 14 Cup Rice Cooker
+      - generic [ref=f3e34]:
+        - generic [ref=f3e36]:
+          - generic [ref=f3e37]:
+            - img "Мультиварки RUSSELL HOBBS 23570-56 Healthy 14 Cup Rice Cooker" [ref=f3e38]
+            - generic [ref=f3e39]: 1 / 5
+            - button "Попереднє фото" [ref=f3e40]: ‹
+            - button "Наступне фото" [ref=f3e41]: ›
+          - generic [ref=f3e42]:
+            - button "Фото 1" [ref=f3e43]:
+              - img "Мультиварки RUSSELL HOBBS 23570-56 Healthy 14 Cup Rice Cooker" [ref=f3e44]
+            - button "Фото 2" [ref=f3e45]:
+              - img "Мультиварки RUSSELL HOBBS 23570-56 Healthy 14 Cup Rice Cooker" [ref=f3e46]
+            - button "Фото 3" [ref=f3e47]:
+              - img "Мультиварки RUSSELL HOBBS 23570-56 Healthy 14 Cup Rice Cooker" [ref=f3e48]
+            - button "Фото 4" [ref=f3e49]:
+              - img "Мультиварки RUSSELL HOBBS 23570-56 Healthy 14 Cup Rice Cooker" [ref=f3e50]
+            - button "Фото 5" [ref=f3e51]:
+              - img "Мультиварки RUSSELL HOBBS 23570-56 Healthy 14 Cup Rice Cooker" [ref=f3e52]
+        - generic [ref=f3e53]:
+          - generic [ref=f3e54]:
+            - heading "Мультиварки RUSSELL HOBBS 23570-56 Healthy 14 Cup Rice Cooker" [level=1] [ref=f3e55]
+            - 'button "Додати до обраного: Мультиварки RUSSELL HOBBS 23570-56 Healthy 14 Cup Rice Cooker" [ref=f3e56]'
+          - generic [ref=f3e59]:
+            - generic [ref=f3e60]: "Артикул:"
+            - generic [ref=f3e61]: YC-6348981_du
+          - generic [ref=f3e62]: 4 599 UAH
+          - generic [ref=f3e64]:
+            - generic [ref=f3e65]: В наявності
+            - generic [ref=f3e66]: "на складі: 1 шт"
+          - generic [ref=f3e67]:
+            - heading "Опис" [level=3] [ref=f3e68]
+            - paragraph [ref=f3e70]: Опис відсутній
+          - generic [ref=f3e71]:
+            - generic [ref=f3e72]:
+              - heading "Бренд:" [level=4] [ref=f3e73]
+              - paragraph [ref=f3e74]:
+                - link "RUSSELL HOBBS" [ref=f3e75] [cursor=pointer]:
+                  - /url: /catalog?brand=russell-hobbs
+            - generic [ref=f3e76]:
+              - heading "Категорія:" [level=4] [ref=f3e77]
+              - paragraph [ref=f3e78]:
+                - link "Мультиварки" [ref=f3e79] [cursor=pointer]:
+                  - /url: /catalog?category=multyvarky-1406
+          - generic [ref=f3e80]:
+            - generic [ref=f3e81]:
+              - generic [ref=f3e82]: "Кількість:"
+              - spinbutton [ref=f3e83]: "1"
+              - generic [ref=f3e84]: макс. 1
+            - button "Додати в кошик" [ref=f3e85]
+          - generic [ref=f3e86]:
+            - paragraph [ref=f3e87]: Доставка та оплата
+            - paragraph [ref=f3e88]:
+              - text: Умови доставки та оплати — на сторінці
+              - link "«Доставка та оплата»" [ref=f3e89] [cursor=pointer]:
+                - /url: /delivery
+              - text: .
+      - generic [ref=f3e90]:
+        - heading "Схожі товари" [level=2] [ref=f3e91]
+        - generic [ref=f3e92]:
+          - generic [ref=f3e93]:
+            - button "Додати до обраного" [ref=f3e95]
+            - link "Мультиварки TEFAL RK745134 Мультиварки TEFAL RK745134 TEFAL 5 499 UAH В наявності" [ref=f3e98] [cursor=pointer]:
+              - /url: /product/multyvarky-tefal-rk745134-6667563
+              - img "Мультиварки TEFAL RK745134" [ref=f3e100]
+              - generic [ref=f3e101]:
+                - heading "Мультиварки TEFAL RK745134" [level=3] [ref=f3e102]
+                - paragraph [ref=f3e103]: TEFAL
+                - generic [ref=f3e104]: 5 499 UAH
+                - paragraph [ref=f3e106]: В наявності
+          - generic [ref=f3e107]:
+            - button "Додати до обраного" [ref=f3e109]
+            - link "Мультиварки PHILIPS HD2151/40 Мультиварки PHILIPS HD2151/40 PHILIPS 8 499 UAH В наявності" [ref=f3e112] [cursor=pointer]:
+              - /url: /product/multyvarky-philips-hd2151-40-6809511
+              - img "Мультиварки PHILIPS HD2151/40" [ref=f3e114]
+              - generic [ref=f3e115]:
+                - heading "Мультиварки PHILIPS HD2151/40" [level=3] [ref=f3e116]
+                - paragraph [ref=f3e117]: PHILIPS
+                - generic [ref=f3e118]: 8 499 UAH
+                - paragraph [ref=f3e120]: В наявності
+          - generic [ref=f3e121]:
+            - button "Додати до обраного" [ref=f3e123]
+            - link "Мультиварки TEFAL RK321A34 Мультиварки TEFAL RK321A34 TEFAL 3 999 UAH В наявності" [ref=f3e126] [cursor=pointer]:
+              - /url: /product/multyvarky-tefal-rk321a34-6662002
+              - img "Мультиварки TEFAL RK321A34" [ref=f3e128]
+              - generic [ref=f3e129]:
+                - heading "Мультиварки TEFAL RK321A34" [level=3] [ref=f3e130]
+                - paragraph [ref=f3e131]: TEFAL
+                - generic [ref=f3e132]: 3 999 UAH
+                - paragraph [ref=f3e134]: В наявності
+          - generic [ref=f3e135]:
+            - button "Додати до обраного" [ref=f3e137]
+            - link "Скороварка MOULINEX CE430A34 Скороварка MOULINEX CE430A34 MOULINEX 6 499 UAH В наявності" [ref=f3e140] [cursor=pointer]:
+              - /url: /product/skorovarka-moulinex-ce430a34-6805995
+              - img "Скороварка MOULINEX CE430A34" [ref=f3e142]
+              - generic [ref=f3e143]:
+                - heading "Скороварка MOULINEX CE430A34" [level=3] [ref=f3e144]
+                - paragraph [ref=f3e145]: MOULINEX
+                - generic [ref=f3e146]: 6 499 UAH
+                - paragraph [ref=f3e148]: В наявності
+          - generic [ref=f3e149]:
+            - button "Додати до обраного" [ref=f3e151]
+            - link "Мультиварки GORENJE MC2SBK Мультиварки GORENJE MC2SBK GORENJE 2 829 UAH В наявності" [ref=f3e154] [cursor=pointer]:
+              - /url: /product/multyvarky-gorenje-mc2sbk-7158406
+              - img "Мультиварки GORENJE MC2SBK" [ref=f3e156]
+              - generic [ref=f3e157]:
+                - heading "Мультиварки GORENJE MC2SBK" [level=3] [ref=f3e158]
+                - paragraph [ref=f3e159]: GORENJE
+                - generic [ref=f3e160]: 2 829 UAH
+                - paragraph [ref=f3e162]: В наявності
+          - generic [ref=f3e163]:
+            - button "Додати до обраного" [ref=f3e165]
+            - link "Мультиварки GORENJE GMC6SBK (MY-CS6038WPB) Мультиварки GORENJE GMC6SBK (MY-CS6038WPB) GORENJE 4 199 UAH В наявності" [ref=f3e168] [cursor=pointer]:
+              - /url: /product/multyvarky-gorenje-gmc6sbk-my-cs6038wpb-7193445
+              - img "Мультиварки GORENJE GMC6SBK (MY-CS6038WPB)" [ref=f3e170]
+              - generic [ref=f3e171]:
+                - heading "Мультиварки GORENJE GMC6SBK (MY-CS6038WPB)" [level=3] [ref=f3e172]
+                - paragraph [ref=f3e173]: GORENJE
+                - generic [ref=f3e174]: 4 199 UAH
+                - paragraph [ref=f3e176]: В наявності
+          - generic [ref=f3e177]:
+            - button "Додати до обраного" [ref=f3e179]
+            - link "Мультиварки GORENJE MC6MBK Мультиварки GORENJE MC6MBK GORENJE 4 659 UAH В наявності" [ref=f3e182] [cursor=pointer]:
+              - /url: /product/multyvarky-gorenje-mc6mbk-6993834
+              - img "Мультиварки GORENJE MC6MBK" [ref=f3e184]
+              - generic [ref=f3e185]:
+                - heading "Мультиварки GORENJE MC6MBK" [level=3] [ref=f3e186]
+                - paragraph [ref=f3e187]: GORENJE
+                - generic [ref=f3e188]: 4 659 UAH
+                - paragraph [ref=f3e190]: В наявності
+          - generic [ref=f3e191]:
+            - button "Додати до обраного" [ref=f3e193]
+            - link "Скороварка HISENSE HMC6SBK Скороварка HISENSE HMC6SBK HISENSE 6 799 UAH В наявності" [ref=f3e196] [cursor=pointer]:
+              - /url: /product/skorovarka-hisense-hmc6sbk-7051690
+              - img "Скороварка HISENSE HMC6SBK" [ref=f3e198]
+              - generic [ref=f3e199]:
+                - heading "Скороварка HISENSE HMC6SBK" [level=3] [ref=f3e200]
+                - paragraph [ref=f3e201]: HISENSE
+                - generic [ref=f3e202]: 6 799 UAH
+                - paragraph [ref=f3e204]: В наявності
+      - generic [ref=f3e205]:
+        - generic [ref=f3e206]:
+          - heading "Відгуки" [level=2] [ref=f3e207]
+          - button "Залишити відгук" [ref=f3e208]
+        - paragraph [ref=f3e209]: Ще немає відгуків — станьте першим, хто залишить відгук про цей товар.
+    - contentinfo [ref=f3e210]:
+      - generic [ref=f3e211]:
+        - generic [ref=f3e212]:
+          - generic [ref=f3e213]:
+            - heading "Товари для дому" [level=3] [ref=f3e214]
+            - paragraph [ref=f3e215]: Найкращі товари для вашого життя
+          - generic [ref=f3e216]:
+            - heading "Категорії" [level=4] [ref=f3e217]
+            - list [ref=f3e218]:
+              - listitem [ref=f3e219]:
+                - link "Каталог" [ref=f3e220] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=f3e221]:
+            - heading "Інформація" [level=4] [ref=f3e222]
+            - list [ref=f3e223]:
+              - listitem [ref=f3e224]:
+                - link "Статус замовлення" [ref=f3e225] [cursor=pointer]:
+                  - /url: /orders/lookup
+              - listitem [ref=f3e226]:
+                - link "Контакти" [ref=f3e227] [cursor=pointer]:
+                  - /url: /contacts
+              - listitem [ref=f3e228]:
+                - link "Політика конфіденційності" [ref=f3e229] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=f3e230]:
+                - link "Умови використання" [ref=f3e231] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=f3e232]:
+                - link "magazinujut@gmail.com" [ref=f3e233] [cursor=pointer]:
+                  - /url: mailto:magazinujut@gmail.com
+        - generic [ref=f3e234]:
+          - paragraph [ref=f3e235]:
+            - button "Як покращити сайт?" [ref=f3e236]
+          - paragraph [ref=f3e237]: © 2026 Товари для дому. Всі права захищені.

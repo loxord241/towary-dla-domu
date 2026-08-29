@@ -11,6 +11,7 @@ import {
   stripHtmlToText,
   toIsoCurrency,
   buildProductJsonLd,
+  buildProductBreadcrumbJsonLd,
   serializeJsonLd,
 } from '../app/lib/schema-org.ts';
 
@@ -126,4 +127,114 @@ test('JSONLD: missing brand/description/images simply drop fields', () => {
   assert.equal(d.brand, undefined);
   assert.equal(d.description, undefined);
   assert.equal(d.image, undefined);
+});
+
+// ---- P2-3 (2026-08-29): BreadcrumbList on product pages ---------------------
+
+const BREADCRUMB_PRODUCT = {
+  name: 'Плита комбінована BEKO FSM52334DAO',
+  slug: 'plyta-beko-7081966',
+};
+const BREADCRUMB_CATEGORY = { name: 'Плити комбіновані', slug: 'plyty-kombinovani-1421' };
+const SITE = 'https://towary-dla-domu.com';
+
+test('BreadcrumbList: categorized product → 4 sequential items, real names', () => {
+  const ld = buildProductBreadcrumbJsonLd(
+    BREADCRUMB_PRODUCT,
+    BREADCRUMB_CATEGORY,
+    SITE
+  ) as {
+    '@type': string;
+    itemListElement: { position: number; name: string; item: string }[];
+  };
+  assert.equal(ld['@type'], 'BreadcrumbList');
+  const items = ld.itemListElement;
+  assert.equal(items.length, 4);
+  assert.deepEqual(
+    items.map((i) => i.position),
+    [1, 2, 3, 4]
+  );
+  assert.equal(items[0].name, 'Головна');
+  assert.equal(items[1].name, 'Каталог');
+  assert.equal(items[2].name, 'Плити комбіновані'); // REAL category name, not invented
+  assert.equal(items[3].name, 'Плита комбінована BEKO FSM52334DAO');
+});
+
+test('BreadcrumbList: every URL is absolute; last item is the product URL', () => {
+  const { itemListElement: items } = buildProductBreadcrumbJsonLd(
+    BREADCRUMB_PRODUCT,
+    BREADCRUMB_CATEGORY,
+    SITE
+  ) as { itemListElement: { item: string }[] };
+  for (const i of items) {
+    assert.match(i.item, /^https:\/\/towary-dla-domu\.com\//);
+  }
+  assert.equal(items[0].item, 'https://towary-dla-domu.com/');
+  assert.equal(items[1].item, 'https://towary-dla-domu.com/catalog');
+  assert.equal(
+    items[2].item,
+    'https://towary-dla-domu.com/catalog?category=plyty-kombinovani-1421'
+  );
+  assert.equal(
+    items[3].item,
+    'https://towary-dla-domu.com/product/plyta-beko-7081966'
+  );
+});
+
+test('BreadcrumbList: category slug is URL-encoded like the visible nav link', () => {
+  const { itemListElement: items } = buildProductBreadcrumbJsonLd(
+    BREADCRUMB_PRODUCT,
+    { name: 'Категорія/з "спецсимволами"', slug: 'kat z probilom' },
+    SITE
+  ) as { itemListElement: { item: string }[] };
+  assert.equal(
+    items[2].item,
+    'https://towary-dla-domu.com/catalog?category=kat%20z%20probilom'
+  );
+});
+
+test('BreadcrumbList: product without category drops the level, not the truth', () => {
+  const ld = buildProductBreadcrumbJsonLd(
+    BREADCRUMB_PRODUCT,
+    null,
+    SITE
+  ) as { itemListElement: { position: number; name: string }[] };
+  assert.deepEqual(
+    ld.itemListElement.map((i) => i.position),
+    [1, 2, 3]
+  );
+  assert.deepEqual(
+    ld.itemListElement.map((i) => i.name),
+    ['Головна', 'Каталог', 'Плита комбінована BEKO FSM52334DAO']
+  );
+});
+
+test('BreadcrumbList: cyrillic/special chars survive serializeJsonLd', () => {
+  const html = serializeJsonLd(
+    buildProductBreadcrumbJsonLd(
+      { name: 'Ніж TRAMONTINA "CENTURY" <поварський>', slug: 'nizh-24010' },
+      BREADCRUMB_CATEGORY,
+      SITE
+    )
+  );
+  const parsed = JSON.parse(html) as {
+    itemListElement: { name: string }[];
+  };
+  assert.equal(parsed.itemListElement.length, 4);
+  assert.equal(
+    parsed.itemListElement[3].name,
+    'Ніж TRAMONTINA "CENTURY" <поварський>'
+  );
+  assert.ok(!/<\//.test(html), 'raw </ must never survive serialization');
+});
+
+test('BreadcrumbList: Product JSON-LD builder output is untouched', () => {
+  // regression pin: the two builders coexist, product payload unchanged
+  const d = buildProductJsonLd(
+    { ...BASE, images: [] },
+    null,
+    SITE
+  ) as Record<string, unknown>;
+  assert.equal(d['@type'], 'Product');
+  assert.equal(d['@context'], 'https://schema.org');
 });

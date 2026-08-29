@@ -16,7 +16,7 @@ import RecentProducts from '@/app/components/RecentProducts'
 import RecentlyViewedTracker from '@/app/components/RecentlyViewedTracker'
 import RelatedProducts from '@/app/components/RelatedProducts'
 import ProductJsonLd from '@/app/components/ProductJsonLd'
-import { buildProductJsonLd } from '@/app/lib/schema-org'
+import { buildProductJsonLd, buildProductBreadcrumbJsonLd } from '@/app/lib/schema-org'
 import { formatPrice } from '@/app/lib/format'
 
 // React cache(): generateMetadata and the page component share ONE
@@ -133,6 +133,12 @@ export default async function ProductPage({
   // fallback (total=0) when reviews are unavailable → aggregateRating drops.
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
   const productJsonLd = buildProductJsonLd(product, reviewSummary, siteUrl)
+  // Mirrors the visible breadcrumb nav: Головна → Каталог → [Категорія] → Товар.
+  const breadcrumbJsonLd = buildProductBreadcrumbJsonLd(
+    { name: product.name, slug: product.slug },
+    product.category ?? null,
+    siteUrl
+  )
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
@@ -158,6 +164,7 @@ export default async function ProductPage({
 
         {/* Structured data: real DB fields only (see schema-org.ts honesty rules) */}
         <ProductJsonLd data={productJsonLd} />
+        <ProductJsonLd data={breadcrumbJsonLd} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {/* Product Images */}

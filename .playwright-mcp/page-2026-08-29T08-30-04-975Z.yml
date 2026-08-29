@@ -1,0 +1,83 @@
+- generic [active] [ref=f4e1]:
+  - generic [ref=f4e2]:
+    - banner [ref=f4e3]:
+      - generic [ref=f4e5]:
+        - generic [ref=f4e6]:
+          - button "Відкрити меню" [ref=f4e7]
+          - link "Товари для дому" [ref=f4e9] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f4e10]:
+            - link "Каталог" [ref=f4e11] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f4e13]:
+          - searchbox "Пошук" [ref=f4e14]
+          - button "Шукати" [ref=f4e15]
+        - generic [ref=f4e19]:
+          - 'link "Обране, товарів: 0" [ref=f4e20] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 1" [ref=f4e112] [cursor=pointer]':
+            - /url: /cart
+            - generic [ref=f4e28]: "1"
+    - generic [ref=f4e29]:
+      - heading "Кошик" [level=1] [ref=f4e30]
+      - generic [ref=f4e76]:
+        - generic [ref=f4e77]:
+          - generic [ref=f4e78]:
+            - img "Парова щітка TEFAL DT2026E1" [ref=f4e79]
+            - generic [ref=f4e80]:
+              - link "Парова щітка TEFAL DT2026E1" [ref=f4e81] [cursor=pointer]:
+                - /url: /product/parova-shchitka-tefal-dt2026e1-6873343
+              - paragraph [ref=f4e82]: 1 839 UAH / шт · В наявності
+            - generic [ref=f4e83]:
+              - button "Зменшити кількість" [disabled] [ref=f4e84]: −
+              - generic [ref=f4e85]: "1"
+              - button "Збільшити кількість" [ref=f4e86]: +
+            - generic [ref=f4e87]: 1 839 UAH
+            - button "Видалити з кошика" [ref=f4e88]: ×
+          - button "Очистити кошик" [ref=f4e100]
+        - generic [ref=f4e102]:
+          - heading "Разом" [level=2] [ref=f4e103]
+          - generic [ref=f4e104]:
+            - generic [ref=f4e105]: Товарів
+            - generic [ref=f4e106]: 1 шт
+          - generic [ref=f4e107]:
+            - generic [ref=f4e108]: До сплати
+            - generic [ref=f4e109]: 1 839 UAH
+          - paragraph [ref=f4e110]: Остаточна сума буде перерахована сервером при оформленні.
+          - link "Оформити замовлення" [ref=f4e111] [cursor=pointer]:
+            - /url: /checkout
+    - contentinfo [ref=f4e47]:
+      - generic [ref=f4e48]:
+        - generic [ref=f4e49]:
+          - generic [ref=f4e50]:
+            - heading "Товари для дому" [level=3] [ref=f4e51]
+            - paragraph [ref=f4e52]: Найкращі товари для вашого життя
+          - generic [ref=f4e53]:
+            - heading "Категорії" [level=4] [ref=f4e54]
+            - list [ref=f4e55]:
+              - listitem [ref=f4e56]:
+                - link "Каталог" [ref=f4e57] [cursor=pointer]:
+                  - /url: /catalog
+          - generic [ref=f4e58]:
+            - heading "Інформація" [level=4] [ref=f4e59]
+            - list [ref=f4e60]:
+              - listitem [ref=f4e61]:
+                - link "Статус замовлення" [ref=f4e62] [cursor=pointer]:
+                  - /url: /orders/lookup
+              - listitem [ref=f4e63]:
+                - link "Контакти" [ref=f4e64] [cursor=pointer]:
+                  - /url: /contacts
+              - listitem [ref=f4e65]:
+                - link "Політика конфіденційності" [ref=f4e66] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=f4e67]:
+                - link "Умови використання" [ref=f4e68] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=f4e69]:
+                - link "magazinujut@gmail.com" [ref=f4e70] [cursor=pointer]:
+                  - /url: mailto:magazinujut@gmail.com
+        - generic [ref=f4e71]:
+          - paragraph [ref=f4e72]:
+            - button "Як покращити сайт?" [ref=f4e73]
+          - paragraph [ref=f4e74]: © 2026 Товари для дому. Всі права захищені.
+  - alert [ref=f4e75]

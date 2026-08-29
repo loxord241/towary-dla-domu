@@ -112,6 +112,56 @@ export function buildProductJsonLd(
 }
 
 /**
+ * schema.org/BreadcrumbList builder for product pages — PURE, same honesty
+ * rules as buildProductJsonLd: every name/URL comes from real DB data, the
+ * category level is emitted ONLY when the product actually has one (no
+ * invented hierarchy). Four levels for a categorized product (Головна →
+ * Каталог → Категорія → Товар), three otherwise. Absolute URLs reuse the
+ * same siteUrl basis as buildProductJsonLd (NEXT_PUBLIC_SITE_URL via the
+ * page); the category slug is encoded exactly like the visible nav link.
+ */
+export interface BreadcrumbCategoryLike {
+  name: string;
+  slug: string;
+}
+
+export function buildProductBreadcrumbJsonLd(
+  product: { name: string; slug: string },
+  category: BreadcrumbCategoryLike | null,
+  siteUrl: string
+): Record<string, unknown> {
+  const base = siteUrl.replace(/\/+$/, '');
+  const items: Record<string, unknown>[] = [
+    { '@type': 'ListItem', position: 1, name: 'Головна', item: `${base}/` },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: 'Каталог',
+      item: `${base}/catalog`,
+    },
+  ];
+  if (category?.name && category?.slug) {
+    items.push({
+      '@type': 'ListItem',
+      position: items.length + 1,
+      name: category.name,
+      item: `${base}/catalog?category=${encodeURIComponent(category.slug)}`,
+    });
+  }
+  items.push({
+    '@type': 'ListItem',
+    position: items.length + 1,
+    name: product.name,
+    item: `${base}/product/${product.slug}`,
+  });
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items,
+  };
+}
+
+/**
  * THE serialization invariant: escape '<' so no supplier string can emit
  * '</script>' inside the JSON-LD sink. Used by ProductJsonLd.tsx and pinned
  * by tests/seo-jsonld.test.ts.

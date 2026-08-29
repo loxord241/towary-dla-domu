@@ -228,9 +228,17 @@ export function sanitizeSearchTerm(term: string): string {
  *
  * UX contract (2026-08 audit fix): word ORDER must not matter. Every
  * non-empty sanitized token becomes its own PostgREST `or` expression —
- * `name.ilike.%tok%,short_description.ilike.%tok%` — and the caller ANDs
+ * `name.ilike.%tok%,short_description.ilike.%tok%,…` — and the caller ANDs
  * the expressions by chaining `.or()` once per token (supabase-js appends
  * a separate `or` query param per call; separate filters intersect).
+ *
+ * SKU search (P2-1 2026-08-29): each token additionally matches
+ * `sku` (`YC-<id>`, verified the only format across all products) and
+ * `yugcontract_id` (the supplier article — an existing top-level column,
+ * no schema change). Same sanitized token, same ILIKE semantics: case is
+ * folded by ILIKE, partial matches fall out naturally, and hyphens are
+ * proven-safe literals (see sanitizeSearchTerm), so `YC-7061899` and the
+ * bare `7061899` both find the product.
  *
  * «мультипіч TEFAL» and «TEFAL мультипіч» therefore yield the same
  * condition SET. A single token keeps the legacy single-`or` shape, and an
@@ -248,7 +256,8 @@ export function buildSearchConditions(search: string): string[] | null {
   // without bound. Ten tokens is far beyond any meaningful storefront query.
   const tokens = [...new Set(sanitized.split(' ').filter(Boolean))].slice(0, 10);
   return tokens.map(
-    (token) => `name.ilike.%${token}%,short_description.ilike.%${token}%`
+    (token) =>
+      `name.ilike.%${token}%,short_description.ilike.%${token}%,sku.ilike.%${token}%,yugcontract_id.ilike.%${token}%`
   );
 }
 

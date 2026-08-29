@@ -35,8 +35,12 @@ test('buildSearchConditions: every token becomes an AND-ed or() expression', () 
   const conds = buildSearchConditions('парова щітка') as string[];
   assert.equal(conds.length, 2);
   for (const cond of conds) {
-    // each token must match in name OR short_description
-    assert.match(cond, /^name\.ilike\.%[^%]+%,short_description\.ilike\.%[^%]+%$/);
+    // each token must match in name OR short_description OR sku OR
+    // yugcontract_id (P2-1: SKU / supplier-article search)
+    assert.match(
+      cond,
+      /^name\.ilike\.%[^%]+%,short_description\.ilike\.%[^%]+%,sku\.ilike\.%[^%]+%,yugcontract_id\.ilike\.%[^%]+%$/
+    );
   }
   const tokens = conds.map((c) => c.split('ilike.%')[1].split('%')[0]);
   assert.deepEqual(tokens.sort(), ['парова', 'щітка'].sort());
@@ -44,8 +48,65 @@ test('buildSearchConditions: every token becomes an AND-ed or() expression', () 
 
 test('buildSearchConditions: single token keeps legacy shape', () => {
   assert.deepEqual(buildSearchConditions('щітка'), [
-    'name.ilike.%щітка%,short_description.ilike.%щітка%',
+    'name.ilike.%щітка%,short_description.ilike.%щітка%,sku.ilike.%щітка%,yugcontract_id.ilike.%щітка%',
   ]);
+});
+
+// ---- P2-1 (2026-08-29): SKU / supplier-article search -----------------------
+// Real data shape verified against production (2026-08-29): every product
+// SKU is `YC-<yugcontract_id>` (e.g. `YC-7061899` / `7061899_du`), and the
+// supplier article lives in the existing products.yugcontract_id column.
+
+test('buildSearchConditions: full SKU with YC- prefix matches sku column', () => {
+  assert.deepEqual(buildSearchConditions('YC-7061899'), [
+    'name.ilike.%YC-7061899%,short_description.ilike.%YC-7061899%,sku.ilike.%YC-7061899%,yugcontract_id.ilike.%YC-7061899%',
+  ]);
+});
+
+test('buildSearchConditions: bare numeric SKU matches yugcontract_id', () => {
+  const cond = buildSearchConditions('7061899') as string[];
+  assert.equal(cond.length, 1);
+  assert.match(cond[0], /sku\.ilike\.%7061899%/);
+  assert.match(cond[0], /yugcontract_id\.ilike\.%7061899%/);
+});
+
+test('buildSearchConditions: SKU search is case-insensitive by construction', () => {
+  // The sanitizer must NOT mutate the token either way (upper/lower pass
+  // through verbatim); case-folding itself is ILIKE semantics at the DB.
+  assert.deepEqual(buildSearchConditions('yc-7061899'), [
+    'name.ilike.%yc-7061899%,short_description.ilike.%yc-7061899%,sku.ilike.%yc-7061899%,yugcontract_id.ilike.%yc-7061899%',
+  ]);
+  // Both casings produce the same match SET against a real SKU column:
+  // identical modulo case, which ILIKE ignores.
+  const upper = buildSearchConditions('YC-7061899') as string[];
+  const lower = buildSearchConditions('yc-7061899') as string[];
+  assert.deepEqual(
+    upper.map((c) => c.toLowerCase()),
+    lower.map((c) => c.toLowerCase())
+  );
+});
+
+test('buildSearchConditions: SKU token rides the same per-token AND semantics', () => {
+  // «фен YC-7061899» — text token ANDed with the SKU token; word order free.
+  const a = buildSearchConditions('фен YC-7061899') as string[];
+  const b = buildSearchConditions('YC-7061899 фен') as string[];
+  assert.deepEqual([...a].sort(), [...b].sort());
+  assert.equal(a.length, 2);
+  for (const cond of a) {
+    assert.match(cond, /^(name|sku)\.ilike\.%[^%]+%/);
+    assert.match(cond, /yugcontract_id\.ilike\.%[^%]+%$/);
+  }
+});
+
+test('buildSearchConditions: SKU search inherits or= grammar injection guard', () => {
+  // The sanitizer replaces reserved grammar chars with spaces BEFORE the
+  // token reaches the sku/yugcontract_id pattern, so an adversarial
+  // "YC-7061899%,name.ilike" can never widen the match set.
+  const conds = buildSearchConditions('YC-7061899%",sku.neq.NULL') as string[];
+  assert.equal(conds.length, 2); // splits into safe tokens, never raw grammar
+  for (const cond of conds) {
+    assert.doesNotMatch(cond, /%,[a-z_]+\.neq\./);
+  }
 });
 
 test('buildSearchConditions: empty / whitespace / specials-only → null', () => {

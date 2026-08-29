@@ -1,0 +1,84 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - banner [ref=f2e3]:
+      - generic [ref=f2e5]:
+        - generic [ref=f2e6]:
+          - button "Відкрити меню" [ref=f2e7]
+          - link "Товари для дому" [ref=f2e9] [cursor=pointer]:
+            - /url: /
+          - navigation "Основна навігація" [ref=f2e10]:
+            - link "Каталог" [ref=f2e11] [cursor=pointer]:
+              - /url: /catalog
+        - generic [ref=f2e13]:
+          - searchbox "Пошук" [ref=f2e14]
+          - button "Шукати" [ref=f2e15]
+        - generic [ref=f2e19]:
+          - 'link "Обране, товарів: 0" [ref=f2e20] [cursor=pointer]':
+            - /url: /favorites
+          - 'link "Кошик, товарів: 1" [ref=f2e23] [cursor=pointer]':
+            - /url: /cart
+            - generic [ref=f2e28]: "1"
+    - generic [ref=f2e29]:
+      - heading "Оформлення замовлення" [level=1] [ref=f2e30]
+      - generic [ref=f2e31]:
+        - group [ref=f2e33]:
+          - generic [ref=f2e34]:
+            - paragraph [ref=f2e35]: 1. Контактні дані
+            - generic [ref=f2e36]:
+              - generic [ref=f2e37]:
+                - generic [ref=f2e38]: Ім’я *
+                - textbox "Ім’я *" [ref=f2e39]
+              - generic [ref=f2e40]:
+                - generic [ref=f2e41]: Прізвище *
+                - textbox "Прізвище *" [ref=f2e42]
+              - generic [ref=f2e43]:
+                - generic [ref=f2e44]: По батькові
+                - textbox "По батькові" [ref=f2e45]
+          - generic [ref=f2e46]:
+            - generic [ref=f2e47]: Email *
+            - textbox "Email *" [ref=f2e48]
+          - generic [ref=f2e49]:
+            - generic [ref=f2e50]: Телефон
+            - generic [ref=f2e51]:
+              - generic [ref=f2e52]: "+380"
+              - textbox "Номер телефону після +380" [ref=f2e53]:
+                - /placeholder: XX XXX XX XX
+          - generic [ref=f2e54]:
+            - paragraph [ref=f2e55]: 2. Доставка (Нова Пошта)
+            - generic [ref=f2e56]:
+              - generic [ref=f2e57] [cursor=pointer]:
+                - radio "Нова Пошта — Відділення" [ref=f2e58]
+                - text: Нова Пошта — Відділення
+              - generic [ref=f2e59] [cursor=pointer]:
+                - radio "Нова Пошта — Поштомат" [ref=f2e60]
+                - text: Нова Пошта — Поштомат
+              - generic [ref=f2e61] [cursor=pointer]:
+                - radio "Нова Пошта — Кур’єр" [ref=f2e62]
+                - text: Нова Пошта — Кур’єр
+            - generic [ref=f2e63]:
+              - generic [ref=f2e64]: Населений пункт *
+              - textbox "Населений пункт *" [ref=f2e65]:
+                - /placeholder: Почніть вводити назву міста…
+          - generic [ref=f2e66]:
+            - generic [ref=f2e67]: Примітка до замовлення
+            - textbox "Примітка до замовлення" [ref=f2e68]
+          - paragraph [ref=f2e69]: Після відправки з вами зв’яжеться менеджер для підтвердження та оплати.
+          - button "Підтвердити замовлення" [ref=f2e70]
+        - complementary "Склад замовлення" [ref=f2e71]:
+          - heading "Ваше замовлення" [level=2] [ref=f2e72]
+          - list
+          - generic [ref=f2e73]:
+            - generic [ref=f2e74]:
+              - term [ref=f2e75]: Товари
+              - definition [ref=f2e76]: "0.00"
+            - generic [ref=f2e77]:
+              - term [ref=f2e78]: Доставка
+              - definition [ref=f2e79]: за тарифами перевізника
+            - generic [ref=f2e80]:
+              - term [ref=f2e81]: До сплати
+              - definition [ref=f2e82]: "0.00"
+          - paragraph [ref=f2e83]:
+            - text: Для оформлення купівлі товару в оплату частинами від ПриватБанку, А-Банку та Пумб Банку звертатися за номером телефону
+            - link "+380 (97) 314 42 21" [ref=f2e84] [cursor=pointer]:
+              - /url: tel:+380973144221
+  - alert [ref=f2e85]
