@@ -7,12 +7,14 @@ import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  // Cyrillic is required: the storefront is lang="uk" and without this
+  // subset every Ukrainian glyph falls back outside Geist.
+  subsets: ["cyrillic", "latin"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  subsets: ["cyrillic", "latin"],
 });
 
 export const metadata: Metadata = {

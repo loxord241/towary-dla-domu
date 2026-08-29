@@ -264,7 +264,7 @@ export default function CategorySelect({
                           return next;
                         });
                       }}
-                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded ${
                         canExpand ? 'hover:bg-gray-200' : ''
                       }`}
                     >

@@ -31,7 +31,7 @@ export default function FavoriteButton({
         e.stopPropagation();
         toggleFavorite(productId);
       }}
-      className={`inline-flex h-6 w-6 items-center justify-center transition ${
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${
         active ? 'text-red-500' : 'opacity-40 hover:opacity-80'
       }`}
     >

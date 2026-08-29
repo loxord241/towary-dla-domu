@@ -254,7 +254,7 @@ export default function CartPage() {
                             updateQuantity(item.productId, item.variantId, item.quantity - 1)
                           }
                           disabled={item.quantity <= 1}
-                          className="h-8 w-8 rounded-lg border border-gray-300 text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40"
+                          className="h-11 w-11 rounded-lg border border-gray-300 text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40"
                         >
                           −
                         </button>
@@ -266,7 +266,7 @@ export default function CartPage() {
                             updateQuantity(item.productId, item.variantId, item.quantity + 1)
                           }
                           disabled={item.quantity >= maxQty}
-                          className="h-8 w-8 rounded-lg border border-gray-300 text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40"
+                          className="h-11 w-11 rounded-lg border border-gray-300 text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40"
                         >
                           +
                         </button>
@@ -283,7 +283,7 @@ export default function CartPage() {
                       type="button"
                       aria-label="Видалити з кошика"
                       onClick={() => removeItem(item.productId, item.variantId)}
-                      className="rounded-lg p-1.5 text-xl leading-none text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                      className="flex h-11 w-11 items-center justify-center rounded-lg text-xl leading-none text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
                     >
                       ×
                     </button>

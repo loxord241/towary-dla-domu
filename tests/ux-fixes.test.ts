@@ -30,17 +30,19 @@ test('home: featured empty state is a designed promo banner, not a bare EmptySta
   assert.match(home, /selectedProducts\.map/);
 });
 
-// ---- P3: interactive hit targets are at least 24x24 CSS px
+// ---- P3: interactive hit targets — superseded 2026-08-28 (P1 mobile audit
+// B4): the former >=24px floor was raised to ~44px on the storefront path.
 
-test('FavoriteButton: hit area class guarantees >=24px box around the icon', () => {
+test('FavoriteButton: hit area class guarantees a ~44px target around the icon', () => {
   const fav = src('app/components/FavoriteButton.tsx');
   assert.match(fav, /inline-flex.*items-center.*justify-center/);
-  assert.match(fav, /h-6 w-6|min-w-6|min-h-6|p-1\.5|h-10 w-10/);
+  // h-9 w-9 button + the card's p-1 wrapper ≈ 44px total hit area.
+  assert.match(fav, /h-9 w-9|h-11 w-11|min-w-11|min-h-11/);
 });
 
-test('SiteHeader: search submit button has a >=24px hit area and the input reserves room', () => {
+test('SiteHeader: search submit button has a ~44px hit area and the input reserves room', () => {
   const header = src('app/components/SiteHeader.tsx');
-  assert.match(header, /h-8 w-8/);
+  assert.match(header, /h-11 w-11/);
   // input must not hide typed text under the absolutely positioned button
   assert.match(header, /pr-1[0-4]/);
 });

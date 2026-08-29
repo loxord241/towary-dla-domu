@@ -115,9 +115,10 @@ test('ICONS: FavoriteButton keeps labels, aria-pressed and swaps hearts by state
 // ---- 4. hit areas are not reduced
 
 test('ICONS: hit-area invariants survive the icon swap', () => {
-  assert.match(src('app/components/FavoriteButton.tsx'), /h-6 w-6/);
+  // Superseded 2026-08-28 (P1 mobile audit B4): hit areas raised to ~44px.
+  assert.match(src('app/components/FavoriteButton.tsx'), /h-9 w-9/);
   const header = src('app/components/SiteHeader.tsx');
-  assert.match(header, /h-8 w-8/);
+  assert.match(header, /h-11 w-11/);
   assert.match(header, /pr-12/);
   assert.match(src('app/components/CartBadge.tsx'), /p-2/);
   assert.match(src('app/components/FavoritesBadge.tsx'), /p-2/);

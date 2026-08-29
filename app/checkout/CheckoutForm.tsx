@@ -9,6 +9,7 @@ import {
   fetchCartPreview,
   type CartPreviewLine,
 } from '@/app/lib/cart-preview';
+import { normalizeUaPhoneDigits, toE164Ua } from '@/app/lib/phone';
 
 interface SubmitResult {
   orderNumber: string;
@@ -59,19 +60,7 @@ const isLockerCategory = (category: string | null): boolean =>
 // Module-scope loaders (project react-hooks pattern): state updates happen
 // inside async callbacks, never synchronously in an effect body.
 
-/** Keep only the 9 national digits after +380. Handles pasted
- * "+380971234567" / "380971234567" / "0971234567" / "971234567". */
-export function normalizeUaPhoneDigits(raw: string): string {
-  let digits = raw.replace(/\D/g, '');
-  if (digits.startsWith('380')) digits = digits.slice(3);
-  else if (digits.startsWith('0')) digits = digits.slice(1);
-  return digits.slice(0, 9);
-}
-
-/** E.164 value sent to the backend; '' when the field was left empty. */
-export function toE164Ua(digits: string): string {
-  return digits.length === 9 ? `+380${digits}` : '';
-}
+// Phone normalizers live in app/lib/phone.ts (shared with regression tests).
 async function searchSettlementsApi(
   q: string,
   onData: (items: NpSettlement[]) => void,
@@ -183,6 +172,10 @@ export default function CheckoutForm() {
     phone?: string;
   }>({});
   const [lines, setLines] = useState<CartPreviewLine[]>([]);
+  // True when the cart-preview fetch failed: the summary must not present a
+  // silent 0.00 as if it were the real total (the server stays the pricing
+  // authority — submit is NOT blocked, the user is just warned).
+  const [previewError, setPreviewError] = useState(false);
 
   // Server-side prices for the summary panel (display only — place_order
   // remains the final pricing authority). Time-bounded fetch; a stalled
@@ -194,9 +187,13 @@ export default function CheckoutForm() {
       items.map((i) => ({ productId: i.productId, variantId: i.variantId })),
       {
         onData: (data) => {
-          if (!cancelled) setLines(data);
+          if (cancelled) return;
+          setLines(data);
+          setPreviewError(false);
         },
-        onError: () => {},
+        onError: () => {
+          if (!cancelled) setPreviewError(true);
+        },
         onDone: () => {},
       }
     );
@@ -416,6 +413,8 @@ export default function CheckoutForm() {
                   type="text"
                   required
                   maxLength={120}
+                  autoComplete="given-name"
+                  autoCorrect="off"
                   value={firstName}
                   onChange={(e) => {
                     setFirstName(e.target.value);
@@ -440,6 +439,8 @@ export default function CheckoutForm() {
                   type="text"
                   required
                   maxLength={120}
+                  autoComplete="family-name"
+                  autoCorrect="off"
                   value={lastName}
                   onChange={(e) => {
                     setLastName(e.target.value);
@@ -463,6 +464,8 @@ export default function CheckoutForm() {
                   id="co-patronymic"
                   type="text"
                   maxLength={120}
+                  autoComplete="additional-name"
+                  autoCorrect="off"
                   value={patronymic}
                   onChange={(e) => {
                     setPatronymic(e.target.value);
@@ -489,6 +492,8 @@ export default function CheckoutForm() {
               type="email"
               required
               maxLength={254}
+              autoComplete="email"
+              autoCorrect="off"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -509,8 +514,11 @@ export default function CheckoutForm() {
               Телефон
             </label>
             {/* Fixed +380 prefix: the user only ever types the 9 national
-                digits. Paste of "0971234567" / "+380971234567" is normalized
-                by normalizeUaPhoneDigits; the submitted value is E.164. */}
+                digits. Paste/autofill of "+380971234567" / "0971234567" is
+                normalized by normalizeUaPhoneDigits; the submitted value is
+                E.164. No maxLength: it would truncate a pasted number BEFORE
+                onChange and the normalizer would strip a partial "380"
+                prefix, silently losing digits (paste regression fix). */}
             <div className="flex items-stretch w-full border border-gray-300 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
               <span
                 aria-hidden="true"
@@ -525,7 +533,6 @@ export default function CheckoutForm() {
                 autoComplete="tel-national"
                 aria-label="Номер телефону після +380"
                 placeholder="XX XXX XX XX"
-                maxLength={9}
                 value={phoneDigits}
                 onChange={(e) => {
                   setPhoneDigits(normalizeUaPhoneDigits(e.target.value));
@@ -863,12 +870,25 @@ export default function CheckoutForm() {
         </fieldset>
         </form>
 
-        {/* Order summary */}
-        <aside className="card w-full p-6 lg:sticky lg:top-24 lg:w-96" aria-label="Склад замовлення">
+        {/* Order summary. order-first keeps it ABOVE the submit button on
+            mobile (DOM order puts the aside after the whole form there);
+            lg:order-none restores the natural two-column layout. */}
+        <aside
+          className="card order-first w-full p-6 lg:order-none lg:sticky lg:top-24 lg:w-96"
+          aria-label="Склад замовлення"
+        >
           <h2 className="mb-4 text-lg font-semibold">Ваше замовлення</h2>
 
           {items.length === 0 ? (
             <p className="text-sm text-gray-500">Кошик порожній</p>
+          ) : previewError && purchasable.length === 0 ? (
+            <p
+              className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+              role="status"
+            >
+              Не вдалося завантажити ціни товарів. Оформіть замовлення — точну
+              суму підтвердить менеджер.
+            </p>
           ) : (
             <>
               <ul className="mb-4 space-y-3 text-sm">
@@ -911,6 +931,15 @@ export default function CheckoutForm() {
                   <dd>{subtotal.toFixed(2)} {currency}</dd>
                 </div>
               </dl>
+              {previewError && (
+                <p
+                  className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+                  role="status"
+                >
+                  Не вдалося завантажити частину цін — точну суму підтвердить
+                  менеджер.
+                </p>
+              )}
               <p className="mt-3 border-t border-gray-100 pt-3 text-xs leading-relaxed text-gray-500">
                 Для оформлення купівлі товару в оплату частинами від
                 ПриватБанку, А-Банку та Пумб Банку звертатися за номером

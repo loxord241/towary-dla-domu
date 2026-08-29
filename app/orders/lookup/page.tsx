@@ -63,6 +63,10 @@ export default function OrderLookupPage() {
               type="text"
               required
               placeholder="ORD-YYYYMMDD-XXXXXX"
+              autoComplete="off"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
               value={orderNumber}
               onChange={(e) => setOrderNumber(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
@@ -77,6 +81,10 @@ export default function OrderLookupPage() {
               id="ol-email"
               type="email"
               required
+              autoComplete="email"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

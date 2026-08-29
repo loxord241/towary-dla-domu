@@ -44,7 +44,7 @@ export default function SiteHeader() {
               <button
                 type="submit"
                 aria-label="Шукати"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center text-gray-400 hover:text-blue-600"
+                className="absolute right-0.5 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center text-gray-400 hover:text-blue-600"
               >
                 <SearchIcon className="h-5 w-5" />
               </button>

@@ -40,7 +40,7 @@ export default function OrderDetailsCard({
                 {item.variant_name && (
                   <span className="text-gray-500"> · {item.variant_name}</span>
                 )}
-                <span className="block text-xs text-gray-400">
+                <span className="block break-words text-xs text-gray-400 [overflow-wrap:anywhere]">
                   SKU: {item.sku} · {item.quantity} шт × {item.price}
                 </span>
               </td>
