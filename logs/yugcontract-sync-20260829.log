@@ -1,0 +1,21 @@
+(node:80219) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/loxord/projects/my-shop/scripts/yugcontract-import-run.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/loxord/projects/my-shop/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+== План імпорту (read-only, 2026-08-29T16:00:09.907Z) ==
+категорії: створити 0, оновити 0
+бренди: зв’язати існуючих 68, створити 0
+товари: у фіді 4276, нових 16, оновлень 327, пропущено 0
+батчів: категорії=1, товари=5 (листів 177)
+
+== Виконання run=yc-2026-08-29-16-00-45 ==
+✓ [categories #0] Категорії: +0 створено, 0 оновлено
+✓ [products #1] Батч 1: +2 нових, 36 оновлено, 0 пропущено, 0 помилок
+✓ [products #2] Батч 2: +2 нових, 219 оновлено, 0 пропущено, 0 помилок
+✓ [products #3] Батч 3: +5 нових, 57 оновлено, 0 пропущено, 0 помилок
+✓ [products #4] Батч 4: +7 нових, 5 оновлено, 0 пропущено, 0 помилок
+✓ [products #5] Батч 5: +0 нових, 10 оновлено, 0 пропущено, 0 помилок
+
+== Підсумок (102.5 с) ==
+батчів виконано: 6; вставлено 16; оновлено 327; пропущено 0; помилок 0
+Імпорт завершено повністю.

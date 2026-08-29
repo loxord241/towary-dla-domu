@@ -1,0 +1,1008 @@
+{
+  "at": "2026-08-29T13:34:31.482Z",
+  "plannedInserts": 936,
+  "totalImagesBefore": 26902,
+  "targetImagesBefore": {
+    "037d0a7f-2e0e-412a-96cb-cffa94702872": 0,
+    "03dca09f-6549-4304-b6bd-70fd77880042": 0,
+    "05d38056-6260-4e96-bd47-2e045452d73a": 0,
+    "06a7dbf1-9705-4a89-a934-594250c90bdc": 0,
+    "0bee88a8-4d0a-4e7f-a105-a2d3a101295c": 0,
+    "0c186880-415f-4ca7-beb7-6a5107e78794": 0,
+    "0c640846-8345-4747-b070-a93ce2d55768": 0,
+    "0ed60444-b270-4dec-937f-e58ce6adcfe1": 0,
+    "1175e7af-8c86-41e9-b7c6-1c82f49aaf82": 0,
+    "134a9643-4e2c-4a1a-bc62-6002f79932f4": 0,
+    "17e4045e-a66d-403f-9fb7-c461fd09874b": 0,
+    "1add3584-d01a-4689-9dfc-f8091a1ca663": 0,
+    "1ceaad92-d18e-4873-a6d4-242ec94ae06d": 0,
+    "20c993bf-b2f4-4fa4-bf0c-6fc695ec5de0": 0,
+    "2129c736-07b4-4871-99d3-70a19a11f89a": 0,
+    "21d9a01d-de0d-42b8-9bc9-00f3757bcab9": 0,
+    "293c09b5-1477-45b2-a89f-e4b54d9b14f5": 0,
+    "2a4b54b1-1232-47ba-bf42-f7b80f5c6480": 0,
+    "2c798ae3-af9d-4a89-bac6-c72b26f8a5e6": 0,
+    "2dca1863-00f7-4280-aae8-bc428c6cac32": 0,
+    "316976a8-beaf-4bcf-a1a2-4371888adfad": 0,
+    "33193a17-1d29-49a7-ac90-86c12806a833": 0,
+    "33b81cd3-f13e-48f1-a630-e8a014380363": 0,
+    "381508eb-67ef-4d56-8e56-37572af817ec": 0,
+    "3b405860-c1f4-40ad-9de2-5bc8feecc33a": 0,
+    "3dc52a09-f623-4a84-b15c-d1ae70af7798": 0,
+    "3de99cda-3105-4bb9-93cb-ec63314430f1": 0,
+    "4111003f-3371-45ec-aabd-8db396b61b9a": 0,
+    "411c485a-0d20-467e-93ab-700849aa8293": 0,
+    "442ad976-f31e-4038-b084-e2f5d4680f21": 0,
+    "443fed34-ed76-4d5c-989f-4f7c62719d49": 0,
+    "445cd827-a53c-45cd-b475-e9c7a77474fc": 0,
+    "4467832d-4937-489b-b06f-5b0765889366": 0,
+    "44cb4ca2-ed0b-4297-adb5-3044c0d60446": 0,
+    "4973dc0e-ed30-4c1b-a0ce-822667570c91": 0,
+    "4acada94-8933-4015-ab87-e83c654dc2fb": 0,
+    "4cd84b8e-8de3-42ec-b994-f89e04d945d7": 0,
+    "4d06f989-ac5e-4657-8b10-80e560558d4c": 0,
+    "4e6f66a0-737e-4ee5-b767-eb482fcf5d4c": 0,
+    "4ea8ac07-0561-4a26-b967-ea1b8cd12486": 0,
+    "507d966e-5600-46ca-8c50-2388b2e591c6": 0,
+    "51f2c0cb-f9c1-4bc7-accf-daf6a8a0e81b": 0,
+    "51fc603a-c08e-4eb5-8104-8b7c721dc050": 0,
+    "52db0ea6-b163-4f23-9152-238ce21a3634": 0,
+    "5697bf58-ca11-4da9-98ea-4cb970b50d02": 0,
+    "5aec43c5-3fff-40da-b087-c01a0c501380": 0,
+    "5cc88a39-5a2e-4f72-b9ef-16aba5e2bc95": 0,
+    "5da79f8b-bd7e-4f82-a2f7-19d2facc1db9": 0,
+    "633ff3c0-cd27-4d62-b3e8-6f51a6a6012a": 0,
+    "65cfd144-0d78-47ee-bf6d-3080c563d808": 0,
+    "6af8b3ca-e281-4819-b064-5abc99a1997b": 0,
+    "6e03d53c-5c3c-40fd-817f-85e839b37317": 0,
+    "6fada6a2-3184-4503-a2fe-21f32526e109": 0,
+    "710691d0-47c7-46c1-b92e-5b3d7ed21be8": 0,
+    "71d5c218-596a-46e5-8d9c-8a571c9e02bc": 0,
+    "723b874a-c8a5-4231-b3a9-613b68c073a5": 0,
+    "73acd81b-4e5c-4582-9d55-a5c8b6f0f944": 0,
+    "7a4dc61f-2499-47a7-928b-92749d5879c7": 0,
+    "7a93df03-7dd3-421d-915b-e40c2d3c4d2f": 0,
+    "7dc9ab4d-2320-427a-a1fc-36f526578161": 0,
+    "87134368-eac0-4c9e-9259-ccc7edaabab3": 0,
+    "872cc282-cbc7-41db-992a-3deface1798f": 0,
+    "8935e3a5-e87d-4e0b-818b-899831c63767": 0,
+    "895aa41d-aa06-4e62-abb7-2443597df691": 0,
+    "89dd08a2-0d05-47f9-a8ed-f6de93df5b6f": 0,
+    "8ee22be4-fe57-4913-8ece-ca386c14a7f3": 0,
+    "92fd25d9-09bf-4248-a4b1-ac6cc690624d": 0,
+    "9341bbac-d422-4403-b6d3-d53c9f158f0d": 0,
+    "99f03704-3e57-4bbd-a834-4182b5577b89": 0,
+    "9af31558-8c61-4932-b0f2-6ebf008ee6dd": 0,
+    "9c3e5544-c995-4b8c-8c3d-688322387de1": 0,
+    "9e2b069f-88c9-4139-8576-051d1b0fc1b0": 0,
+    "9fff1255-4c23-46d1-88a9-ffd4b232aac9": 0,
+    "a1c94e52-4e31-4d56-825a-5da587174a2a": 0,
+    "a22d5de1-c362-44b0-ab80-94a54d1ad63a": 0,
+    "a5450cac-1dd4-4314-a11b-1a9d5868e807": 0,
+    "a7ec11dd-5615-4dce-89d8-15749be65840": 0,
+    "a9a9909d-9399-42e5-b630-ff03f2368688": 0,
+    "aa587b48-b6c4-4275-b235-7f7268c833fb": 0,
+    "adbe765e-1ecf-42c6-aea1-f5d152fbd3d5": 0,
+    "aea3da79-d245-4cc1-b888-7730358213e7": 0,
+    "b07fb4c6-fedb-4039-8f16-08cb3ce681be": 0,
+    "b152af46-66a9-4fb6-9465-26e7b4f7b9f7": 0,
+    "b2bbfa69-1fa3-4cc1-af4b-3cdfa818a8a4": 0,
+    "b2ef8b6f-4071-4815-af21-4d09ec4db196": 0,
+    "b4f20942-4be2-49ee-87f5-c7c326f38a6f": 0,
+    "b5d5b0c4-2788-4ff9-8175-dcedf3bcb83b": 0,
+    "b73293a9-29cb-48ee-8dbb-5553fb70a043": 0,
+    "b76da1ed-3d71-48b7-b656-9f3a1173315d": 0,
+    "b932ba3f-afe0-4793-aad9-db5283bbd239": 0,
+    "bd33b1d3-5872-48b8-a70a-bf52d238df4a": 0,
+    "c118865f-11fb-49e8-8827-3f025a67a705": 0,
+    "c332218a-9be4-4b60-bcfe-48064d28f3b3": 0,
+    "c3dd8e61-8f1e-4a29-b0cf-81516700e42c": 0,
+    "c4a2be49-c7b9-4ded-8631-64f5340cca9f": 0,
+    "c7f3af04-cd81-4a90-91c9-ca6a5241c22f": 0,
+    "cb9ea3f0-4ef3-44db-8ed0-4d865c795284": 0,
+    "d5eb2363-ca59-4469-a1a1-4bfffe3deeb2": 0,
+    "de8ee004-213d-472b-8b5f-27e37c1cbbab": 0,
+    "e067be73-c35d-45ba-bc39-8abd4ac05a57": 0,
+    "e7618289-6f0c-4f83-be4d-fc9916e59c93": 0,
+    "eb3f31c5-83e0-4cc6-b125-b2fc65a18884": 0,
+    "ebeeb021-d664-4631-9e7f-ea31192a72d6": 0,
+    "ee3b607d-f6b8-43a1-ab5e-7d6bcd168f91": 0,
+    "f1da589d-12ac-42f3-a545-9a3cda2646fc": 0,
+    "f5b93a8f-9d10-4ed9-a49a-835aa2a7e64d": 0,
+    "faf7c2de-5091-4627-befa-3fafe9aa1797": 0,
+    "fb12f9ad-35d8-428e-b310-102c183d08fa": 0,
+    "fca44d64-c968-48e0-b6e0-53082eca8f82": 0,
+    "fcb11d67-01f9-4f5b-97da-d5957da8146b": 0,
+    "feedc968-40ed-4a67-a0bd-94b5c839adc5": 0
+  },
+  "products": {
+    "037d0a7f-2e0e-412a-96cb-cffa94702872": {
+      "yugcontract_id": "7200561_du",
+      "sku": "YC-7200561_du",
+      "slug": "aksesuary-dlia-pylososiv-sencor-svcx-0452-bags-svc-45-52-5pcs-7200561_du",
+      "price": 329,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "03dca09f-6549-4304-b6bd-70fd77880042": {
+      "yugcontract_id": "7022284_du",
+      "sku": "YC-7022284_du",
+      "slug": "trymer-philips-oneblade-pro-360-qp6542-15-dlia-oblychchia-ta-tila-7022284_du",
+      "price": 3099,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "05d38056-6260-4e96-bd47-2e045452d73a": {
+      "yugcontract_id": "7138500_du",
+      "sku": "YC-7138500_du",
+      "slug": "pylosos-myiuchyi-thomas-amfibia-pro-evo-7138500_du",
+      "price": 26299,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "06a7dbf1-9705-4a89-a934-594250c90bdc": {
+      "yugcontract_id": "7088394_du",
+      "sku": "YC-7088394_du",
+      "slug": "buterbrodnytsia-gorenje-wm1400sb-7088394_du",
+      "price": 1959,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "0bee88a8-4d0a-4e7f-a105-a2d3a101295c": {
+      "yugcontract_id": "7290720_du",
+      "sku": "YC-7290720_du",
+      "slug": "mikrokhvylova-pich-gorenje-mo20a3b5-c20uxp75-g8e-b1a-7290720_du",
+      "price": 4999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "0c186880-415f-4ca7-beb7-6a5107e78794": {
+      "yugcontract_id": "7205163_du",
+      "sku": "YC-7205163_du",
+      "slug": "kholodylnyk-electrolux-lnt7me36x3-7205163_du",
+      "price": 39999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "0c640846-8345-4747-b070-a93ce2d55768": {
+      "yugcontract_id": "7019427_du",
+      "sku": "YC-7019427_du",
+      "slug": "praska-gorenje-sih3200wr-hl-8002-7019427_du",
+      "price": 2499,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "0ed60444-b270-4dec-937f-e58ce6adcfe1": {
+      "yugcontract_id": "7220882_du",
+      "sku": "YC-7220882_du",
+      "slug": "vbud-kholodylnyk-beko-b3bcna294hs-7220882_du",
+      "price": 28099,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "1175e7af-8c86-41e9-b7c6-1c82f49aaf82": {
+      "yugcontract_id": "6932802_du",
+      "sku": "YC-6932802_du",
+      "slug": "kondytsioner-ergo-aci-0923-swn-w-6932802_du",
+      "price": 15999,
+      "stock_quantity": 5,
+      "is_active": true
+    },
+    "134a9643-4e2c-4a1a-bc62-6002f79932f4": {
+      "yugcontract_id": "7204300_du",
+      "sku": "YC-7204300_du",
+      "slug": "vidpariuvach-tefal-qt1811e0-7204300_du",
+      "price": 13999,
+      "stock_quantity": 3,
+      "is_active": true
+    },
+    "17e4045e-a66d-403f-9fb7-c461fd09874b": {
+      "yugcontract_id": "7109372_du",
+      "sku": "YC-7109372_du",
+      "slug": "hryl-gorenje-gcg2000sd-7109372_du",
+      "price": 3689,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "1add3584-d01a-4689-9dfc-f8091a1ca663": {
+      "yugcontract_id": "6924604_du",
+      "sku": "YC-6924604_du",
+      "slug": "kholodylnyk-hisense-rb440n4afe-bcd-331w-6924604_du",
+      "price": 26899,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "1ceaad92-d18e-4873-a6d4-242ec94ae06d": {
+      "yugcontract_id": "6885495_du",
+      "sku": "YC-6885495_du",
+      "slug": "mikrokhvylova-pich-gorenje-mo-20-e1wh-6885495_du",
+      "price": 3399,
+      "stock_quantity": 4,
+      "is_active": true
+    },
+    "20c993bf-b2f4-4fa4-bf0c-6fc695ec5de0": {
+      "yugcontract_id": "7030819_du",
+      "sku": "YC-7030819_du",
+      "slug": "fen-remington-d3016gp-style-essentials-giftset-7030819_du",
+      "price": 1599,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "2129c736-07b4-4871-99d3-70a19a11f89a": {
+      "yugcontract_id": "7259030_du",
+      "sku": "YC-7259030_du",
+      "slug": "pylosos-akumuliatornyi-gorenje-svc259400nes-v24p01fp2520eu-7259030_du",
+      "price": 5999,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "21d9a01d-de0d-42b8-9bc9-00f3757bcab9": {
+      "yugcontract_id": "7086538_du",
+      "sku": "YC-7086538_du",
+      "slug": "kholodylnyk-hisense-rq5p470sale-7086538_du",
+      "price": 39999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "293c09b5-1477-45b2-a89f-e4b54d9b14f5": {
+      "yugcontract_id": "6666894_du",
+      "sku": "YC-6666894_du",
+      "slug": "aksesuar-dlia-brytv-philips-ss12-50-6666894_du",
+      "price": 749,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "2a4b54b1-1232-47ba-bf42-f7b80f5c6480": {
+      "yugcontract_id": "6993837_du",
+      "sku": "YC-6993837_du",
+      "slug": "mikrokhvylova-pich-hisense-h30mobs10hc-6993837_du",
+      "price": 11999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "2c798ae3-af9d-4a89-bac6-c72b26f8a5e6": {
+      "yugcontract_id": "6474753_du",
+      "sku": "YC-6474753_du",
+      "slug": "fen-remington-d5715-6474753_du",
+      "price": 1769,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "2dca1863-00f7-4280-aae8-bc428c6cac32": {
+      "yugcontract_id": "7283135_du",
+      "sku": "YC-7283135_du",
+      "slug": "kholodylnyk-haier-hdpr3618dnpk-7283135_du",
+      "price": 25999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "316976a8-beaf-4bcf-a1a2-4371888adfad": {
+      "yugcontract_id": "6398700_du",
+      "sku": "YC-6398700_du",
+      "slug": "mikrokhvylova-pich-lg-mh6336gib-6398700_du",
+      "price": 7999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "33193a17-1d29-49a7-ac90-86c12806a833": {
+      "yugcontract_id": "6521818_du",
+      "sku": "YC-6521818_du",
+      "slug": "ramka-la-30x40-la-1-110-6521818_du",
+      "price": 189,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "33b81cd3-f13e-48f1-a630-e8a014380363": {
+      "yugcontract_id": "6976884_du",
+      "sku": "YC-6976884_du",
+      "slug": "toster-moulinex-lt2m0810-6976884_du",
+      "price": 1499,
+      "stock_quantity": 3,
+      "is_active": true
+    },
+    "381508eb-67ef-4d56-8e56-37572af817ec": {
+      "yugcontract_id": "7269799_du",
+      "sku": "YC-7269799_du",
+      "slug": "vbud-dukhovka-hisense-bsa6634pbg8-bo3ps5v01-7-7269799_du",
+      "price": 30799,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "3b405860-c1f4-40ad-9de2-5bc8feecc33a": {
+      "yugcontract_id": "7051690_du",
+      "sku": "YC-7051690_du",
+      "slug": "skorovarka-hisense-hmc6sbk-7051690_du",
+      "price": 6799,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "3dc52a09-f623-4a84-b15c-d1ae70af7798": {
+      "yugcontract_id": "6284421_du",
+      "sku": "YC-6284421_du",
+      "slug": "aksesuar-dlia-brytv-philips-sh50-50-6284421_du",
+      "price": 1799,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "3de99cda-3105-4bb9-93cb-ec63314430f1": {
+      "yugcontract_id": "6790006_du",
+      "sku": "YC-6790006_du",
+      "slug": "vbud-dukhovka-gorenje-bsa-6737-e15bg-bo3sa7c01-1-6790006_du",
+      "price": 22999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "4111003f-3371-45ec-aabd-8db396b61b9a": {
+      "yugcontract_id": "6821456_du",
+      "sku": "YC-6821456_du",
+      "slug": "kukh-prylad-tramontina-ability-lopatka-z-prorizamy-neilon-chorna-25155-100-6821456_du",
+      "price": 201,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "411c485a-0d20-467e-93ab-700849aa8293": {
+      "yugcontract_id": "6811303_du",
+      "sku": "YC-6811303_du",
+      "slug": "skovoroda-oscar-best-offer-26-sm-b-kryshky-osr-1108-26-1-6811303_du",
+      "price": 645,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "442ad976-f31e-4038-b084-e2f5d4680f21": {
+      "yugcontract_id": "7064284_du",
+      "sku": "YC-7064284_du",
+      "slug": "multypich-philips-na332-00-7064284_du",
+      "price": 6799,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "443fed34-ed76-4d5c-989f-4f7c62719d49": {
+      "yugcontract_id": "7198084_du",
+      "sku": "YC-7198084_du",
+      "slug": "pylosos-akumuliatornyi-philips-xc7163-01-7198084_du",
+      "price": 15999,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "445cd827-a53c-45cd-b475-e9c7a77474fc": {
+      "yugcontract_id": "6241811_du",
+      "sku": "YC-6241811_du",
+      "slug": "vbud-poverkhnia-whirlpool-akt-8210-lx-6241811_du",
+      "price": 7999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "4467832d-4937-489b-b06f-5b0765889366": {
+      "yugcontract_id": "7270074_du",
+      "sku": "YC-7270074_du",
+      "slug": "kavo-mashyna-krups-ea5088e0-7270074_du",
+      "price": 15999,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "44cb4ca2-ed0b-4297-adb5-3044c0d60446": {
+      "yugcontract_id": "7224534_du",
+      "sku": "YC-7224534_du",
+      "slug": "pralno-sushylna-mashyna-lg-f2r5fg6j-7224534_du",
+      "price": 29999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "4973dc0e-ed30-4c1b-a0ce-822667570c91": {
+      "yugcontract_id": "6482008_du",
+      "sku": "YC-6482008_du",
+      "slug": "plyta-sklokeramika-beko-fsm57300gx-6482008_du",
+      "price": 20099,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "4acada94-8933-4015-ab87-e83c654dc2fb": {
+      "yugcontract_id": "7278766_du",
+      "sku": "YC-7278766_du",
+      "slug": "praska-gorenje-sih3200bb-7278766_du",
+      "price": 2299,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "4cd84b8e-8de3-42ec-b994-f89e04d945d7": {
+      "yugcontract_id": "7221668_du",
+      "sku": "YC-7221668_du",
+      "slug": "sushylna-mashyna-whirlpool-wp-b9x-wbs-ua-7221668_du",
+      "price": 32299,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "4d06f989-ac5e-4657-8b10-80e560558d4c": {
+      "yugcontract_id": "6988988_du",
+      "sku": "YC-6988988_du",
+      "slug": "kelykh-luminarc-serena-line-nabir-6-550-ml-v6728-6988988_du",
+      "price": 1632,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "4e6f66a0-737e-4ee5-b767-eb482fcf5d4c": {
+      "yugcontract_id": "6871226_du",
+      "sku": "YC-6871226_du",
+      "slug": "vbud-mikvokhv-pich-gorenje-bm235g1syw-mxy55z-6871226_du",
+      "price": 18399,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "4ea8ac07-0561-4a26-b967-ea1b8cd12486": {
+      "yugcontract_id": "6711226_du",
+      "sku": "YC-6711226_du",
+      "slug": "kholodylnyk-hisense-rb440n4gbe-bcd-331w-6711226_du",
+      "price": 29499,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "507d966e-5600-46ca-8c50-2388b2e591c6": {
+      "yugcontract_id": "7067155_du",
+      "sku": "YC-7067155_du",
+      "slug": "hlechyk-ringel-grey-line-g-1800-ml-rg-0003-1800-g-7067155_du",
+      "price": 566,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "51f2c0cb-f9c1-4bc7-accf-daf6a8a0e81b": {
+      "yugcontract_id": "6745446_du",
+      "sku": "YC-6745446_du",
+      "slug": "mikser-z-chashoiu-tefal-ht464138-6745446_du",
+      "price": 2799,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "51fc603a-c08e-4eb5-8104-8b7c721dc050": {
+      "yugcontract_id": "6446612_du",
+      "sku": "YC-6446612_du",
+      "slug": "blender-statsionarnyi-tefal-bl438831-6446612_du",
+      "price": 3199,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "52db0ea6-b163-4f23-9152-238ce21a3634": {
+      "yugcontract_id": "6884549_du",
+      "sku": "YC-6884549_du",
+      "slug": "fen-remington-ac5860-e51-botanicals-hairdryer-6884549_du",
+      "price": 2399,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "5697bf58-ca11-4da9-98ea-4cb970b50d02": {
+      "yugcontract_id": "5967725_du",
+      "sku": "YC-5967725_du",
+      "slug": "kukhonnyi-kombain-philips-hr7778-00-5967725_du",
+      "price": 13999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "5aec43c5-3fff-40da-b087-c01a0c501380": {
+      "yugcontract_id": "7229839_du",
+      "sku": "YC-7229839_du",
+      "slug": "pylosos-akumuliatornyi-gorenje-svc222480aa-vc-6002-7229839_du",
+      "price": 6299,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "5cc88a39-5a2e-4f72-b9ef-16aba5e2bc95": {
+      "yugcontract_id": "7083113_du",
+      "sku": "YC-7083113_du",
+      "slug": "parova-shchitka-tefal-dt9814f0-7083113_du",
+      "price": 4999,
+      "stock_quantity": 3,
+      "is_active": true
+    },
+    "5da79f8b-bd7e-4f82-a2f7-19d2facc1db9": {
+      "yugcontract_id": "6992422_du",
+      "sku": "YC-6992422_du",
+      "slug": "ramka-evg-inno-zb-4-3636-1-white-collage-4-6992422_du",
+      "price": 329,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "633ff3c0-cd27-4d62-b3e8-6f51a6a6012a": {
+      "yugcontract_id": "7220881_du",
+      "sku": "YC-7220881_du",
+      "slug": "kholodylnyk-indesit-inks-1341-w4e-7220881_du",
+      "price": 16099,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "65cfd144-0d78-47ee-bf6d-3080c563d808": {
+      "yugcontract_id": "7220896_du",
+      "sku": "YC-7220896_du",
+      "slug": "kholodylnyk-beko-rcna406i40wn-7220896_du",
+      "price": 23899,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "6af8b3ca-e281-4819-b064-5abc99a1997b": {
+      "yugcontract_id": "6489771_du",
+      "sku": "YC-6489771_du",
+      "slug": "kukhonnyi-kombain-gorenje-mmc-1000-rl-6489771_du",
+      "price": 12989,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "6e03d53c-5c3c-40fd-817f-85e839b37317": {
+      "yugcontract_id": "7246355_du",
+      "sku": "YC-7246355_du",
+      "slug": "kholodylnyk-gorenje-nrk620eaw4-7246355_du",
+      "price": 23799,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "6fada6a2-3184-4503-a2fe-21f32526e109": {
+      "yugcontract_id": "6966588_du",
+      "sku": "YC-6966588_du",
+      "slug": "parova-shchitka-tefal-dt1034e1-6966588_du",
+      "price": 1799,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "710691d0-47c7-46c1-b92e-5b3d7ed21be8": {
+      "yugcontract_id": "6496818_du",
+      "sku": "YC-6496818_du",
+      "slug": "vbud-poverkhnia-beko-hilw64325sb-6496818_du",
+      "price": 10999,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "71d5c218-596a-46e5-8d9c-8a571c9e02bc": {
+      "yugcontract_id": "7169071_du",
+      "sku": "YC-7169071_du",
+      "slug": "sklianka-ecomo-vina-nabir-6x500-ml-vysota-10sm-c3310-7169071_du",
+      "price": 575,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "723b874a-c8a5-4231-b3a9-613b68c073a5": {
+      "yugcontract_id": "6669622_du",
+      "sku": "YC-6669622_du",
+      "slug": "vbud-poverkhnia-gorenje-gktw642syb-bg6bb-g2b-6669622_du",
+      "price": 20299,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "73acd81b-4e5c-4582-9d55-a5c8b6f0f944": {
+      "yugcontract_id": "6615810_du",
+      "sku": "YC-6615810_du",
+      "slug": "chainyk-philips-hd9318-00-6615810_du",
+      "price": 1499,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "7a4dc61f-2499-47a7-928b-92749d5879c7": {
+      "yugcontract_id": "6990162_du",
+      "sku": "YC-6990162_du",
+      "slug": "kholodylnyk-hisense-rq760n4ife-6990162_du",
+      "price": 111999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "7a93df03-7dd3-421d-915b-e40c2d3c4d2f": {
+      "yugcontract_id": "7220911_du",
+      "sku": "YC-7220911_du",
+      "slug": "morozylna-kamera-beko-b1rfne274w-7220911_du",
+      "price": 19499,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "7dc9ab4d-2320-427a-a1fc-36f526578161": {
+      "yugcontract_id": "7264937_du",
+      "sku": "YC-7264937_du",
+      "slug": "kholodylnyk-beko-rche325k40w-7264937_du",
+      "price": 21899,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "87134368-eac0-4c9e-9259-ccc7edaabab3": {
+      "yugcontract_id": "6849632_du",
+      "sku": "YC-6849632_du",
+      "slug": "pralna-mashyna-gorenje-wnhpi-72-scsirv-ua-wflp7012-6849632_du",
+      "price": 17765,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "872cc282-cbc7-41db-992a-3deface1798f": {
+      "yugcontract_id": "7220910_du",
+      "sku": "YC-7220910_du",
+      "slug": "morozylna-kamera-beko-rfnm200t40wn-7220910_du",
+      "price": 17222,
+      "stock_quantity": 7,
+      "is_active": true
+    },
+    "8935e3a5-e87d-4e0b-818b-899831c63767": {
+      "yugcontract_id": "6993614_du",
+      "sku": "YC-6993614_du",
+      "slug": "morozhenytsia-gorenje-icm10w-ice-1031-6993614_du",
+      "price": 8669,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "895aa41d-aa06-4e62-abb7-2443597df691": {
+      "yugcontract_id": "6655515_du",
+      "sku": "YC-6655515_du",
+      "slug": "multyvarky-tefal-rk905a34-6655515_du",
+      "price": 8599,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "89dd08a2-0d05-47f9-a8ed-f6de93df5b6f": {
+      "yugcontract_id": "7282004_du",
+      "sku": "YC-7282004_du",
+      "slug": "kholodylnyk-hisense-rb3k330seie-bcd-330wp-7282004_du",
+      "price": 28499,
+      "stock_quantity": 8,
+      "is_active": true
+    },
+    "8ee22be4-fe57-4913-8ece-ca386c14a7f3": {
+      "yugcontract_id": "7120201_du",
+      "sku": "YC-7120201_du",
+      "slug": "ramka-evg-inno-zb-6fa-3348-white-collage-6-7120201_du",
+      "price": 389,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "92fd25d9-09bf-4248-a4b1-ac6cc690624d": {
+      "yugcontract_id": "6764593_du",
+      "sku": "YC-6764593_du",
+      "slug": "vbud-poverkhnia-beko-hii64200fmt-6764593_du",
+      "price": 12999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "9341bbac-d422-4403-b6d3-d53c9f158f0d": {
+      "yugcontract_id": "6313699_du",
+      "sku": "YC-6313699_du",
+      "slug": "kavovarka-krapelna-gorenje-atcm-730-t-6313699_du",
+      "price": 3599,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "99f03704-3e57-4bbd-a834-4182b5577b89": {
+      "yugcontract_id": "6984892_du",
+      "sku": "YC-6984892_du",
+      "slug": "morozylna-kamera-hisense-fv298n4ace-6984892_du",
+      "price": 24799,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "9af31558-8c61-4932-b0f2-6ebf008ee6dd": {
+      "yugcontract_id": "7053687_du",
+      "sku": "YC-7053687_du",
+      "slug": "fen-shchitka-rowenta-cf9840f0-7053687_du",
+      "price": 2999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "9c3e5544-c995-4b8c-8c3d-688322387de1": {
+      "yugcontract_id": "7262655_du",
+      "sku": "YC-7262655_du",
+      "slug": "parova-systema-tefal-gv9920e0-7262655_du",
+      "price": 20999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "9e2b069f-88c9-4139-8576-051d1b0fc1b0": {
+      "yugcontract_id": "7007001_du",
+      "sku": "YC-7007001_du",
+      "slug": "sushylna-mashyna-hisense-dh7s107bw-7007001_du",
+      "price": 46599,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "9fff1255-4c23-46d1-88a9-ffd4b232aac9": {
+      "yugcontract_id": "6906759_du",
+      "sku": "YC-6906759_du",
+      "slug": "viknomyika-idea-home-ds-1534-20-blue-d-vikon-teleskop-112x20-sm-ds-1534-20-blue-6906759_du",
+      "price": 369,
+      "stock_quantity": 10,
+      "is_active": true
+    },
+    "a1c94e52-4e31-4d56-825a-5da587174a2a": {
+      "yugcontract_id": "7270046_du",
+      "sku": "YC-7270046_du",
+      "slug": "kholodylnyk-lg-gr-h922hmbq-7270046_du",
+      "price": 59999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "a22d5de1-c362-44b0-ab80-94a54d1ad63a": {
+      "yugcontract_id": "6661880_du",
+      "sku": "YC-6661880_du",
+      "slug": "kavovarka-krapelna-russell-hobbs-27010-56-rh-bilyi-6661880_du",
+      "price": 3299,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "a5450cac-1dd4-4314-a11b-1a9d5868e807": {
+      "yugcontract_id": "6932803_du",
+      "sku": "YC-6932803_du",
+      "slug": "kondytsioner-ergo-aci-1223-swn-w-6932803_du",
+      "price": 17599,
+      "stock_quantity": 6,
+      "is_active": true
+    },
+    "a7ec11dd-5615-4dce-89d8-15749be65840": {
+      "yugcontract_id": "7291169_du",
+      "sku": "YC-7291169_du",
+      "slug": "kukh-inshe-gorenje-lodohenerator-giicm-7291169_du",
+      "price": 15999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "a9a9909d-9399-42e5-b630-ff03f2368688": {
+      "yugcontract_id": "6996159_du",
+      "sku": "YC-6996159_du",
+      "slug": "pralna-mashyna-haier-hw90-b14939s8-6996159_du",
+      "price": 24999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "aa587b48-b6c4-4275-b235-7f7268c833fb": {
+      "yugcontract_id": "6720857_du",
+      "sku": "YC-6720857_du",
+      "slug": "skovoroda-bravo-chef-safran-24-sm-b-kryshky-bc-1114-24-6720857_du",
+      "price": 794,
+      "stock_quantity": 50,
+      "is_active": true
+    },
+    "adbe765e-1ecf-42c6-aea1-f5d152fbd3d5": {
+      "yugcontract_id": "6840744_du",
+      "sku": "YC-6840744_du",
+      "slug": "serviz-luminarc-louis-xv-white-18-pr-v2940-6840744_du",
+      "price": 1968,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "aea3da79-d245-4cc1-b888-7730358213e7": {
+      "yugcontract_id": "6965981_du",
+      "sku": "YC-6965981_du",
+      "slug": "blender-statsionarnyi-tefal-perfect-mix-bl87g831-6965981_du",
+      "price": 4899,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "b07fb4c6-fedb-4039-8f16-08cb3ce681be": {
+      "yugcontract_id": "5924679_du",
+      "sku": "YC-5924679_du",
+      "slug": "nabir-dlia-stryzhky-remington-hc-5150-5924679_du",
+      "price": 1599,
+      "stock_quantity": 3,
+      "is_active": true
+    },
+    "b152af46-66a9-4fb6-9465-26e7b4f7b9f7": {
+      "yugcontract_id": "6629656_du",
+      "sku": "YC-6629656_du",
+      "slug": "pylosos-tsyklonnyi-philips-fc9745-09-6629656_du",
+      "price": 11999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "b2bbfa69-1fa3-4cc1-af4b-3cdfa818a8a4": {
+      "yugcontract_id": "7243919_du",
+      "sku": "YC-7243919_du",
+      "slug": "pralna-mashyna-electrolux-ews6327dxu-7243919_du",
+      "price": 20999,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "b2ef8b6f-4071-4815-af21-4d09ec4db196": {
+      "yugcontract_id": "7025027_du",
+      "sku": "YC-7025027_du",
+      "slug": "fen-philips-bhd538-30-7025027_du",
+      "price": 2699,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "b4f20942-4be2-49ee-87f5-c7c326f38a6f": {
+      "yugcontract_id": "7232191_du",
+      "sku": "YC-7232191_du",
+      "slug": "kholodylnyk-beko-gn163140sn-7232191_du",
+      "price": 41599,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "b5d5b0c4-2788-4ff9-8175-dcedf3bcb83b": {
+      "yugcontract_id": "6988689_du",
+      "sku": "YC-6988689_du",
+      "slug": "chainyk-amica-kf-1002-6988689_du",
+      "price": 749,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "b73293a9-29cb-48ee-8dbb-5553fb70a043": {
+      "yugcontract_id": "7185654_du",
+      "sku": "YC-7185654_du",
+      "slug": "fen-sencor-shd-9050gd-7185654_du",
+      "price": 3599,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "b76da1ed-3d71-48b7-b656-9f3a1173315d": {
+      "yugcontract_id": "7024506_du",
+      "sku": "YC-7024506_du",
+      "slug": "kukhonna-mashyna-gorenje-mmc1000scb-7024506_du",
+      "price": 8999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "b932ba3f-afe0-4793-aad9-db5283bbd239": {
+      "yugcontract_id": "7163805_du",
+      "sku": "YC-7163805_du",
+      "slug": "vbud-mikvokhv-pich-whirlpool-wmd54mx-7163805_du",
+      "price": 23999,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "bd33b1d3-5872-48b8-a70a-bf52d238df4a": {
+      "yugcontract_id": "7095348_du",
+      "sku": "YC-7095348_du",
+      "slug": "serviz-luminarc-apy-18-pr-v9608-7095348_du",
+      "price": 1898,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "c118865f-11fb-49e8-8827-3f025a67a705": {
+      "yugcontract_id": "6985231_du",
+      "sku": "YC-6985231_du",
+      "slug": "buterbrodnytsia-tefal-sw383d10-6985231_du",
+      "price": 2199,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "c332218a-9be4-4b60-bcfe-48064d28f3b3": {
+      "yugcontract_id": "6651531_du",
+      "sku": "YC-6651531_du",
+      "slug": "vypriamliach-dlia-volossia-remington-s7307-aqualisse-extreme-6651531_du",
+      "price": 2799,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "c3dd8e61-8f1e-4a29-b0cf-81516700e42c": {
+      "yugcontract_id": "7297145_du",
+      "sku": "YC-7297145_du",
+      "slug": "multypich-hisense-haf3300dhcd-7297145_du",
+      "price": 8999,
+      "stock_quantity": 10,
+      "is_active": true
+    },
+    "c4a2be49-c7b9-4ded-8631-64f5340cca9f": {
+      "yugcontract_id": "7056171_du",
+      "sku": "YC-7056171_du",
+      "slug": "mikrokhvylova-pich-hisense-h25mobs4hgi-7056171_du",
+      "price": 6999,
+      "stock_quantity": 6,
+      "is_active": true
+    },
+    "c7f3af04-cd81-4a90-91c9-ca6a5241c22f": {
+      "yugcontract_id": "6875715_du",
+      "sku": "YC-6875715_du",
+      "slug": "vbud-dukhovka-gorenje-bps-6747-a06bg-6875715_du",
+      "price": 27299,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "cb9ea3f0-4ef3-44db-8ed0-4d865c795284": {
+      "yugcontract_id": "7248612_du",
+      "sku": "YC-7248612_du",
+      "slug": "kavo-mashyna-krups-ea879ee0-7248612_du",
+      "price": 36999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "d5eb2363-ca59-4469-a1a1-4bfffe3deeb2": {
+      "yugcontract_id": "7232192_du",
+      "sku": "YC-7232192_du",
+      "slug": "morozylna-kamera-beko-rfnm200t40sn-7232192_du",
+      "price": 18999,
+      "stock_quantity": 8,
+      "is_active": true
+    },
+    "de8ee004-213d-472b-8b5f-27e37c1cbbab": {
+      "yugcontract_id": "7023706_du",
+      "sku": "YC-7023706_du",
+      "slug": "elektropich-hisense-hom45d-7023706_du",
+      "price": 8669,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "e067be73-c35d-45ba-bc39-8abd4ac05a57": {
+      "yugcontract_id": "7024832_du",
+      "sku": "YC-7024832_du",
+      "slug": "hryl-philips-hd6307-70-7024832_du",
+      "price": 6199,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "e7618289-6f0c-4f83-be4d-fc9916e59c93": {
+      "yugcontract_id": "6349848_du",
+      "sku": "YC-6349848_du",
+      "slug": "vbud-poverkhnia-beko-hiaw-64225-sx-6349848_du",
+      "price": 8299,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "eb3f31c5-83e0-4cc6-b125-b2fc65a18884": {
+      "yugcontract_id": "7153553_du",
+      "sku": "YC-7153553_du",
+      "slug": "parova-shchitka-philips-sth7030-10-7153553_du",
+      "price": 3099,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "ebeeb021-d664-4631-9e7f-ea31192a72d6": {
+      "yugcontract_id": "7169040_du",
+      "sku": "YC-7169040_du",
+      "slug": "kelykh-ecomo-vina-nabir-6x460-ml-h6142-7169040_du",
+      "price": 750,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "ee3b607d-f6b8-43a1-ab5e-7d6bcd168f91": {
+      "yugcontract_id": "7290718_du",
+      "sku": "YC-7290718_du",
+      "slug": "mikrokhvylova-pich-gorenje-mo20ae1b5-7290718_du",
+      "price": 4444,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "f1da589d-12ac-42f3-a545-9a3cda2646fc": {
+      "yugcontract_id": "7193446_du",
+      "sku": "YC-7193446_du",
+      "slug": "praska-gorenje-sik2200wb-kb-936-7193446_du",
+      "price": 1549,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "f5b93a8f-9d10-4ed9-a49a-835aa2a7e64d": {
+      "yugcontract_id": "6376339_du",
+      "sku": "YC-6376339_du",
+      "slug": "pylosos-myiuchyi-thomas-aqua-pet-family-6376339_du",
+      "price": 15199,
+      "stock_quantity": 3,
+      "is_active": true
+    },
+    "faf7c2de-5091-4627-befa-3fafe9aa1797": {
+      "yugcontract_id": "6703011_du",
+      "sku": "YC-6703011_du",
+      "slug": "vytiazhka-z-nakhylom-hansa-okp6521swh-6703011_du",
+      "price": 7399,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "fb12f9ad-35d8-428e-b310-102c183d08fa": {
+      "yugcontract_id": "6873343_du",
+      "sku": "YC-6873343_du",
+      "slug": "parova-shchitka-tefal-dt2026e1-6873343_du",
+      "price": 1999,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "fca44d64-c968-48e0-b6e0-53082eca8f82": {
+      "yugcontract_id": "6527338_du",
+      "sku": "YC-6527338_du",
+      "slug": "nabir-dlia-stryzhky-sencor-shp-320sl-6527338_du",
+      "price": 449,
+      "stock_quantity": 1,
+      "is_active": true
+    },
+    "fcb11d67-01f9-4f5b-97da-d5957da8146b": {
+      "yugcontract_id": "7198085_du",
+      "sku": "YC-7198085_du",
+      "slug": "pylosos-akumuliatornyi-philips-xc8157-01-7198085_du",
+      "price": 18999,
+      "stock_quantity": 2,
+      "is_active": true
+    },
+    "feedc968-40ed-4a67-a0bd-94b5c839adc5": {
+      "yugcontract_id": "7240037_du",
+      "sku": "YC-7240037_du",
+      "slug": "vodonahrivach-tesy-modeco-cloud-gcv-1504724d-c22-ecw-7240037_du",
+      "price": 20813,
+      "stock_quantity": 1,
+      "is_active": true
+    }
+  }
+}
