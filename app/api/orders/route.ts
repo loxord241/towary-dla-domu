@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { orderAccessToken } from '@/app/lib/order-token';
 import { enforceRateLimit } from '@/app/lib/rate-limit';
 import { sanitizeDelivery } from '@/app/lib/checkout-delivery';
+import { sendTelegramOrderNotification } from '@/app/lib/notifications/telegram';
 
 /**
  * POST /api/orders — guest checkout.
@@ -245,6 +246,13 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+
+  const orderNumber: string = result.order_number;
+
+  // Secondary side effect, strictly AFTER the order is committed: runs once
+  // the response is sent (next/server `after`), never blocks checkout and
+  // can never affect the order — sendTelegramOrderNotification never throws.
+  after(() => sendTelegramOrderNotification(orderNumber));
 
   return NextResponse.json(
     {
