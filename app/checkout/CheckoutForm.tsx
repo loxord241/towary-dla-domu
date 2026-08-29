@@ -115,7 +115,7 @@ async function searchStreetsApi(
 
 export default function CheckoutForm() {
   const router = useRouter();
-  const { items, hydrated, clearCart } = useCart();
+  const { items, hydrated, clearCart, removeItem } = useCart();
 
   // Structured ПІБ; the composed full name is also sent as `name` so the
   // request stays valid against the legacy server contract.
@@ -164,6 +164,11 @@ export default function CheckoutForm() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // F2 idempotency: one key per checkout attempt-session. Generated on the
+  // FIRST submit and reused on every retry (double-click, timeout-then-
+  // resubmit), so the server deduplicates at the DB level — the same
+  // logical request can never create two orders.
+  const idempotencyKeyRef = useRef<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{
     firstName?: string;
     lastName?: string;
@@ -207,9 +212,28 @@ export default function CheckoutForm() {
     lines.find(
       (l) => l.productId === productId && (l.variantId ?? null) === variantId
     );
-  const purchasable = items
-    .map((item) => ({ item, preview: lineFor(item.productId, item.variantId) }))
-    .filter(({ preview }) => preview?.found && preview.unitPrice !== null);
+  const itemRows = items.map((item) => ({
+    item,
+    preview: lineFor(item.productId, item.variantId),
+  }));
+  const purchasable = itemRows.filter(
+    ({ preview }) =>
+      preview?.found &&
+      preview.unitPrice !== null &&
+      preview.availabilityStatus !== 'out_of_stock'
+  );
+  // Same unavailable rule as the cart page: !found || no price || out_of_stock.
+  // A MISSING preview (fetch failed / still loading) is unknown, never
+  // unavailable — a failed cart-preview must not block submit (the manager
+  // confirms the total). Displayed with a remove control instead of being
+  // silently hidden; the server-side 422 stays as defence in depth.
+  const unavailableItems = itemRows.filter(
+    ({ preview }) =>
+      preview !== undefined &&
+      (!preview.found ||
+        preview.unitPrice === null ||
+        preview.availabilityStatus === 'out_of_stock')
+  );
   const subtotal = purchasable.reduce(
     (sum, { item, preview }) => sum + (preview?.unitPrice ?? 0) * item.quantity,
     0
@@ -330,12 +354,28 @@ export default function CheckoutForm() {
     }
     setDeliveryError(null);
 
+    // F1 guard: never POST while an unavailable line is in the cart — the
+    // server would 422 and the user had no way to fix it here. Removing the
+    // line re-enables submit (the summary block below offers the control).
+    if (unavailableItems.length > 0) {
+      setError(
+        'У кошику є недоступні товари. Видаліть недоступні товари, щоб оформити замовлення.'
+      );
+      return;
+    }
+
     setSubmitting(true);
 
     try {
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current = crypto.randomUUID();
+      }
       const response = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKeyRef.current,
+        },
         // ONLY identifiers + quantities + contact/shipping strings. The
         // structured delivery object carries Nova Post ids only — money and
         // payer fields are structurally impossible in this contract.
@@ -891,6 +931,39 @@ export default function CheckoutForm() {
             </p>
           ) : (
             <>
+              {unavailableItems.length > 0 && (
+                <div
+                  className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2"
+                  role="status"
+                >
+                  <p className="text-sm font-medium text-red-800">
+                    Ці товари більше недоступні:
+                  </p>
+                  <ul className="mt-2 space-y-2">
+                    {unavailableItems.map(({ item, preview }) => (
+                      <li
+                        key={`${item.productId}::${item.variantId ?? ''}`}
+                        className="flex items-center justify-between gap-2 text-sm"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-red-700">
+                          {preview?.found
+                            ? (preview.name ?? 'Товар')
+                            : 'Товар більше не доступний у каталозі'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeItem(item.productId, item.variantId)
+                          }
+                          className="shrink-0 rounded-md border border-red-300 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 transition"
+                        >
+                          Видалити
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <ul className="mb-4 space-y-3 text-sm">
                 {purchasable.map(({ item, preview }) => (
                   <li key={`${item.productId}::${item.variantId ?? ''}`} className="flex gap-3">
