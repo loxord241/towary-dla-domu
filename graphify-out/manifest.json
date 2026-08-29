@@ -324,9 +324,9 @@
     "semantic_hash": ""
   },
   "app/checkout/success/page.tsx": {
-    "mtime": 1787768368.164073,
-    "seen": 1787780992.7485514,
-    "ast_hash": "19c66699fc7ddde7ad57ccd87ae19dd9",
+    "mtime": 1788007641.506293,
+    "seen": 1788007666.8123133,
+    "ast_hash": "e99ba60b0e3f6caf4559ab99c11c2596",
     "semantic_hash": ""
   },
   "app/components/AddToCartButton.tsx": {
@@ -492,9 +492,9 @@
     "semantic_hash": ""
   },
   "app/contacts/page.tsx": {
-    "mtime": 1787936857.6960547,
-    "seen": 1787937470.576987,
-    "ast_hash": "b40a47fd7c0e264bcd96e5bfeb09582d",
+    "mtime": 1788007641.5067356,
+    "seen": 1788007666.8123503,
+    "ast_hash": "7f14ee7eed955f120b09bce1e1da43de",
     "semantic_hash": ""
   },
   "app/delivery/page.tsx": {
@@ -3261,6 +3261,24 @@
     "mtime": 1787999785.8635156,
     "seen": 1788000442.5867498,
     "ast_hash": "771477edb87af5203100ba531fee8661",
+    "semantic_hash": ""
+  },
+  "app/components/ShippingPeriodNotice.tsx": {
+    "mtime": 1788007561.5036776,
+    "seen": 1788007666.8123467,
+    "ast_hash": "e899e003b5d696f3918bc1e8687d4530",
+    "semantic_hash": ""
+  },
+  "tests/checkout-shipping-notice.test.ts": {
+    "mtime": 1788007511.529506,
+    "seen": 1788007666.8125024,
+    "ast_hash": "1f0a7db27a975407d3063cc4c53604bf",
+    "semantic_hash": ""
+  },
+  ".playwright-mcp/page-2026-08-29T12-26-41-555Z.yml": {
+    "mtime": 1788006401.5560274,
+    "seen": 1788007666.8126662,
+    "ast_hash": "13d929590d45a6d25e9a19038c72c790",
     "semantic_hash": ""
   }
 }

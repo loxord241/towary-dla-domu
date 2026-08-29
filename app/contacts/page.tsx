@@ -19,6 +19,7 @@ export default function Page() {
         <p>
           {`Адреса магазину: м. Кривий Ріг, вул.Гетьмана Івана Мазепи,буд. 87А`}
         </p>
+        <p>{`Час роботи: 7:30–16:00`}</p>
         <p>
           {`Телефон: `}
           {/* Displayed number stays verbatim; tel: makes it one-tap callable. */}

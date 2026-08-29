@@ -6,6 +6,7 @@ import OrderStatusBadge, {
   PaymentStatusBadge,
 } from '@/app/components/OrderStatusBadge';
 import PayWithLiqPayButton from '@/app/components/PayWithLiqPayButton';
+import ShippingPeriodNotice from '@/app/components/ShippingPeriodNotice';
 
 /**
  * Order confirmation page. The total/currency/items shown here are ALWAYS
@@ -106,6 +107,9 @@ export default async function CheckoutSuccessPage({
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
+      {/* Order creation confirmed — inform about the shipping period. Not
+          rendered in the NotFound branches above. */}
+      <ShippingPeriodNotice />
       <div className="card mx-auto max-w-xl overflow-hidden">
         <div
           className={`border-b p-6 text-center ${

@@ -8254,7 +8254,7 @@
       "file_type": "code",
       "norm_label": "rootlayout()",
       "source_file": "app/layout.tsx",
-      "source_location": "L41"
+      "source_location": "L43"
     },
     {
       "id": "app_lib_cart_context_cartprovider",
@@ -20840,7 +20840,7 @@
       "file_type": "code",
       "norm_label": "geistmono",
       "source_file": "app/layout.tsx",
-      "source_location": "L15"
+      "source_location": "L17"
     },
     {
       "id": "app_layout_geistsans",
@@ -20851,7 +20851,7 @@
       "file_type": "code",
       "norm_label": "geistsans",
       "source_file": "app/layout.tsx",
-      "source_location": "L8"
+      "source_location": "L10"
     },
     {
       "id": "app_layout_metadata",
@@ -20862,7 +20862,7 @@
       "file_type": "code",
       "norm_label": "metadata",
       "source_file": "app/layout.tsx",
-      "source_location": "L20"
+      "source_location": "L22"
     },
     {
       "id": "app_lib_cart_context",
@@ -22464,6 +22464,17 @@
       "norm_label": "admin-shipments-calc.ts",
       "source_file": "app/lib/admin-shipments-calc.ts",
       "source_location": "L1"
+    },
+    {
+      "id": "app_lib_delivery_novapost_config_nova_post_sender_division_id_env",
+      "label": "NOVA_POST_SENDER_DIVISION_ID_ENV",
+      "_origin": "ast",
+      "community": 37,
+      "community_name": "delivery-cost.ts",
+      "file_type": "code",
+      "norm_label": "nova_post_sender_division_id_env",
+      "source_file": "app/lib/delivery/novapost/config.ts",
+      "source_location": "L37"
     },
     {
       "id": "app_lib_delivery_novapost_delivery_cost",
@@ -25430,17 +25441,6 @@
       "norm_label": "config.ts",
       "source_file": "app/lib/delivery/novapost/config.ts",
       "source_location": "L1"
-    },
-    {
-      "id": "app_lib_delivery_novapost_config_nova_post_sender_division_id_env",
-      "label": "NOVA_POST_SENDER_DIVISION_ID_ENV",
-      "_origin": "ast",
-      "community": 67,
-      "community_name": "ttn/route.ts",
-      "file_type": "code",
-      "norm_label": "nova_post_sender_division_id_env",
-      "source_file": "app/lib/delivery/novapost/config.ts",
-      "source_location": "L37"
     },
     {
       "id": "app_lib_delivery_novapost_config_nova_post_sender_name_env",
@@ -41275,7 +41275,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "app/layout.tsx",
-      "source_location": "L4",
+      "source_location": "L6",
       "weight": 1.0
     },
     {
@@ -41287,7 +41287,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "app/layout.tsx",
-      "source_location": "L5",
+      "source_location": "L7",
       "weight": 1.0
     },
     {
@@ -47431,7 +47431,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "app/layout.tsx",
-      "source_location": "L4",
+      "source_location": "L6",
       "weight": 1.0
     },
     {
@@ -47443,7 +47443,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "app/layout.tsx",
-      "source_location": "L5",
+      "source_location": "L7",
       "weight": 1.0
     },
     {
@@ -52593,13 +52593,24 @@
     },
     {
       "source": "app_layout",
+      "target": "app_layout_geistsans",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/layout.tsx",
+      "source_location": "L10",
+      "weight": 1.0
+    },
+    {
+      "source": "app_layout",
       "target": "app_layout_geistmono",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/layout.tsx",
-      "source_location": "L15",
+      "source_location": "L17",
       "weight": 1.0
     },
     {
@@ -52610,7 +52621,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/layout.tsx",
-      "source_location": "L20",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -52621,18 +52632,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/layout.tsx",
-      "source_location": "L41",
-      "weight": 1.0
-    },
-    {
-      "source": "app_layout",
-      "target": "app_layout_geistsans",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/layout.tsx",
-      "source_location": "L8",
+      "source_location": "L43",
       "weight": 1.0
     },
     {
@@ -72843,5 +72843,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "38335c408d3b1a6a4eb93e260a03528b0e5e6add"
+  "built_at_commit": "48b350d38d0ee7c51bef37bdfb38746cf698d721"
 }
