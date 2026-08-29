@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local Playwright/debug artifacts (one-off session captures; the root-level
+# PNG rule is deliberately anchored to the repo root — legitimate images live
+# in public/ and app/, which stay unaffected)
+.playwright-mcp/
+*-console-*.log
+/*-fix.png
