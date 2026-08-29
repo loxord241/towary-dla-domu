@@ -34,7 +34,7 @@ test('ORDER-SEC: capability token is an HMAC of the service key, verified consta
   assert.match(t, /timingSafeEqual/, 'comparison must be constant-time');
   assert.match(t, /expected\.length !== provided\.length/,
     'length guard must precede timingSafeEqual');
-  assert.match(t, /typeof token !== ['"]string['"']/,
+  assert.match(t, /typeof token !== ['"]string['"]/,
     'malformed token types must be rejected before comparison');
 });
 
@@ -153,5 +153,5 @@ test('ORDER-SEC: service-role key is referenced by NO client component', () => {
 
 test('ORDER-SEC: storefront catalog layer has zero order/customer references', () => {
   const c = src('app/lib/catalog.ts');
-  assert.doesNotMatch(c, /from\(['"](orders|order_items|customers)['"']/);
+  assert.doesNotMatch(c, /from\(['"](orders|order_items|customers)['"]/);
 });
