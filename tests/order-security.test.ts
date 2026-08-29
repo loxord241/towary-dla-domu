@@ -34,7 +34,7 @@ test('ORDER-SEC: capability token is an HMAC of the service key, verified consta
   assert.match(t, /timingSafeEqual/, 'comparison must be constant-time');
   assert.match(t, /expected\.length !== provided\.length/,
     'length guard must precede timingSafeEqual');
-  assert.match(t, /typeof token !== ['"]string['"]/,
+  assert.match(t, /typeof token !== ['"]string['"']/,
     'malformed token types must be rejected before comparison');
 });
 
@@ -102,7 +102,11 @@ test('ORDER-SEC: order creation uses anon client, place_order RPC, strict output
 
 test('ORDER-SEC: creation response exposes only number/total/currency/token', () => {
   const r = src('app/api/orders/route.ts');
-  const body = r.slice(r.indexOf('NextResponse.json', r.indexOf("status: 201") - 400));
+  // The FINAL response is the last NextResponse.json in the file (earlier
+  // ones are early error returns). F2 changed the literal `status: 201`
+  // into `created ? 201 : 200`, so the old positional anchor broke — this
+  // anchor is robust either way and pins the same contract.
+  const body = r.slice(r.lastIndexOf('NextResponse.json'));
   for (const field of ['orderNumber', 'accessToken']) {
     assert.match(body, new RegExp(field));
   }
@@ -149,5 +153,5 @@ test('ORDER-SEC: service-role key is referenced by NO client component', () => {
 
 test('ORDER-SEC: storefront catalog layer has zero order/customer references', () => {
   const c = src('app/lib/catalog.ts');
-  assert.doesNotMatch(c, /from\(['"](orders|order_items|customers)['"]/);
+  assert.doesNotMatch(c, /from\(['"](orders|order_items|customers)['"']/);
 });
