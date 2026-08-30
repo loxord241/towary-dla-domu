@@ -12,6 +12,7 @@ import {
   toIsoCurrency,
   buildProductJsonLd,
   buildProductBreadcrumbJsonLd,
+  buildCatalogBreadcrumbJsonLd,
   serializeJsonLd,
 } from '../app/lib/schema-org.ts';
 
@@ -237,4 +238,40 @@ test('BreadcrumbList: Product JSON-LD builder output is untouched', () => {
   ) as Record<string, unknown>;
   assert.equal(d['@type'], 'Product');
   assert.equal(d['@context'], 'https://schema.org');
+});
+
+// ---- catalog breadcrumb (category level, no extra DB reads)
+
+test('JSONLD: catalog breadcrumb emits Головна → Каталог → Категорія', () => {
+  const d = buildCatalogBreadcrumbJsonLd(
+    { name: 'Господарчі товари', slug: 'hospodarchi-tovary-1451' },
+    SITE
+  );
+  assert.equal(d['@type'], 'BreadcrumbList');
+  const items = d.itemListElement as {
+    position: number;
+    name: string;
+    item: string;
+  }[];
+  assert.deepEqual(
+    items.map((i) => i.name),
+    ['Головна', 'Каталог', 'Господарчі товари']
+  );
+  assert.deepEqual(
+    items.map((i) => i.position),
+    [1, 2, 3]
+  );
+  assert.equal(
+    items[2].item,
+    `${SITE}/catalog?category=hospodarchi-tovary-1451`
+  );
+});
+
+test('JSONLD: catalog breadcrumb without category keeps two honest levels', () => {
+  const d = buildCatalogBreadcrumbJsonLd(null, SITE);
+  const items = d.itemListElement as { name: string }[];
+  assert.deepEqual(
+    items.map((i) => i.name),
+    ['Головна', 'Каталог']
+  );
 });

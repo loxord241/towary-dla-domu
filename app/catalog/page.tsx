@@ -12,8 +12,17 @@ import {
 } from '@/app/lib/catalog'
 import { getMainPublicImageUrl } from '@/app/lib/supabase-storage'
 import { buildCatalogViewMetadata } from '@/app/lib/seo'
+import {
+  getCategorySeo,
+  applyCategorySeoMetadata,
+  listDirectChildren,
+} from '@/app/lib/category-seo'
+import {
+  buildCatalogBreadcrumbJsonLd,
+} from '@/app/lib/schema-org'
 import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
+import ProductJsonLd from '@/app/components/ProductJsonLd'
 import CatalogFilters from './CatalogFilters'
 import SortSelect from './SortSelect'
 import { CATALOG_PAGE_SIZE } from '@/app/lib/catalog'
@@ -70,10 +79,11 @@ function buildActiveChips(
 /** H1 for the current catalog view (exactly one h1 per page). */
 function catalogHeading(
   filters: CatalogFilterOptions,
-  names: { categoryName?: string; brandName?: string }
+  names: { categoryName?: string; brandName?: string },
+  h1Override?: string
 ): string {
   if (filters.search) return `Пошук: «${filters.search}»`;
-  if (filters.categorySlug && names.categoryName) return names.categoryName;
+  if (filters.categorySlug && names.categoryName) return h1Override ?? names.categoryName;
   if (filters.brandSlug && names.brandName) return `Бренд ${names.brandName}`;
   return 'Каталог товарів';
 }
@@ -93,22 +103,27 @@ export async function generateMetadata({
     filters.brandSlug ? fetchBrandBySlug(filters.brandSlug) : null,
   ]);
 
-  return buildCatalogViewMetadata({
-    input: {
-      search: filters.search,
-      categorySlug: filters.categorySlug,
-      brandSlug: filters.brandSlug,
-      categoryFound: category !== null,
-      brandFound: brand !== null,
-      minPrice: filters.minPrice,
-      maxPrice: filters.maxPrice,
-      inStockOnly: filters.inStockOnly,
-      sort: filters.sort,
-      page: filters.page,
-    },
-    categoryName: category?.name,
-    brandName: brand?.name,
-  });
+  // SEO copy override (category-seo.ts) touches ONLY title/description —
+  // the indexability/canonical decision from buildCatalogViewMetadata stays.
+  return applyCategorySeoMetadata(
+    buildCatalogViewMetadata({
+      input: {
+        search: filters.search,
+        categorySlug: filters.categorySlug,
+        brandSlug: filters.brandSlug,
+        categoryFound: category !== null,
+        brandFound: brand !== null,
+        minPrice: filters.minPrice,
+        maxPrice: filters.maxPrice,
+        inStockOnly: filters.inStockOnly,
+        sort: filters.sort,
+        page: filters.page,
+      },
+      categoryName: category?.name,
+      brandName: brand?.name,
+    }),
+    filters.categorySlug
+  );
 }
 
 function removeParamUrl(
@@ -224,11 +239,34 @@ export default async function CatalogPage({
     : undefined;
   const names = { categoryName, brandName };
   const chips = buildActiveChips(filters, names);
-  const heading = catalogHeading(filters, names);
+
+  // Category-level SEO (category-seo.ts): intent copy + subcategory links
+  // only for a pure category view (no search). Children are sliced from the
+  // already-fetched active list — no extra DB reads.
+  const seo =
+    !filters.search && filters.categorySlug
+      ? getCategorySeo(filters.categorySlug)
+      : null;
+  const activeCategory = filters.categorySlug
+    ? categories.find((c) => c.slug === filters.categorySlug)
+    : undefined;
+  const childCategories =
+    seo && activeCategory ? listDirectChildren(categories, activeCategory.id) : [];
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+  const breadcrumbJsonLd = activeCategory
+    ? buildCatalogBreadcrumbJsonLd(
+        { name: activeCategory.name, slug: activeCategory.slug },
+        siteUrl
+      )
+    : null;
+  const heading = catalogHeading(filters, names, seo?.h1);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <SiteHeader />
+      {/* BreadcrumbList for category views — ProductJsonLd is the sanctioned
+          JSON-LD script sink (same serializeJsonLd escaping). */}
+      <ProductJsonLd data={breadcrumbJsonLd} />
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
@@ -260,6 +298,38 @@ export default async function CatalogPage({
                   Знайдено: {total}
                 </span>
               </div>
+
+              {/* Unique category intro + crawlable subcategory links
+                  (pinned category only — see app/lib/category-seo.ts). */}
+              {seo && (
+                <div className="mb-6 text-sm leading-relaxed text-gray-600">
+                  {seo.intro.map((paragraph) => (
+                    <p key={paragraph.slice(0, 24)} className="mb-2">
+                      {paragraph}
+                    </p>
+                  ))}
+                  {childCategories.length > 0 && (
+                    <>
+                      <h2 className="mb-2 mt-4 text-lg font-bold text-gray-900">
+                        {seo.introHeading}
+                      </h2>
+                      <ul className="flex flex-wrap gap-2">
+                        {childCategories.map((child) => (
+                          <li key={child.id}>
+                            <Link
+                              href={`/catalog?category=${encodeURIComponent(child.slug)}`}
+                              className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-blue-700 transition hover:bg-blue-50"
+                            >
+                              {child.name}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              )}
+
               <div className="mb-4 flex items-center justify-between gap-4 flex-wrap">
                 {hasActiveFilters && (
                   <div className="flex flex-wrap items-center gap-2">

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import FeedbackModal from './FeedbackModal';
+import { TDD_CATEGORY_SLUG } from '@/app/lib/category-seo';
 
 interface SiteFooterProps {
   categories?: { id: string; name: string; slug: string }[];
@@ -36,6 +37,17 @@ export default function SiteFooter({ categories }: SiteFooterProps) {
               </ul>
             ) : (
               <ul className="space-y-2 text-gray-300">
+                {/* Pinned intent anchor: the merchandising link «Товари для
+                    дому» lives in the client-side nav drawer, which is NOT in
+                    the SSR HTML — this footer <Link> is the crawlable one. */}
+                <li>
+                  <Link
+                    href={`/catalog?category=${TDD_CATEGORY_SLUG}`}
+                    className="hover:text-white"
+                  >
+                    Товари для дому
+                  </Link>
+                </li>
                 {/* Only the first 5 categories: the full supplier list
                     (~200 entries) made the footer endless. */}
                 {categories.slice(0, 5).map((category) => (
