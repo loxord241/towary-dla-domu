@@ -41,6 +41,19 @@ const {
   loadOurProductsForContent,
 } = await import('../app/lib/yugcontract/content-import.ts');
 
+// yugcontract_ids whose supplier "descriptions" are empty HTML shells (no
+// text after stripping tags). Writing them would store markup-only strings
+// while marking the product as "has description". Excluded here ONLY from the
+// description field; their specification updates still flow normally.
+const EXCLUDE_EMPTY_HTML_DESC_IDS: ReadonlySet<string> = new Set([
+  '6377542', '6377543', '6466242', '6546069', '6655320', '6806965',
+  '6819981', '6824731', '6837160', '6858140', '6860593', '6863794',
+  '6874251', '6897244', '6910428', '6986702', '7022281', '7022284',
+  '7038700', '7046725', '7079237', '7082039', '7088382', '7096545',
+  '7111320', '7229372', '7231271', '7231276', '7250282', '7259480',
+  '7261496', '7266825',
+]);
+
 const runIdx = process.argv.indexOf('--resume');
 const resumeId = runIdx !== -1 ? process.argv[runIdx + 1] : null;
 const mode = process.argv.includes('--run')
@@ -97,7 +110,9 @@ if (mode === 'plan') {
     stagedRows.push(...(await loadStagedRows(client, stagedIds.slice(i, i + 1000))));
   }
   const ourProducts = await loadOurProductsForContent(client, stagedIds);
-  const plan = planContentUpdates(stagedRows, ourProducts);
+  const plan = planContentUpdates(stagedRows, ourProducts, {
+    excludeDescriptionIds: EXCLUDE_EMPTY_HTML_DESC_IDS,
+  });
   const batches = planContentBatches(stagedIds);
 
   console.log(`наших товарів у плані:            ${fmtInt(ourProducts.length)}`);
@@ -105,6 +120,7 @@ if (mode === 'plan') {
   console.log(`  описів ЗАПОВНЕННЯ (було порожньо): ${fmtInt(plan.updates.filter((u) => !u.currentHadDescription && u.fields.description).length)}`);
   console.log(`  описів ПЕРЕЗАПИС (було непорожньо): ${fmtInt(plan.overwriteNonEmptyCount)} ← перевірте вручну`);
   console.log(`  specifications зміниться:           ${fmtInt(plan.updates.filter((u) => u.fields.specifications).length)}`);
+  console.log(`  описів ВИКЛЮЧЕНО (порожні HTML):    ${fmtInt(plan.excludedDescription)}`);
   console.log(`ідентичних (no-op):               ${fmtInt(plan.identical)}`);
   console.log(`без опису в staging:              ${fmtInt(plan.noDescriptionAvailable)}`);
   console.log(`unmatched staging рядків:         ${fmtInt(plan.unmatchedStaged)}`);
@@ -131,7 +147,7 @@ console.log(`\n== Виконання run=${runId}: ${batches.length} батчі�
 const result = await runContentUntilDone(client, runId, (outcome) => {
   const mark = outcome.status === 'done' ? '✓' : '✗';
   console.log(`${mark} [${outcome.phase} #${outcome.batchNo}] ${outcome.message}`);
-});
+}, { excludeDescriptionIds: EXCLUDE_EMPTY_HTML_DESC_IDS });
 
 const totals = result.outcomes.reduce(
   (acc, o) => ({

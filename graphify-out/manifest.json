@@ -702,9 +702,9 @@
     "semantic_hash": ""
   },
   "app/lib/yugcontract/content-import.ts": {
-    "mtime": 1787601613.5073729,
-    "seen": 1787763651.900313,
-    "ast_hash": "3d995000e80f3809898973788739245d",
+    "mtime": 1788121885.180412,
+    "seen": 1788121953.2428808,
+    "ast_hash": "81635b0d48828a205344acbd1294a952",
     "semantic_hash": ""
   },
   "app/lib/yugcontract/content-sanitize.ts": {
@@ -1002,9 +1002,9 @@
     "semantic_hash": ""
   },
   "scripts/yugcontract-content-apply.ts": {
-    "mtime": 1787601659.391362,
-    "seen": 1787763651.9003425,
-    "ast_hash": "8094b0a03fac4413a733c7a43f781679",
+    "mtime": 1788121896.5124128,
+    "seen": 1788121953.2429578,
+    "ast_hash": "6765c31dc7295d7fc3da479463205fff",
     "semantic_hash": ""
   },
   "scripts/yugcontract-content-dry-run.ts": {
@@ -3327,6 +3327,18 @@
     "mtime": 1788019534.8110697,
     "seen": 1788105711.9881692,
     "ast_hash": "9d7e02d143c7e86a6f4ad7338de8c2aa",
+    "semantic_hash": ""
+  },
+  "app/icon.jpg": {
+    "mtime": 1788108207.465846,
+    "seen": 1788121953.2431717,
+    "ast_hash": "a41c459b5cd5b84c80f5100e9fe1556b",
+    "semantic_hash": ""
+  },
+  "\u0442\u043e\u0432\u0430\u0440\u0438 \u0434\u043b\u044f \u0434\u043e\u043c\u0443.JPG": {
+    "mtime": 1788107925.2764163,
+    "seen": 1788121953.2431793,
+    "ast_hash": "a41c459b5cd5b84c80f5100e9fe1556b",
     "semantic_hash": ""
   }
 }

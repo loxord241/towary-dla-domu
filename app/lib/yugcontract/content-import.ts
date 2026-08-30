@@ -80,6 +80,8 @@ export interface ContentPlan {
   noDescriptionAvailable: number;
   /** subset of updates where a NON-empty local description gets replaced */
   overwriteNonEmptyCount: number;
+  /** matched rows whose staged description existed but was suppressed (excludeDescriptionIds) */
+  excludedDescription: number;
 }
 
 function specsDiffer(
@@ -94,9 +96,19 @@ function specsDiffer(
 export function planContentUpdates(
   staged: readonly StagedContentRow[],
   products: readonly ContentProductRow[],
-  options: { includeSpecifications?: boolean } = {}
+  options: {
+    includeSpecifications?: boolean;
+    /**
+     * yugcontract_ids whose staged `description` must NOT be written, even
+     * when one exists (used by content-apply to skip text-empty supplier
+     * HTML shells). Specifications for these ids still flow normally.
+     * Defaults to undefined → no behaviour change for existing callers.
+     */
+    excludeDescriptionIds?: ReadonlySet<string>;
+  } = {}
 ): ContentPlan {
   const includeSpecifications = options.includeSpecifications ?? true;
+  const excludeDesc = options.excludeDescriptionIds ?? new Set<string>();
   const byYcId = new Map(products.map((p) => [p.yugcontract_id ?? '', p]));
 
   const updates: ContentUpdateOp[] = [];
@@ -104,6 +116,7 @@ export function planContentUpdates(
   let unmatchedStaged = 0;
   let noDescriptionAvailable = 0;
   let overwriteNonEmptyCount = 0;
+  let excludedDescription = 0;
 
   for (const s of staged) {
     const product = byYcId.get(s.yugcontract_id);
@@ -116,6 +129,8 @@ export function planContentUpdates(
 
     const stagedDesc = s.description !== null && s.description.trim() !== '' ? s.description : null;
     const currentDesc = product.description !== null && product.description.trim() !== '' ? product.description : null;
+    // Excluded ids: never emit a description, but still allow specs below.
+    const skipDesc = excludeDesc.has(s.yugcontract_id);
 
     // Disjoint counters: identical = matched row with NOTHING to write;
     // noDescriptionAvailable = matched row whose staged description is
@@ -128,7 +143,9 @@ export function planContentUpdates(
       fields.specifications = buildSpecificationJson(s.params);
     }
 
-    if (stagedDesc === null) {
+    if (skipDesc) {
+      if (stagedDesc !== null) excludedDescription += 1;
+    } else if (stagedDesc === null) {
       // keep existing description untouched (never blank out content)
     } else if (currentDesc !== null && currentDesc === stagedDesc.trim()) {
       // equal — nothing to write for description
@@ -151,7 +168,7 @@ export function planContentUpdates(
     });
   }
 
-  return { updates, identical, unmatchedStaged, noDescriptionAvailable, overwriteNonEmptyCount };
+  return { updates, identical, unmatchedStaged, noDescriptionAvailable, overwriteNonEmptyCount, excludedDescription };
 }
 
 export interface PlannedBatch {
@@ -468,14 +485,17 @@ export interface ContentBatchOutcome {
 
 export async function executeDescriptionBatch(
   client: SupabaseClient,
-  batch: ContentBatchRow
+  batch: ContentBatchRow,
+  options: { excludeDescriptionIds?: ReadonlySet<string> } = {}
 ): Promise<ContentBatchOutcome> {
   const zero = { updated: 0, skipped: 0, errors: 0 };
   const ids = batch.payload?.ids ?? [];
   try {
     const staged = await loadStagedRows(client, ids);
     const products = await loadOurProductsForContent(client, ids);
-    const plan = planContentUpdates(staged, products);
+    const plan = planContentUpdates(staged, products, {
+      excludeDescriptionIds: options.excludeDescriptionIds,
+    });
 
     let updated = 0;
     let errors = 0;
@@ -524,7 +544,8 @@ export async function executeDescriptionBatch(
 export async function runContentUntilDone(
   client: SupabaseClient,
   runId: string,
-  onOutcome?: (outcome: ContentBatchOutcome) => void
+  onOutcome?: (outcome: ContentBatchOutcome) => void,
+  options: { excludeDescriptionIds?: ReadonlySet<string> } = {}
 ): Promise<{ stopped: boolean; reason: string | null; outcomes: ContentBatchOutcome[] }> {
   const outcomes: ContentBatchOutcome[] = [];
   for (;;) {
@@ -534,7 +555,9 @@ export async function runContentUntilDone(
     const outcome =
       batch.phase === 'images'
         ? await executeImagesBatch(client, batch)
-        : await executeDescriptionBatch(client, batch);
+        : await executeDescriptionBatch(client, batch, {
+            excludeDescriptionIds: options.excludeDescriptionIds,
+          });
     outcomes.push(outcome);
     onOutcome?.(outcome);
     if (outcome.status !== 'done') {
