@@ -62,6 +62,7 @@ const readAll = async (filter: 'like' | 'not-like'): Promise<YcRow[]> => {
     let q = svc
       .from('products')
       .select('yugcontract_id, slug, price')
+      .order('yugcontract_id')
       .range(from, from + PAGE - 1);
     q = filter === 'like'
       ? q.like('yugcontract_id', '%\\_du')

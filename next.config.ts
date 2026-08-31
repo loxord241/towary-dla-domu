@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import duRedirects from "./app/lib/du-redirects.json";
+import duRedirects from "./app/lib/du-redirects.json" with { type: "json" };
 
 // Supabase REST/Auth host — resolved from the SAME env var the client
 // runtime uses, so the policy can never drift from the real backend.
