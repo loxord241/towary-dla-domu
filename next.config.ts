@@ -35,7 +35,7 @@ const YUGCONTRACT_IMAGE_ORIGIN_HOST = "b2b.yugcontract.ua";
  *    style attributes (4 sanctioned components). Same nonce/dynamic-
  *    rendering constraint applies; kept minimal and documented.
  *  - img-src: own origin, Supabase public bucket, Yugcontract hotlinks.
- *  - font-src: next/font/google self-hosts woff2 at build time.
+ *  - font-src 'self': next/font/google self-hosts woff2 at build time.
  *  - connect-src: same-origin APIs + Supabase Auth/REST (client-side on
  *    admin login, order status, checkout success). No realtime/websockets.
  *    (CSP scheme matching: https://host also permits wss://host.)
