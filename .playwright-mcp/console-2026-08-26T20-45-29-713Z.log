@@ -1,6 +1,0 @@
-[   12410ms] Uncaught TypeError: Cannot read properties of undefined (reading 'constructor')
-    at u (https://matomo.privatbank.ua/matomo.js:297:626)
-    at V (https://matomo.privatbank.ua/matomo.js:305:172)
-[   12410ms] undefined
-[   12551ms] [ERROR] Unable to download payment manifest "https://pay.google.com/gp/p/web_manifest.json". @ https://www.liqpay.ua/uk/checkout/card/checkout_1787777141005113_20300114_c0s13mGqukfUTF0AFmMz:0
-[   12551ms] [ERROR] Unable to download payment manifest "https://pay.google.com/gp/p/web_manifest.json". @ https://www.liqpay.ua/uk/checkout/card/checkout_1787777141005113_20300114_c0s13mGqukfUTF0AFmMz:0

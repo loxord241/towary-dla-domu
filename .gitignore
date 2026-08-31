@@ -46,3 +46,6 @@ next-env.d.ts
 .playwright-mcp/
 *-console-*.log
 /*-fix.png
+
+# runtime logs written by scripts/wsl/yugcontract-sync.sh etc.
+/logs/

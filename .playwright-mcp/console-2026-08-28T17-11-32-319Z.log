@@ -1,3 +1,0 @@
-[      48ms] [ERROR] Ignoring duplicate Content-Security-Policy directive 'connect-src'. @ http://localhost:3457/:0
-[     142ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3457/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
-[     196ms] [LOG] [HMR] connected @ http://localhost:3457/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
