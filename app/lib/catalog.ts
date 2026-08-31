@@ -4,6 +4,81 @@ import { cache } from 'react';
 // by allowImportingTsExtensions for the Next bundler.
 import { collectSubtreeIds } from './category-tree.ts';
 
+// unstable_cache is resolved dynamically: the bare 'next/cache' specifier
+// does not resolve under plain-node ESM (no ./cache subpath in next's
+// exports), and the node --test suite imports this module. Next's bundler
+// resolves the primary specifier; the fallback (the implementation file,
+// resolved WITH its .js extension for ESM) is only hit outside Next — i.e.
+// by the cache-wiring tests. Creation of wrappers needs no request context;
+// only CALLING a wrapped function does (inside a render it always exists).
+type UnstableCacheFn = <TArgs extends unknown[], TResult>(
+  cb: (...args: TArgs) => Promise<TResult>,
+  keyParts: string[],
+  options: { revalidate: number; tags: string[] }
+) => (...args: TArgs) => Promise<TResult>;
+
+const { unstable_cache } = (await import('next/cache').then(
+  (m) => m as { unstable_cache: UnstableCacheFn },
+  () =>
+    import(
+      'next/dist/server/web/spec-extension/unstable-cache.js'
+    ) as Promise<{ unstable_cache: UnstableCacheFn }>
+)) as { unstable_cache: UnstableCacheFn };
+
+// ---------------------------------------------------------------------------
+// Storefront public-read caching (caching step 2, audit 2026-08-31).
+//
+// The functions wrapped below are PUBLIC and USER-INDEPENDENT: their inputs
+// are explicit arguments (no cookies/headers/searchParams), they run under
+// the anonymous role, so RLS already decided their content, and their
+// results are identical for every visitor. unstable_cache therefore shares
+// one Data Cache entry across users safely.
+//
+// TTL policy: dictionaries change only via the admin UI (120s); products /
+// reviews change via the 6-hour Yugcontract importer or moderation (60s).
+// Post-import staleness is bounded by the TTL — invisible against the
+// 6-hour import cycle. DB errors are never cached: unstable_cache writes
+// the entry only after the callback resolves, so a failed read re-executes
+// on the next request (degradation contracts of the product page stay).
+//
+// NOT cached (deliberately):
+//  - fetchCatalogProducts: filter keys include user-controlled q/min/max —
+//    unbounded cache cardinality (pollution/DoS vector);
+//  - fetchProducts / fetchPopularProducts: the home page already bounds
+//    them behind ISR (revalidate 60);
+//  - everything in app/api/*, admin, checkout, orders, payments: private,
+//    personalized or rate-limited surfaces.
+// ---------------------------------------------------------------------------
+
+export const CATALOG_DICTIONARY_TTL_SECONDS = 120;
+export const CATALOG_PUBLIC_READ_TTL_SECONDS = 60;
+
+/** Shared tag so a future importer hook can revalidateTag() targeted. */
+const CATALOG_PUBLIC_CACHE_TAG = 'catalog-public-reads';
+
+/**
+ * Wrap a public, user-independent read in unstable_cache. The wrapper is
+ * created lazily on first call (no request context needed for creation,
+ * only for invocation). Exported for the cache-wiring tests; do not use
+ * for anything user-specific.
+ */
+export function cachePublicRead<TArgs extends unknown[], TResult>(
+  keyPrefix: string,
+  revalidateSeconds: number,
+  fn: (...args: TArgs) => Promise<TResult>
+): (...args: TArgs) => Promise<TResult> {
+  let wrapped: ((...args: TArgs) => Promise<TResult>) | null = null;
+  return async (...args: TArgs): Promise<TResult> => {
+    if (wrapped === null) {
+      wrapped = unstable_cache(fn, [keyPrefix], {
+        revalidate: revalidateSeconds,
+        tags: [CATALOG_PUBLIC_CACHE_TAG],
+      });
+    }
+    return wrapped(...args);
+  };
+}
+
 export interface ProductImage {
   id: string;
   product_id: string;
@@ -291,9 +366,21 @@ const CATALOG_MAX_PAGE_SIZE = 50;
  * generateMetadata and the page render resolve the SAME slug through ONE
  * request per render instead of duplicated reads (per-request memo only;
  * nothing is cached across requests).
+ * Caching step 2 (2026-08-31): wrapped in unstable_cache (60s) UNDER the
+ * React cache() — cross-request Data Cache for hot slug lookups.
  */
-const lookupCategoryBySlugCached = cache(fetchCategoryBySlugUncached);
-const lookupBrandBySlugCached = cache(fetchBrandBySlugUncached);
+const fetchCategoryBySlugStore = cachePublicRead(
+  'catalog:category-slug',
+  CATALOG_PUBLIC_READ_TTL_SECONDS,
+  fetchCategoryBySlugUncached
+);
+const lookupCategoryBySlugCached = cache(fetchCategoryBySlugStore);
+const fetchBrandBySlugStore = cachePublicRead(
+  'catalog:brand-slug',
+  CATALOG_PUBLIC_READ_TTL_SECONDS,
+  fetchBrandBySlugUncached
+);
+const lookupBrandBySlugCached = cache(fetchBrandBySlugStore);
 
 async function findCategoryIdBySlug(slug: string): Promise<string | null> {
   return (await lookupCategoryBySlugCached(slug))?.id ?? null;
@@ -537,39 +624,51 @@ export async function fetchPublishedReviews(
   productId: string,
   page = 1
 ): Promise<ReviewsPageData> {
-  const { count, error: countError } = await supabase
-    .from('product_reviews')
-    .select('id', { count: 'exact', head: true })
-    .eq('product_id', productId)
-    .eq('status', 'published');
-  if (countError) {
-    throw new Error(`Failed to count reviews: ${countError.message}`);
-  }
-
-  const total = count ?? 0;
-  const maxPage = Math.max(1, Math.ceil(total / REVIEWS_PAGE_SIZE));
-  const safePage = Math.min(Math.max(page, 1), maxPage);
-
-  const { data, error } = await supabase
-    .from('product_reviews')
-    .select(REVIEW_COLUMNS)
-    .eq('product_id', productId)
-    .eq('status', 'published')
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .range((safePage - 1) * REVIEWS_PAGE_SIZE, safePage * REVIEWS_PAGE_SIZE - 1);
-
-  if (error) {
-    throw new Error(`Failed to load reviews: ${error.message}`);
-  }
-
-  return {
-    reviews: data ?? [],
-    total,
-    page: safePage,
-    pageSize: REVIEWS_PAGE_SIZE,
-  };
+  return fetchPublishedReviewsStore(productId, page ?? 1);
 }
+
+/**
+ * Caching step 2 (2026-08-31): 60s Data Cache keyed by (productId, page).
+ * Published reviews are public, moderated, user-independent content.
+ */
+const fetchPublishedReviewsStore = cachePublicRead(
+  'catalog:reviews',
+  CATALOG_PUBLIC_READ_TTL_SECONDS,
+  async (productId: string, page: number): Promise<ReviewsPageData> => {
+    const { count, error: countError } = await supabase
+      .from('product_reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('product_id', productId)
+      .eq('status', 'published');
+    if (countError) {
+      throw new Error(`Failed to count reviews: ${countError.message}`);
+    }
+
+    const total = count ?? 0;
+    const maxPage = Math.max(1, Math.ceil(total / REVIEWS_PAGE_SIZE));
+    const safePage = Math.min(Math.max(page, 1), maxPage);
+
+    const { data, error } = await supabase
+      .from('product_reviews')
+      .select(REVIEW_COLUMNS)
+      .eq('product_id', productId)
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range((safePage - 1) * REVIEWS_PAGE_SIZE, safePage * REVIEWS_PAGE_SIZE - 1);
+
+    if (error) {
+      throw new Error(`Failed to load reviews: ${error.message}`);
+    }
+
+    return {
+      reviews: data ?? [],
+      total,
+      page: safePage,
+      pageSize: REVIEWS_PAGE_SIZE,
+    };
+  }
+);
 
 export interface ReviewSummary {
   total: number;
@@ -590,41 +689,54 @@ export interface ReviewSummary {
 export async function fetchReviewSummary(
   productId: string
 ): Promise<ReviewSummary> {
-  const { data, error } = await supabase.rpc('product_review_summary', {
-    p_product_id: productId,
-  });
-  if (error) {
-    throw new Error(`Failed to summarize ratings: ${error.message}`);
-  }
-
-  type SummaryRow = { rating: number | string; review_count: number | string };
-  const rows = (data ?? []) as SummaryRow[];
-  const countFor = (rating: number): number => {
-    const row = rows.find((entry) => Number(entry.rating) === rating);
-    return row ? Number(row.review_count) : 0;
-  };
-
-  const distribution: ReviewSummary['distribution'] = [
-    countFor(1),
-    countFor(2),
-    countFor(3),
-    countFor(4),
-    countFor(5),
-  ];
-  const total = distribution.reduce((sum, n) => sum + n, 0);
-  const weighted =
-    distribution[0] * 1 +
-    distribution[1] * 2 +
-    distribution[2] * 3 +
-    distribution[3] * 4 +
-    distribution[4] * 5;
-
-  return {
-    total,
-    average: total > 0 ? Math.round((weighted / total) * 10) / 10 : null,
-    distribution,
-  };
+  return fetchReviewSummaryStore(productId);
 }
+
+/**
+ * Caching step 2 (2026-08-31): 60s Data Cache keyed by productId. The RPC
+ * is SECURITY INVOKER and public (aggregated counts only) — identical for
+ * every visitor.
+ */
+const fetchReviewSummaryStore = cachePublicRead(
+  'catalog:review-summary',
+  CATALOG_PUBLIC_READ_TTL_SECONDS,
+  async (productId: string): Promise<ReviewSummary> => {
+    const { data, error } = await supabase.rpc('product_review_summary', {
+      p_product_id: productId,
+    });
+    if (error) {
+      throw new Error(`Failed to summarize ratings: ${error.message}`);
+    }
+
+    type SummaryRow = { rating: number | string; review_count: number | string };
+    const rows = (data ?? []) as SummaryRow[];
+    const countFor = (rating: number): number => {
+      const row = rows.find((entry) => Number(entry.rating) === rating);
+      return row ? Number(row.review_count) : 0;
+    };
+
+    const distribution: ReviewSummary['distribution'] = [
+      countFor(1),
+      countFor(2),
+      countFor(3),
+      countFor(4),
+      countFor(5),
+    ];
+    const total = distribution.reduce((sum, n) => sum + n, 0);
+    const weighted =
+      distribution[0] * 1 +
+      distribution[1] * 2 +
+      distribution[2] * 3 +
+      distribution[3] * 4 +
+      distribution[4] * 5;
+
+    return {
+      total,
+      average: total > 0 ? Math.round((weighted / total) * 10) / 10 : null,
+      distribution,
+    };
+  }
+);
 
 /**
  * Active products marked as featured for the home page.
@@ -680,79 +792,102 @@ export async function fetchPopularProducts(
  * Active categories — React `cache()`d per request (perf audit Step 3):
  * the catalog page, the category-subtree expansion inside
  * fetchCatalogProducts and the related-products leg all need the SAME
- * dictionary read; within one render it now executes once. Nothing is
- * cached across requests, so admin edits stay immediately visible.
+ * dictionary read; within one render it now executes once.
+ * Caching step 2 (2026-08-31): unstable_cache (120s) UNDER the React
+ * cache() — one Data Cache entry shared across requests.
  */
 export async function fetchActiveCategories(): Promise<Category[]> {
   return fetchActiveCategoriesCached();
 }
 
-const fetchActiveCategoriesCached = cache(async (): Promise<Category[]> => {
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .eq('is_active', true)
-    // Commercial order is sort_order alone; the deterministic id fallback
-    // keeps ties stable. No row-timestamp tiebreak here: the uk-name
-    // fallback for display lives in compareCategories.
-    .order('sort_order', { ascending: true })
-    .order('id', { ascending: true })
-    .returns<Category[]>();
+const fetchActiveCategoriesStore = cachePublicRead(
+  'catalog:categories',
+  CATALOG_DICTIONARY_TTL_SECONDS,
+  async (): Promise<Category[]> => {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('is_active', true)
+      // Commercial order is sort_order alone; the deterministic id fallback
+      // keeps ties stable. No row-timestamp tiebreak here: the uk-name
+      // fallback for display lives in compareCategories.
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true })
+      .returns<Category[]>();
 
-  if (error) {
-    throw new Error(`Failed to load categories: ${error.message}`);
+    if (error) {
+      throw new Error(`Failed to load categories: ${error.message}`);
+    }
+
+    return data ?? [];
   }
+);
 
-  return data ?? [];
-});
+const fetchActiveCategoriesCached = cache(fetchActiveCategoriesStore);
 
 /**
- * Active brands.
+ * Active brands — same caching contract as fetchActiveCategories.
  */
 export async function fetchActiveBrands(): Promise<Brand[]> {
   return fetchActiveBrandsCached();
 }
 
-const fetchActiveBrandsCached = cache(async (): Promise<Brand[]> => {
-  const { data, error } = await supabase
-    .from('brands')
-    .select('*')
-    .eq('is_active', true)
-    .order('name', { ascending: true })
-    .returns<Brand[]>();
+const fetchActiveBrandsStore = cachePublicRead(
+  'catalog:brands',
+  CATALOG_DICTIONARY_TTL_SECONDS,
+  async (): Promise<Brand[]> => {
+    const { data, error } = await supabase
+      .from('brands')
+      .select('*')
+      .eq('is_active', true)
+      .order('name', { ascending: true })
+      .returns<Brand[]>();
 
-  if (error) {
-    throw new Error(`Failed to load brands: ${error.message}`);
+    if (error) {
+      throw new Error(`Failed to load brands: ${error.message}`);
+    }
+
+    return data ?? [];
   }
+);
 
-  return data ?? [];
-});
+const fetchActiveBrandsCached = cache(fetchActiveBrandsStore);
 
 /**
  * Find an active product by slug with category, brand, images and variants.
  * Main image is derived from product_images.is_main (there is no
  * products.main_image column in the schema).
  * Returns null when no active product matches the slug.
+ * Caching step 2 (2026-08-31): 60s Data Cache keyed by slug — the PDP read
+ * is public and identical for every visitor. Failed reads stay uncached.
  */
 export async function fetchProductBySlug(slug: string): Promise<Product | null> {
-  const { data, error } = await supabase
-    .from('products')
-    .select(PRODUCT_SELECT)
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .returns<ProductJoinedRow[]>()
-    .maybeSingle();
-
-  if (error) {
-    // A data error is not a missing product: rethrow so the route renders
-    // the error boundary instead of a misleading 404.
-    throw new Error(`Failed to load product by slug "${slug}": ${error.message}`);
-  }
-
-  if (!data) return null;
-
-  return normalizeProduct(data);
+  return fetchProductBySlugStore(slug);
 }
+
+const fetchProductBySlugStore = cachePublicRead(
+  'catalog:product-slug',
+  CATALOG_PUBLIC_READ_TTL_SECONDS,
+  async (slug: string): Promise<Product | null> => {
+    const { data, error } = await supabase
+      .from('products')
+      .select(PRODUCT_SELECT)
+      .eq('slug', slug)
+      .eq('is_active', true)
+      .returns<ProductJoinedRow[]>()
+      .maybeSingle();
+
+    if (error) {
+      // A data error is not a missing product: rethrow so the route renders
+      // the error boundary instead of a misleading 404.
+      throw new Error(`Failed to load product by slug "${slug}": ${error.message}`);
+    }
+
+    if (!data) return null;
+
+    return normalizeProduct(data);
+  }
+);
 // ---------------------------------------------------------------------------
 // «Схожі товари» (related products) — read-only discovery shelf for the
 // product page. Up to THREE bounded reads (one window ≤limit each), merged
@@ -827,25 +962,45 @@ export async function fetchRelatedProducts(
   product: Pick<Product, 'id' | 'category_id' | 'brand_id'>,
   limit: number = RELATED_LIMIT
 ): Promise<Product[]> {
-  const sameCategoryStage = product.category_id
-    ? fetchActiveCategories().then((activeCategories) =>
-        fetchRelatedStage(
-          {
-            kind: 'category',
-            subtreeIds: Array.from(collectSubtreeIds(activeCategories, product.category_id!)),
-          },
-          product.id,
-          limit
-        )
-      )
-    : Promise.resolve<Product[]>([]);
-  const [sameCategory, sameBrand, newest] = await Promise.all([
-    sameCategoryStage,
-    product.brand_id
-      ? fetchRelatedStage({ kind: 'brand', id: product.brand_id }, product.id, limit)
-      : Promise.resolve<Product[]>([]),
-    fetchRelatedStage(null, product.id, limit),
-  ]);
-  return collectRelated([sameCategory, sameBrand, newest], product.id, limit);
+  return fetchRelatedProductsStore(
+    // Key-shaping: only the fields that determine the result go into the
+    // unstable_cache invocation key (JSON.stringify(args)) — a full Product
+    // (with description HTML) would bloat every key.
+    { id: product.id, category_id: product.category_id, brand_id: product.brand_id },
+    limit
+  );
 }
 
+/**
+ * Caching step 2 (2026-08-31): 60s Data Cache keyed by the product identity
+ * triple + limit; one entry per product (bounded by the catalog size).
+ */
+const fetchRelatedProductsStore = cachePublicRead(
+  'catalog:related',
+  CATALOG_PUBLIC_READ_TTL_SECONDS,
+  async (
+    identity: Pick<Product, 'id' | 'category_id' | 'brand_id'>,
+    limit: number
+  ): Promise<Product[]> => {
+    const sameCategoryStage = identity.category_id
+      ? fetchActiveCategories().then((activeCategories) =>
+          fetchRelatedStage(
+            {
+              kind: 'category',
+              subtreeIds: Array.from(collectSubtreeIds(activeCategories, identity.category_id!)),
+            },
+            identity.id,
+            limit
+          )
+        )
+      : Promise.resolve<Product[]>([]);
+    const [sameCategory, sameBrand, newest] = await Promise.all([
+      sameCategoryStage,
+      identity.brand_id
+        ? fetchRelatedStage({ kind: 'brand', id: identity.brand_id }, identity.id, limit)
+        : Promise.resolve<Product[]>([]),
+      fetchRelatedStage(null, identity.id, limit),
+    ]);
+    return collectRelated([sameCategory, sameBrand, newest], identity.id, limit);
+  }
+);
