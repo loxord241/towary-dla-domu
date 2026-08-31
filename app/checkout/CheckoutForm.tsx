@@ -10,6 +10,8 @@ import {
   type CartPreviewLine,
 } from '@/app/lib/cart-preview';
 import { normalizeUaPhoneDigits, toE164Ua } from '@/app/lib/phone';
+import { ANALYTICS_EVENTS } from '@/app/lib/analytics';
+import { track } from '@vercel/analytics';
 
 interface SubmitResult {
   orderNumber: string;
@@ -160,6 +162,12 @@ export default function CheckoutForm() {
       if (settlementDebounceRef.current) clearTimeout(settlementDebounceRef.current);
       if (streetDebounceRef.current) clearTimeout(streetDebounceRef.current);
     };
+  }, []);
+
+  // Anonymous checkout-funnel analytics: fires once when the checkout
+  // form mounts. No payload — nothing about the cart or the visitor.
+  useEffect(() => {
+    track(ANALYTICS_EVENTS.CHECKOUT_START);
   }, []);
 
   const [submitting, setSubmitting] = useState(false);

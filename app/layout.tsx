@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { CartProvider } from "@/app/lib/cart-context";
 import { FavoritesProvider } from "@/app/lib/favorites-context";
+import TrafficSourceTracker from "@/app/components/TrafficSourceTracker";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <CartProvider>
           <FavoritesProvider>{children}</FavoritesProvider>
         </CartProvider>
+        <TrafficSourceTracker />
         <Analytics />
         <SpeedInsights />
       </body>

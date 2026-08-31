@@ -7,6 +7,7 @@ import OrderStatusBadge, {
 } from '@/app/components/OrderStatusBadge';
 import PayWithLiqPayButton from '@/app/components/PayWithLiqPayButton';
 import ShippingPeriodNotice from '@/app/components/ShippingPeriodNotice';
+import PaymentSuccessTracker from '@/app/components/PaymentSuccessTracker';
 
 /**
  * Order confirmation page. The total/currency/items shown here are ALWAYS
@@ -110,6 +111,9 @@ export default async function CheckoutSuccessPage({
       {/* Order creation confirmed — inform about the shipping period. Not
           rendered in the NotFound branches above. */}
       <ShippingPeriodNotice />
+      {/* Anonymous analytics: the event fires only for DB-confirmed paid
+          orders (`payment === 'paid'` re-read server-side above). */}
+      <PaymentSuccessTracker paid={payment === 'paid'} orderNumber={orderRow.order_number} />
       <div className="card mx-auto max-w-xl overflow-hidden">
         <div
           className={`border-b p-6 text-center ${

@@ -23,6 +23,7 @@ import {
 import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
 import ProductJsonLd from '@/app/components/ProductJsonLd'
+import SearchViewTracker from '@/app/components/SearchViewTracker'
 import CatalogFilters from './CatalogFilters'
 import SortSelect from './SortSelect'
 import { CATALOG_PAGE_SIZE } from '@/app/lib/catalog'
@@ -267,6 +268,9 @@ export default async function CatalogPage({
       {/* BreadcrumbList for category views — ProductJsonLd is the sanctioned
           JSON-LD script sink (same serializeJsonLd escaping). */}
       <ProductJsonLd data={breadcrumbJsonLd} />
+      {/* Anonymous search analytics: rendered only when a search term is
+          applied; the tracker sanitizes the term (PII guard) before firing. */}
+      <SearchViewTracker query={filters.search} />
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
