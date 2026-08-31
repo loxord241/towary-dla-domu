@@ -65,6 +65,8 @@ export interface CatalogHealthInput {
   batches: ImportBatchInfo[];
   /** orders with payment_status='pending' older than 24h (advisory: COD-like) */
   pendingOrdersOlderThan24h: number;
+  /** optional _du allowlist drift section (checked when the script provides it) */
+  du?: DuDriftInput;
 }
 
 // A running batch older than the importer's own STALE_RUNNING_MS (10 min)
@@ -80,6 +82,97 @@ export const SYNC_FAIL_AGE_MS = 96 * 60 * 60 * 1000;
 // Orders pending >24h are expected for cash-on-delivery style flow, so the
 // check is advisory and never fails the overall result.
 export const PENDING_ORDER_WARN_HOURS = 24;
+// _du audit invariant (2026-08-31): _du products WITHOUT a base product.
+// The generator hard-fails outside this number; monitoring mirrors it as a
+// WARN regenerate signal.
+export const DU_EXPECTED_ORPHANS = 26;
+
+/** Minimal plain shape of a products row needed for _du drift (read-only select). */
+export interface DuProductRow {
+  yugcontract_id: string;
+  slug: string;
+  price: number | null;
+}
+
+/** Plain snapshot of the generated allowlist — the lib never imports du-redirects. */
+export interface DuAllowlistSnapshot {
+  /** every allowlisted _du id: 97 redirect + 6 price-diff yugcontract_ids */
+  duIds: ReadonlySet<string>;
+  /** the 6 documented price-diff _du ids (never redirected) */
+  priceDiffIds: ReadonlySet<string>;
+  /** audit invariant: expected count of _du rows without a base */
+  expectedOrphans: number;
+}
+
+export interface DuDriftInput {
+  duRows: DuProductRow[];
+  baseRows: DuProductRow[];
+  allowlist: DuAllowlistSnapshot;
+}
+
+export interface DuDriftAnalysis {
+  duTotal: number;
+  /** _du rows whose base product is absent (audit: 26) */
+  orphanCount: number;
+  /** _du with an existing base that is absent from the allowlist — new duplicates */
+  unknownDu: string[];
+  /** allowlisted _du missing from the DB entirely */
+  missingDu: string[];
+  /** known pair whose base is gone or whose slug derivation broke */
+  brokenPairs: string[];
+  /** known pair whose price-equality class flipped (needs allowlist regenerate) */
+  priceDrift: string[];
+}
+
+/** Classify _du drift against the allowlist. Pure — no I/O. */
+export function analyzeDuDrift(drift: DuDriftInput): DuDriftAnalysis {
+  const { duRows, baseRows, allowlist } = drift;
+  const stripDu = (s: string) => s.replace(/_du$/, '');
+  const bases = new Map(baseRows.map((b) => [b.yugcontract_id, b]));
+  const present = new Set(duRows.map((d) => d.yugcontract_id));
+
+  const missingDu = [...allowlist.duIds].filter((id) => !present.has(id)).sort();
+
+  const unknownDu: string[] = [];
+  const brokenPairs: string[] = [];
+  const priceDrift: string[] = [];
+  let orphanCount = 0;
+
+  for (const du of duRows) {
+    const base = bases.get(stripDu(du.yugcontract_id));
+    if (!base) {
+      orphanCount += 1;
+      // An allowlisted _du losing its base is a broken pair (generator gate:
+      // pairs !== 103), not an orphan — orphans are only non-allowlisted _du.
+      if (allowlist.duIds.has(du.yugcontract_id)) {
+        brokenPairs.push(`${du.yugcontract_id} | base ${stripDu(du.yugcontract_id)} missing`);
+      }
+      continue;
+    }
+    if (!allowlist.duIds.has(du.yugcontract_id)) {
+      unknownDu.push(`${du.yugcontract_id} | ${du.slug}`);
+      continue;
+    }
+    if (base.slug !== stripDu(du.slug)) {
+      brokenPairs.push(`${du.yugcontract_id} | slug mismatch: du=${du.slug} base=${base.slug}`);
+      continue;
+    }
+    const pricesDiffer = du.price !== base.price;
+    const expectedDiff = allowlist.priceDiffIds.has(du.yugcontract_id);
+    if (pricesDiffer !== expectedDiff) {
+      priceDrift.push(`${du.yugcontract_id} | du=${String(du.price)} base=${String(base.price)}`);
+    }
+  }
+
+  return {
+    duTotal: duRows.length,
+    orphanCount,
+    unknownDu: unknownDu.sort(),
+    missingDu,
+    brokenPairs: brokenPairs.sort(),
+    priceDrift: priceDrift.sort(),
+  };
+}
 
 /** Detect failed / stuck import batches and the last successful run. */
 export function analyzeImportBatches(
@@ -232,6 +325,68 @@ export function buildCatalogChecks(
       affectsStatus: false,
     },
   ];
+
+  // ---- _du allowlist drift (audit 2026-08-31) -----------------------------
+  // Mirrors the generator's hard gates as monitoring checks:
+  //   FAIL — a new _du with a base outside the allowlist, or a known pair
+  //          broken (du/base missing, slug derivation changed);
+  //   WARN — price-equality class flipped inside the known pairs, or the
+  //          orphan count left the audited value ⇒ regenerate the allowlist.
+  if (input.du) {
+    const d = analyzeDuDrift(input.du);
+    const expectedOrphans = input.du.allowlist.expectedOrphans;
+    const broken = [...d.missingDu.map((id) => `${id} | missing from products`), ...d.brokenPairs];
+    checks.push(
+      {
+        id: 'du-unknown-new',
+        label: 'Нові _du товари з base поза allowlist',
+        level: d.unknownDu.length > 0 ? 'fail' : 'pass',
+        count: d.unknownDu.length,
+        description:
+          d.unknownDu.length > 0
+            ? 'У БД з’явилися _du-товари з існуючим base, яких немає в allowlist (97 redirect + 6 price-diff) — дублікати URL без redirect. Regenerate: node --experimental-strip-types scripts/yugcontract-du-redirect-allowlist.ts'
+            : 'Нових _du-пар поза allowlist немає.',
+        affectsStatus: true,
+        ...(d.unknownDu.length > 0 ? { items: d.unknownDu } : {}),
+      },
+      {
+        id: 'du-pairs-integrity',
+        label: 'Зниклі/змінені allowlist _du пари',
+        level: broken.length > 0 ? 'fail' : 'pass',
+        count: broken.length,
+        description:
+          broken.length > 0
+            ? 'Allowlist-пара зламана: _du або base зник, або slug більше не виводиться з du-суфікса. Regenerate allowlist після з’ясування причин.'
+            : 'Усі allowlist _du пари цілі (slug-вивід збігається).',
+        affectsStatus: true,
+        ...(broken.length > 0 ? { items: broken } : {}),
+      },
+      {
+        id: 'du-price-drift',
+        label: `Price-drift у відомих _du парах (WARN = regenerate)`,
+        level: d.priceDrift.length > 0 ? 'warn' : 'pass',
+        count: d.priceDrift.length,
+        description:
+          d.priceDrift.length > 0
+            ? 'Клас рівності цін у відомих парах змінився (redirect-пара стала різноцінною або price-diff зрівнялась) — allowlist більше не відповідає аудиту. Regenerate: node --experimental-strip-types scripts/yugcontract-du-redirect-allowlist.ts'
+            : `Класи цін пар відповідають аудиту (price-diff: ${input.du.allowlist.priceDiffIds.size}).`,
+        affectsStatus: true,
+        ...(d.priceDrift.length > 0 ? { items: d.priceDrift } : {}),
+      },
+      {
+        id: 'du-orphans',
+        label: `_du сироти без base (очікується ${expectedOrphans})`,
+        level: d.orphanCount !== expectedOrphans ? 'warn' : 'pass',
+        count: d.orphanCount,
+        description:
+          d.orphanCount !== expectedOrphans
+            ? `Кількість _du без base (${d.orphanCount}) відхилилася від аудиту (${expectedOrphans}) — з’явилися нові сироти або base відновився. Regenerate allowlist.`
+            : `Кількість _du сиріт відповідає аудиту (${expectedOrphans}).`,
+        affectsStatus: true,
+      },
+    );
+  }
+
   return checks;
 }
 

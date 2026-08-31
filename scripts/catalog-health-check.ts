@@ -8,7 +8,11 @@
  *    (PASS/WARN/FAIL + systemd-friendly exit code 0/1/2);
  *  - the imageless-products section reports the exact count AND the full
  *    list (yugcontract_id, sku, slug, name) — fixing those products is a
- *    separate content task and is intentionally NOT attempted here.
+ *    separate content task and is intentionally NOT attempted here;
+ *  - the _du section (2026-08-31 allowlist audit) compares the live _du
+ *    rows against the generated allowlist (du-redirects.ts): FAIL on new
+ *    _du pairs outside the allowlist or broken known pairs, WARN on
+ *    price-drift / orphan-count drift ⇒ regenerate the allowlist.
  *
  * Usage: node scripts/catalog-health-check.ts
  * Exit:  0 = PASS, 1 = WARN, 2 = FAIL (see catalog-health.ts).
@@ -19,8 +23,16 @@ import path from 'node:path';
 import {
   buildCatalogChecks,
   overallResult,
+  analyzeDuDrift,
+  DU_EXPECTED_ORPHANS,
   type ImportBatchInfo,
+  type DuProductRow,
 } from '../app/lib/monitoring/catalog-health.ts';
+import {
+  DU_PRICE_DIFF_PAIRS,
+  DU_REDIRECT_PAIRS,
+  DU_ALLOWLIST_AUDIT_DATE,
+} from '../app/lib/du-redirects.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -117,7 +129,42 @@ async function main(): Promise<void> {
     )
   ) as unknown as ImportBatchInfo[];
 
-  // ---- 4. pending orders (advisory; existing safe read-only logic) -------
+  // ---- 4. _du allowlist drift (read-only, mirrors the generator's gates) --
+  // Same two reads the generator does, minus the full base scan: only the
+  // ~103 allowlisted base ids are fetched. No writes anywhere.
+  const duRows = (await fetchAll((from, limit) =>
+    db
+      .from('products')
+      .select('yugcontract_id, slug, price')
+      .like('yugcontract_id', '%\\_du')
+      .order('yugcontract_id')
+      .range(from, from + limit - 1)
+  )) as unknown as DuProductRow[];
+  const allowlistDuIds = [
+    ...DU_REDIRECT_PAIRS.map((p) => p.duYc),
+    ...DU_PRICE_DIFF_PAIRS.map((p) => p.duYc),
+  ];
+  const baseRows = (
+    await fetchAll((from, limit) =>
+      db
+        .from('products')
+        .select('yugcontract_id, slug, price')
+        .in('yugcontract_id', allowlistDuIds.map((id) => id.replace(/_du$/, '')))
+        .order('yugcontract_id')
+        .range(from, from + limit - 1)
+    )
+  ) as unknown as DuProductRow[];
+  const duDrift = analyzeDuDrift({
+    duRows,
+    baseRows,
+    allowlist: {
+      duIds: new Set(allowlistDuIds),
+      priceDiffIds: new Set(DU_PRICE_DIFF_PAIRS.map((p) => p.duYc)),
+      expectedOrphans: DU_EXPECTED_ORPHANS,
+    },
+  });
+
+  // ---- 5. pending orders (advisory; existing safe read-only logic) -------
   const pendingOrders = await fetchAll(() =>
     db.from('orders').select('order_number, created_at').eq('payment_status', 'pending').order('order_number')
   );
@@ -142,6 +189,15 @@ async function main(): Promise<void> {
     noImageItems,
     batches,
     pendingOrdersOlderThan24h: pending24h,
+    du: {
+      duRows,
+      baseRows,
+      allowlist: {
+        duIds: new Set(allowlistDuIds),
+        priceDiffIds: new Set(DU_PRICE_DIFF_PAIRS.map((p) => p.duYc)),
+        expectedOrphans: DU_EXPECTED_ORPHANS,
+      },
+    },
   });
   const { status, exitCode } = overallResult(checks);
 
@@ -164,6 +220,28 @@ async function main(): Promise<void> {
     console.log('\n# Failed batches:');
     for (const b of failed) {
       console.log(`  run=${b.run_id} phase=${b.phase} batch=${b.batch_no} err=${b.last_error ?? '—'}`);
+    }
+  }
+
+  if (
+    duDrift.unknownDu.length > 0 ||
+    duDrift.missingDu.length > 0 ||
+    duDrift.brokenPairs.length > 0 ||
+    duDrift.priceDrift.length > 0 ||
+    duDrift.orphanCount !== DU_EXPECTED_ORPHANS
+  ) {
+    console.log(
+      `\n# _du drift (allowlist audit ${DU_ALLOWLIST_AUDIT_DATE}): du=${duDrift.duTotal}, orphans=${duDrift.orphanCount}/${DU_EXPECTED_ORPHANS}`
+    );
+    for (const [title, list] of [
+      ['нові _du поза allowlist', duDrift.unknownDu],
+      ['зниклі allowlist _du', duDrift.missingDu],
+      ['зламані пари', duDrift.brokenPairs],
+      ['price-drift', duDrift.priceDrift],
+    ] as const) {
+      if (list.length === 0) continue;
+      console.log(`  ${title} (${list.length}):`);
+      for (const item of list) console.log(`    ${item}`);
     }
   }
 

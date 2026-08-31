@@ -10,12 +10,20 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import {
+  analyzeDuDrift,
   analyzeImportBatches,
   buildCatalogChecks,
   overallResult,
+  DU_EXPECTED_ORPHANS,
   type CatalogHealthInput,
+  type DuAllowlistSnapshot,
+  type DuProductRow,
   type ImportBatchInfo,
 } from '../app/lib/monitoring/catalog-health.ts';
+import {
+  DU_PRICE_DIFF_PAIRS,
+  DU_REDIRECT_PAIRS,
+} from '../app/lib/du-redirects.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel: string): string => readFileSync(path.join(root, rel), 'utf8');
@@ -217,4 +225,159 @@ test('HEALTH: installer wires OnFailure + post-sync health units, importer untou
   assert.match(installer, /SuccessExitStatus=1/);
   // The importer script is NOT referenced by any monitoring unit.
   assert.ok(!installer.includes('yugcontract-import-run'));
+});
+
+// ---- _du allowlist drift (2026-08-31 audit: 97 redirect + 6 price-diff + 26 orphans) ----
+
+const TEST_ALLOWLIST: DuAllowlistSnapshot = {
+  duIds: new Set(['1_du', '2_du']),
+  priceDiffIds: new Set(['2_du']),
+  expectedOrphans: 1,
+};
+
+function duRow(id: string, slug: string, price: number | null): DuProductRow {
+  return { yugcontract_id: id, slug, price };
+}
+
+/**
+ * Healthy fixture mirroring the audit shape: '1_du' is a same-price
+ * redirect pair, '2_du' a documented price-diff pair, '3_du' the single
+ * expected orphan (no base '3' in baseRows).
+ */
+function healthyDu(): { duRows: DuProductRow[]; baseRows: DuProductRow[] } {
+  return {
+    duRows: [
+      duRow('1_du', 'p-1_du', 100),
+      duRow('2_du', 'q-2_du', 100),
+      duRow('3_du', 'r-3_du', 50),
+    ],
+    baseRows: [duRow('1', 'p-1', 100), duRow('2', 'q-2', 200)],
+  };
+}
+
+function inputWithDu(duPartial: Partial<{ duRows: DuProductRow[]; baseRows: DuProductRow[] }> = {}): CatalogHealthInput {
+  const healthy = healthyDu();
+  return input({
+    du: {
+      duRows: duPartial.duRows ?? healthy.duRows,
+      baseRows: duPartial.baseRows ?? healthy.baseRows,
+      allowlist: TEST_ALLOWLIST,
+    },
+  });
+}
+
+test('DU-DRIFT: analyzeDuDrift on the healthy fixture reports zero drift', () => {
+  const { duRows, baseRows } = healthyDu();
+  const a = analyzeDuDrift({ duRows, baseRows, allowlist: TEST_ALLOWLIST });
+  assert.equal(a.duTotal, 3);
+  assert.equal(a.orphanCount, 1);
+  assert.deepEqual(a.unknownDu, []);
+  assert.deepEqual(a.missingDu, []);
+  assert.deepEqual(a.brokenPairs, []);
+  assert.deepEqual(a.priceDrift, []);
+});
+
+test('DU-DRIFT: healthy fixture passes all four du checks (overall PASS)', () => {
+  const checks = buildCatalogChecks(inputWithDu());
+  for (const id of ['du-unknown-new', 'du-pairs-integrity', 'du-price-drift', 'du-orphans']) {
+    assert.equal(byId(checks, id).level, 'pass', `check ${id} expected pass`);
+  }
+  assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
+});
+
+test('DU-DRIFT: a new _du with a base but absent from the allowlist is FAIL', () => {
+  const { duRows, baseRows } = healthyDu();
+  duRows.push(duRow('9_du', 'x-9_du', 80));
+  baseRows.push(duRow('9', 'x-9', 80));
+  const checks = buildCatalogChecks(inputWithDu({ duRows, baseRows }));
+  const unknown = byId(checks, 'du-unknown-new');
+  assert.equal(unknown.level, 'fail');
+  assert.equal(unknown.count, 1);
+  assert.ok(unknown.items?.some((i) => i.includes('9_du')));
+  assert.deepEqual(overallResult(checks), { status: 'FAIL', exitCode: 2 });
+});
+
+test('DU-DRIFT: a vanished allowlisted _du is FAIL', () => {
+  const { duRows, baseRows } = healthyDu();
+  const checks = buildCatalogChecks(inputWithDu({ duRows: duRows.filter((r) => r.yugcontract_id !== '1_du'), baseRows }));
+  const pairs = byId(checks, 'du-pairs-integrity');
+  assert.equal(pairs.level, 'fail');
+  assert.ok(pairs.items?.some((i) => i.includes('1_du')));
+  assert.deepEqual(overallResult(checks), { status: 'FAIL', exitCode: 2 });
+});
+
+test('DU-DRIFT: slug derivation break in a known pair is FAIL', () => {
+  const checks = buildCatalogChecks(inputWithDu({ baseRows: [duRow('1', 'renamed-1', 100), duRow('2', 'q-2', 200)] }));
+  const pairs = byId(checks, 'du-pairs-integrity');
+  assert.equal(pairs.level, 'fail');
+  assert.ok(pairs.items?.some((i) => i.includes('1_du')));
+});
+
+test('DU-DRIFT: a known pair whose base disappeared is FAIL and raises the orphan count', () => {
+  const { duRows } = healthyDu();
+  const checks = buildCatalogChecks(inputWithDu({ duRows, baseRows: [duRow('2', 'q-2', 200)] }));
+  assert.equal(byId(checks, 'du-pairs-integrity').level, 'fail');
+  assert.equal(byId(checks, 'du-orphans').level, 'warn');
+  assert.equal(byId(checks, 'du-orphans').count, 2);
+  assert.deepEqual(overallResult(checks), { status: 'FAIL', exitCode: 2 });
+});
+
+test('DU-DRIFT: price-equality flip on known pairs is WARN only (regenerate signal)', () => {
+  const { baseRows } = healthyDu();
+  // '1_du' (redirect pair) now differs in price; '2_du' (price-diff) now equal.
+  const duRows = [duRow('1_du', 'p-1_du', 150), duRow('2_du', 'q-2_du', 200), duRow('3_du', 'r-3_du', 50)];
+  const checks = buildCatalogChecks(inputWithDu({ duRows, baseRows }));
+  const price = byId(checks, 'du-price-drift');
+  assert.equal(price.level, 'warn');
+  assert.equal(price.count, 2);
+  assert.equal(byId(checks, 'du-unknown-new').level, 'pass');
+  assert.equal(byId(checks, 'du-pairs-integrity').level, 'pass');
+  assert.deepEqual(overallResult(checks), { status: 'WARN', exitCode: 1 });
+});
+
+test('DU-DRIFT: orphan count drift (new _du without base) is WARN', () => {
+  const { duRows, baseRows } = healthyDu();
+  duRows.push(duRow('4_du', 's-4_du', 10));
+  const checks = buildCatalogChecks(inputWithDu({ duRows, baseRows }));
+  const orphans = byId(checks, 'du-orphans');
+  assert.equal(orphans.level, 'warn');
+  assert.equal(orphans.count, 2);
+  assert.equal(byId(checks, 'du-unknown-new').level, 'pass');
+  assert.deepEqual(overallResult(checks), { status: 'WARN', exitCode: 1 });
+});
+
+test('DU-DRIFT: null prices on both sides of a pair are equal (no drift)', () => {
+  const duRows = [duRow('1_du', 'p-1_du', null), duRow('2_du', 'q-2_du', 100), duRow('3_du', 'r-3_du', 50)];
+  const baseRows = [duRow('1', 'p-1', null), duRow('2', 'q-2', 200)];
+  const a = analyzeDuDrift({ duRows, baseRows, allowlist: TEST_ALLOWLIST });
+  assert.deepEqual(a.priceDrift, []);
+  assert.deepEqual(a.brokenPairs, []);
+});
+
+test('DU-DRIFT: du checks are omitted when no du input is provided (backward compatible)', () => {
+  const checks = buildCatalogChecks(input());
+  assert.ok(!checks.some((c) => c.id.startsWith('du-')));
+  assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
+});
+
+test('DU-DRIFT: real allowlist snapshot has 103 ids, 6 price-diff, expectedOrphans=26', () => {
+  assert.equal(DU_EXPECTED_ORPHANS, 26);
+  const all = new Set([...DU_REDIRECT_PAIRS.map((p) => p.duYc), ...DU_PRICE_DIFF_PAIRS.map((p) => p.duYc)]);
+  assert.equal(all.size, 103);
+  assert.equal(DU_PRICE_DIFF_PAIRS.length, 6);
+  assert.equal(DU_REDIRECT_PAIRS.length, 97);
+});
+
+test('DU-DRIFT: production script wires the generated allowlist with read-only selects', () => {
+  const s = src('scripts/catalog-health-check.ts');
+  assert.match(s, /from ['"]\.\.\/app\/lib\/du-redirects\.ts['"]/);
+  assert.match(s, /DU_REDIRECT_PAIRS/);
+  assert.match(s, /DU_PRICE_DIFF_PAIRS/);
+  assert.match(s, /\.like\('yugcontract_id'/);
+  assert.ok(!s.includes('writeFile'), 'drift check must never write the allowlist');
+});
+
+test('DU-DRIFT: classifier stays decoupled — the lib never imports the generated allowlist', () => {
+  const lib = src('app/lib/monitoring/catalog-health.ts');
+  assert.ok(!/import\s+[^;]*du-redirects/.test(lib), 'lib must receive the allowlist as plain data');
 });
