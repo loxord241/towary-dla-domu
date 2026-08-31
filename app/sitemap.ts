@@ -95,7 +95,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const productEntries: MetadataRoute.Sitemap = products
-    // _du URLs that 308-redirect to base must NOT be listed (spec C invariant:
+    // _du URLs that 301-redirect to base must NOT be listed (spec C invariant:
     // the indexable set is EXACTLY the sitemap set). Price-diff _du pages and
     // orphans are NOT in DU_REDIRECT_SLUGS and stay listed.
     .filter((product) => !DU_REDIRECT_SLUGS.has(product.slug))
