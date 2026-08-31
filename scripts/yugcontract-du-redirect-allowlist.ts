@@ -149,4 +149,14 @@ export const DU_REDIRECT_SLUGS: ReadonlySet<string> = new Set(
 );
 `;
 writeFileSync(path.join(root, 'app/lib/du-redirects.ts'), out);
+
+// 4. Emit the JSON consumed by next.config.ts redirects() — the same 97
+// same-price pairs (same duYc-ascending order), slugs only.
+const json = {
+  generatedAt: AUDIT_DATE,
+  redirect: redirect.map((p) => ({ duSlug: p.duSlug, baseSlug: p.baseSlug })),
+};
+writeFileSync(path.join(root, 'app/lib/du-redirects.json'), JSON.stringify(json, null, 2) + '\n');
+
 console.log(`OK: wrote app/lib/du-redirects.ts (${redirect.length} redirect, ${diff.length} price-diff, ${orphans.length} orphans untouched)`);
+console.log(`OK: wrote app/lib/du-redirects.json (${json.redirect.length} redirect pairs for next.config redirects())`);
