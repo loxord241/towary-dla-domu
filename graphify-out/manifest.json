@@ -564,9 +564,9 @@
     "semantic_hash": ""
   },
   "app/lib/catalog.ts": {
-    "mtime": 1788174746.2434092,
-    "seen": 1788175959.6788619,
-    "ast_hash": "de13289c3d711574e1be3d449276e8b6",
+    "mtime": 1788194415.0051675,
+    "seen": 1788194471.7862902,
+    "ast_hash": "e221ae7c738425866b0dfb990b1a9535",
     "semantic_hash": ""
   },
   "app/lib/category-tree.ts": {
@@ -660,8 +660,8 @@
     "semantic_hash": ""
   },
   "app/lib/seo.ts": {
-    "mtime": 1788183109.2530637,
-    "seen": 1788183233.994341,
+    "mtime": 1788189564.2012722,
+    "seen": 1788194471.7863412,
     "ast_hash": "58cfdfd76cda8e07bc6c49a2ffa1cadc",
     "semantic_hash": ""
   },
@@ -798,8 +798,8 @@
     "semantic_hash": ""
   },
   "app/product/[slug]/page.tsx": {
-    "mtime": 1788183147.569066,
-    "seen": 1788183233.9943616,
+    "mtime": 1788189564.201584,
+    "seen": 1788194471.7863688,
     "ast_hash": "ad7df5260f0394ebbeabc321934767a4",
     "semantic_hash": ""
   },
@@ -1176,9 +1176,9 @@
     "semantic_hash": ""
   },
   "tests/junction-filter.test.ts": {
-    "mtime": 1787761522.5857081,
-    "seen": 1787763651.90036,
-    "ast_hash": "c910c9a40eed0798e6cd3496be710eda",
+    "mtime": 1788194415.0056105,
+    "seen": 1788194471.7865334,
+    "ast_hash": "120227e42d2660567f3f65695875444b",
     "semantic_hash": ""
   },
   "tests/lcp-main-invariants.test.ts": {
@@ -2208,9 +2208,9 @@
     "semantic_hash": ""
   },
   "tests/curated-selected.test.ts": {
-    "mtime": 1787913536.380838,
-    "seen": 1787913688.0079303,
-    "ast_hash": "0acf2861b5efcfb22ee478ef10b20fd1",
+    "mtime": 1788191893.1496387,
+    "seen": 1788194471.7865226,
+    "ast_hash": "f8490d973d19816a57233ca5bcdde21f",
     "semantic_hash": ""
   },
   "app/product/[slug]/loading.tsx": {
@@ -2448,9 +2448,21 @@
     "semantic_hash": ""
   },
   "tests/seo-meta-description.test.ts": {
-    "mtime": 1788183131.865065,
-    "seen": 1788183233.9944916,
+    "mtime": 1788189564.234196,
+    "seen": 1788194471.7865784,
     "ast_hash": "9ee366d72fe85926b943913f41385fcc",
+    "semantic_hash": ""
+  },
+  "tests/catalog-cache-wiring.test.ts": {
+    "mtime": 1788187571.4493551,
+    "seen": 1788194471.7865038,
+    "ast_hash": "b9ef3ba77291780088e56b2549dd9803",
+    "semantic_hash": ""
+  },
+  "tests/catalog-card-select.test.ts": {
+    "mtime": 1788194266.1653488,
+    "seen": 1788194471.7865047,
+    "ast_hash": "2f3eeae788c957d75d6ce44cbf219671",
     "semantic_hash": ""
   }
 }

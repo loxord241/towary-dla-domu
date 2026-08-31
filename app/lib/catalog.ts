@@ -187,6 +187,19 @@ const supabase = createClient(
 const PRODUCT_SELECT =
   '*, category:categories!products_category_id_fkey(id, name, slug), brand:brands(*), images:product_images!inner(*), variants:product_variants(*)';
 
+/**
+ * Slim card projection for /catalog (Task #4, 2026-08-31): ONLY the fields
+ * ProductCard and the catalog page actually read. description/specifications/
+ * variants and the category embed are dropped — category names come from
+ * fetchActiveCategories and body fields are never rendered in the grid.
+ * `product_images!inner` is REQUIRED: it is the eligibility join that hides
+ * imageless products (same semantics as PRODUCT_SELECT); `sort_order` drives
+ * image normalization; `product_id` is required by getMainPublicImageUrl's
+ * parameter type. Live-measured ~2.3 KB/product vs ~9.8 KB for PRODUCT_SELECT.
+ */
+const CATALOG_CARD_SELECT =
+  'id, name, slug, price, old_price, currency, availability_status, brand:brands(name), images:product_images!inner(id, product_id, image_url, is_main, sort_order)';
+
 /** Same eligibility join for head-count queries (no row multiplication). */
 // NOTE: the junction count embed selects product_id (a real column), NOT id:
 // PostgREST resolves `pc.id` against the EMBEDDED table, and selecting
@@ -211,6 +224,52 @@ type ProductJoinedRow = Omit<
   // through collectSubtreeIds in memory). Stripped by normalizeProduct.
   pc?: { category_id: string }[] | null;
 };
+
+/**
+ * Minimal card row returned by the /catalog projection (Task #4). NOT a
+ * full Product: sku, body fields, flags and timestamps are absent at
+ * runtime and must not be typed as present.
+ */
+export interface CatalogCardProduct {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  old_price?: number | null;
+  currency: string;
+  availability_status: string;
+  brand: { name: string } | null;
+  images: CatalogCardImage[];
+}
+
+/** Card image row — mirrors getMainPublicImageUrl's parameter shape. */
+export interface CatalogCardImage {
+  id: string;
+  product_id: string;
+  image_url: string;
+  alt?: string | null;
+  sort_order?: number;
+  is_main?: boolean;
+}
+
+type CatalogCardRow = Omit<CatalogCardProduct, 'images'> & {
+  images: CatalogCardImage[] | null;
+  // Junction rows joined via `pc:product_categories!inner(...)` when the
+  // caller filters by category. Stripped by normalizeCatalogCard.
+  pc?: { category_id: string }[] | null;
+};
+
+/** Card variant of normalizeProduct: sorts images, strips the junction embed. */
+function normalizeCatalogCard(row: CatalogCardRow): CatalogCardProduct {
+  const { pc: _pc, ...rest } = row;
+  return {
+    ...rest,
+    brand: row.brand ?? null,
+    images: [...(rest.images ?? [])].sort(
+      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+    ),
+  };
+}
 
 function normalizeProduct(row: ProductJoinedRow): Product {
   const { pc: _pc, ...rest } = row;
@@ -422,7 +481,7 @@ async function fetchBrandBySlugUncached(
 export const fetchCategoryBySlug = lookupCategoryBySlugCached;
 export const fetchBrandBySlug = lookupBrandBySlugCached;
 export interface CatalogPage {
-  products: Product[];
+  products: CatalogCardProduct[];
   total: number;
   page: number;
   size: number;
@@ -518,8 +577,8 @@ export async function fetchCatalogProducts(
     .from('products')
     .select(
       categoryId
-        ? PRODUCT_SELECT + ', pc:product_categories!inner(category_id)'
-        : PRODUCT_SELECT
+        ? CATALOG_CARD_SELECT + ', pc:product_categories!inner(category_id)'
+        : CATALOG_CARD_SELECT
     )
     .eq('is_active', true);
 
@@ -568,7 +627,7 @@ export async function fetchCatalogProducts(
 
   query = query.range((page - 1) * size, page * size - 1);
 
-  const { data, error } = await query.returns<ProductJoinedRow[]>();
+  const { data, error } = await query.returns<CatalogCardRow[]>();
 
   if (error) {
     // A data error must reach app/error.tsx (honest failure) — an empty
@@ -576,7 +635,7 @@ export async function fetchCatalogProducts(
     throw new Error(`Failed to load catalog products: ${error.message}`);
   }
 
-  const products = (data ?? []).map(normalizeProduct);
+  const products = (data ?? []).map(normalizeCatalogCard);
 
   return {
     products,
