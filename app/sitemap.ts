@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { fetchActiveCategories, fetchActiveBrands } from '@/app/lib/catalog';
 import { collectPaged } from '@/app/lib/seo-sitemap';
+import { DU_REDIRECT_SLUGS } from '@/app/lib/du-redirects';
 
 /**
  * Sitemap for public surfaces only (SEO package 2026-08-26, spec C): static
@@ -93,7 +94,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  const productEntries: MetadataRoute.Sitemap = products.map((product) => ({
+  const productEntries: MetadataRoute.Sitemap = products
+    // _du URLs that 301-redirect to base must NOT be listed (spec C invariant:
+    // the indexable set is EXACTLY the sitemap set). Price-diff _du pages and
+    // orphans are NOT in DU_REDIRECT_SLUGS and stay listed.
+    .filter((product) => !DU_REDIRECT_SLUGS.has(product.slug))
+    .map((product) => ({
     url: `${base}/product/${encodeURIComponent(product.slug)}`,
     lastModified: new Date(product.updated_at),
     changeFrequency: 'weekly',
