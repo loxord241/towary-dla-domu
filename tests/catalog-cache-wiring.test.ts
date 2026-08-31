@@ -9,7 +9,7 @@
  *  - DB errors are NEVER a cached failure: a throwing read leaves no cache
  *    entry, so the next request re-executes;
  *  - fetchCatalogProducts / fetchProducts / fetchPopularProducts stay
- *    UNCACHED (user-controlled keys / home ISR already bounds them);
+ *    UNCACHED (user-controlled filter keys / home ISR already bounds them);
  *  - no user-specific context (cookies/headers/searchParams) may enter the
  *    cached reads.
  *
