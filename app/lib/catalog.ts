@@ -745,9 +745,31 @@ export async function fetchFeaturedProducts(): Promise<Product[]> {
   return fetchProducts({ featuredOnly: true });
 }
 
-/** Same paged eligibility as the featured reader, for «Обрані товари». */
+/** Hard cap for the home «Обрані товари» shelf — bounded by design
+    (mirror of the «Популярні товари» rule, MAX_FEATURED_PRODUCTS). */
+export const SELECTED_LIMIT = 8;
+
 export async function fetchSelectedProducts(): Promise<Product[]> {
-  return fetchProducts({ selectedOnly: true });
+  // Single bounded window (rows 0..7, partial index
+  // idx_products_active_selected): the home grid renders at most two
+  // 4-column rows, so admin flagging beyond 8 must not unbound the home
+  // read. Deterministic order (created_at desc, id desc) — same priority
+  // semantics as the popular shelf.
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .eq('is_active', true)
+    .eq('is_selected', true)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(0, SELECTED_LIMIT - 1)
+    .returns<ProductJoinedRow[]>();
+
+  if (error) {
+    throw new Error(`Failed to load selected products: ${error.message}`);
+  }
+
+  return (data ?? []).map(normalizeProduct);
 }
 
 /** Hard cap for the home «Популярні товари» shelf — bounded by design. */

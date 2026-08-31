@@ -137,3 +137,83 @@ export function buildCatalogViewMetadata(
       : {}),
   };
 }
+
+// ---------------------------------------------------------------------------
+// PDP meta-description policy (audit 2026-08-31)
+//
+// Two classes of supplier descriptions must NOT leak into meta descriptions:
+//   1) placeholder HTML — tags/whitespace/nbsp only (133 live products);
+//   2) brand boilerplate templates shared verbatim across hundreds of
+//      products (Tramontina/Luminarc/Pyrex families) — the first 160 chars
+//      produced massive duplicated metas.
+// Policy: short_description → unique description (capped) → generic
+// name-based fallback. Nothing is ever invented: the fallback is the same
+// name-based template the page already used. Visible page content,
+// Product JSON-LD, sitemap and canonicals are intentionally NOT affected.
+// ---------------------------------------------------------------------------
+
+/** HTML → plain text (same normalization the page used for metas). */
+function htmlToPlainText(html: string | null | undefined): string {
+  return (html ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** True when the description carries no text at all (tags/nbsp/whitespace). */
+export function isPlaceholderDescription(html: string | null | undefined): boolean {
+  return htmlToPlainText(html) === '';
+}
+
+/**
+ * Supplier boilerplate markers (audit 2026-08-31, verified on live data).
+ * Matched case-insensitively on the PLAIN text; extend only with a
+ * marker verified against real duplicated descriptions.
+ */
+const BOILERPLATE_MARKERS: readonly string[] = [
+  'кожен виріб', // Tramontina family (×377)
+  'бренд високоякісного посуду', // Luminarc family (×229, with/without ®)
+  'винайдений у франції', // Pyrex family (×91)
+];
+
+/** True when the description is a shared supplier template. */
+export function isBoilerplateDescription(html: string | null | undefined): boolean {
+  const plain = htmlToPlainText(html).toLowerCase();
+  if (plain === '') return false;
+  return BOILERPLATE_MARKERS.some((marker) => plain.includes(marker));
+}
+
+export interface ProductMetaDescriptionInput {
+  productName: string;
+  shortDescription?: string | null;
+  description?: string | null;
+}
+
+/**
+ * Meta description for a product page. Chain: short_description →
+ * unique description (capped at 160) → generic name-based template.
+ * Always returns a non-empty string (the page previously fell back to the
+ * same template inline).
+ */
+export function buildProductMetaDescription(
+  input: ProductMetaDescriptionInput
+): string {
+  const cap = (text: string): string | undefined => {
+    const plain = htmlToPlainText(text);
+    return plain ? plain.slice(0, 160) : undefined;
+  };
+  return (
+    cap(input.shortDescription ?? '') ??
+    (!isPlaceholderDescription(input.description) &&
+    !isBoilerplateDescription(input.description)
+      ? cap(input.description ?? '')
+      : undefined) ??
+    `Купити ${input.productName} в інтернет-магазині ${SITE_NAME}.`
+  );
+}

@@ -17,17 +17,12 @@ import RecentlyViewedTracker from '@/app/components/RecentlyViewedTracker'
 import RelatedProducts from '@/app/components/RelatedProducts'
 import ProductJsonLd from '@/app/components/ProductJsonLd'
 import { buildProductJsonLd, buildProductBreadcrumbJsonLd } from '@/app/lib/schema-org'
+import { buildProductMetaDescription } from '@/app/lib/seo'
 import { formatPrice } from '@/app/lib/format'
 
 // React cache(): generateMetadata and the page component share ONE
 // fetchProductBySlug execution per request instead of two.
 const getProduct = cache(fetchProductBySlug)
-
-/** Plain-text excerpt for meta description (description is sanitized HTML). */
-function metaDescription(text: string | null | undefined): string | undefined {
-  const plain = (text ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  return plain ? plain.slice(0, 160) : undefined;
-}
 
 export async function generateMetadata({
   params,
@@ -38,10 +33,14 @@ export async function generateMetadata({
   const product = await getProduct(slug)
   if (!product) return { title: 'Сторінку не знайдено | Товари для дому' }
 
-  const description =
-    metaDescription(product.short_description) ??
-    metaDescription(product.description) ??
-    `Купити ${product.name} в інтернет-магазині Товари для дому.`
+  // PDP meta policy (audit 2026-08-31): placeholder/boilerplate supplier
+  // descriptions fall back to the generic name-based meta — pure decision
+  // logic lives in app/lib/seo.ts and is unit-tested.
+  const description = buildProductMetaDescription({
+    productName: product.name,
+    shortDescription: product.short_description,
+    description: product.description,
+  })
 
   // Self-canonical plus full OG fields: page-level openGraph REPLACES the
   // layout's (shallow merge), so locale/siteName must be repeated here.

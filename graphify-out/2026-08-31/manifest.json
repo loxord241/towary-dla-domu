@@ -660,9 +660,9 @@
     "semantic_hash": ""
   },
   "app/lib/seo.ts": {
-    "mtime": 1788183109.2530637,
-    "seen": 1788183233.994341,
-    "ast_hash": "58cfdfd76cda8e07bc6c49a2ffa1cadc",
+    "mtime": 1787936857.6898236,
+    "seen": 1787937470.5770257,
+    "ast_hash": "d2d5e8c87dca85b807fb750e293170cb",
     "semantic_hash": ""
   },
   "app/lib/supabase-storage.ts": {
@@ -798,9 +798,9 @@
     "semantic_hash": ""
   },
   "app/product/[slug]/page.tsx": {
-    "mtime": 1788183147.569066,
-    "seen": 1788183233.9943616,
-    "ast_hash": "ad7df5260f0394ebbeabc321934767a4",
+    "mtime": 1788174746.2437835,
+    "seen": 1788175959.6789148,
+    "ast_hash": "5b3088c6a80518c71bcc097c09b58473",
     "semantic_hash": ""
   },
   "app/returns/page.tsx": {
@@ -2445,12 +2445,6 @@
     "mtime": 1788179636.8574388,
     "seen": 1788181294.7285578,
     "ast_hash": "982166f65b6a6727d40ea22d261d76e5",
-    "semantic_hash": ""
-  },
-  "tests/seo-meta-description.test.ts": {
-    "mtime": 1788183131.865065,
-    "seen": 1788183233.9944916,
-    "ast_hash": "9ee366d72fe85926b943913f41385fcc",
     "semantic_hash": ""
   }
 }

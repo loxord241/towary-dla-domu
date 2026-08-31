@@ -49,18 +49,31 @@ test('MIGRATION 028: adds products.is_selected with a partial active index', () 
   assert.doesNotMatch(m, /drop column|alter column.*is_featured/i);
 });
 
-test('CATALOG: fetchSelectedProducts reads is_selected only (paged like featured)', () => {
+test('CATALOG: fetchSelectedProducts is a single bounded window (limit 8, no paged loop)', () => {
   const lib = src(LIB);
   assert.match(lib, /export async function fetchSelectedProducts/);
   const fnStart = lib.indexOf('export async function fetchSelectedProducts');
-  const fnBody = lib.slice(fnStart, fnStart + 200);
-  assert.match(fnBody, /fetchProducts\(\{ selectedOnly: true \}\)/);
-  // The shared paged loop applies the is_selected filter for that option.
-  const loop = lib.slice(lib.indexOf('async function fetchProducts'), fnStart);
-  assert.match(loop, /options\.selectedOnly/);
-  assert.match(loop, /\.eq\('is_selected', true\)/);
-  // Same paged-window hardening as the featured reader.
-  assert.match(loop, /PAGE = 1000/);
+  const fnBody = lib.slice(fnStart, fnStart + 1600);
+
+  // LIMIT = 8, mirrored from the featured shelf business rule.
+  assert.match(lib, /export const SELECTED_LIMIT = 8;/);
+  assert.match(fnBody, /\.range\(0, SELECTED_LIMIT - 1\)/);
+
+  // Storefront eligibility filters stay: active + selected only.
+  assert.match(fnBody, /\.eq\('is_active', true\)/);
+  assert.match(fnBody, /\.eq\('is_selected', true\)/);
+
+  // Deterministic order, same priority semantics as the popular shelf.
+  assert.match(
+    fnBody,
+    /\.order\('created_at', \{ ascending: false \}\)[\s\S]*\.order\('id', \{ ascending: false \}\)/
+  );
+
+  // NO unbounded paged loop on the selected path: the function body must
+  // not delegate to the shared paged fetchProducts and must not loop.
+  assert.doesNotMatch(fnBody, /fetchProducts\(/);
+  assert.doesNotMatch(fnBody, /for \(;;\)/);
+  assert.doesNotMatch(fnBody, /from \+= PAGE/);
 });
 
 test('CATALOG: Product type carries both independent flags', () => {
