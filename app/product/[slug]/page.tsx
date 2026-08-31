@@ -20,6 +20,19 @@ import { buildProductJsonLd, buildProductBreadcrumbJsonLd } from '@/app/lib/sche
 import { buildProductMetaDescription } from '@/app/lib/seo'
 import { formatPrice } from '@/app/lib/format'
 
+// On-demand ISR (Task #5B 2026-08-31): the route no longer touches any
+// request-time API — reviews pagination beyond the SSR-rendered page 1 is
+// client-side via GET /api/reviews. Every slug renders on its first visit
+// (dynamicParams defaults to true) and revalidates every 60s.
+export const revalidate = 60
+
+// Empty array = zero build-time prerendering: all ~5k slugs render on
+// demand instead of inflating the build (audit Task #5A, Next.js 16 docs
+// «All paths at runtime»).
+export async function generateStaticParams() {
+  return []
+}
+
 // React cache(): generateMetadata and the page component share ONE
 // fetchProductBySlug execution per request instead of two.
 const getProduct = cache(fetchProductBySlug)
@@ -72,10 +85,8 @@ function availabilityLabel(status: string): string {
 
 export default async function ProductPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const { slug } = await params
   const product = await getProduct(slug)
@@ -85,11 +96,8 @@ export default async function ProductPage({
     notFound()
   }
 
-  // Reviews page comes from the URL (?reviews_page=N); clamping happens
-  // inside fetchPublishedReviews.
-  const rawReviewsPage = Number((await searchParams).reviews_page)
-  const reviewsPage =
-    Number.isInteger(rawReviewsPage) && rawReviewsPage > 0 ? rawReviewsPage : 1
+  // Reviews page 1 is always server-rendered (Task #5B): pagination beyond
+  // the first page is client-side (GET /api/reviews) so the route stays ISR.
 
   // Supplementary content (perf audit Step 2 2026-08-28): reviews, summary
   // and related products depend ONLY on `product`, so they all run in ONE
@@ -99,7 +107,7 @@ export default async function ProductPage({
   const [reviewsSettled, relatedSettled] = await Promise.allSettled([
     Promise.all([
       fetchReviewSummary(product.id),
-      fetchPublishedReviews(product.id, reviewsPage),
+      fetchPublishedReviews(product.id, 1),
     ]),
     fetchRelatedProducts(product),
   ]);

@@ -229,11 +229,10 @@ test('REVIEWS SECTION: summary/distribution/list/pagination rendered safely', ()
   assert.doesNotMatch(section, /dangerouslySetInnerHTML/, 'text children only');
 });
 
-test('PRODUCT PAGE: wires section with searchParams-driven page', () => {
+test('PRODUCT PAGE: wires reviews section with SSR first page (Task #5B: ISR, no searchParams)', () => {
   const page = src('app/product/[slug]/page.tsx');
   assert.match(page, /fetchPublishedReviews/);
   assert.match(page, /fetchReviewSummary/);
-  assert.match(page, /reviews_page/);
   assert.match(page, /<ProductReviews/);
 });
 

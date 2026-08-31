@@ -5,6 +5,7 @@ import {
   REVIEW_DAILY_CAP,
 } from '@/app/lib/reviews';
 import { isUuid } from '@/app/lib/admin-api';
+import { fetchPublishedReviews } from '@/app/lib/catalog';
 
 /**
  * Public product-review submission endpoint.
@@ -107,4 +108,33 @@ export async function POST(request: Request) {
   }
 
   return Response.json({ ok: true }, { status: 201 });
+}
+
+/**
+ * Public read endpoint for reviews pagination (Task #5B 2026-08-31): the
+ * PDP is on-demand ISR, so pages beyond the SSR-rendered page 1 are fetched
+ * client-side from here. Read-only: it goes through fetchPublishedReviews
+ * (anon-key client, RLS-published rows only, 60s Data Cache keyed by
+ * (productId, page)). The service-role client above is INSERT-ONLY and must
+ * never serve reads; page clamping (maxPage) happens inside the read.
+ */
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const productId = url.searchParams.get('product_id') ?? '';
+  if (!isUuid(productId)) {
+    return Response.json({ error: 'invalid_product' }, { status: 400 });
+  }
+
+  const rawPage = Number(url.searchParams.get('page'));
+  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+
+  try {
+    const data = await fetchPublishedReviews(productId, page);
+    return Response.json(data);
+  } catch (error) {
+    // Storage hiccup or migration not applied — degrade honestly, same
+    // contract as the SSR fallback on the page itself.
+    console.error('reviews page read failed:', error);
+    return Response.json({ error: 'reviews_unavailable' }, { status: 503 });
+  }
 }

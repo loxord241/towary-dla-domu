@@ -1,4 +1,6 @@
-import Link from 'next/link';
+'use client';
+
+import { useState } from 'react';
 import { StarIcon } from './icons';
 import ReviewFormModal from './ReviewFormModal';
 import type { ReviewSummary, ReviewsPageData } from '@/app/lib/catalog';
@@ -35,8 +37,14 @@ function pluralReviews(count: number): string {
 }
 
 /**
- * «Відгуки» section of the product page. Pure server component: all data is
- * fetched by the page (RLS-published rows only) and passed down as props.
+ * «Відгуки» section of the product page (Task #5B 2026-08-31): client
+ * component for pagination only. The FIRST page always arrives via SSR
+ * props from the ISR'd product page (RLS-published rows, identical to the
+ * previous server-only render); pages beyond the first are fetched from
+ * GET /api/reviews, which reuses the same cached read. Pagination anchors
+ * keep their `?reviews_page=N` hrefs (crawlable, legacy/SEO compatible)
+ * and intercept the click to fetch client-side, because the ISR page
+ * always renders page 1 — query-string navigation would be wrong.
  * Review text renders as React text children — no HTML sink anywhere in
  * this feature; the only name ever shown is the user-typed display name.
  */
@@ -51,9 +59,38 @@ export default function ProductReviews({
   data: ReviewsPageData;
   productSlug: string;
 }) {
-  const totalPages = Math.max(1, Math.ceil(data.total / (data.pageSize || 1)));
+  // SSR page 1 seeds the state; client fetches replace it beyond page 1.
+  const [pageData, setPageData] = useState<ReviewsPageData>(data);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(pageData.total / (pageData.pageSize || 1))
+  );
   const basePath = `/product/${encodeURIComponent(productSlug)}`;
   const pageHref = (page: number) => `${basePath}?reviews_page=${page}`;
+
+  async function loadPage(page: number) {
+    if (loading || page === pageData.page) return;
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const res = await fetch(
+        `/api/reviews?product_id=${encodeURIComponent(productId)}&page=${page}`
+      );
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const next = (await res.json()) as ReviewsPageData;
+      setPageData(next);
+      // Keep the URL shareable/consistent without a server navigation
+      // (the ISR page itself always renders page 1).
+      window.history.replaceState(null, '', pageHref(page));
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <section
@@ -113,7 +150,7 @@ export default function ProductReviews({
           </div>
 
           <ul className="space-y-4">
-            {data.reviews.map((review) => (
+            {pageData.reviews.map((review) => (
               <li key={review.id} className="rounded-xl border border-gray-200 p-4">
                 <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                   <Stars value={review.rating} />
@@ -134,26 +171,47 @@ export default function ProductReviews({
           {totalPages > 1 && (
             <nav
               aria-label="Пагінація відгуків"
+              aria-busy={loading || undefined}
               className="mt-5 flex items-center justify-between text-sm"
             >
-              {data.page > 1 ? (
-                <Link href={pageHref(data.page - 1)} className="text-blue-600 hover:underline">
+              {pageData.page > 1 ? (
+                <a
+                  href={pageHref(pageData.page - 1)}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    loadPage(pageData.page - 1);
+                  }}
+                  className="text-blue-600 hover:underline"
+                >
                   ← Попередні
-                </Link>
+                </a>
               ) : (
                 <span />
               )}
               <span className="text-gray-500">
-                Сторінка {data.page} з {totalPages}
+                Сторінка {pageData.page} з {totalPages}
               </span>
-              {data.page < totalPages ? (
-                <Link href={pageHref(data.page + 1)} className="text-blue-600 hover:underline">
+              {pageData.page < totalPages ? (
+                <a
+                  href={pageHref(pageData.page + 1)}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    loadPage(pageData.page + 1);
+                  }}
+                  className="text-blue-600 hover:underline"
+                >
                   Наступні →
-                </Link>
+                </a>
               ) : (
                 <span />
               )}
             </nav>
+          )}
+
+          {loadError && (
+            <p role="alert" className="mt-3 text-sm text-red-600">
+              Не вдалося завантажити відгуки — спробуйте ще раз.
+            </p>
           )}
         </>
       )}
