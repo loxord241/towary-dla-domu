@@ -16,8 +16,12 @@
 #   3   node too old (need v24+, native TS support)
 #   4   .env.local missing in repo root
 #   5   importer script missing
-#   6   cannot cd into repo root
+#   6  cannot cd into repo root
 #   10  cannot create logs dir
+#
+# Usage: yugcontract-sync.sh [--force]
+#   --force bypasses the 48h interval gate (explicit owner request); flock,
+#   logging and all other guards still apply. Default keeps the gate.
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -67,8 +71,13 @@ fi
 # systemd OnCalendar cannot express "every 48 hours" without day-of-month
 # hacks that break on month boundaries. So the launcher enforces the true
 # interval via a success stamp: runs happen at most once per 47h+.
+# --force (explicit owner/agent request) skips ONLY this gate.
+FORCE=0
+[ "${1:-}" = "--force" ] && FORCE=1
 LAST_STAMP="$LOGS/.yugcontract-last-success"
-if [ -f "$LAST_STAMP" ]; then
+if [ "$FORCE" -eq 1 ]; then
+    echo "[yugcontract-sync] --force: 48h interval gate bypassed by explicit request"
+elif [ -f "$LAST_STAMP" ]; then
     AGE_H=$(( ( $(date +%s) - $(stat -c %Y "$LAST_STAMP") ) / 3600 ))
     if [ "$AGE_H" -lt 47 ]; then
         echo "[yugcontract-sync] last successful sync was $AGE_H h ago (< 48h interval) — skipping this trigger"

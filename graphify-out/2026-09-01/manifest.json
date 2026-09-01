@@ -390,9 +390,9 @@
     "semantic_hash": ""
   },
   "app/components/NavDrawer.tsx": {
-    "mtime": 1787938696.9885046,
-    "seen": 1787939060.7847292,
-    "ast_hash": "0918de04d04dadd3adcdd093cebcce96",
+    "mtime": 1788283546.6340728,
+    "seen": 1788283627.280233,
+    "ast_hash": "4bb91c84f61d92ededf8729937cf3368",
     "semantic_hash": ""
   },
   "app/components/OrderDetailsCard.tsx": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "app/components/SiteFooter.tsx": {
-    "mtime": 1788105311.5791836,
-    "seen": 1788105711.987976,
-    "ast_hash": "424177e1190aebf0cc2ca0029f63d633",
+    "mtime": 1788283577.1620731,
+    "seen": 1788283627.2805398,
+    "ast_hash": "c3ac6462157170e9834784974dd3e574",
     "semantic_hash": ""
   },
   "app/components/SiteHeader.tsx": {
@@ -2382,9 +2382,9 @@
     "semantic_hash": ""
   },
   "tests/category-seo.test.ts": {
-    "mtime": 1788105165.5111737,
-    "seen": 1788105711.9881423,
-    "ast_hash": "14bb37bf70487e676b99e5b7d83f5073",
+    "mtime": 1788283590.3380733,
+    "seen": 1788283627.2837875,
+    "ast_hash": "c49e9dedd1ea7578c8a73e35fe1756f6",
     "semantic_hash": ""
   },
   "tests/checkout-unavailable-items.test.ts": {
@@ -2571,6 +2571,18 @@
     "mtime": 1788265965.4628005,
     "seen": 1788266791.5457146,
     "ast_hash": "3bd81e68b41e7f4806ab5d16219cc230",
+    "semantic_hash": ""
+  },
+  "app/lib/merch-categories.ts": {
+    "mtime": 1788283527.8700726,
+    "seen": 1788283627.2814445,
+    "ast_hash": "79258eb07a65dad0d5bcb200eeea9ebb",
+    "semantic_hash": ""
+  },
+  "tests/footer-categories.test.ts": {
+    "mtime": 1788283615.7220736,
+    "seen": 1788283627.284015,
+    "ast_hash": "2884fbb5f7982d31bcb0b0767a513eb9",
     "semantic_hash": ""
   }
 }

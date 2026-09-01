@@ -20,3 +20,11 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+
+## Yugcontract Sync (запуск агентом)
+
+По команде пользователя «запусти Yugcontract Sync»:
+
+1. `bash scripts/wsl/yugcontract-sync.sh` с увеличенным bash-таймаутом (15–30 мин). Не запускать `node scripts/yugcontract-import-run.ts --run` напрямую — только лаунчер (flock + лог). Если ответ «skipping (< 48h interval)», а владелец явно хочет запустить сейчас — повторить с `--force`.
+2. Exit 0 → прочитать хвост сегодняшнего `logs/yugcontract-sync-ГГГГММДД.log` и выполнить `node scripts/catalog-health-check.ts` (read-only). Exit ≠ 0 → хвост лога; при упавшем батче предложить `node scripts/yugcontract-import-run.ts --run --resume <RUN_ID>`.
+3. Отчитаться: exit code, inserted/updated/skipped/errors, длительность, health-check RESULT, RUN_ID. Отсутствие новых изображений ошибкой не считается (sync изображения не импортирует). Подробности: docs/wsl-sync.md, раздел 7.

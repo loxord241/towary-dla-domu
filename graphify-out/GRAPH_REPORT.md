@@ -1,16 +1,16 @@
 # Graph Report - my-shop  (2026-09-01)
 
 ## Corpus Check
-- 421 files · ~322,381 words
+- 421 files · ~322,764 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2715 nodes · 4429 edges · 213 communities (144 shown, 47 thin omitted)
+- 2717 nodes · 4431 edges · 207 communities (136 shown, 49 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 52 edges (avg confidence: 0.84)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `15c187b7`
+- Built from commit: `6b277456`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -26,23 +26,22 @@
 - content-import.ts
 - Проект my-shop - Техническая документация
 - import-plan.ts
-- normalize.ts
+- yugcontract/types.ts
 - catalog/page.tsx
 - yugcontract-content-images.ts
 - catalog.ts
-- SiteFooter.tsx
+- InfoPage.tsx
 - tmp-postverify-content.ts
 - success/page.tsx
 - products/page.tsx
 - admin-shipments.ts
 - images/route.ts
 - File Structure (deliverable map)
-- favorites-context.tsx
-- api/orders/route.ts
+- favorites/page.tsx
+- RecentProducts.tsx
 - tmp-verify-stage.ts
 - [slug]/page.tsx
 - yugcontract/client.ts
-- content-images.ts
 - NovaPostError
 - liqpay-reconcile-pagination.test.ts
 - content-dry-run.ts
@@ -62,13 +61,13 @@
 - yugcontract-rrp-apply.ts
 - yugcontract-rrp-dry-run.ts
 - filter-url.ts
-- tmp-liqpay-payload-check.ts
+- liqpay-signature.ts
 - FakeBuilder
 - tmp-verify-011.ts
-- feedback.ts
-- yugcontract-content-apply.ts
+- FeedbackModal.tsx
+- content-staging.ts
 - catalog-health.ts
-- preview/route.ts
+- normalize.ts
 - liqpay-status.ts
 - novapost/client.ts
 - [id]/page.tsx
@@ -90,29 +89,29 @@
 - Priority 2 UX/UI: Mobile Catalog + Product Page — дизайн (2026-08-26)
 - pagination-hardening.test.ts
 - tmp-verify-f6.ts
-- selection.ts
+- SiteFooter.tsx
 - yugcontract-claim-cas.test.ts
 - Global Constraints
 - yugcontract-client.test.ts
 - tmp-audit-orders-rls.mts
 - tmp-sentinel.ts
 - tmp-verify-admin-search-live.ts
-- payment/route.ts
+- tmp-liqpay-payload-check.ts
 - getNovaPostClient
 - feedback/page.tsx
 - tmp-probe-admin-search.ts
-- splitProductWrites
+- ProductReviews.tsx
 - (dashboard)/layout.tsx
 - README.md
 - tmp-verify-015-reviews.mts
-- import-run.ts
+- jwt.ts
 - Yugcontract Sync в WSL2 (systemd timer)
 - enforceRateLimit
 - reconcile-liqpay.mts
 - login/page.tsx
 - graphify
 - proxy.ts
-- tmp-probe-search-grammar.ts
+- tmp-slugs.ts
 - category-select.test.ts
 - mobile-filter-drawer.test.ts
 - storefront-icons.test.ts
@@ -147,14 +146,13 @@
 - tmp-du-mapping-audit.ts
 - tmp-verify-orders-revoke.mts
 - admin/orders/route.ts
-- runProductsBatch
-- order-idempotency.test.ts
+- import-run.ts
+- paid-order-interlock.test.ts
 - tmp-du-mapping-verdicts.ts
 - reconciliation.test.ts
 - tmp-plan-split.ts
 - ProductSpecifications.tsx
 - liqpay-ui.test.ts
-- sitemap.ts
 - verify-product-categories.mjs
 - nova-shipments-migration.test.ts
 - liqpay-migration.test.ts
@@ -182,27 +180,23 @@
 - category-tree.ts
 - yugcontract-copy-du-images-111.ts
 - rate-limit-xff.test.ts
-- favorites/page.tsx
+- cart-preview.ts
 - checkout-unavailable-items.test.ts
 - requireAdminApi
 - truncate-grants-migration.test.ts
 - auth-leaked-password-doc.test.ts
-- content-du-mapping.ts
 - curated-selected.test.ts
 - admin-shipment-courier-address-migration.test.ts
 - stage2g-money.test.ts
 - settlement-autocomplete.test.ts
 - tmp-f6-premigration.ts
-- cart-context.tsx
 - install-yugcontract-timer.sh
 - yugcontract-sync.sh
 - Status code decision (301 vs 308)
 - tmp-verify-rrp.ts
-- createPaymentInit
 - yugcontract-failure-notify.sh
 - yugcontract-health.sh
 - ProductDescription.tsx
-- tmp-verify-live-payment.ts
 - htmlToPlainText
 - checkout-shipping-notice.test.ts
 - catalog-cache-wiring.test.ts
@@ -228,17 +222,17 @@
   tests/novapost-mapping.test.ts → app/lib/delivery/novapost/map-failure.ts
 - `sortParamsOf()` --calls--> `buildSortSearchParams()`  [EXTRACTED]
   tests/filter-url.test.ts → app/lib/filter-url.ts
-- `runPlanPreview()` --calls--> `buildDescriptionStats()`  [EXTRACTED]
+- `runPlanPreview()` --calls--> `matchContentGoodsToProducts()`  [EXTRACTED]
   scripts/yugcontract-content-fetch.ts → app/lib/yugcontract/content-dry-run.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (213 total, 47 thin omitted)
+## Communities (207 total, 49 thin omitted)
 
 ### Community 0 - "order-payment-update.ts"
-Cohesion: 0.13
-Nodes (17): LiqPayConfig, ApplyResult, buildCheckoutPayload(), CallbackDeps, CallbackOrderRow, CallbackOutcome, CheckoutPayloadInput, errorOf() (+9 more)
+Cohesion: 0.10
+Nodes (20): LiqPayConfig, ApplyResult, buildCheckoutPayload(), CallbackDeps, CallbackOrderRow, CallbackOutcome, CheckoutPayloadInput, createPaymentInit() (+12 more)
 
 ### Community 1 - "devDependencies"
 Cohesion: 0.04
@@ -269,48 +263,48 @@ Cohesion: 0.07
 Nodes (29): dom, dom.iterable, esnext, **/*.mts, .next/dev/types/**/*.ts, next-env.d.ts, .next/types/**/*.ts, node_modules (+21 more)
 
 ### Community 8 - "content-import.ts"
-Cohesion: 0.13
-Nodes (26): duBaseIdOf(), assertImageUpdateFields(), assertContentFields(), claimNextContentBatch(), CONTENT_BATCH_SIZE, CONTENT_STALE_RUNNING_MS, ContentBatchOutcome, ContentBatchRow (+18 more)
+Cohesion: 0.12
+Nodes (25): assertContentFields(), claimNextContentBatch(), CONTENT_BATCH_SIZE, CONTENT_STALE_RUNNING_MS, ContentBatchOutcome, ContentBatchRow, ContentPlan, contentProductQueryIds() (+17 more)
 
 ### Community 9 - "Проект my-shop - Техническая документация"
 Cohesion: 0.07
 Nodes (28): Checkout / Orders (миграции 006–008), Архитектура Supabase, Важные правила для будущих изменений, Етап 16: Security hardening (2026-08-27), Известные ограничения (осознанные), Интеграция Yugcontract (этап 1: read-only preview, 2026-08), Интеграция Yugcontract (этап 2: импорт выбранного ассортимента, 2026-08), Правила безопасности (не нарушать) (+20 more)
 
 ### Community 10 - "import-plan.ts"
-Cohesion: 0.13
-Nodes (22): bareKey(), BrandPlan, buildBrandPlan(), buildCategoryPlan(), CategoryCreateOp, CategoryPlan, CategoryUpdateOp, depthsInSelection() (+14 more)
-
-### Community 11 - "normalize.ts"
 Cohesion: 0.08
-Nodes (26): CategoriesResponse, YugcontractCategoriesPage(), PreviewResponse, YugcontractAdminPage(), CATEGORY_ID_KEYS, CATEGORY_NAME_KEYS, CATEGORY_PARENT_KEYS, HISTOGRAM_FIELDS (+18 more)
+Nodes (27): bareKey(), BrandPlan, buildBrandPlan(), buildCategoryPlan(), CategoryCreateOp, CategoryPlan, CategoryUpdateOp, depthsInSelection() (+19 more)
+
+### Community 11 - "yugcontract/types.ts"
+Cohesion: 0.13
+Nodes (15): CategoriesResponse, YugcontractCategoriesPage(), PreviewResponse, YugcontractAdminPage(), FieldTypeHistogram, FieldTypeName, YcBrandSample, YcCategoryNode (+7 more)
 
 ### Community 12 - "catalog/page.tsx"
-Cohesion: 0.15
-Nodes (22): ActiveChip, buildActiveChips(), catalogHeading(), CatalogPage(), catalogPageUrl(), firstParam(), generateMetadata(), parseCatalogSearchParams() (+14 more)
+Cohesion: 0.12
+Nodes (29): GET(), revalidate, ActiveChip, buildActiveChips(), catalogHeading(), CatalogPage(), catalogPageUrl(), firstParam() (+21 more)
 
 ### Community 13 - "yugcontract-content-images.ts"
-Cohesion: 0.09
-Nodes (21): anomalies, batches, brokenMains, client, crossProductDups, dbIdByYc, dupUrlCounts, existingImages (+13 more)
+Cohesion: 0.06
+Nodes (34): assertImageUpdateFields(), IMAGE_UPDATE_FIELDS, ImageInsertOp, ImagePlan, ImagePlanInputProduct, ImageUpdateOp, isExternalImportedImage(), planImageOps() (+26 more)
 
 ### Community 14 - "catalog.ts"
 Cohesion: 0.05
-Nodes (38): buildSearchConditions(), CATALOG_DICTIONARY_TTL_SECONDS, CATALOG_PUBLIC_READ_TTL_SECONDS, CatalogCardImage, CatalogCardProduct, CatalogCardRow, CatalogPage, collectRelated() (+30 more)
+Nodes (45): Home(), metadata, revalidate, CATALOG_DICTIONARY_TTL_SECONDS, CATALOG_PAGE_SIZE, CATALOG_PUBLIC_READ_TTL_SECONDS, CatalogCardImage, CatalogCardProduct (+37 more)
 
-### Community 15 - "SiteFooter.tsx"
-Cohesion: 0.07
-Nodes (22): metadata, ErrorKind, FeedbackModal(), Status, InfoPage(), InfoPageProps, CONTACT_EMAIL, INFO_LINKS (+14 more)
+### Community 15 - "InfoPage.tsx"
+Cohesion: 0.12
+Nodes (8): metadata, InfoPage(), InfoPageProps, metadata, metadata, metadata, metadata, metadata
 
 ### Community 16 - "tmp-postverify-content.ts"
 Cohesion: 0.12
 Nodes (19): byStatus, byYc, check(), client, DANGER, emptyDesc, hasDupConflict(), manual (+11 more)
 
 ### Community 17 - "success/page.tsx"
-Cohesion: 0.10
-Nodes (21): CheckoutSuccessPage(), ItemRow, OrderRow, SearchParams, supabase, ItemRow, OrderDetails, OrderDetailsCard() (+13 more)
+Cohesion: 0.06
+Nodes (37): ALLOWED_TRANSITIONS, fetchOrderDetailsApi(), fetchOrdersApi(), formatDate(), ItemRow, OrderDetails, OrderListRow, OrdersAdminPage() (+29 more)
 
 ### Community 18 - "products/page.tsx"
-Cohesion: 0.06
-Nodes (41): BRAND_SORT_KEYS, BrandsAdminPage(), fetchBrandList(), SORT_OPTIONS, totalPagesFor(), CategoriesAdminPage(), CATEGORY_SORT_KEYS, fetchAllCategoriesForPicker() (+33 more)
+Cohesion: 0.08
+Nodes (32): BRAND_SORT_KEYS, BrandsAdminPage(), fetchBrandList(), SORT_OPTIONS, totalPagesFor(), CategoriesAdminPage(), CATEGORY_SORT_KEYS, fetchAllCategoriesForPicker() (+24 more)
 
 ### Community 19 - "admin-shipments.ts"
 Cohesion: 0.14
@@ -324,29 +318,25 @@ Nodes (7): ALLOWED_MIME, detectImageMime(), GET(), POST(), IMAGE_EXT_BY_MIME, sa
 Cohesion: 0.10
 Nodes (19): File Structure (deliverable map), Global Constraints, Storefront Features: Reviews / Recently Viewed / Popular Products — Implementation Plan, Task 10: Recently-viewed pure storage module, Task 11: Tracker + shelf components, page wiring, Task 12: Featured-limit pure module, Task 13: Storefront popular query — featured-only + homepage hides empty, Task 14: Admin API enforcement (PUT/POST + featured-count) (+11 more)
 
-### Community 22 - "favorites-context.tsx"
-Cohesion: 0.18
-Nodes (11): geistMono, geistSans, metadata, FavoritesContext, FavoritesContextValue, FavoritesProvider(), FavoritesState, loadStoredFavorites() (+3 more)
+### Community 22 - "favorites/page.tsx"
+Cohesion: 0.17
+Nodes (14): availabilityLabel(), CartPage(), EmptyState(), FavoriteButton(), availabilityLabel(), ProductCard(), ProductCardData, RemoveFavoriteButton() (+6 more)
 
-### Community 23 - "api/orders/route.ts"
-Cohesion: 0.14
-Nodes (17): POST(), SanitizedItem, sanitizeShippingInfo(), supabase, ALLOWED_KEYS, CheckoutDelivery, CheckoutDeliveryServiceType, displayText() (+9 more)
+### Community 23 - "RecentProducts.tsx"
+Cohesion: 0.27
+Nodes (10): RecentlyViewedTracker(), RecentProducts(), MAX_RECENTLY_VIEWED, readRecentlyViewed(), RECENTLY_VIEWED_STORAGE_KEY, recordRecentlyViewed(), sanitizeRecentlyViewed(), UUID_RE (+2 more)
 
 ### Community 24 - "tmp-verify-stage.ts"
 Cohesion: 0.12
 Nodes (17): byYc, client, DANGER, dangerSamples, descPairs, descStats, headCount(), ids (+9 more)
 
 ### Community 25 - "[slug]/page.tsx"
-Cohesion: 0.09
-Nodes (29): ImageRow(), FavoriteButton(), availabilityLabel(), ProductCard(), ProductCardData, GalleryImage, ProductGallery(), RelatedProducts() (+21 more)
+Cohesion: 0.17
+Nodes (15): GalleryImage, ProductGallery(), RelatedProducts(), fetchRelatedProducts(), fetchReviewSummary(), fetchReviewSummaryStore, Product, buildProductBreadcrumbJsonLd() (+7 more)
 
 ### Community 26 - "yugcontract/client.ts"
-Cohesion: 0.13
-Nodes (22): authUrl(), CachedAuthToken, contentUrl(), FetchLike, getAuthToken(), getContentGoods(), getContentGoodsWithMeta(), GetContentResultWithMeta (+14 more)
-
-### Community 27 - "content-images.ts"
-Cohesion: 0.12
-Nodes (13): IMAGE_UPDATE_FIELDS, ImageInsertOp, ImagePlan, ImagePlanInputProduct, ImageUpdateOp, isExternalImportedImage(), planImageOps(), ProductImageRow (+5 more)
+Cohesion: 0.15
+Nodes (21): authUrl(), CachedAuthToken, categoriesUrl(), contentUrl(), FetchLike, getAuthToken(), getContentGoods(), getContentGoodsWithMeta() (+13 more)
 
 ### Community 28 - "NovaPostError"
 Cohesion: 0.15
@@ -357,12 +347,12 @@ Cohesion: 0.23
 Nodes (11): compare(), evalOr(), evalTerm(), EXPECTED_ALL, FIXTURE, FixtureOrder, instantiate(), paginateAll() (+3 more)
 
 ### Community 30 - "content-dry-run.ts"
-Cohesion: 0.12
-Nodes (18): buildImagesStats(), coerceParams(), coercePictures(), ContentIssue, DedupeResult, DescriptionStats, ImagesStats, MatchResult (+10 more)
+Cohesion: 0.09
+Nodes (21): buildImagesStats(), coerceParams(), coercePictures(), ContentIssue, DedupeResult, DescriptionStats, ImagesStats, matchContentGoodsToProducts() (+13 more)
 
 ### Community 31 - "dry-run.ts"
-Cohesion: 0.15
-Nodes (10): computeDryRunReport(), DryRunBatchMeta, DryRunDbSnapshot, DryRunReport, makeCategoryFilter(), normalizeKey(), YcProductMerger, YcProduct (+2 more)
+Cohesion: 0.21
+Nodes (8): computeDryRunReport(), DryRunBatchMeta, DryRunDbSnapshot, DryRunReport, makeCategoryFilter(), normalizeKey(), YcProductMerger, YcProduct
 
 ### Community 32 - "Global Constraints"
 Cohesion: 0.12
@@ -389,20 +379,20 @@ Cohesion: 0.15
 Nodes (19): POST(), buildCalculationInput(), CalcInputResult, CalcSkipReason, selectDeliveryService(), ServiceSelection, ShipmentForCalc, ShipmentForCalcParcel (+11 more)
 
 ### Community 38 - "api/reviews/route.ts"
-Cohesion: 0.12
-Nodes (20): GET(), POST(), serviceClient(), dateFormatter, pluralReviews(), ProductReviews(), ErrorKind, ReviewFormModal() (+12 more)
+Cohesion: 0.20
+Nodes (14): GET(), POST(), serviceClient(), ErrorKind, Status, fetchPublishedReviews(), fetchPublishedReviewsStore, cleanUserString() (+6 more)
 
 ### Community 39 - "icons.tsx"
-Cohesion: 0.13
-Nodes (21): CartBadge(), FavoritesBadge(), base(), BoxIcon(), CartIcon(), ChevronDownIcon(), ChevronRightIcon(), FilterIcon() (+13 more)
+Cohesion: 0.12
+Nodes (23): CartBadge(), FavoritesBadge(), base(), BoxIcon(), CartIcon(), ChevronDownIcon(), ChevronRightIcon(), FilterIcon() (+15 more)
 
 ### Community 40 - "telegram.ts"
-Cohesion: 0.11
-Nodes (22): asNumber(), asString(), asStringOrNull(), buildOrderNotificationMessage(), describeDelivery(), loadOrderNotificationData(), OrderNotificationData, OrderNotificationItem (+14 more)
+Cohesion: 0.06
+Nodes (43): POST(), SanitizedItem, sanitizeShippingInfo(), supabase, ALLOWED_KEYS, CheckoutDelivery, CheckoutDeliveryServiceType, displayText() (+35 more)
 
 ### Community 41 - "yugcontract/categories/route.ts"
-Cohesion: 0.32
-Nodes (11): GET(), maxDuration, categoriesUrl(), getCategoriesCatalog(), loadOnce(), buildCategoryTree(), deepScanForCategoryArray(), detectCategoryFields() (+3 more)
+Cohesion: 0.36
+Nodes (10): GET(), maxDuration, getCategoriesCatalog(), loadOnce(), buildCategoryTree(), deepScanForCategoryArray(), detectCategoryFields(), extractCategoryRows() (+2 more)
 
 ### Community 42 - "Решения (согласованы)"
 Cohesion: 0.12
@@ -424,29 +414,29 @@ Nodes (13): changedRrps, DbRow, dbRows, examples, feed, feedById, FeedRow, noRrp
 Cohesion: 0.21
 Nodes (11): CatalogFilters(), SORT_OPTIONS, SortSelect(), SortSelectInner(), buildFilterSearchParams(), buildFilterUrl(), buildSortSearchParams(), FilterDraft (+3 more)
 
-### Community 47 - "tmp-liqpay-payload-check.ts"
-Cohesion: 0.13
-Nodes (13): createLiqPaySignature(), decodeLiqPayData(), encodeLiqPayData(), verifyLiqPaySignature(), fetchLiqPayProviderStatus(), data, order, payload (+5 more)
+### Community 47 - "liqpay-signature.ts"
+Cohesion: 0.31
+Nodes (6): createLiqPaySignature(), decodeLiqPayData(), encodeLiqPayData(), verifyLiqPaySignature(), fetchLiqPayProviderStatus(), NOTE: the documentation page text mentions sha3-256, but every official
 
 ### Community 49 - "tmp-verify-011.ts"
 Cohesion: 0.14
 Nodes (8): anon, EXPECTED_YC_CONTENT_BATCHES, EXPECTED_YC_CONTENT_GOODS, EXPECTED_YC_IMPORT_BATCHES, OasDefinition, OasProperty, root, service
 
-### Community 50 - "feedback.ts"
-Cohesion: 0.25
-Nodes (7): POST(), serviceClient(), FEEDBACK_DAILY_CAP, FEEDBACK_MAX_LENGTH, FeedbackValidation, validateFeedbackMessage(), root
+### Community 50 - "FeedbackModal.tsx"
+Cohesion: 0.17
+Nodes (11): POST(), serviceClient(), ErrorKind, FeedbackModal(), Status, FEEDBACK_DAILY_CAP, FEEDBACK_MAX_LENGTH, FEEDBACK_MIN_LENGTH (+3 more)
 
-### Community 51 - "yugcontract-content-apply.ts"
-Cohesion: 0.18
-Nodes (9): StagedContentRow, batches, client, EXCLUDE_EMPTY_HTML_DESC_IDS, root, runIdx, stagedIds, t0 (+1 more)
+### Community 51 - "content-staging.ts"
+Cohesion: 0.11
+Nodes (17): YcContentGood, YcContentParam, ALLOWED_IMAGE_EXTENSIONS, buildSpecificationJson(), ImageUrlCheck, reduceGoodsToStagedRows(), StagedContentRow, StageReductionResult (+9 more)
 
 ### Community 52 - "catalog-health.ts"
-Cohesion: 0.06
-Nodes (44): DU_ALLOWLIST_AUDIT_DATE, DU_PRICE_DIFF_PAIRS, DU_REDIRECT_BY_YC, DU_REDIRECT_PAIRS, DU_REDIRECT_SLUGS, DuRedirectPair, ageHours(), analyzeDuDrift() (+36 more)
+Cohesion: 0.05
+Nodes (52): DU_ALLOWLIST_AUDIT_DATE, DU_PRICE_DIFF_PAIRS, DU_REDIRECT_BY_YC, DU_REDIRECT_PAIRS, DU_REDIRECT_SLUGS, DuRedirectPair, ageHours(), analyzeDuDrift() (+44 more)
 
-### Community 53 - "preview/route.ts"
-Cohesion: 0.21
-Nodes (14): errorResponse(), fetchAllRows(), GET(), maxDuration, getPriceCatalog(), asNumberOrNull(), brandKeys(), buildCrossAnalysis() (+6 more)
+### Community 53 - "normalize.ts"
+Cohesion: 0.09
+Nodes (26): errorResponse(), fetchAllRows(), GET(), maxDuration, getPriceCatalog(), asNumberOrNull(), brandKeys(), buildCrossAnalysis() (+18 more)
 
 ### Community 54 - "liqpay-status.ts"
 Cohesion: 0.22
@@ -461,12 +451,12 @@ Cohesion: 0.11
 Nodes (24): buildPlanPayload(), CalcOutcome, CARGO_CATEGORIES, emptyShipment(), fetchDivisionsApi(), fetchPlanApi(), NpDivision, NpSettlement (+16 more)
 
 ### Community 57 - "schema-org.ts"
-Cohesion: 0.19
-Nodes (14): ProductJsonLd(), Product, availabilityUrl(), BreadcrumbCategoryLike, buildCatalogBreadcrumbJsonLd(), buildProductJsonLd(), ProductLike, ReviewSummaryLike (+6 more)
+Cohesion: 0.21
+Nodes (13): ProductJsonLd(), availabilityUrl(), BreadcrumbCategoryLike, buildCatalogBreadcrumbJsonLd(), buildProductJsonLd(), ProductLike, ReviewSummaryLike, serializeJsonLd() (+5 more)
 
 ### Community 58 - "CheckoutForm.tsx"
-Cohesion: 0.11
-Nodes (20): CheckoutForm(), DELIVERY_TYPES, DeliveryType, fetchDivisionsApi(), isLockerCategory(), NpDivision, NpSettlement, NpStreet (+12 more)
+Cohesion: 0.14
+Nodes (16): CheckoutForm(), DELIVERY_TYPES, DeliveryType, fetchDivisionsApi(), isLockerCategory(), NpDivision, NpSettlement, NpStreet (+8 more)
 
 ### Community 59 - "E-Commerce Database Schema"
 Cohesion: 0.17
@@ -477,8 +467,8 @@ Cohesion: 0.17
 Nodes (11): Global Constraints, SEO Package Implementation Plan, Task 1: `app/lib/seo.ts` — indexability policy + metadata builders (pure), Task 2: Home page unique metadata, Task 3: Catalog `generateMetadata` rewired through the policy layer, Task 4: robots.ts — block /cart and /favorites, Task 5: noindex technical routes (layouts + checkout/admin metadata), Task 6: Product JSON-LD structured data (+3 more)
 
 ### Community 61 - "@supabase/supabase-js"
-Cohesion: 0.12
-Nodes (10): anon, cases, root, client, out, root, client, root (+2 more)
+Cohesion: 0.11
+Nodes (11): anon, cases, root, client, out, root, client, root (+3 more)
 
 ### Community 62 - "tmp-content-refetch-dryrun.ts"
 Cohesion: 0.04
@@ -532,9 +522,9 @@ Nodes (3): MockState, ORDER_EXEMPT, root
 Cohesion: 0.22
 Nodes (5): c, dupErr, mainCnt, man, pairs
 
-### Community 75 - "selection.ts"
-Cohesion: 0.17
-Nodes (7): collectExpandedIds(), ExpandableNode, ExpansionResult, flattenSelectedIds(), SELECTED_CATEGORIES, YcSelectedCategory, EXISTING_ROW
+### Community 75 - "SiteFooter.tsx"
+Cohesion: 0.23
+Nodes (10): CONTACT_EMAIL, INFO_LINKS, SiteFooter(), SiteFooterProps, FooterCategoryInput, footerCategoryLabel(), MAX_FOOTER_CATEGORY_LINKS, MERCH_CATEGORIES (+2 more)
 
 ### Community 76 - "yugcontract-claim-cas.test.ts"
 Cohesion: 0.22
@@ -556,9 +546,9 @@ Nodes (4): client, orderKey(), root, selectAll()
 Cohesion: 0.29
 Nodes (3): client, root, SCALARS
 
-### Community 82 - "payment/route.ts"
-Cohesion: 0.38
-Nodes (7): POST(), supabase, orderAccessToken(), verifyOrderAccessToken(), buildCallbackUrl(), buildResultUrl(), siteUrlBase()
+### Community 82 - "tmp-liqpay-payload-check.ts"
+Cohesion: 0.20
+Nodes (7): data, order, payload, reencoded, root, sig, svc
 
 ### Community 83 - "getNovaPostClient"
 Cohesion: 0.25
@@ -572,9 +562,9 @@ Nodes (5): AdminFeedbackPage(), dateFormatter, deleteFeedbackApi(), FeedbackRow,
 Cohesion: 0.33
 Nodes (3): client, root, SCALAR_FIELDS
 
-### Community 86 - "splitProductWrites"
-Cohesion: 0.24
-Nodes (4): ExistingProductRow, MappedProductRow, splitProductWrites(), MappedProductRowHolder
+### Community 86 - "ProductReviews.tsx"
+Cohesion: 0.25
+Nodes (6): dateFormatter, pluralReviews(), ProductReviews(), ReviewFormModal(), ReviewsPageData, ReviewSummary
 
 ### Community 87 - "(dashboard)/layout.tsx"
 Cohesion: 0.60
@@ -588,17 +578,13 @@ Nodes (4): Deploy on Vercel, Getting Started, Learn More, towary-dla-domu
 Cohesion: 0.40
 Nodes (3): anon, root, service
 
-### Community 90 - "import-run.ts"
-Cohesion: 0.16
-Nodes (18): maxDuration, POST(), maxDuration, POST(), BatchCounters, BatchOutcome, claimNextBatch(), ensureRun() (+10 more)
-
 ### Community 91 - "Yugcontract Sync в WSL2 (systemd timer)"
-Cohesion: 0.18
-Nodes (10): 1. Установить таймер, 2. Проверить статус, 3. Запустить вручную (вне расписания), 4. Включить / выключить, 5. Удалить, 6. Где логи, Yugcontract Sync в WSL2 (systemd timer), Коды выхода лаунчера (+2 more)
+Cohesion: 0.17
+Nodes (11): 1. Установить таймер, 2. Проверить статус, 3. Запустить вручную (вне расписания), 4. Включить / выключить, 5. Удалить, 6. Где логи, 7. Запуск через coding-agent, Yugcontract Sync в WSL2 (systemd timer) (+3 more)
 
 ### Community 92 - "enforceRateLimit"
-Cohesion: 0.17
-Nodes (14): CheckpointRow, GET(), POST(), supabase, buckets, checkRateLimit(), clientIpOf(), enforceRateLimit() (+6 more)
+Cohesion: 0.13
+Nodes (22): maxDuration, POST(), maxDuration, POST(), CheckpointRow, GET(), buckets, checkRateLimit() (+14 more)
 
 ### Community 93 - "reconcile-liqpay.mts"
 Cohesion: 0.11
@@ -607,10 +593,6 @@ Nodes (14): args, byClass, CLEAN, DEFAULT_FROM, duplicates, findings, LIMIT, NOT
 ### Community 95 - "graphify"
 Cohesion: 0.17
 Nodes (11): command, enabled, environment, type, mcp, graphify, plugin, $schema (+3 more)
-
-### Community 97 - "tmp-probe-search-grammar.ts"
-Cohesion: 0.33
-Nodes (3): client, q1, root
 
 ### Community 98 - "category-select.test.ts"
 Cohesion: 0.67
@@ -624,17 +606,21 @@ Nodes (3): filters(), root, src()
 Cohesion: 0.67
 Nodes (3): ReceivedRequest, startServer(), withServer()
 
+### Community 102 - "This is NOT the Next.js you know"
+Cohesion: 0.50
+Nodes (3): graphify, This is NOT the Next.js you know, Yugcontract Sync (запуск агентом)
+
 ### Community 125 - "admin-shipment-fk-fix-migration.test.ts"
 Cohesion: 0.50
 Nodes (3): code, root, sql
 
 ### Community 141 - "analytics.ts"
-Cohesion: 0.11
-Nodes (28): PaymentSuccessTracker(), RecentlyViewedTracker(), SearchViewTracker(), TrafficSourceTracker(), ANALYTICS_EVENTS, classifyTrafficSource(), hostOf(), isGoogleHost() (+20 more)
+Cohesion: 0.06
+Nodes (48): AddToCartButton(), AddToCartButtonProps, VariantOption, PaymentSuccessTracker(), SearchViewTracker(), TrafficSourceTracker(), geistMono, geistSans (+40 more)
 
 ### Community 142 - "liqpay-config.ts"
-Cohesion: 0.16
-Nodes (13): parseBody(), POST(), supabase, detectLiqPayKeyMode(), getLiqPayConfig(), isLiqPayConfigured(), LIQPAY_CHECKOUT_URL, LiqPayKeyMode (+5 more)
+Cohesion: 0.19
+Nodes (16): POST(), supabase, parseBody(), POST(), supabase, buildCallbackUrl(), buildResultUrl(), detectLiqPayKeyMode() (+8 more)
 
 ### Community 143 - "tmp-du-mapping-audit.ts"
 Cohesion: 0.06
@@ -648,21 +634,17 @@ Nodes (3): anon, root, service
 Cohesion: 0.67
 Nodes (3): GET(), sanitizeSearchTerm(), STATUSES
 
-### Community 146 - "runProductsBatch"
-Cohesion: 0.27
-Nodes (9): applyCategoryPlan(), buildFullPlan(), chunk(), finishBatch(), ImportDeps, insertChunked(), runCategoriesBatch(), runProductsBatch() (+1 more)
-
-### Community 148 - "order-idempotency.test.ts"
-Cohesion: 0.60
-Nodes (4): form(), root, route(), src()
+### Community 146 - "import-run.ts"
+Cohesion: 0.12
+Nodes (20): applyCategoryPlan(), BatchCounters, BatchOutcome, buildFullPlan(), chunk(), ExistingProductRowLite, finishBatch(), ImportBatchRow (+12 more)
 
 ### Community 149 - "tmp-du-mapping-verdicts.ts"
 Cohesion: 0.08
 Nodes (18): AuditRow, auditRows, client, duProducts, feedBrandByBase, ImageRow, imagesByProduct, ParamPair (+10 more)
 
 ### Community 151 - "tmp-plan-split.ts"
-Cohesion: 0.11
-Nodes (16): client, deduped, duNotPlanned, duOps, duPlannedIds, duProducts, { goods: rawGoods }, planFull (+8 more)
+Cohesion: 0.10
+Nodes (17): client, deduped, duNotPlanned, duOps, duPlannedIds, duProducts, { goods: rawGoods }, planFull (+9 more)
 
 ### Community 152 - "ProductSpecifications.tsx"
 Cohesion: 0.36
@@ -671,10 +653,6 @@ Nodes (5): ProductSpecifications(), ProductSpecificationsRow, sanitizeSpecRows()
 ### Community 153 - "liqpay-ui.test.ts"
 Cohesion: 0.25
 Nodes (6): btn, cb, init, orderPage, root, success
-
-### Community 154 - "sitemap.ts"
-Cohesion: 0.21
-Nodes (14): GET(), revalidate, fetchActiveBrands(), fetchActiveBrandsCached, fetchActiveCategories(), fetchActiveCategoriesCached, collectNonEmptyBrandIds(), collectNonEmptyCategoryIds() (+6 more)
 
 ### Community 156 - "nova-shipments-migration.test.ts"
 Cohesion: 0.40
@@ -741,12 +719,12 @@ Cohesion: 0.50
 Nodes (3): code, root, sql
 
 ### Community 181 - "yugcontract-content-fetch.ts"
-Cohesion: 0.14
-Nodes (15): buildDescriptionStats(), buildParamsStats(), matchContentGoodsToProducts(), OurProductRow, ContentProductRow, planContentBatches(), client, deduped (+7 more)
+Cohesion: 0.15
+Nodes (14): buildDescriptionStats(), buildParamsStats(), OurProductRow, ContentProductRow, planContentBatches(), client, deduped, fmtInt() (+6 more)
 
 ### Community 182 - "category-tree.ts"
 Cohesion: 0.15
-Nodes (17): AdminCategoryMultiSelect(), CategorySelect(), Category, CategorySeoOverride, listDirectChildren(), OVERRIDES, TDD_CATEGORY_SLUG, buildCategoryOptions() (+9 more)
+Nodes (14): AdminCategoryMultiSelect(), CategorySelect(), CategorySeoOverride, OVERRIDES, TDD_CATEGORY_SLUG, buildCategoryOptions(), CategoryOption, compareCategories() (+6 more)
 
 ### Community 184 - "yugcontract-copy-du-images-111.ts"
 Cohesion: 0.06
@@ -756,9 +734,9 @@ Nodes (32): Baseline, BASELINE_PATH, client, DU_IDS, DU_TO_BASE, duRows, fail(),
 Cohesion: 0.33
 Nodes (3): root, source, SOURCE_PATH
 
-### Community 187 - "favorites/page.tsx"
-Cohesion: 0.14
-Nodes (17): POST(), supabase, availabilityLabel(), CartPage(), EmptyState(), RecentProducts(), RemoveFavoriteButton(), FavoritesPage() (+9 more)
+### Community 187 - "cart-preview.ts"
+Cohesion: 0.18
+Nodes (11): ImageRow(), POST(), supabase, CartPreviewLine, FetchHandlers, PREVIEW_NETWORK_ERROR, PREVIEW_TIMEOUT_MS, PreviewRequestItem (+3 more)
 
 ### Community 189 - "checkout-unavailable-items.test.ts"
 Cohesion: 0.67
@@ -768,10 +746,6 @@ Nodes (3): form(), root, src()
 Cohesion: 0.11
 Nodes (26): DELETE(), PUT(), POST(), SiblingRow, DELETE(), DELETE(), GET(), POST() (+18 more)
 
-### Community 196 - "content-du-mapping.ts"
-Cohesion: 0.22
-Nodes (6): DU_BASE_TO_DU, DU_CONTENT_BY_DU_YC, DU_CONTENT_PAIRS, DuContentPair, duProduct(), product()
-
 ### Community 199 - "admin-shipment-courier-address-migration.test.ts"
 Cohesion: 0.40
 Nodes (3): code, root, sql
@@ -779,10 +753,6 @@ Nodes (3): code, root, sql
 ### Community 205 - "tmp-f6-premigration.ts"
 Cohesion: 0.40
 Nodes (3): c, mainCnt, rows
-
-### Community 206 - "cart-context.tsx"
-Cohesion: 0.25
-Nodes (15): CartAction, CartContext, CartContextValue, CartProvider(), CartState, loadStoredCart(), reducer(), CART_STORAGE_KEY (+7 more)
 
 ### Community 212 - "Status code decision (301 vs 308)"
 Cohesion: 0.18
@@ -792,17 +762,9 @@ Nodes (10): `_du` → base permanent redirects (103 pairs) Implementation Plan, 
 Cohesion: 0.29
 Nodes (5): anon, prices, root, Row, rows
 
-### Community 215 - "createPaymentInit"
-Cohesion: 0.31
-Nodes (3): createPaymentInit(), InitDeps, nextAttemptOrderId()
-
 ### Community 219 - "ProductDescription.tsx"
 Cohesion: 0.32
 Nodes (4): ProductDescription(), ResolvedDescription, resolveProductDescription(), root
-
-### Community 220 - "tmp-verify-live-payment.ts"
-Cohesion: 0.40
-Nodes (3): DO_LIQPAY, root, svc
 
 ### Community 223 - "htmlToPlainText"
 Cohesion: 0.67
@@ -813,23 +775,23 @@ Cohesion: 0.20
 Nodes (5): cacheSets, cacheStore, generatedKeys, root, src
 
 ## Knowledge Gaps
-- **1171 isolated node(s):** `$schema`, `.opencode/plugins/graphify.js`, `type`, `/home/loxord/.local/bin/graphify-mcp`, `graphify-out/graph.json` (+1166 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1500 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **47 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **1173 isolated node(s):** `$schema`, `.opencode/plugins/graphify.js`, `type`, `/home/loxord/.local/bin/graphify-mcp`, `graphify-out/graph.json` (+1168 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1502 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **49 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `enforceRateLimit()` connect `enforceRateLimit` to `api/reviews/route.ts`, `yugcontract/categories/route.ts`, `feedback.ts`, `getNovaPostClient`, `payment/route.ts`, `preview/route.ts`, `api/orders/route.ts`, `import-run.ts`, `favorites/page.tsx`?**
+- **Why does `enforceRateLimit()` connect `enforceRateLimit` to `api/reviews/route.ts`, `telegram.ts`, `yugcontract/categories/route.ts`, `liqpay-config.ts`, `success/page.tsx`, `FeedbackModal.tsx`, `getNovaPostClient`, `normalize.ts`, `cart-preview.ts`?**
   _High betweenness centrality (0.049) - this node is a cross-community bridge._
-- **Why does `requireAdminApi()` connect `requireAdminApi` to `admin-list.ts`, `admin-api.ts`, `delivery-cost.ts`, `reconciliation.ts`, `products/route.ts`, `yugcontract/categories/route.ts`, `admin/orders/route.ts`, `images/route.ts`, `preview/route.ts`, `import-run.ts`, `enforceRateLimit`, `ttn/route.ts`?**
+- **Why does `requireAdminApi()` connect `requireAdminApi` to `admin-list.ts`, `admin-api.ts`, `delivery-cost.ts`, `reconciliation.ts`, `products/route.ts`, `yugcontract/categories/route.ts`, `admin/orders/route.ts`, `images/route.ts`, `normalize.ts`, `enforceRateLimit`, `ttn/route.ts`?**
   _High betweenness centrality (0.040) - this node is a cross-community bridge._
-- **Why does `CartPreviewLine` connect `favorites/page.tsx` to `CheckoutForm.tsx`?**
+- **Why does `CartPreviewLine` connect `cart-preview.ts` to `CheckoutForm.tsx`, `favorites/page.tsx`, `RecentProducts.tsx`?**
   _High betweenness centrality (0.011) - this node is a cross-community bridge._
 - **What connects `$schema`, `.opencode/plugins/graphify.js`, `type` to the rest of the system?**
-  _1171 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1173 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `order-payment-update.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.13043478260869565 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.1028225806451613 - nodes in this community are weakly interconnected._
 - **Should `devDependencies` be split into smaller, more focused modules?**
   _Cohesion score 0.04081632653061224 - nodes in this community are weakly interconnected._
 - **Should `tmp-audit-readonly.ts` be split into smaller, more focused modules?**
