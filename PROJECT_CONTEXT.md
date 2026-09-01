@@ -53,7 +53,9 @@ database/migrations/           # SQL схемы; сверены с живой Б
 products (+brand_id), categories, brands, product_images,
 product_variants, attributes, attribute_values, product_attribute_values,
 admin_users, customers, orders (+order_number,
-email, expires_at, payment_status), order_items (+variant_name/sku), product_stock_history
+email, expires_at, payment_status, paid_at, liqpay_payment_id, liqpay_order_id,
+payment_method, payment_error, prepayment_amount), order_items (+variant_name/sku),
+product_stock_history
 
 ## Checkout / Orders (миграции 006–008)
 - place_order(payload jsonb) — SECURITY DEFINER: lock -> validate -> цены ТОЛЬКО из БД ->
@@ -61,8 +63,13 @@ email, expires_at, payment_status), order_items (+variant_name/sku), product_sto
   идентификаторы, количество и контактные строки.
 - Номер заказа ORD-YYYYMMDD-XXXXXX, уникальный индекс, collision-retry.
 - Админ-RPC: admin_set_order_status (forward-only map), admin_cancel_order (атомарный
-  возврат стока, double-restock невозможен), expire_pending_orders (SKIP LOCKED).
+  возврат стока, double-restock невозможен), expire_pending_orders (SKIP LOCKED,
+  pg_cron каждые 10 минут — job 'expire-pending-orders', исключает paid-заказы).
   EXECUTE только у service_role.
+- Оплата: 100% онлайн через LiqPay. После place_order клиент перенаправляется в
+  LiqPay; успешный callback (проверка подписи) атомарно ставит payment_status='paid'
+  (B1 interlock: отменённый заказ никогда не станет paid; гонка с
+  expire_pending_orders закрыта условным UPDATE с .neq('status','cancelled')).
 - Истечение pending через 24ч: pg_cron (включить в Dashboard) или POST /api/admin/orders/expire.
 
 ## Правила безопасности (не нарушать)
@@ -80,7 +87,7 @@ email, expires_at, payment_status), order_items (+variant_name/sku), product_sto
 - Корзина/избранное: localStorage хранит ТОЛЬКО productId+variantId+quantity (корзина);
   все цены/наличие — с сервера (/api/cart-preview). Финальный авторитет цен — place_order().
 - Admin: логин/логаут, товары (+изображения с загрузкой в Storage, варианты),
-  бренды, категории, заказы (список/детали/статусы/отмена/истечение)
+  бренды, категории, заказы (список/детали/статусы/отмена/истечение/платежи)
 
 ## Система uk-переводов (удалена из кода 2026-08)
 - Весь контент сайта и данные поставщика на украинском — переводы признаны избыточными.
@@ -90,11 +97,24 @@ email, expires_at, payment_status), order_items (+variant_name/sku), product_sto
   Если когда-нибудь понадобится второй язык — восстановить по истории git.
 
 ## Известные ограничения (осознанные)
-- Оплата НЕ реализована (payment_status='unpaid'; менеджер согласует вручную)
+- Оплата РЕАЛИЗОВАНА: 100% онлайн через LiqPay (payment_status='paid'; колбэки LiqPay
+  обновляют заказ автоматически). После успешной оплаты заказ обрабатывается менеджером.
 - Rate-limit in-process: сбрасывается при рестарте, не работает на multi-instance (нужен Redis/DB)
 - Пагинация каталога отсутствует
 - Sitemap без отдельных страниц товаров (каталог/категории покрывают перелинковку)
 - CSP-заголовок не настроен (требует подбора nonce/hash под Next.js) — см. deployment checklist
+
+## Nova Post — состояние модуля (2026-09)
+- Nova Post — БУДУЩИЙ модуль доставки, ЕЩЁ НЕ реализован как живая доставка
+  (TTN live не создаётся). Инфраструктура shipments/parcels (миграции 019–026)
+  готова как data layer.
+- Текущая оплата остаётся 100% онлайн через LiqPay → обработка менеджером.
+- COD / 20% prepayment + 80% наложенный платёж НЕ является текущим
+  бизнес-требованием и НЕ реализуется — не планировать на основании старого
+  контекста.
+- orders.prepayment_amount — историческое/заготовленное поле (nullable,
+  никогда не записывается кодом); его наличие в схеме НЕ означает
+  использование 20% предоплаты.
 
 ## Важные правила для будущих изменений
 - Данные storefront получать только через функции app/lib/catalog.ts
