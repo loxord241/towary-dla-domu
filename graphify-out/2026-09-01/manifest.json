@@ -660,9 +660,9 @@
     "semantic_hash": ""
   },
   "app/lib/seo.ts": {
-    "mtime": 1788270921.9148636,
-    "seen": 1788271076.4592493,
-    "ast_hash": "aba88de189375019a1761a0dd4701db3",
+    "mtime": 1788274567.5594375,
+    "seen": 1788275086.3957703,
+    "ast_hash": "b924bbff6ffd43fdcfd012542014939d",
     "semantic_hash": ""
   },
   "app/lib/supabase-storage.ts": {
@@ -2442,9 +2442,9 @@
     "semantic_hash": ""
   },
   "tests/seo-meta-description.test.ts": {
-    "mtime": 1788270968.0068638,
-    "seen": 1788271076.462164,
-    "ast_hash": "ed462d9af26a18cd7f9a1224663f8679",
+    "mtime": 1788274774.6053283,
+    "seen": 1788275086.3989482,
+    "ast_hash": "0a4596b5b5eac49075e82663fd0ef840",
     "semantic_hash": ""
   },
   "tests/catalog-cache-wiring.test.ts": {

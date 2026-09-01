@@ -1,9 +1,17 @@
 import Link from 'next/link';
 import FeedbackModal from './FeedbackModal';
-import { TDD_CATEGORY_SLUG } from '@/app/lib/category-seo';
+import {
+  selectFooterCategories,
+  footerCategoryLabel,
+} from '@/app/lib/merch-categories';
 
 interface SiteFooterProps {
-  categories?: { id: string; name: string; slug: string }[];
+  categories?: {
+    id: string;
+    name: string;
+    slug: string;
+    parent_id?: string | null;
+  }[];
 }
 
 const INFO_LINKS = [
@@ -18,8 +26,20 @@ export const CONTACT_EMAIL = 'magazinujut@gmail.com';
 /**
  * Shared storefront footer. When `categories` is provided the footer lists
  * them; otherwise it falls back to a single catalog link.
+ *
+ * Category links (Task #28 internal linking): the crawlable SSR anchors are
+ * the merchandising categories plus every OTHER top-level category — the
+ * hub pages of the tree (~13 links today, hard-capped in
+ * merch-categories.ts). The previous «first 5 rows» slice linked an
+ * arbitrary id-ordered subset and left all other hub pages without a
+ * single crawlable internal link (the drawer and the filter <select> are
+ * client-only). Mid/leaf levels stay linked via parent hubs and PDP
+ * breadcrumbs — no link farm.
  */
 export default function SiteFooter({ categories }: SiteFooterProps) {
+  const footerCategories = categories
+    ? selectFooterCategories(categories)
+    : [];
   return (
     <footer className="bg-gray-800 text-white py-12">
       <div className="container mx-auto px-4">
@@ -37,30 +57,17 @@ export default function SiteFooter({ categories }: SiteFooterProps) {
               </ul>
             ) : (
               <ul className="space-y-2 text-gray-300">
-                {/* Pinned intent anchor: the merchandising link «Товари для
-                    дому» lives in the client-side nav drawer, which is NOT in
-                    the SSR HTML — this footer <Link> is the crawlable one. */}
-                <li>
-                  <Link
-                    href={`/catalog?category=${TDD_CATEGORY_SLUG}`}
-                    className="hover:text-white"
-                  >
-                    Товари для дому
-                  </Link>
-                </li>
-                {/* Only the first 5 categories: the full supplier list
-                    (~200 entries) made the footer endless. */}
-                {categories.slice(0, 5).map((category) => (
+                {footerCategories.map((category) => (
                   <li key={category.id}>
                     <Link
                       href={`/catalog?category=${encodeURIComponent(category.slug)}`}
                       className="hover:text-white"
                     >
-                      {category.name}
+                      {footerCategoryLabel(category)}
                     </Link>
                   </li>
                 ))}
-                {categories.length > 5 && (
+                {categories.length > footerCategories.length && (
                   <li>
                     <Link href="/catalog" className="font-medium text-white hover:underline">
                       Усі категорії →

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import type { Brand, Category } from '@/app/lib/catalog';
+import { MERCH_CATEGORIES } from '@/app/lib/merch-categories';
 import { MenuIcon, XIcon } from './icons';
 
 /**
@@ -41,15 +42,14 @@ const SHOP_LINKS = [
 ];
 
 /**
- * Pinned categories shown first in the drawer, above the dictionary list.
- * Slugs point to the closest existing categories (the first two labels are
- * merchandising names, not rows in the categories table).
+ * Pinned merchandising categories shown first in the drawer, above the
+ * dictionary list. Single source of truth in app/lib/merch-categories.ts
+ * (the footer reuses the same slugs as its crawlable anchors).
  */
-const PINNED_CATEGORIES = [
-  { href: '/catalog?category=mala-kukhonna-tekhnika-69', label: 'Дрібна побутова техніка' },
-  { href: '/catalog?category=velyka-pobutova-tekhnika-739', label: 'Велика побутова техніка' },
-  { href: '/catalog?category=hospodarchi-tovary-1451', label: 'Товари для дому' },
-];
+const PINNED_CATEGORIES = MERCH_CATEGORIES.map((m) => ({
+  href: `/catalog?category=${m.slug}`,
+  label: m.label,
+}));
 
 interface Dictionaries {
   categories: Category[];

@@ -105,14 +105,24 @@ test('SEO-CAT: leaf category has no children', () => {
 
 test('SEO-CAT: footer renders a crawlable «Товари для дому» anchor to the category', () => {
   const footer = src('app/components/SiteFooter.tsx');
+  // The crawlable anchors come from merch-categories.ts (Task #28): the
+  // merchandising slugs (incl. hospodarchi-tovary-1451) are its single source.
   assert.match(
     footer,
-    /href=\{?['"`]\/catalog\?category=hospodarchi-tovary-1451['"`]\}?|TDD_CATEGORY_SLUG/,
-    'footer must link the pinned category URL'
+    /merch-categories/,
+    'footer category links must come from merch-categories.ts'
   );
-  assert.match(footer, /Товари для дому/, 'anchor text must be the intent keyword');
+  assert.match(
+    footer,
+    /selectFooterCategories\(/,
+    'footer must render the selected hub categories'
+  );
+  assert.match(footer, /Товари для дому|footerCategoryLabel/, 'anchor text must be the intent keyword (merch label)');
   // inside a real <Link> (SSR anchor), not a button or the drawer
-  assert.match(footer, /<Link[^>]*[\s\S]{0,200}>[\s\S]{0,80}Товари для дому/);
+  assert.match(
+    footer,
+    /<Link[^>]*catalog\?category=[\s\S]{0,120}>[\s\S]{0,120}\{footerCategoryLabel\(category\)\}/
+  );
 });
 
 test('SEO-CAT: catalog page renders subcategory links and unique intro for the pinned category', () => {
