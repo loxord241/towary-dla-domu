@@ -108,7 +108,7 @@ interface OrderRowShim {
 }
 
 async function* loadRows(): AsyncGenerator<OrderRowShim> {
-  let cursor: string | null = null;
+  let cursor: { createdAt: string; orderNumber: string } | null = null;
   let loaded = 0;
   while (loaded < LIMIT) {
     let q = svc
@@ -122,8 +122,14 @@ async function* loadRows(): AsyncGenerator<OrderRowShim> {
       .order('order_number')
       .limit(Math.min(BATCH_SIZE, LIMIT - loaded));
     if (TO) q = q.lte('created_at', TO);
-    // Keyset predicate: strictly after the last emitted tuple.
-    if (cursor) q = q.gt('created_at', cursor);
+    // Composite keyset cursor: order_number is UNIQUE (idx_orders_order_number),
+    // so (created_at, order_number) is a total order. A plain gt(created_at)
+    // skips the tail of any same-timestamp group straddling the page boundary.
+    if (cursor) {
+      q = q.or(
+        `created_at.gt."${cursor.createdAt}",and(created_at.eq."${cursor.createdAt}",order_number.gt."${cursor.orderNumber}")`
+      );
+    }
     const { data, error } = await q;
     if (error) throw new Error(`DB select failed: ${error.message}`);
     const rows = (data ?? []) as OrderRowShim[];
@@ -133,7 +139,8 @@ async function* loadRows(): AsyncGenerator<OrderRowShim> {
       loaded += 1;
       if (loaded >= LIMIT) return;
     }
-    cursor = rows[rows.length - 1].created_at;
+    const last = rows[rows.length - 1];
+    cursor = { createdAt: last.created_at, orderNumber: last.order_number };
   }
 }
 

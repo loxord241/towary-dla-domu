@@ -15,6 +15,7 @@ import {
   normalizeProduct,
   type ProductJoinedRow,
 } from '@/app/lib/admin-list';
+import { sanitizeYcDescription } from '@/app/lib/yugcontract/content-sanitize';
 
 /**
  * Full filtered read via paged windows. These branches promise the whole
@@ -188,6 +189,11 @@ export async function POST(request: Request) {
       categoryIds = parsed;
     }
 
+    const rawDescription = strOrNull(body.description);
+    // The storefront renders this field as raw HTML (ProductDescription),
+    // so the "always sanitized" invariant (same allowlist as the import
+    // path) must hold for admin-created products too.
+
     const { data, error } = await ctx.serviceClient
       .from('products')
       .insert({
@@ -195,7 +201,7 @@ export async function POST(request: Request) {
         name,
         slug,
         short_description: strOrNull(body.short_description),
-        description: strOrNull(body.description),
+        description: rawDescription === null ? null : sanitizeYcDescription(rawDescription),
         price,
         old_price: oldPrice,
         currency: currency === null ? 'UAH' : currency.toUpperCase(),

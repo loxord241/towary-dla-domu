@@ -227,6 +227,46 @@ test('HEALTH: installer wires OnFailure + post-sync health units, importer untou
   assert.ok(!installer.includes('yugcontract-import-run'));
 });
 
+// ---- pagination correctness (audit 2026-08-31, issue #2) ----
+
+test('HEALTH: yc_import_batches read pages with .range(from, from+limit-1)', () => {
+  const s = src('scripts/catalog-health-check.ts');
+  const batchesStart = s.indexOf("from('yc_import_batches')");
+  assert.ok(batchesStart !== -1, 'batches query must exist');
+  const batchesEnd = s.indexOf('as unknown as ImportBatchInfo', batchesStart);
+  assert.ok(batchesEnd !== -1);
+  // The fetchAll callback must consume (from, limit) — a callback that
+  // ignores them loops forever once the table reaches the 1000-row cap.
+  assert.match(
+    s.slice(batchesStart, batchesEnd),
+    /\.range\(from, from \+ limit - 1\)/,
+    'yc_import_batches query must page via .range(from, from + limit - 1)'
+  );
+});
+
+test('HEALTH: pending orders read pages with .range(from, from+limit-1)', () => {
+  const s = src('scripts/catalog-health-check.ts');
+  const start = s.indexOf('const pendingOrders = await fetchAll(');
+  assert.ok(start !== -1, 'pending orders fetchAll call must exist');
+  const end = s.indexOf(');', start);
+  const segment = s.slice(start, end);
+  assert.match(segment, /\(from, limit\)/, 'callback must consume (from, limit)');
+  assert.match(
+    segment,
+    /\.range\(from, from \+ limit - 1\)/,
+    'pending orders query must page via .range(from, from + limit - 1)'
+  );
+});
+
+test('HEALTH: every fetchAll callback consumes (from, limit) — no range-less callbacks left', () => {
+  const s = src('scripts/catalog-health-check.ts');
+  const params = [...s.matchAll(/await fetchAll\(\s*\(([^)]*)\)/g)].map((m) => m[1]);
+  assert.ok(params.length >= 7, 'expected the 7 existing fetchAll call sites');
+  for (const p of params) {
+    assert.equal(p, 'from, limit', `fetchAll callback must take (from, limit), got (${p})`);
+  }
+});
+
 // ---- _du allowlist drift (2026-08-31 audit: 97 redirect + 6 price-diff + 26 orphans) ----
 
 const TEST_ALLOWLIST: DuAllowlistSnapshot = {

@@ -12,6 +12,7 @@ import {
   revalidateStagedPictures,
   type ProductImageRow,
 } from './content-images.ts';
+import { RowErrorCollector } from './row-errors.ts';
 
 /**
  * Content import executor (stage 3) — description + specifications.
@@ -276,19 +277,28 @@ export async function claimNextContentBatch(
     }
     return false;
   });
-  const next = claimable[0];
-  if (!next) return null;
-
-  const { error } = await client
-    .from('yc_content_batches')
-    .update({
-      status: 'running',
-      started_at: new Date().toISOString(),
-      last_error: null,
-    })
-    .eq('id', next.id);
-  if (error) throw new Error(error.message);
-  return { ...next, status: 'running' };
+  // Atomic compare-and-swap (see claimNextBatch in import-run.ts): the
+  // claim UPDATE only lands while the batch is still in the state we saw;
+  // an empty .select('id') means another runner won — try the next candidate.
+  for (const next of claimable) {
+    let cas = client
+      .from('yc_content_batches')
+      .update({
+        status: 'running',
+        started_at: new Date().toISOString(),
+        last_error: null,
+      })
+      .eq('id', next.id)
+      .eq('status', next.status);
+    if (next.status === 'running') {
+      cas = cas.eq('started_at', next.started_at ?? '');
+    }
+    const { data, error } = await cas.select('id');
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) continue;
+    return { ...next, status: 'running' };
+  }
+  return null;
 }
 
 async function finishContentBatch(
@@ -418,6 +428,9 @@ export async function executeImagesBatch(
     const existingImages = await loadProductImagesFor(client, [...dbIdByYc.values()]);
     const plan = planImageOps(planInput, stagedPictures, existingImages);
 
+    // Row failures never fail the batch here either — status stays
+    // `errors > 0 ? 'failed' : 'done'`; diagnostics go to last_error.
+    const rowErrors = new RowErrorCollector();
     let updated = 0;
     let errors = 0;
     for (const op of plan.updates) {
@@ -430,6 +443,10 @@ export async function executeImagesBatch(
         .select('id');
       if (error || !data || data.length === 0) {
         errors += 1;
+        rowErrors.add(
+          `img ${op.id} (product ${op.product_id})`,
+          error?.message ?? '0 rows updated (зображення зникло під час батчу?)'
+        );
         continue;
       }
       updated += 1;
@@ -454,7 +471,13 @@ export async function executeImagesBatch(
         plan.staleImported.length,
       errors,
     };
-    await finishContentBatch(client, batch.id, errors > 0 ? 'failed' : 'done', counters, null);
+    await finishContentBatch(
+      client,
+      batch.id,
+      errors > 0 ? 'failed' : 'done',
+      counters,
+      rowErrors.toLastError()
+    );
     return {
       phase: 'images',
       batchNo: batch.batch_no,
@@ -497,6 +520,7 @@ export async function executeDescriptionBatch(
       excludeDescriptionIds: options.excludeDescriptionIds,
     });
 
+    const rowErrors = new RowErrorCollector();
     let updated = 0;
     let errors = 0;
     for (const op of plan.updates) {
@@ -509,6 +533,10 @@ export async function executeDescriptionBatch(
         .select('id');
       if (error || !data || data.length === 0) {
         errors += 1;
+        rowErrors.add(
+          `${op.yugcontractId} (product ${op.productDbId})`,
+          error?.message ?? '0 rows updated (товар зник під час батчу?)'
+        );
         continue;
       }
       updated += 1;
@@ -520,7 +548,13 @@ export async function executeDescriptionBatch(
         plan.identical + plan.noDescriptionAvailable + plan.unmatchedStaged,
       errors,
     };
-    await finishContentBatch(client, batch.id, errors > 0 ? 'failed' : 'done', counters, null);
+    await finishContentBatch(
+      client,
+      batch.id,
+      errors > 0 ? 'failed' : 'done',
+      counters,
+      rowErrors.toLastError()
+    );
     return {
       phase: 'description',
       batchNo: batch.batch_no,

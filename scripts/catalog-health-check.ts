@@ -120,12 +120,16 @@ async function main(): Promise<void> {
   );
 
   // ---- 3. import batches (small table) -----------------------------------
+  // The callback MUST consume (from, limit): PostgREST caps any response
+  // at 1000 rows, and a range-less callback re-fetches the same first
+  // page forever once the table reaches the cap.
   const batches = (
-    await fetchAll(() =>
+    await fetchAll((from, limit) =>
       db
         .from('yc_import_batches')
         .select('run_id, phase, batch_no, status, started_at, finished_at, last_error')
         .order('id')
+        .range(from, from + limit - 1)
     )
   ) as unknown as ImportBatchInfo[];
 
@@ -165,8 +169,15 @@ async function main(): Promise<void> {
   });
 
   // ---- 5. pending orders (advisory; existing safe read-only logic) -------
-  const pendingOrders = await fetchAll(() =>
-    db.from('orders').select('order_number, created_at').eq('payment_status', 'pending').order('order_number')
+  // The callback MUST consume (from, limit): a range-less query loops forever
+  // once pending count reaches the PostgREST 1000-row response cap.
+  const pendingOrders = await fetchAll((from, limit) =>
+    db
+      .from('orders')
+      .select('order_number, created_at')
+      .eq('payment_status', 'pending')
+      .order('order_number')
+      .range(from, from + limit - 1)
   );
   const pending24h = pendingOrders.filter(
     (o) =>

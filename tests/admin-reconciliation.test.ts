@@ -135,7 +135,12 @@ test('RECON-API: classifier is imported, never reimplemented', () => {
 test('RECON-API: bounded keyset window, explicit caps, sequential throttle', () => {
   const r = src(ROUTE);
   assert.doesNotMatch(r, /\.range\(/, 'offset pagination must not be used');
-  assert.match(r, /\.gt\('created_at'/, 'keyset predicate on created_at required');
+  // Composite keyset cursor (tests/liqpay-reconcile-pagination.test.ts):
+  // created_at > T OR (created_at = T AND order_number > N) — a plain
+  // gt(created_at) skips rows sharing the boundary timestamp.
+  assert.match(r, /q\.or\(\s*`created_at\.gt\./, 'composite keyset cursor required');
+  assert.match(r, /order_number\.gt\./, 'order_number tie-break required');
+  assert.doesNotMatch(r, /\.gt\('created_at'/, 'created_at-only cursor must not return');
   assert.match(r, /\blimit\b/i);
   assert.match(r, /THROTTLE/, 'sequential pacing constant required');
   assert.match(r, /MAX_LIMIT/);

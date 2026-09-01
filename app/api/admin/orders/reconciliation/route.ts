@@ -100,7 +100,7 @@ export async function GET(request: Request) {
   try {
     // Bounded keyset scan over created_at — deterministic order, no offsets.
     const rows: ReconciliationOrderRow[] = [];
-    let cursor: string | null = null;
+    let cursor: { createdAt: string; orderNumber: string } | null = null;
     while (rows.length < limit) {
       let q = ctx.serviceClient
         .from('orders')
@@ -110,7 +110,14 @@ export async function GET(request: Request) {
         .order('created_at')
         .order('order_number');
       if (toParam) q = q.lte('created_at', toParam);
-      if (cursor) q = q.gt('created_at', cursor);
+      // Composite keyset cursor: order_number is UNIQUE (idx_orders_order_number),
+      // so (created_at, order_number) is a total order. A plain gt(created_at)
+      // skips the tail of any same-timestamp group straddling the page boundary.
+      if (cursor) {
+        q = q.or(
+          `created_at.gt."${cursor.createdAt}",and(created_at.eq."${cursor.createdAt}",order_number.gt."${cursor.orderNumber}")`
+        );
+      }
       const batch = Math.min(50, limit - rows.length);
       const { data, error } = await q.limit(batch);
       if (error) {
@@ -124,7 +131,8 @@ export async function GET(request: Request) {
       const chunk = (data ?? []) as unknown as ReconciliationOrderRow[];
       if (chunk.length === 0) break;
       rows.push(...chunk);
-      cursor = chunk[chunk.length - 1].created_at;
+      const last = chunk[chunk.length - 1];
+      cursor = { createdAt: last.created_at, orderNumber: last.order_number };
     }
 
     // Sequential, throttled Status lookups; per-order failures degrade to

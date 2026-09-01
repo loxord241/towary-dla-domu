@@ -323,6 +323,8 @@ export interface ResolvedInsert {
 
 export interface ProductUpdateOp {
   id: string;
+  /** Yugcontract identity — surfaces in per-row failure diagnostics. */
+  yugcontractId: string;
   fields: Record<string, unknown>;
   /** true when stock_quantity changes — drives a stock-history entry */
   stockChanged: boolean;
@@ -463,6 +465,7 @@ export function splitProductWrites(
     if (Object.keys(fields).length === 0 && !categorySync) continue;
     split.updates.push({
       id: existing.id,
+      yugcontractId: row.yugcontract_id,
       fields,
       stockChanged: fields.stock_quantity !== undefined,
       oldStock,

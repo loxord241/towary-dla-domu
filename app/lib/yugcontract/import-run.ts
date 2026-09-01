@@ -26,6 +26,7 @@ import {
   type MappedProductRow,
 } from './import-plan.ts';
 import type { YcProduct } from './types';
+import { RowErrorCollector } from './row-errors.ts';
 
 /**
  * Server-side execution of the Yugcontract import.
@@ -211,15 +212,27 @@ export async function claimNextBatch(
     }
     return false;
   });
-  const next = claimable[0];
-  if (!next) return null;
-
-  const { error } = await client
-    .from('yc_import_batches')
-    .update({ status: 'running', started_at: new Date().toISOString(), last_error: null })
-    .eq('id', next.id);
-  if (error) throw new Error(error.message);
-  return { ...next, status: 'running' };
+  // Atomic compare-and-swap: walk candidates in order and only land the
+  // claim UPDATE while the batch is still in the state we saw. An empty
+  // .select('id') result means another runner won the race — skip it and
+  // try the next candidate.
+  for (const next of claimable) {
+    let cas = client
+      .from('yc_import_batches')
+      .update({ status: 'running', started_at: new Date().toISOString(), last_error: null })
+      .eq('id', next.id)
+      .eq('status', next.status);
+    if (next.status === 'running') {
+      // Stale-running reclaim: pin started_at so a batch that was already
+      // re-claimed (and restarted) by someone else is never intercepted.
+      cas = cas.eq('started_at', next.started_at ?? '');
+    }
+    const { data, error } = await cas.select('id');
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) continue;
+    return { ...next, status: 'running' };
+  }
+  return null;
 }
 
 async function finishBatch(
@@ -317,7 +330,7 @@ export interface BatchOutcome {
 export async function applyCategoryPlan(
   client: SupabaseClient,
   plan: CategoryPlan
-): Promise<BatchCounters> {
+): Promise<BatchCounters & { rowErrors: RowErrorCollector }> {
   // seed ext→uuid with already-known supplier categories
   const existingRows = await fetchAllRows<ExistingCategoryRow & { yugcontract_id: string | null }>(
     client,
@@ -356,6 +369,7 @@ export async function applyCategoryPlan(
 
   let updated = 0;
   let errors = 0;
+  const rowErrors = new RowErrorCollector();
   for (const op of plan.updates) {
     const fields: Record<string, unknown> = {};
     if (op.name !== undefined) fields.name = op.name;
@@ -365,11 +379,13 @@ export async function applyCategoryPlan(
     }
     if (Object.keys(fields).length === 0) continue;
     const { error } = await client.from('categories').update(fields).eq('id', op.id);
-    if (error) errors += 1;
-    else updated += 1;
+    if (error) {
+      errors += 1;
+      rowErrors.add(`category ${op.id}`, error.message);
+    } else updated += 1;
   }
 
-  return { inserted, updated, skipped: 0, errors };
+  return { inserted, updated, skipped: 0, errors, rowErrors };
 }
 
 async function runCategoriesBatch(
@@ -397,8 +413,8 @@ async function runCategoriesBatch(
         message: `Знайдено ${plan.conflicts.length} конфліктів категорій — імпорт зупинено`,
       };
     }
-    const counters = await applyCategoryPlan(client, plan);
-    await finishBatch(client, batch.id, 'done', counters, null);
+    const { rowErrors, ...counters } = await applyCategoryPlan(client, plan);
+    await finishBatch(client, batch.id, 'done', counters, rowErrors.toLastError());
     return {
       phase: 'categories',
       batchNo: batch.batch_no,
@@ -557,6 +573,9 @@ async function runProductsBatch(
       }
     }
 
+    // Row failures never fail the batch (checkpoint semantics) — the only
+    // persistent trace is last_error, so record id + message for the first few.
+    const rowErrors = new RowErrorCollector();
     for (const op of split.updates) {
       const { data, error } = await client
         .from('products')
@@ -565,6 +584,10 @@ async function runProductsBatch(
         .select('id');
       if (error || !data || data.length === 0) {
         errors += 1;
+        rowErrors.add(
+          `${op.id} (yc ${op.yugcontractId})`,
+          error?.message ?? '0 rows updated (товар зник під час батчу?)'
+        );
         continue;
       }
       updatedCount += 1;
@@ -579,14 +602,23 @@ async function runProductsBatch(
           );
         if (upErr) {
           errors += 1;
+          rowErrors.add(
+            `${op.id} (yc ${op.yugcontractId})`,
+            `product_categories upsert: ${upErr.message}`
+          );
         } else {
           const { error: delErr } = await client
             .from('product_categories')
             .delete()
             .eq('product_id', op.id)
             .neq('category_id', op.categorySync.newCategoryId);
-          if (delErr) errors += 1;
-          else recategorized += 1;
+          if (delErr) {
+            errors += 1;
+            rowErrors.add(
+              `${op.id} (yc ${op.yugcontractId})`,
+              `product_categories cleanup: ${delErr.message}`
+            );
+          } else recategorized += 1;
         }
       }
       if (op.stockChanged) {
@@ -610,7 +642,7 @@ async function runProductsBatch(
       skipped: skipped.length + split.unresolvedRefs.length,
       errors,
     };
-    await finishBatch(client, batch.id, 'done', counters, null);
+    await finishBatch(client, batch.id, 'done', counters, rowErrors.toLastError());
     return {
       phase: 'products',
       batchNo: batch.batch_no,

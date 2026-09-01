@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdminApi, strOrNull, uuidOrNull, numOrNull, isUuid, parseCategoryIds, dbErrorResponse, toStoragePath } from '@/app/lib/admin-api';
+import { sanitizeYcDescription } from '@/app/lib/yugcontract/content-sanitize';
 import {
   MAX_FEATURED_PRODUCTS,
   FEATURED_LIMIT_MESSAGE,
@@ -124,7 +125,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       patch.slug = slug;
     }
     if ('short_description' in body) patch.short_description = strOrNull(body.short_description);
-    if ('description' in body) patch.description = strOrNull(body.description);
+    if ('description' in body) {
+      const rawDescription = strOrNull(body.description);
+      // The storefront renders this field as raw HTML (ProductDescription),
+      // so the "always sanitized" invariant (same allowlist as the import
+      // path) must hold for admin edits too.
+      patch.description = rawDescription === null ? null : sanitizeYcDescription(rawDescription);
+    }
     if ('price' in body) {
       const price = numOrNull(body.price);
       if (price === null || price < 0) {
