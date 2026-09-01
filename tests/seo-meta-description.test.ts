@@ -66,7 +66,75 @@ test('META: unique descriptions are NOT boilerplate', () => {
   assert.equal(isBoilerplateDescription(''), false);
 });
 
-// ---- meta description chain ----
+// ---- Task #24: verified V2 marker set (Task #23 audit, 2026-09-01) ----
+// One sample per NEW marker; each sample embeds the marker verbatim, so
+// recognition can only pass once the marker ships in BOILERPLATE_MARKERS.
+const V2_BOILERPLATE_SAMPLES: readonly string[] = [
+  '<p>Цей посуд виготовляється ексклюзивно для Юг-контракт.</p>',
+  '<p>Посуд виготовляється ексклюзивно для компанії вже понад десять років.</p>',
+  '<p>Посуд для приготування під торговою маркою IQ поєднує якість і стиль.</p>',
+  '<p>Торгова марка Ringel відома своїми кухонними аксесуарами.</p>',
+  '<p>Ringel - бренд якісного посуду для дому.</p>',
+  '<p>Кухонні аксесуари Ringel зроблять кухню затишнішою.</p>',
+  '<p>Bravo Chef – це посуд для тих, хто любить готувати.</p>',
+  '<p>Компанія Kastamonu багаторічний досвід виробництва меблевих плит.</p>',
+  '<p>IPEC - найбільший виробник побутової техніки в Туреччині.</p>',
+  '<p>Бренд Tramontina заснований у Бразилії понад сто років тому.</p>',
+  '<p>Фоторамка LA — елегантне рішення для вашого інтер’єру.</p>',
+  '<p>Серія Guten Morgen створена для приємних ранкових сніданків.</p>',
+  '<p>Серія Longchamp втілює класичний французький стиль.</p>',
+  '<p>Kora від Limited Edition — це витончений декор для дому.</p>',
+  '<p>Шторка для ванної Idea Home захищає від бризів.</p>',
+  '<p>Бренд Arcoroc належить французькій групі Arc International.</p>',
+  '<p>Бренд Chef&Sommelier створений для професійної сервіровки.</p>',
+  '<p>Франція і кухня мають особливий зв’язок у культурі цієї країни.</p>',
+  '<p>У металевих серіях ТМ Pyrex поєднані міцність та дизайн.</p>',
+  '<p>Сковорідки та каструлі Pyrex з антипригарним покриттям.</p>',
+  '<p>Серія ножів Athus виготовлена з нержавіючої сталі.</p>',
+  '<p>Команда фахівців ТМ Eleyus розробляє витяжки вже 15 років.</p>',
+  '<p>Наша компактна пральна машина ідеально підходить для малих квартир.</p>',
+  '<p>Скатертина водовідштовхувальна прямокутна 140x200 см.</p>',
+  '<p>Вішалка для одягу з гачками Idea Home економить простір.</p>',
+  '<p>Особливості сковорід Oscar Chef — товсте дно та рівномірний нагрів.</p>',
+  '<p>Каструля з литого алюмінію серії Zitrone підходить для індукції.</p>',
+  '<p>Чому «Tesy»? Бо якість бойлерів перевірена часом.</p>',
+  '<p>Ножі серії Master - ідеальні ножі для нарізки овочів та м’яса.</p>',
+  '<p>Металеві вази для зберігання фруктів доповнюють інтер’єр.</p>',
+  '<p>Стильна прикраса на вашому столі подарує гарний настрій.</p>',
+  '<p>Чашки з подвійними стінками тримають напій гарячим довше.</p>',
+  '<p>Склянки з подвійними стінками виготовлені з боросилікатного скла.</p>',
+  '<p>Посуд і предмети для сервірування від бренду LED створені для дому.</p>',
+  '<p>Колекція преміум-класу Rowenta поєднує технології та естетику.</p>',
+  '<p>Чавунні решітки ProGrids міцні, стійкі та надійні.</p>',
+  '<p>У руках майстрів своєї справи будь-який матеріал приймає потрібну форму.</p>',
+];
+
+test('META: every V2 boilerplate marker is recognized', () => {
+  for (const sample of V2_BOILERPLATE_SAMPLES) {
+    assert.equal(isBoilerplateDescription(sample), true, sample);
+  }
+});
+
+test('META: V2 detection does not flag normal descriptions (no false positives)', () => {
+  const normals: readonly string[] = [
+    UNIQUE_DESC,
+    '<p>Посуд Ringel для сервірування столу, 12 предметів.</p>',
+    '<p>Келихи C&S для червоного вина, набір 6 шт.</p>',
+    '<p>Набір ножів Tramontina з підставкою, 6 предметів.</p>',
+    '<p>Сковорідка Pyrex 24 см зі знімною ручкою.</p>',
+    '<p>Чайник Tesy з об’ємом 1,7 л, білий корпус.</p>',
+    '<p>Чашки з подвійним дном, скло, 250 мл, прозорі.</p>',
+    '<p>Рамка для фотографії 21x30 см, пластик, чорна.</p>',
+    '<p>Електрочайник з контролером Strix, 2200 Вт.</p>',
+    '<p>Пральна машина з завантаженням 6 кг, клас A+.</p>',
+    '<p>Скатертина ПВХ з флокацією 140x200 см.</p>',
+  ];
+  for (const sample of normals) {
+    assert.equal(isBoilerplateDescription(sample), false, sample);
+  }
+});
+
+// ---- meta description chain (decision layer, unchanged semantics) ----
 
 test('META: short_description wins over description', () => {
   const m = buildProductMetaDescription({
@@ -98,7 +166,8 @@ test('META: placeholder description falls back to the generic name-based meta', 
 });
 
 test('META: boilerplate description falls back to the generic meta (no duplicated metas)', () => {
-  for (const boiler of [TRAMONTINA, LUMINARC_R, LUMINARC_PLAIN, PYREX]) {
+  const cs: string = V2_BOILERPLATE_SAMPLES[16]; // Chef&Sommelier sample
+  for (const boiler of [TRAMONTINA, LUMINARC_R, LUMINARC_PLAIN, PYREX, cs]) {
     assert.equal(
       buildProductMetaDescription({ productName: 'Набір посуду', description: boiler }),
       'Купити Набір посуду в інтернет-магазині Товари для дому.'

@@ -660,9 +660,9 @@
     "semantic_hash": ""
   },
   "app/lib/seo.ts": {
-    "mtime": 1788258158.0227008,
-    "seen": 1788258314.6462524,
-    "ast_hash": "70e95a08dbfd5f39178a8f0547bd5408",
+    "mtime": 1788270921.9148636,
+    "seen": 1788271076.4592493,
+    "ast_hash": "aba88de189375019a1761a0dd4701db3",
     "semantic_hash": ""
   },
   "app/lib/supabase-storage.ts": {
@@ -690,9 +690,9 @@
     "semantic_hash": ""
   },
   "app/lib/yugcontract/content-dry-run.ts": {
-    "mtime": 1787582057.704043,
-    "seen": 1787763651.9003115,
-    "ast_hash": "0874120eb68f0102d0309725703a88a9",
+    "mtime": 1788265656.142796,
+    "seen": 1788266791.543406,
+    "ast_hash": "dc414cd03127c8b92abe2b486cd6726e",
     "semantic_hash": ""
   },
   "app/lib/yugcontract/content-images.ts": {
@@ -702,9 +702,9 @@
     "semantic_hash": ""
   },
   "app/lib/yugcontract/content-import.ts": {
-    "mtime": 1788256748.350683,
-    "seen": 1788258314.646421,
-    "ast_hash": "45d857f98d691fcbbf62c8255e0d6134",
+    "mtime": 1788265631.5667956,
+    "seen": 1788266791.5434384,
+    "ast_hash": "dad9c2793b61e7f38589f04c69eb2a24",
     "semantic_hash": ""
   },
   "app/lib/yugcontract/content-sanitize.ts": {
@@ -834,9 +834,9 @@
     "semantic_hash": ""
   },
   "next.config.ts": {
-    "mtime": 1788179636.8574388,
-    "seen": 1788181294.7284505,
-    "ast_hash": "25437604cce0a2abfc869e890fa28a76",
+    "mtime": 1788273305.4348934,
+    "seen": 1788273367.5344374,
+    "ast_hash": "0398c4d0b993ac72e022fb5e64cb4b1f",
     "semantic_hash": ""
   },
   "package.json": {
@@ -2262,9 +2262,9 @@
     "semantic_hash": ""
   },
   "app/lib/monitoring/catalog-health.ts": {
-    "mtime": 1788181203.2330973,
-    "seen": 1788181294.7283819,
-    "ast_hash": "0b84709bed7129f4a774a330361327b7",
+    "mtime": 1788273282.0028932,
+    "seen": 1788273367.533498,
+    "ast_hash": "4f704759065dabf0e64ba929331c09df",
     "semantic_hash": ""
   },
   "app/lib/notifications/telegram.ts": {
@@ -2316,9 +2316,9 @@
     "semantic_hash": ""
   },
   "tests/catalog-health.test.ts": {
-    "mtime": 1788256686.490682,
-    "seen": 1788258314.6486375,
-    "ast_hash": "d7708c1c4fffb6433fc22716868b92b0",
+    "mtime": 1788273301.4028933,
+    "seen": 1788273367.535846,
+    "ast_hash": "ee7f8963d2c794e1e836e2dc24d5c8e1",
     "semantic_hash": ""
   },
   "tests/checkout-phone-paste.test.ts": {
@@ -2412,21 +2412,21 @@
     "semantic_hash": ""
   },
   "app/lib/du-redirects.json": {
-    "mtime": 1788179636.8553827,
-    "seen": 1788181294.7283719,
-    "ast_hash": "d0b3c76d6b9297c44586107ed8b406ef",
+    "mtime": 1788273250.302893,
+    "seen": 1788273367.5333712,
+    "ast_hash": "ae0ca75eb00feb8f08b9a28b6b10f2dd",
     "semantic_hash": ""
   },
   "app/lib/du-redirects.ts": {
-    "mtime": 1788179636.8553827,
-    "seen": 1788181294.7283735,
-    "ast_hash": "13d0950ed2c44cdb326abbebff955e9b",
+    "mtime": 1788273250.302893,
+    "seen": 1788273367.5333726,
+    "ast_hash": "5a9d09d6d759cd77712abd7689f68160",
     "semantic_hash": ""
   },
   "scripts/yugcontract-du-redirect-allowlist.ts": {
-    "mtime": 1788179636.8574388,
-    "seen": 1788181294.7284882,
-    "ast_hash": "0aa741e15b9bcfb59aba6972e967bbc1",
+    "mtime": 1788273246.006893,
+    "seen": 1788273367.5353463,
+    "ast_hash": "8d41ac45d33cecf059bc17e618362a2a",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-08-31-du-redirects.md": {
@@ -2436,15 +2436,15 @@
     "semantic_hash": ""
   },
   "tests/du-redirects.test.ts": {
-    "mtime": 1788179636.8574388,
-    "seen": 1788181294.7285578,
-    "ast_hash": "982166f65b6a6727d40ea22d261d76e5",
+    "mtime": 1788273291.3028932,
+    "seen": 1788273367.536082,
+    "ast_hash": "6da466be29497a62a25b256c13ed54c7",
     "semantic_hash": ""
   },
   "tests/seo-meta-description.test.ts": {
-    "mtime": 1788189564.234196,
-    "seen": 1788194471.7865784,
-    "ast_hash": "9ee366d72fe85926b943913f41385fcc",
+    "mtime": 1788270968.0068638,
+    "seen": 1788271076.462164,
+    "ast_hash": "ed462d9af26a18cd7f9a1224663f8679",
     "semantic_hash": ""
   },
   "tests/catalog-cache-wiring.test.ts": {
@@ -2523,6 +2523,54 @@
     "mtime": 1788256671.641109,
     "seen": 1788258314.64973,
     "ast_hash": "a1a280eaeea483a93d2a3fbb57ce1411",
+    "semantic_hash": ""
+  },
+  "app/lib/yugcontract/content-du-mapping.ts": {
+    "mtime": 1788265559.6347947,
+    "seen": 1788266791.5434082,
+    "ast_hash": "c9e191a2d0ef3adc26e6e96fe4a53667",
+    "semantic_hash": ""
+  },
+  "scripts/tmp-content-refetch-dryrun.ts": {
+    "mtime": 1788265962.1148005,
+    "seen": 1788266791.544419,
+    "ast_hash": "258d36d1350cc6a17a2929ef5ed060aa",
+    "semantic_hash": ""
+  },
+  "scripts/tmp-du-mapping-audit.ts": {
+    "mtime": 1788265999.9221797,
+    "seen": 1788266791.5444202,
+    "ast_hash": "ecf0d7a95da461b3f2d5dd9623dca66b",
+    "semantic_hash": ""
+  },
+  "scripts/tmp-du-mapping-verdicts.ts": {
+    "mtime": 1788265964.6228006,
+    "seen": 1788266791.5444212,
+    "ast_hash": "d6e21d5d421bb4938af5e6af4e49f4f4",
+    "semantic_hash": ""
+  },
+  "scripts/tmp-plan-split-staging.ts": {
+    "mtime": 1788266483.6668062,
+    "seen": 1788266791.5444856,
+    "ast_hash": "adfc2f92434b1e3a56bfc1cdd03a0006",
+    "semantic_hash": ""
+  },
+  "scripts/tmp-plan-split.ts": {
+    "mtime": 1788266176.7277894,
+    "seen": 1788266791.5444863,
+    "ast_hash": "d2cd22196e2be16fad10101367ef5c7a",
+    "semantic_hash": ""
+  },
+  "scripts/tmp-postverify-run20.ts": {
+    "mtime": 1788266658.2601247,
+    "seen": 1788266791.544517,
+    "ast_hash": "c7455ecc8d9353963b7548bc3bb8aed5",
+    "semantic_hash": ""
+  },
+  "tests/content-du-mapping.test.ts": {
+    "mtime": 1788265965.4628005,
+    "seen": 1788266791.5457146,
+    "ast_hash": "3bd81e68b41e7f4806ab5d16219cc230",
     "semantic_hash": ""
   }
 }

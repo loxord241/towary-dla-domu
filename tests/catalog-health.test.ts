@@ -267,7 +267,7 @@ test('HEALTH: every fetchAll callback consumes (from, limit) — no range-less c
   }
 });
 
-// ---- _du allowlist drift (2026-08-31 audit: 97 redirect + 6 price-diff + 26 orphans) ----
+// ---- _du allowlist drift (2026-09-01 audit: 96 redirect + 10 price-diff + 24 orphans) ----
 
 const TEST_ALLOWLIST: DuAllowlistSnapshot = {
   duIds: new Set(['1_du', '2_du']),
@@ -400,12 +400,12 @@ test('DU-DRIFT: du checks are omitted when no du input is provided (backward com
   assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
 });
 
-test('DU-DRIFT: real allowlist snapshot has 103 ids, 6 price-diff, expectedOrphans=26', () => {
-  assert.equal(DU_EXPECTED_ORPHANS, 26);
+test('DU-DRIFT: real allowlist snapshot has 106 ids, 10 price-diff, expectedOrphans=24', () => {
+  assert.equal(DU_EXPECTED_ORPHANS, 24);
   const all = new Set([...DU_REDIRECT_PAIRS.map((p) => p.duYc), ...DU_PRICE_DIFF_PAIRS.map((p) => p.duYc)]);
-  assert.equal(all.size, 103);
-  assert.equal(DU_PRICE_DIFF_PAIRS.length, 6);
-  assert.equal(DU_REDIRECT_PAIRS.length, 97);
+  assert.equal(all.size, 106);
+  assert.equal(DU_PRICE_DIFF_PAIRS.length, 10);
+  assert.equal(DU_REDIRECT_PAIRS.length, 96);
 });
 
 test('DU-DRIFT: production script wires the generated allowlist with read-only selects', () => {

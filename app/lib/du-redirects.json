@@ -1,6 +1,10 @@
 {
-  "generatedAt": "2026-08-31",
+  "generatedAt": "2026-09-01",
   "redirect": [
+    {
+      "duSlug": "albom-ufo-10x15x300-pp-46300-3047192_du",
+      "baseSlug": "albom-ufo-10x15x300-pp-46300-3047192"
+    },
     {
       "duSlug": "nabir-dlia-stryzhky-remington-hc-5150-5924679_du",
       "baseSlug": "nabir-dlia-stryzhky-remington-hc-5150-5924679"
@@ -86,10 +90,6 @@
       "baseSlug": "vbud-poverkhnia-gorenje-gktw642syb-bg6bb-g2b-6669622"
     },
     {
-      "duSlug": "kholodylnyk-hisense-rb440n4gbe-bcd-331w-6711226_du",
-      "baseSlug": "kholodylnyk-hisense-rb440n4gbe-bcd-331w-6711226"
-    },
-    {
       "duSlug": "skovoroda-bravo-chef-safran-24-sm-b-kryshky-bc-1114-24-6720857_du",
       "baseSlug": "skovoroda-bravo-chef-safran-24-sm-b-kryshky-bc-1114-24-6720857"
     },
@@ -112,10 +112,6 @@
     {
       "duSlug": "serviz-luminarc-louis-xv-white-18-pr-v2940-6840744_du",
       "baseSlug": "serviz-luminarc-louis-xv-white-18-pr-v2940-6840744"
-    },
-    {
-      "duSlug": "vbud-mikvokhv-pich-gorenje-bm235g1syw-mxy55z-6871226_du",
-      "baseSlug": "vbud-mikvokhv-pich-gorenje-bm235g1syw-mxy55z-6871226"
     },
     {
       "duSlug": "vbud-dukhovka-gorenje-bps-6747-a06bg-6875715_du",
@@ -158,6 +154,10 @@
       "baseSlug": "morozylna-kamera-hisense-fv298n4ace-6984892"
     },
     {
+      "duSlug": "buterbrodnytsia-tefal-sw383d10-6985231_du",
+      "baseSlug": "buterbrodnytsia-tefal-sw383d10-6985231"
+    },
+    {
       "duSlug": "chainyk-amica-kf-1002-6988689_du",
       "baseSlug": "chainyk-amica-kf-1002-6988689"
     },
@@ -188,10 +188,6 @@
     {
       "duSlug": "praska-gorenje-sih3200wr-hl-8002-7019427_du",
       "baseSlug": "praska-gorenje-sih3200wr-hl-8002-7019427"
-    },
-    {
-      "duSlug": "trymer-philips-oneblade-pro-360-qp6542-15-dlia-oblychchia-ta-tila-7022284_du",
-      "baseSlug": "trymer-philips-oneblade-pro-360-qp6542-15-dlia-oblychchia-ta-tila-7022284"
     },
     {
       "duSlug": "elektropich-hisense-hom45d-7023706_du",

@@ -82,10 +82,11 @@ export const SYNC_FAIL_AGE_MS = 96 * 60 * 60 * 1000;
 // Orders pending >24h are expected for cash-on-delivery style flow, so the
 // check is advisory and never fails the overall result.
 export const PENDING_ORDER_WARN_HOURS = 24;
-// _du audit invariant (2026-08-31): _du products WITHOUT a base product.
-// The generator hard-fails outside this number; monitoring mirrors it as a
-// WARN regenerate signal.
-export const DU_EXPECTED_ORPHANS = 26;
+// _du audit invariant (2026-09-01 regeneration): _du products WITHOUT a base
+// product. The generator hard-fails outside this number; monitoring mirrors
+// it as a WARN regenerate signal. (2026-08-31 audit: 26; two orphans gained
+// bases on the 2026-08-31 16:00 import run → 24.)
+export const DU_EXPECTED_ORPHANS = 24;
 
 /** Minimal plain shape of a products row needed for _du drift (read-only select). */
 export interface DuProductRow {
@@ -96,9 +97,9 @@ export interface DuProductRow {
 
 /** Plain snapshot of the generated allowlist — the lib never imports du-redirects. */
 export interface DuAllowlistSnapshot {
-  /** every allowlisted _du id: 97 redirect + 6 price-diff yugcontract_ids */
+  /** every allowlisted _du id: 96 redirect + 10 price-diff yugcontract_ids */
   duIds: ReadonlySet<string>;
-  /** the 6 documented price-diff _du ids (never redirected) */
+  /** the 10 documented price-diff _du ids (never redirected) */
   priceDiffIds: ReadonlySet<string>;
   /** audit invariant: expected count of _du rows without a base */
   expectedOrphans: number;
@@ -112,7 +113,7 @@ export interface DuDriftInput {
 
 export interface DuDriftAnalysis {
   duTotal: number;
-  /** _du rows whose base product is absent (audit: 26) */
+  /** _du rows whose base product is absent (audit 2026-09-01: 24) */
   orphanCount: number;
   /** _du with an existing base that is absent from the allowlist — new duplicates */
   unknownDu: string[];
@@ -143,7 +144,7 @@ export function analyzeDuDrift(drift: DuDriftInput): DuDriftAnalysis {
     if (!base) {
       orphanCount += 1;
       // An allowlisted _du losing its base is a broken pair (generator gate:
-      // pairs !== 103), not an orphan — orphans are only non-allowlisted _du.
+      // pairs !== 106), not an orphan — orphans are only non-allowlisted _du.
       if (allowlist.duIds.has(du.yugcontract_id)) {
         brokenPairs.push(`${du.yugcontract_id} | base ${stripDu(du.yugcontract_id)} missing`);
       }
@@ -344,7 +345,7 @@ export function buildCatalogChecks(
         count: d.unknownDu.length,
         description:
           d.unknownDu.length > 0
-            ? 'У БД з’явилися _du-товари з існуючим base, яких немає в allowlist (97 redirect + 6 price-diff) — дублікати URL без redirect. Regenerate: node --experimental-strip-types scripts/yugcontract-du-redirect-allowlist.ts'
+            ? 'У БД з’явилися _du-товари з існуючим base, яких немає в allowlist (96 redirect + 10 price-diff) — дублікати URL без redirect. Regenerate: node --experimental-strip-types scripts/yugcontract-du-redirect-allowlist.ts'
             : 'Нових _du-пар поза allowlist немає.',
         affectsStatus: true,
         ...(d.unknownDu.length > 0 ? { items: d.unknownDu } : {}),
