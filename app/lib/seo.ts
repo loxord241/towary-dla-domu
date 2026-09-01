@@ -1,16 +1,18 @@
 import type { Metadata } from 'next';
 
 /**
- * Pure SEO decision layer for the storefront (spec 2026-08-26).
- *
- * Canonical/noindex policy: the indexable set is EXACTLY the sitemap set —
- * bare /catalog plus single valid category/brand views on page 1 with the
- * default sort and no extra filters. Everything else (search results, filter
- * combinations, pagination depth, unknown slugs) is noindex,follow WITHOUT a
- * canonical tag: Google ignores canonicals on noindexed pages, and emitting
- * one would send contradictory signals. Unknown category/brand slugs stay a
- * normal 200 empty state — they are filter VALUES on an existing resource
- * (/catalog), not missing resources (approved decision A of the spec).
+ * Canonical/noindex policy for the storefront (spec 2026-08-26 + Task #14
+ * 2026-09): the indexable set is EXACTLY the sitemap set — bare /catalog
+ * plus single valid, NON-EMPTY category/brand views on page 1 with the
+ * default sort and no extra filters. «Non-empty» means ≥1 eligible product
+ * (active + ≥1 photo; category counts follow the junction + subtree
+ * semantics of fetchCatalogProducts). Everything else (search results,
+ * filter combinations, pagination depth, empty views, unknown slugs) is
+ * noindex,follow WITHOUT a canonical tag: Google ignores canonicals on
+ * noindexed pages, and emitting one would send contradictory signals.
+ * Unknown category/brand slugs stay a normal 200 empty state — they are
+ * filter VALUES on an existing resource (/catalog), not missing resources
+ * (approved decision A of the spec).
  */
 
 export const SITE_NAME = 'Товари для дому';
@@ -25,6 +27,14 @@ export interface CatalogIndexInput {
   /** slug resolved to an ACTIVE entity (fetchCategoryBySlug/fetchBrandBySlug) */
   categoryFound?: boolean;
   brandFound?: boolean;
+  /**
+   * Eligible-product fact for the requested view (Task #14): false marks an
+   * EMPTY view (0 eligible products) → noindex. Undefined = fact unknown →
+   * treated as non-empty so callers that cannot measure it keep legacy
+   * behavior. Never read for the non-requested entity.
+   */
+  categoryHasProducts?: boolean;
+  brandHasProducts?: boolean;
   minPrice?: number;
   maxPrice?: number;
   inStockOnly?: boolean;
@@ -51,6 +61,9 @@ export function decideCatalogIndexing(
 
   const invalidSlug =
     (categoryRequested && !categoryValid) || (brandRequested && !brandValid);
+  const emptyView =
+    (categoryValid && input.categoryHasProducts === false) ||
+    (brandValid && input.brandHasProducts === false);
   const multiFilter =
     (categoryRequested && brandRequested) ||
     input.minPrice !== undefined ||
@@ -59,7 +72,7 @@ export function decideCatalogIndexing(
     (input.sort ?? DEFAULT_SORT) !== DEFAULT_SORT ||
     (input.page ?? 1) > 1;
 
-  if (hasSearch || invalidSlug || multiFilter) {
+  if (hasSearch || invalidSlug || emptyView || multiFilter) {
     return { indexable: false, canonicalPath: null };
   }
 

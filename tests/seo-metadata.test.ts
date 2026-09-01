@@ -54,6 +54,40 @@ test('SEO: search views are never indexable', () => {
   assert.equal(r.canonicalPath, null);
 });
 
+test('SEO: empty category (0 eligible products) → noindex without canonical', () => {
+  const r = dec({ categorySlug: 'blendery-1402', categoryFound: true, categoryHasProducts: false });
+  assert.equal(r.indexable, false, 'empty category must not be indexable');
+  assert.equal(r.canonicalPath, null);
+});
+
+test('SEO: empty brand (0 eligible products) → noindex without canonical', () => {
+  const r = dec({ brandSlug: 'tefal', brandFound: true, brandHasProducts: false });
+  assert.equal(r.indexable, false, 'empty brand must not be indexable');
+  assert.equal(r.canonicalPath, null);
+});
+
+test('SEO: non-empty category/brand stay indexable when the fact is present', () => {
+  const c = dec({ categorySlug: 'blendery-1402', categoryFound: true, categoryHasProducts: true });
+  assert.deepEqual(c, { indexable: true, canonicalPath: '/catalog?category=blendery-1402' });
+  const b = dec({ brandSlug: 'tefal', brandFound: true, brandHasProducts: true });
+  assert.deepEqual(b, { indexable: true, canonicalPath: '/catalog?brand=tefal' });
+});
+
+test('SEO: missing product-count fact keeps legacy behavior (undefined = treated non-empty)', () => {
+  const c = dec({ categorySlug: 'blendery-1402', categoryFound: true });
+  assert.equal(c.indexable, true);
+  assert.equal(c.canonicalPath, '/catalog?category=blendery-1402');
+});
+
+test('SEO: metadata builder emits noindex for the empty-category fact', () => {
+  const m = buildCatalogViewMetadata({
+    input: { categorySlug: 'blendery-1402', categoryFound: true, categoryHasProducts: false },
+    categoryName: 'Блендери',
+  });
+  assert.deepEqual(m.robots, { index: false, follow: true });
+  assert.equal(m.alternates, undefined, 'noindex views never carry a canonical');
+});
+
 test('SEO: filter combinations break indexability', () => {
   const combos: Parameters<typeof decideCatalogIndexing>[0][] = [
     { categorySlug: 'c', categoryFound: true, brandSlug: 'b', brandFound: true },

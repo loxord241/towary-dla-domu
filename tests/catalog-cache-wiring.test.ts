@@ -179,6 +179,9 @@ test('source: every planned public read is wrapped exactly once with its prefix/
     ['catalog:review-summary', 'CATALOG_PUBLIC_READ_TTL_SECONDS'],
     ['catalog:reviews', 'CATALOG_PUBLIC_READ_TTL_SECONDS'],
     ['catalog:related', 'CATALOG_PUBLIC_READ_TTL_SECONDS'],
+    // Task #14: eligible-product counts per single category/brand view.
+    ['catalog:category-product-count', 'CATALOG_PUBLIC_READ_TTL_SECONDS'],
+    ['catalog:brand-product-count', 'CATALOG_PUBLIC_READ_TTL_SECONDS'],
   ];
   for (const [prefix, ttl] of mappings) {
     const uses = src.split(`'${prefix}'`).length - 1;

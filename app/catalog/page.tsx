@@ -13,6 +13,10 @@ import {
 import { getMainPublicImageUrl } from '@/app/lib/supabase-storage'
 import { buildCatalogViewMetadata } from '@/app/lib/seo'
 import {
+  fetchCategoryProductCount,
+  fetchBrandProductCount,
+} from '@/app/lib/catalog'
+import {
   getCategorySeo,
   applyCategorySeoMetadata,
   listDirectChildren,
@@ -104,6 +108,20 @@ export async function generateMetadata({
     filters.brandSlug ? fetchBrandBySlug(filters.brandSlug) : null,
   ]);
 
+  // Task #14 (2026-09): an EMPTY view (0 eligible products) is noindex'd.
+  // The fact comes from the SAME count shapes the grid uses
+  // (fetchCategoryProductCount/fetchBrandProductCount); a read failure
+  // degrades to «has products» so a transient error can never noindex a
+  // full page (the decision itself stays in lib/seo.ts).
+  const [categoryCount, brandCount] = await Promise.all([
+    category && filters.categorySlug
+      ? fetchCategoryProductCount(filters.categorySlug).catch(() => null)
+      : Promise.resolve(null),
+    brand && filters.brandSlug
+      ? fetchBrandProductCount(filters.brandSlug).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+
   // SEO copy override (category-seo.ts) touches ONLY title/description —
   // the indexability/canonical decision from buildCatalogViewMetadata stays.
   return applyCategorySeoMetadata(
@@ -114,6 +132,8 @@ export async function generateMetadata({
         brandSlug: filters.brandSlug,
         categoryFound: category !== null,
         brandFound: brand !== null,
+        categoryHasProducts: category && categoryCount === 0 ? false : undefined,
+        brandHasProducts: brand && brandCount === 0 ? false : undefined,
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
         inStockOnly: filters.inStockOnly,

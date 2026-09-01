@@ -30,9 +30,10 @@ test('JUNCTION-FILTER: both queries embed pc and filter by subtree ids', () => {
   const s = src();
   // No plain FK equality anywhere in the catalog module.
   assert.doesNotMatch(s, /\.eq\('category_id', categoryId\)/);
-  // Both count and data queries carry the guarded junction filter.
+  // Both catalog queries AND the Task #14 category count reuse the guarded
+  // junction filter (all three mirror the same subtree semantics).
   const inFilters = (s.match(/\.in\('pc\.category_id', subtreeIds\)/g) ?? []).length;
-  assert.equal(inFilters, 2, 'count + data + no other spot');
+  assert.equal(inFilters, 3, 'catalog count + catalog data + Task #14 category count');
   // The pc embed joins only via the categoryId ternary guards; the count
   // variant selects product_id (pc.id is not a valid live column).
   assert.match(s, /categoryId \? JUNCTION_COUNT_SELECT : ELIGIBLE_COUNT_SELECT/);

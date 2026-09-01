@@ -1,17 +1,21 @@
 import type { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { fetchActiveCategories, fetchActiveBrands } from '@/app/lib/catalog';
-import { collectPaged } from '@/app/lib/seo-sitemap';
+import { collectPaged, collectNonEmptyCategoryIds, collectNonEmptyBrandIds } from '@/app/lib/seo-sitemap';
 import { DU_REDIRECT_SLUGS } from '@/app/lib/du-redirects';
 
 /**
- * Sitemap for public surfaces only (SEO package 2026-08-26, spec C): static
- * pages, active categories, active brands and EVERY product the storefront
- * grid can show — same eligibility join (active + ≥1 photo via
- * product_images!inner), same anonymous-key visibility as lib/catalog.ts,
- * whitelist columns only (slug, updated_at). Private and technical routes
- * are never listed. Product reads walk bounded 1000-row windows with a
- * deterministic id order (see seo-sitemap.collectPaged).
+ * Sitemap for public surfaces only (SEO package 2026-08-26, spec C + Task
+ * #14 2026-09): static pages, NON-EMPTY active categories/brands and EVERY
+ * product the storefront grid can show. «Non-empty» mirrors the same
+ * eligibility join (active + ≥1 photo via product_images!inner): a category
+ * view keeps its URL when its subtree holds ≥1 eligible assignment
+ * (collectNonEmptyCategoryIds), a brand when ≥1 eligible product carries
+ * its brand_id (collectNonEmptyBrandIds) — the empty views are noindex'd by
+ * lib/seo.ts, so listing them here would violate the «indexable set =
+ * sitemap set» invariant. Private and technical routes are never listed.
+ * Product reads walk bounded 1000-row windows with a deterministic id
+ * order (see seo-sitemap.collectPaged).
  */
 // Perf audit Step 4 (2026-08-28): the sitemap was force-dynamic — a full
 // paged product scan (2.1s TTFB, ~940KB) on EVERY crawler hit. Product and
@@ -25,9 +29,16 @@ export const revalidate = 86400;
 interface SitemapProductRow {
   slug: string;
   updated_at: string;
+  brand_id: string | null;
+  category_ids: string[];
 }
 
-async function fetchEligibleProducts(): Promise<SitemapProductRow[]> {
+/**
+ * Resolves to null ONLY on a read failure (so the failure contract stays:
+ * categories and static entries still ship unchanged); an empty list means
+ * the catalog genuinely has no eligible products.
+ */
+async function fetchEligibleProducts(): Promise<SitemapProductRow[] | null> {
   // Same anonymous client shape as app/lib/catalog.ts: RLS decides what is
   // visible; the service key must never appear here.
   const supabase = createClient(
@@ -37,20 +48,33 @@ async function fetchEligibleProducts(): Promise<SitemapProductRow[]> {
   );
 
   try {
+    // The product eligibility join (images!inner) is UNCHANGED — Task #14
+    // only rides along on the same rows: brand_id and the plain (non-inner)
+    // product_categories embed add the view-emptiness facts without
+    // changing which products qualify.
     return await collectPaged(async (from, limit) => {
       const { data, error } = await supabase
         .from('products')
-        .select('slug, updated_at, images:product_images!inner(id)')
+        .select(
+          'slug, updated_at, brand_id, images:product_images!inner(id), pc:product_categories(category_id)'
+        )
         .eq('is_active', true)
         .order('id', { ascending: true })
         .range(from, from + limit - 1);
       if (error) throw new Error(error.message);
-      return (data ?? []).map(({ slug, updated_at }) => ({ slug, updated_at }));
+      return (data ?? []).map((row) => ({
+        slug: row.slug,
+        updated_at: row.updated_at,
+        brand_id: row.brand_id ?? null,
+        category_ids: (row.pc ?? [])
+          .map((pc) => pc.category_id)
+          .filter((id): id is string => typeof id === 'string'),
+      }));
     });
   } catch {
     // The sitemap route must never fail over product data: categories and
     // static entries still ship (same contract as the previous version).
-    return [];
+    return null;
   }
 }
 
@@ -80,21 +104,47 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     fetchEligibleProducts(),
   ]);
 
-  const categoryEntries: MetadataRoute.Sitemap = categories.map((category) => ({
+  // Task #14: empty views (0 eligible products) are noindex'd and must not
+  // be listed. On a product-read failure (products === null) the OLD
+  // failure contract applies: every active category/brand keeps its entry
+  // (an empty assignment set would otherwise drop them all for a transient
+  // read error).
+  const assignedCategoryIds = new Set<string>();
+  const assignedBrandIds = new Set<string>();
+  if (products) {
+    for (const product of products) {
+      if (product.brand_id) assignedBrandIds.add(product.brand_id);
+      for (const categoryId of product.category_ids) {
+        assignedCategoryIds.add(categoryId);
+      }
+    }
+  }
+  const nonEmptyCategoryIds = products
+    ? collectNonEmptyCategoryIds(categories, assignedCategoryIds)
+    : new Set(categories.map((category) => category.id));
+  const nonEmptyBrandIds = products
+    ? collectNonEmptyBrandIds(brands, assignedBrandIds)
+    : new Set(brands.map((brand) => brand.id));
+
+  const categoryEntries: MetadataRoute.Sitemap = categories
+    .filter((category) => nonEmptyCategoryIds.has(category.id))
+    .map((category) => ({
     url: `${base}/catalog?category=${encodeURIComponent(category.slug)}`,
     lastModified: new Date(category.updated_at),
     changeFrequency: 'daily',
     priority: 0.7,
   }));
 
-  const brandEntries: MetadataRoute.Sitemap = brands.map((brand) => ({
+  const brandEntries: MetadataRoute.Sitemap = brands
+    .filter((brand) => nonEmptyBrandIds.has(brand.id))
+    .map((brand) => ({
     url: `${base}/catalog?brand=${encodeURIComponent(brand.slug)}`,
     lastModified: new Date(brand.updated_at),
     changeFrequency: 'weekly',
     priority: 0.6,
   }));
 
-  const productEntries: MetadataRoute.Sitemap = products
+  const productEntries: MetadataRoute.Sitemap = (products ?? [])
     // _du URLs that 301-redirect to base must NOT be listed (spec C invariant:
     // the indexable set is EXACTLY the sitemap set). Price-diff _du pages and
     // orphans are NOT in DU_REDIRECT_SLUGS and stay listed.

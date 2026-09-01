@@ -29,3 +29,63 @@ export async function collectPaged<T>(
     from += limit;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Task #14 (2026-09): empty category/brand views (0 eligible products) are
+// noindex'd (lib/seo.ts) and must stay OUT of the sitemap. These PURE
+// helpers decide which entries survive, mirroring the storefront
+// eligibility: a category view is non-empty when IT or any descendant holds
+// a direct product_categories assignment (same subtree semantics as
+// fetchCatalogProducts); a brand view when ≥1 eligible product carries its
+// brand_id. Cycle-safe and dependency-free so node:test loads it without
+// Supabase.
+// ---------------------------------------------------------------------------
+
+export interface SubtreeCategoryLike {
+  id: string;
+  parent_id?: string | null;
+}
+
+/**
+ * Category ids whose subtree holds ≥1 directly assigned product id.
+ * Implementation walks UP from each assigned id: the assignment makes that
+ * node and every ancestor non-empty. Unknown assigned ids are ignored;
+ * categories whose parent is missing from the list behave as roots.
+ */
+export function collectNonEmptyCategoryIds(
+  categories: ReadonlyArray<SubtreeCategoryLike>,
+  assignedCategoryIds: ReadonlySet<string>
+): Set<string> {
+  const known = new Set(categories.map((c) => c.id));
+  const parentOf = new Map<string, string>();
+  for (const category of categories) {
+    if (category.parent_id && known.has(category.parent_id)) {
+      parentOf.set(category.id, category.parent_id);
+    }
+  }
+  const nonEmpty = new Set<string>();
+  for (const assignedId of assignedCategoryIds) {
+    if (!known.has(assignedId)) continue;
+    let cursor: string | undefined = assignedId;
+    // A node already marked stops the walk — also the cycle guard.
+    while (cursor && !nonEmpty.has(cursor)) {
+      nonEmpty.add(cursor);
+      cursor = parentOf.get(cursor);
+    }
+  }
+  return nonEmpty;
+}
+
+/**
+ * Brand ids of the given list that have ≥1 eligible assignment.
+ */
+export function collectNonEmptyBrandIds(
+  brands: ReadonlyArray<{ id: string }>,
+  assignedBrandIds: ReadonlySet<string>
+): Set<string> {
+  const out = new Set<string>();
+  for (const brand of brands) {
+    if (assignedBrandIds.has(brand.id)) out.add(brand.id);
+  }
+  return out;
+}

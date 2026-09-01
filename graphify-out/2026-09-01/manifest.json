@@ -2213,12 +2213,6 @@
     "ast_hash": "f8490d973d19816a57233ca5bcdde21f",
     "semantic_hash": ""
   },
-  "app/product/[slug]/loading.tsx": {
-    "mtime": 1787916714.4560788,
-    "seen": 1787917440.424536,
-    "ast_hash": "b7595e557a61af0bdc7aa892476b8881",
-    "semantic_hash": ""
-  },
   "database/migrations/029_product_review_summary_rpc.sql": {
     "mtime": 1787916622.4281008,
     "seen": 1787917440.4245627,

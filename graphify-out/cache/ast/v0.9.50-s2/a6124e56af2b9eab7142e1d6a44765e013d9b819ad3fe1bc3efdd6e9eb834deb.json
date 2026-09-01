@@ -1,1 +1,0 @@
-{"nodes": [{"id": "$graphify-root$_database_migrations_024_revoke_truncate_anon_authenticated_sql", "label": "024_revoke_truncate_anon_authenticated.sql", "file_type": "code", "source_file": "database/migrations/024_revoke_truncate_anon_authenticated.sql", "source_location": null}], "edges": []}
