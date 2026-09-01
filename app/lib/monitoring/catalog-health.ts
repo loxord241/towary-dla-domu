@@ -82,11 +82,11 @@ export const SYNC_FAIL_AGE_MS = 96 * 60 * 60 * 1000;
 // Orders pending >24h are expected for cash-on-delivery style flow, so the
 // check is advisory and never fails the overall result.
 export const PENDING_ORDER_WARN_HOURS = 24;
-// _du audit invariant (2026-09-01 regeneration): _du products WITHOUT a base
-// product. The generator hard-fails outside this number; monitoring mirrors
-// it as a WARN regenerate signal. (2026-08-31 audit: 26; two orphans gained
-// bases on the 2026-08-31 16:00 import run → 24.)
-export const DU_EXPECTED_ORPHANS = 24;
+// _du audit invariant (Task #34 regeneration 2026-09-01): _du products WITHOUT
+// a base product. The generator hard-fails outside this number; monitoring
+// mirrors it as a WARN regenerate signal. (2026-08-31 audit: 26 → Task #26
+// regeneration: 24 → Task #34 audit: 25, one new orphan from supplier churn.)
+export const DU_EXPECTED_ORPHANS = 25;
 
 /** Minimal plain shape of a products row needed for _du drift (read-only select). */
 export interface DuProductRow {

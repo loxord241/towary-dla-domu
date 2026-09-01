@@ -5,23 +5,25 @@
  *
  * Safety gates (hard fail, exit 1) — the module is regenerated ONLY when the
  * DB still matches the audit this script was written against:
- *   - exactly 106 `_du` products with an existing base;
- *   - exactly 24 `_du` orphans without a base;
- *   - 106/106 base_slug === du_slug minus the `_du` suffix;
- *   - exactly 10 pairs with differing price (fixed id set).
+ *   - exactly 122 `_du` products with an existing base;
+ *   - exactly 25 `_du` orphans without a base;
+ *   - 122/122 base_slug === du_slug minus the `_du` suffix;
+ *   - exactly 18 pairs with differing price (fixed id set).
  *
- * Task #26 audit 2026-09-01 (regeneration after price drift):
- *   - 2 documented orphans gained bases on the 2026-08-31 16:00 import run:
- *     6985231_du (SW383D10, price-equal → NEW redirect),
- *     7083113_du (DT9814F0, price-diff → price-diff list);
- *   - 1 brand-new _du row appeared: 3047192_du (UFO album, price-equal,
- *     name/brand/category equal, du side has 0 images — the feed itself has
- *     no pictures for this variant, so the du page is imageless; the base
- *     carries the 2 images) → NEW redirect with documented image gap;
- *   - 3 former redirect pairs drifted to differing prices and move to the
- *     price-diff list (no more 301, both pages stay visible pending the
- *     business price decision): 6711226_du, 6871226_du, 7022284_du;
- *   - the 6 documented price-diff pairs all still differ (amounts drifted).
+ * Task #34 audit 2026-09-01 (regeneration after supplier catalog churn —
+ * investigation in Task #33):
+ *   - live state: 147 _du total = 122 paired + 25 orphan; slug derivation
+ *     verified 122/122; 104 same-price pairs; 18 price-diff pairs.
+ *   - 9 former redirect pairs drifted to differing prices since the Task #26
+ *     generation and move to the price-diff list (their 301s are removed —
+ *     they were the mis-redirect risk identified in Task #33):
+ *     6349848_du, 6482008_du, 6885495_du, 7067155_du, 7109372_du,
+ *     7232191_du, 7264937_du, 7269797_du, 7290720_du.
+ *   - the 10 Task #26 price-diff pairs all still differ (amounts drifted
+ *     further); 6349848_du etc. were NOT previously allowlisted diffs.
+ *   - 1 new orphan (25 vs 24) and 17 net-new _du rows from the supplier
+ *     feed; new _du products are NOT redirected merely because a base
+ *     exists — only verified same-price pairs redirect.
  *
  * Usage: node --experimental-strip-types scripts/yugcontract-du-redirect-allowlist.ts
  */
@@ -48,10 +50,16 @@ const AUDIT_DATE = '2026-09-01';
 const PRICE_DIFF_YC = new Set([
   // 6 documented by the 2026-08-31 audit (still differ on 2026-09-01)
   '6241811_du', '6849632_du', '6873343_du', '6988988_du', '7204300_du', '7270074_du',
-  // drifted from the redirect set (prices changed since 2026-08-31)
-  '6711226_du', '6871226_du', '7022284_du',
+  // drifted from the redirect set (prices changed since 2026-08-31, Task #26)
+  '6711226_du', '7022284_du',
   // new pair with a differing price (orphan 7083113_du gained its base)
   '7083113_du',
+  // drifted from the redirect set since the Task #26 generation (supplier
+  // price churn, Task #33/#34) — their stale 301s are removed by this run
+  '6349848_du', '6482008_du', '6885495_du', '7067155_du', '7109372_du',
+  '7232191_du', '7264937_du', '7269797_du', '7290720_du',
+  // note: 6871226_du left this list — its du and base prices are now equal
+  // (19499.00 both sides), so it qualifies as a verified same-price redirect
 ]);
 const stripDu = (s: string) => s.replace(/_du$/, '');
 
@@ -116,14 +124,15 @@ const orphans = (duRows as YcRow[]).filter((du) => !bases.has(stripDu(du.yugcont
 
 // 2. Audit gates — every violation is a hard stop.
 const fail = (msg: string) => { console.error('AUDIT GATE FAILED:', msg); process.exit(1); };
-if (pairs.length !== 106) fail(`pairs ${pairs.length} !== 106`);
-if (orphans.length !== 24) fail(`orphans ${orphans.length} !== 24`);
+if (pairs.length !== 122) fail(`pairs ${pairs.length} !== 122`);
+if (orphans.length !== 25) fail(`orphans ${orphans.length} !== 25`);
 if (pairs.some((p) => p.baseSlug !== stripDu(p.duSlug))) fail('slug derivation changed');
 const priceDiff = pairs.filter((p) => p.duPrice !== undefined);
-if (priceDiff.length !== 10) fail(`price-diff ${priceDiff.length} !== 10`);
+if (priceDiff.length !== 18) fail(`price-diff ${priceDiff.length} !== 18`);
 if (priceDiff.some((p) => !PRICE_DIFF_YC.has(p.duYc))) fail('price-diff set changed');
+if (PRICE_DIFF_YC.size !== 18) fail(`PRICE_DIFF_YC ${PRICE_DIFF_YC.size} !== 18`);
 
-// 3. Emit the module (96 redirect pairs = pairs minus 10 price-diff).
+// 3. Emit the module (104 redirect pairs = pairs minus 18 price-diff).
 const redirect = pairs
   .filter((p) => p.duPrice === undefined)
   .sort((a, b) => a.duYc.localeCompare(b.duYc));
@@ -136,16 +145,18 @@ const emit = (list: typeof redirect, withPrices: boolean) => list.map((p) => `  
   }`).join(',\n');
 
 const out = `/**
- * GENERATED by scripts/yugcontract-du-redirect-allowlist.ts on audit ${AUDIT_DATE}.
+ * GENERATED by scripts/yugcontract-du-redirect-allowlist.ts on audit ${AUDIT_DATE}
+ * (Task #34 regeneration after supplier catalog churn — investigation Task #33).
  * DO NOT EDIT BY HAND — regenerate instead. Read-only audit source:
- * 106 verified _du↔base pairs (name/brand/category 100% equal; slug derivation
- * verified 106/106; prices equal at audit time EXCEPT the price-diff list).
+ * 122 verified _du↔base pairs (name/brand/category 100% equal; slug derivation
+ * verified 122/122; prices equal at audit time EXCEPT the price-diff list).
  * One pair (3047192_du) has an empty du-side image set (the supplier feed has
  * no pictures for that variant; the base carries the images) — the du page
  * is imageless either way, the redirect only improves it.
  * ${redirect.length} same-price pairs -> permanent redirect to base.
  * ${diff.length} price-diff pairs -> documented here ONLY, never redirected
- * (business decision pending; both prices kept for the decision).
+ * (business decision pending; both prices kept for the decision). 9 of these
+ * were redirects in the previous allowlist and lost their 301 in this run.
  * The ${orphans.length} _du orphans are intentionally absent from both lists.
  */
 export interface DuRedirectPair {
@@ -173,7 +184,7 @@ export const DU_REDIRECT_SLUGS: ReadonlySet<string> = new Set(
 `;
 writeFileSync(path.join(root, 'app/lib/du-redirects.ts'), out);
 
-// 4. Emit the JSON consumed by next.config.ts redirects() — the same 96
+// 4. Emit the JSON consumed by next.config.ts redirects() — the same
 // same-price pairs (same duYc-ascending order), slugs only.
 const json = {
   generatedAt: AUDIT_DATE,

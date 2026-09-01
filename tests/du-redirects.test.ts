@@ -1,9 +1,9 @@
 /**
- * _du → base redirect allowlist (audit 2026-09-01 regeneration; the
- * original audit is 2026-08-31):
+ * _du → base redirect allowlist (Task #34 regeneration; prior audits
+ * 2026-08-31 and Task #26 2026-09-01):
  * invariants of the generated module + source-level wiring checks:
- * next.config 301-redirects ONLY allowlisted pairs (never the 10 price-diff
- * pairs, never the 24 orphans) and the sitemap excludes exactly those slugs.
+ * next.config 301-redirects ONLY allowlisted pairs (never the 18 price-diff
+ * pairs, never the 25 orphans) and the sitemap excludes exactly those slugs.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,9 +13,9 @@ import {
 } from '../app/lib/du-redirects.ts';
 import duRedirectsJson from '../app/lib/du-redirects.json' with { type: 'json' };
 
-test('DU: allowlist counts match the audit (96 redirect + 10 price-diff)', () => {
-  assert.equal(DU_REDIRECT_PAIRS.length, 96);
-  assert.equal(DU_PRICE_DIFF_PAIRS.length, 10);
+test('DU: allowlist counts match the audit (104 redirect + 18 price-diff)', () => {
+  assert.equal(DU_REDIRECT_PAIRS.length, 104);
+  assert.equal(DU_PRICE_DIFF_PAIRS.length, 18);
 });
 
 test('DU: every pair is well-formed (_du slug strips exactly to base slug)', () => {
@@ -49,8 +49,8 @@ test('DU: next.config 301-redirects exactly the JSON pairs, nothing else', () =>
   // comments first so documentation doesn't trip the 308 invariant.
   const srcCode = src.replace(/\/\/[^\n]*/g, '');
   assert.ok(!srcCode.includes('permanent:'), 'must use statusCode 301, not permanent(308)');
-  // JSON is the config source: same 96 slugs, same slugs as the TS allowlist.
-  assert.equal(duRedirectsJson.redirect.length, 96);
+  // JSON is the config source: same 104 slugs, same slugs as the TS allowlist.
+  assert.equal(duRedirectsJson.redirect.length, 104);
   assert.deepEqual(
     duRedirectsJson.redirect.map((p) => p.duSlug).sort(),
     [...DU_REDIRECT_SLUGS].sort()
