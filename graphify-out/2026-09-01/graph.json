@@ -1275,7 +1275,7 @@
       "file_type": "code",
       "norm_label": "duredirectpair",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L46"
+      "source_location": "L64"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_ycrow",
@@ -1288,7 +1288,7 @@
       "file_type": "code",
       "norm_label": "ycrow",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L40"
+      "source_location": "L58"
     },
     {
       "id": "scripts_yugcontract_categories_preview_treenode",
@@ -3264,7 +3264,7 @@
       "file_type": "code",
       "norm_label": "duredirectpair",
       "source_file": "app/lib/du-redirects.ts",
-      "source_location": "L10"
+      "source_location": "L14"
     },
     {
       "id": "app_lib_monitoring_catalog_health_catalogcounts",
@@ -3303,7 +3303,7 @@
       "file_type": "code",
       "norm_label": "duallowlistsnapshot",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L98"
+      "source_location": "L99"
     },
     {
       "id": "app_lib_monitoring_catalog_health_dudriftanalysis",
@@ -3316,7 +3316,7 @@
       "file_type": "code",
       "norm_label": "dudriftanalysis",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L113"
+      "source_location": "L114"
     },
     {
       "id": "app_lib_monitoring_catalog_health_dudriftinput",
@@ -3329,7 +3329,7 @@
       "file_type": "code",
       "norm_label": "dudriftinput",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L107"
+      "source_location": "L108"
     },
     {
       "id": "app_lib_monitoring_catalog_health_duproductrow",
@@ -3342,7 +3342,7 @@
       "file_type": "code",
       "norm_label": "duproductrow",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L91"
+      "source_location": "L92"
     },
     {
       "id": "app_lib_monitoring_catalog_health_healthcheck",
@@ -3407,7 +3407,7 @@
       "file_type": "code",
       "norm_label": "overallresult",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L399"
+      "source_location": "L400"
     },
     {
       "id": "tests_csp_enforcing_test_headerentry",
@@ -7184,7 +7184,7 @@
       "file_type": "code",
       "norm_label": "emit()",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L114"
+      "source_location": "L132"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_fail",
@@ -7196,7 +7196,7 @@
       "file_type": "code",
       "norm_label": "fail()",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L100"
+      "source_location": "L118"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_readall",
@@ -7208,7 +7208,7 @@
       "file_type": "code",
       "norm_label": "readall()",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L59"
+      "source_location": "L77"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_stripdu",
@@ -7220,7 +7220,7 @@
       "file_type": "code",
       "norm_label": "stripdu()",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L38"
+      "source_location": "L56"
     },
     {
       "id": "scripts_yugcontract_categories_preview_printtree",
@@ -12968,7 +12968,7 @@
       "file_type": "code",
       "norm_label": "agehours()",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L215"
+      "source_location": "L216"
     },
     {
       "id": "app_lib_monitoring_catalog_health_analyzedudrift",
@@ -12980,7 +12980,7 @@
       "file_type": "code",
       "norm_label": "analyzedudrift()",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L128"
+      "source_location": "L129"
     },
     {
       "id": "app_lib_monitoring_catalog_health_analyzeimportbatches",
@@ -12992,7 +12992,7 @@
       "file_type": "code",
       "norm_label": "analyzeimportbatches()",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L178"
+      "source_location": "L179"
     },
     {
       "id": "app_lib_monitoring_catalog_health_buildcatalogchecks",
@@ -13004,7 +13004,7 @@
       "file_type": "code",
       "norm_label": "buildcatalogchecks()",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L221"
+      "source_location": "L222"
     },
     {
       "id": "app_lib_monitoring_catalog_health_lastsuccesslevel",
@@ -13016,7 +13016,7 @@
       "file_type": "code",
       "norm_label": "lastsuccesslevel()",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L207"
+      "source_location": "L208"
     },
     {
       "id": "next_config_buildcsp",
@@ -20233,7 +20233,7 @@
       "file_type": "code",
       "norm_label": "bases",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L80"
+      "source_location": "L98"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_diff",
@@ -20244,7 +20244,7 @@
       "file_type": "code",
       "norm_label": "diff",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L112"
+      "source_location": "L130"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_json",
@@ -20255,7 +20255,7 @@
       "file_type": "code",
       "norm_label": "json",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L156"
+      "source_location": "L178"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_orphans",
@@ -20266,7 +20266,7 @@
       "file_type": "code",
       "norm_label": "orphans",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L97"
+      "source_location": "L115"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_pairs",
@@ -20277,7 +20277,7 @@
       "file_type": "code",
       "norm_label": "pairs",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L84"
+      "source_location": "L102"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_price_diff_yc",
@@ -20288,7 +20288,7 @@
       "file_type": "code",
       "norm_label": "price_diff_yc",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L35"
+      "source_location": "L48"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_pricediff",
@@ -20299,7 +20299,7 @@
       "file_type": "code",
       "norm_label": "pricediff",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L104"
+      "source_location": "L122"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_redirect",
@@ -20310,7 +20310,7 @@
       "file_type": "code",
       "norm_label": "redirect",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L109"
+      "source_location": "L127"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_root",
@@ -20321,7 +20321,7 @@
       "file_type": "code",
       "norm_label": "root",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L19"
+      "source_location": "L32"
     },
     {
       "id": "scripts_yugcontract_du_redirect_allowlist_svc",
@@ -20332,7 +20332,7 @@
       "file_type": "code",
       "norm_label": "svc",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L28"
+      "source_location": "L41"
     },
     {
       "id": "scripts_yugcontract_categories_preview",
@@ -26784,7 +26784,7 @@
       "file_type": "code",
       "norm_label": "du_allowlist_audit_date",
       "source_file": "app/lib/du-redirects.ts",
-      "source_location": "L15"
+      "source_location": "L19"
     },
     {
       "id": "app_lib_du_redirects_du_price_diff_pairs",
@@ -26806,7 +26806,7 @@
       "file_type": "code",
       "norm_label": "du_redirect_by_yc",
       "source_file": "app/lib/du-redirects.ts",
-      "source_location": "L441"
+      "source_location": "L461"
     },
     {
       "id": "app_lib_du_redirects_du_redirect_pairs",
@@ -26817,7 +26817,7 @@
       "file_type": "code",
       "norm_label": "du_redirect_pairs",
       "source_file": "app/lib/du-redirects.ts",
-      "source_location": "L17"
+      "source_location": "L21"
     },
     {
       "id": "app_lib_du_redirects_du_redirect_slugs",
@@ -26828,7 +26828,7 @@
       "file_type": "code",
       "norm_label": "du_redirect_slugs",
       "source_file": "app/lib/du-redirects.ts",
-      "source_location": "L445"
+      "source_location": "L465"
     },
     {
       "id": "app_lib_monitoring_catalog_health",
@@ -26850,7 +26850,7 @@
       "file_type": "code",
       "norm_label": "du_expected_orphans",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L88"
+      "source_location": "L89"
     },
     {
       "id": "app_lib_monitoring_catalog_health_pending_order_warn_hours",
@@ -37456,7 +37456,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L225",
+      "source_location": "L226",
       "weight": 1.0
     },
     {
@@ -37468,7 +37468,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L226",
+      "source_location": "L227",
       "weight": 1.0
     },
     {
@@ -37480,7 +37480,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L312",
+      "source_location": "L313",
       "weight": 1.0
     },
     {
@@ -37492,7 +37492,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L336",
+      "source_location": "L337",
       "weight": 1.0
     },
     {
@@ -40540,7 +40540,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L97",
+      "source_location": "L115",
       "weight": 1.0
     },
     {
@@ -40552,7 +40552,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L85",
+      "source_location": "L103",
       "weight": 1.0
     },
     {
@@ -49505,7 +49505,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "tests/du-redirects.test.ts",
-      "source_location": "L10",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -49517,7 +49517,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "tests/du-redirects.test.ts",
-      "source_location": "L10",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -49529,7 +49529,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "tests/du-redirects.test.ts",
-      "source_location": "L10",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -49541,7 +49541,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "tests/du-redirects.test.ts",
-      "source_location": "L10",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -54696,7 +54696,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "tests/du-redirects.test.ts",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -61911,7 +61911,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/du-redirects.ts",
-      "source_location": "L10",
+      "source_location": "L14",
       "weight": 1.0
     },
     {
@@ -61922,7 +61922,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/du-redirects.ts",
-      "source_location": "L15",
+      "source_location": "L19",
       "weight": 1.0
     },
     {
@@ -61933,7 +61933,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/du-redirects.ts",
-      "source_location": "L17",
+      "source_location": "L21",
       "weight": 1.0
     },
     {
@@ -61955,7 +61955,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/du-redirects.ts",
-      "source_location": "L441",
+      "source_location": "L461",
       "weight": 1.0
     },
     {
@@ -61966,7 +61966,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/du-redirects.ts",
-      "source_location": "L445",
+      "source_location": "L465",
       "weight": 1.0
     },
     {
@@ -62329,7 +62329,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L107",
+      "source_location": "L108",
       "weight": 1.0
     },
     {
@@ -62340,7 +62340,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L113",
+      "source_location": "L114",
       "weight": 1.0
     },
     {
@@ -62351,7 +62351,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L128",
+      "source_location": "L129",
       "weight": 1.0
     },
     {
@@ -62362,7 +62362,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L178",
+      "source_location": "L179",
       "weight": 1.0
     },
     {
@@ -62384,7 +62384,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L207",
+      "source_location": "L208",
       "weight": 1.0
     },
     {
@@ -62406,7 +62406,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L215",
+      "source_location": "L216",
       "weight": 1.0
     },
     {
@@ -62417,7 +62417,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L221",
+      "source_location": "L222",
       "weight": 1.0
     },
     {
@@ -62439,7 +62439,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L399",
+      "source_location": "L400",
       "weight": 1.0
     },
     {
@@ -62527,7 +62527,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L88",
+      "source_location": "L89",
       "weight": 1.0
     },
     {
@@ -62538,7 +62538,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L91",
+      "source_location": "L92",
       "weight": 1.0
     },
     {
@@ -62549,7 +62549,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/lib/monitoring/catalog-health.ts",
-      "source_location": "L98",
+      "source_location": "L99",
       "weight": 1.0
     },
     {
@@ -74665,167 +74665,13 @@
     },
     {
       "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_fail",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L100",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_pricediff",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L104",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_redirect",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L109",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_diff",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L112",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_emit",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L114",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_json",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L156",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_root",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L19",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_svc",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L28",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_price_diff_yc",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L35",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_stripdu",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L38",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_ycrow",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L40",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_duredirectpair",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L46",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_readall",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L59",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
-      "target": "scripts_yugcontract_du_redirect_allowlist_bases",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L80",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_yugcontract_du_redirect_allowlist",
       "target": "scripts_yugcontract_du_redirect_allowlist_pairs",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L84",
+      "source_location": "L102",
       "weight": 1.0
     },
     {
@@ -74836,7 +74682,161 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
-      "source_location": "L97",
+      "source_location": "L115",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_fail",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L118",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_pricediff",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L122",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_redirect",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L127",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_diff",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L130",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_emit",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L132",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_json",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L178",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_root",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L32",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_svc",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L41",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_price_diff_yc",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L48",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_stripdu",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L56",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_ycrow",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L58",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_duredirectpair",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L64",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_readall",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L77",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_yugcontract_du_redirect_allowlist",
+      "target": "scripts_yugcontract_du_redirect_allowlist_bases",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/yugcontract-du-redirect-allowlist.ts",
+      "source_location": "L98",
       "weight": 1.0
     },
     {

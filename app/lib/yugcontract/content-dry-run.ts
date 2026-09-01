@@ -2,6 +2,7 @@
 // resolution and allowed by allowImportingTsExtensions for the Next bundler.
 import type { YcRawProduct } from './types';
 import { asStringOrNull } from './normalize.ts';
+import { duBaseIdOf } from './content-du-mapping.ts';
 
 /**
  * Pure normalization + statistics for the Yugcontract get-content-goods
@@ -211,7 +212,14 @@ export function matchContentGoodsToProducts(
       manualLocal.push(p);
       continue;
     }
-    const good = goodsById.get(p.yugcontract_id);
+    let good = goodsById.get(p.yugcontract_id);
+    if (good === undefined) {
+      // `_du` price-feed duplicates carry their content under the BASE
+      // Yugcontract id — allowlist-only (fail-closed, see
+      // content-du-mapping.ts). Non-allowlisted ids stay unmatched.
+      const base = duBaseIdOf(p.yugcontract_id);
+      if (base !== null) good = goodsById.get(base);
+    }
     if (good) matchedLocal.push({ product: p, good });
     else unmatchedLocal.push(p);
   }

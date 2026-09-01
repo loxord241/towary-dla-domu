@@ -13,6 +13,7 @@ import {
   type ProductImageRow,
 } from './content-images.ts';
 import { RowErrorCollector } from './row-errors.ts';
+import { duBaseIdOf, DU_BASE_TO_DU } from './content-du-mapping.ts';
 
 /**
  * Content import executor (stage 3) — description + specifications.
@@ -112,6 +113,25 @@ export function planContentUpdates(
   const excludeDesc = options.excludeDescriptionIds ?? new Set<string>();
   const byYcId = new Map(products.map((p) => [p.yugcontract_id ?? '', p]));
 
+  // `_du` products (Task #19/#20): their content lives under the BASE
+  // Yugcontract id, so each allowlisted `_du` product is planned from its
+  // base staged row. Allowlist-only (fail-closed): a `_du` id absent from
+  // content-du-mapping.ts is planned like any regular product (i.e. only
+  // from its own exact staged row, which never exists in practice).
+  // Shadow rule: if a staged row exists for the `_du` id ITSELF, the du
+  // product is planned through that exact row and the base mapping for it
+  // is suppressed (never planned twice).
+  const stagedIds = new Set(staged.map((s) => s.yugcontract_id));
+  const duByBase = new Map<string, ContentProductRow[]>();
+  for (const p of products) {
+    const base = duBaseIdOf(p.yugcontract_id);
+    if (base === null) continue;
+    if (p.yugcontract_id !== null && stagedIds.has(p.yugcontract_id)) continue;
+    const list = duByBase.get(base) ?? [];
+    list.push(p);
+    duByBase.set(base, list);
+  }
+
   const updates: ContentUpdateOp[] = [];
   let identical = 0;
   let unmatchedStaged = 0;
@@ -120,53 +140,74 @@ export function planContentUpdates(
   let excludedDescription = 0;
 
   for (const s of staged) {
-    const product = byYcId.get(s.yugcontract_id);
-    if (!product) {
+    const targets: {
+      product: ContentProductRow;
+      ycId: string;
+      duBase: string | null;
+    }[] = [];
+    const exact = byYcId.get(s.yugcontract_id);
+    if (exact) {
+      targets.push({ product: exact, ycId: s.yugcontract_id, duBase: null });
+    }
+    for (const du of duByBase.get(s.yugcontract_id) ?? []) {
+      if (du.yugcontract_id === null || stagedIds.has(du.yugcontract_id)) continue;
+      targets.push({ product: du, ycId: du.yugcontract_id, duBase: s.yugcontract_id });
+    }
+
+    if (targets.length === 0) {
       unmatchedStaged += 1;
       continue;
     }
 
-    const fields: ContentUpdateOp['fields'] = {};
+    for (const { product, ycId, duBase } of targets) {
+      const fields: ContentUpdateOp['fields'] = {};
 
-    const stagedDesc = s.description !== null && s.description.trim() !== '' ? s.description : null;
-    const currentDesc = product.description !== null && product.description.trim() !== '' ? product.description : null;
-    // Excluded ids: never emit a description, but still allow specs below.
-    const skipDesc = excludeDesc.has(s.yugcontract_id);
+      const stagedDesc = s.description !== null && s.description.trim() !== '' ? s.description : null;
+      const currentDesc = product.description !== null && product.description.trim() !== '' ? product.description : null;
+      // Excluded ids: never emit a description, but still allow specs below.
+      // A `_du` product inherits the exclusion of its base id.
+      const skipDesc =
+        excludeDesc.has(s.yugcontract_id) ||
+        excludeDesc.has(ycId) ||
+        (duBase !== null && excludeDesc.has(duBase));
 
-    // Disjoint counters: identical = matched row with NOTHING to write;
-    // noDescriptionAvailable = matched row whose staged description is
-    // absent/empty (and nothing else differed).
-    if (
-      includeSpecifications &&
-      s.params.length > 0 &&
-      specsDiffer(product.specifications, buildSpecificationJson(s.params))
-    ) {
-      fields.specifications = buildSpecificationJson(s.params);
+      // Disjoint counters: identical = matched row with NOTHING to write;
+      // noDescriptionAvailable = matched row whose staged description is
+      // absent/empty (and nothing else differed).
+      if (
+        includeSpecifications &&
+        s.params.length > 0 &&
+        specsDiffer(product.specifications, buildSpecificationJson(s.params))
+      ) {
+        fields.specifications = buildSpecificationJson(s.params);
+      }
+
+      if (skipDesc) {
+        if (stagedDesc !== null) excludedDescription += 1;
+      } else if (stagedDesc === null) {
+        // keep existing description untouched (never blank out content)
+      } else if (currentDesc !== null && currentDesc === stagedDesc.trim()) {
+        // equal — nothing to write for description
+      } else {
+        fields.description = stagedDesc;
+        if (currentDesc !== null) overwriteNonEmptyCount += 1;
+      }
+
+      if (Object.keys(fields).length === 0) {
+        if (stagedDesc === null) noDescriptionAvailable += 1;
+        else identical += 1;
+        continue;
+      }
+
+      updates.push({
+        productDbId: product.id,
+        // the op always carries the TARGET product's own yugcontract_id —
+        // the executor guard is .eq('id', …).eq('yugcontract_id', …)
+        yugcontractId: ycId,
+        fields,
+        currentHadDescription: currentDesc !== null,
+      });
     }
-
-    if (skipDesc) {
-      if (stagedDesc !== null) excludedDescription += 1;
-    } else if (stagedDesc === null) {
-      // keep existing description untouched (never blank out content)
-    } else if (currentDesc !== null && currentDesc === stagedDesc.trim()) {
-      // equal — nothing to write for description
-    } else {
-      fields.description = stagedDesc;
-      if (currentDesc !== null) overwriteNonEmptyCount += 1;
-    }
-
-    if (Object.keys(fields).length === 0) {
-      if (stagedDesc === null) noDescriptionAvailable += 1;
-      else identical += 1;
-      continue;
-    }
-
-    updates.push({
-      productDbId: product.id,
-      yugcontractId: s.yugcontract_id,
-      fields,
-      currentHadDescription: currentDesc !== null,
-    });
   }
 
   return { updates, identical, unmatchedStaged, noDescriptionAvailable, overwriteNonEmptyCount, excludedDescription };
@@ -347,13 +388,27 @@ export async function loadStagedRows(
   return out;
 }
 
+/**
+ * Pure expansion of staged (base) ids into the full product query set:
+ * every id plus all allowlisted `_du` product ids that derive their
+ * content from it. Unit-tested — the executor/CLI behaviour relies on it.
+ */
+export function contentProductQueryIds(ycIds: readonly string[]): string[] {
+  const out = new Set<string>();
+  for (const id of ycIds) {
+    out.add(id);
+    for (const du of DU_BASE_TO_DU.get(id) ?? []) out.add(du);
+  }
+  return [...out];
+}
+
 export async function loadOurProductsForContent(
   client: SupabaseClient,
   ycIds: readonly string[]
 ): Promise<ContentProductRow[]> {
   const out: ContentProductRow[] = [];
   for (let i = 0; i < ycIds.length; i += CONTENT_BATCH_SIZE) {
-    const part = ycIds.slice(i, i + CONTENT_BATCH_SIZE);
+    const part = contentProductQueryIds(ycIds.slice(i, i + CONTENT_BATCH_SIZE));
     const { data, error } = await client
       .from('products')
       .select('id,yugcontract_id,description,specifications')
