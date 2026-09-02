@@ -40,6 +40,9 @@ const UNIQUE_DESC = '<p>Кавоварка рожева з колбою з бо�
 test('META: tags/nbsp-only HTML counts as a placeholder description', () => {
   assert.equal(isPlaceholderDescription(GARBAGE_DIV), true);
   assert.equal(isPlaceholderDescription('<p>&nbsp;</p>'), true);
+  // Task #41: numeric nbsp entities are whitespace too
+  assert.equal(isPlaceholderDescription('<p>&#160;</p>'), true);
+  assert.equal(isPlaceholderDescription('&#160;&nbsp;'), true);
   assert.equal(isPlaceholderDescription('   '), true);
   assert.equal(isPlaceholderDescription(null), true);
   assert.equal(isPlaceholderDescription(undefined), true);

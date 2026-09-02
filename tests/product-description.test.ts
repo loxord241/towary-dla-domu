@@ -17,9 +17,8 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-const { resolveProductDescription } = await import(
-  '../app/lib/product-description.ts'
-);
+const { resolveProductDescription, shouldRenderDescriptionSection } =
+  await import('../app/lib/product-description.ts');
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
@@ -68,6 +67,64 @@ test('resolveProductDescription: short_description itself is trimmed', () => {
 test('resolveProductDescription: plain manual text still takes the html path (renders identically)', () => {
   const r = resolveProductDescription('4534534dhfgh', null);
   assert.deepEqual(r, { kind: 'html', value: '4534534dhfgh' });
+});
+
+// ---- «Опис» section visibility gate (Task #41, 2026-09-02) --------------------
+
+test('shouldRenderDescriptionSection: null/empty description → section absent', () => {
+  assert.equal(shouldRenderDescriptionSection(null, null), false);
+  assert.equal(shouldRenderDescriptionSection(undefined, undefined), false);
+  assert.equal(shouldRenderDescriptionSection('', ''), false);
+});
+
+test('shouldRenderDescriptionSection: HTML-shell description → section absent', () => {
+  assert.equal(shouldRenderDescriptionSection('<div><div></div></div>', null), false);
+  assert.equal(
+    shouldRenderDescriptionSection('<div><div><div></div></div></div>', null),
+    false
+  );
+});
+
+test('shouldRenderDescriptionSection: whitespace-only description → section absent', () => {
+  assert.equal(shouldRenderDescriptionSection('   \n\t  ', null), false);
+});
+
+test('shouldRenderDescriptionSection: nbsp-only description → section absent', () => {
+  assert.equal(shouldRenderDescriptionSection('&nbsp;', null), false);
+  assert.equal(shouldRenderDescriptionSection('<p>&nbsp;</p>', null), false);
+  assert.equal(shouldRenderDescriptionSection('&#160;', null), false);
+  assert.equal(shouldRenderDescriptionSection('<p>&#160;</p>', null), false);
+});
+
+test('shouldRenderDescriptionSection: real description → section present', () => {
+  assert.equal(shouldRenderDescriptionSection('<p>Нормальне описання</p>', null), true);
+  assert.equal(
+    shouldRenderDescriptionSection('<p>Блендер <strong>потужний</strong></p>', null),
+    true
+  );
+});
+
+test('shouldRenderDescriptionSection: short real description is NOT hidden for being short', () => {
+  assert.equal(shouldRenderDescriptionSection('<p>Ок</p>', null), true);
+});
+
+test('shouldRenderDescriptionSection: real short_description keeps the section (fallback chain)', () => {
+  assert.equal(
+    shouldRenderDescriptionSection('<div><div></div></div>', 'Короткий опис'),
+    true
+  );
+});
+
+test('INVARIANT: product page gates the «Опис» section behind shouldRenderDescriptionSection', () => {
+  const page = readFileSync(
+    path.join(root, 'app/product/[slug]/page.tsx'),
+    'utf8'
+  );
+  assert.ok(page.includes('shouldRenderDescriptionSection'));
+  // the heading must live inside the gated block (same conditional render):
+  // inspect everything AFTER the JSX call site (last occurrence, not the import)
+  const gated = page.slice(page.lastIndexOf('shouldRenderDescriptionSection'));
+  assert.ok(gated.includes('>Опис<'), 'заголовок «Опис» має рендеритися під gate');
 });
 
 // ---- project-wide source invariants -------------------------------------------

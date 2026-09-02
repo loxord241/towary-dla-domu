@@ -1,4 +1,13 @@
 import type { Metadata } from 'next';
+// Task #41 2026-09-02: the plain-text strip + placeholder check moved to
+// app/lib/product-description.ts (client-safe module, no boilerplate lists);
+// re-exported here so the meta policy keeps its public API.
+import {
+  htmlToPlainText,
+  isPlaceholderDescription,
+} from './product-description.ts';
+
+export { htmlToPlainText, isPlaceholderDescription };
 
 /**
  * Canonical/noindex policy for the storefront (spec 2026-08-26 + Task #14
@@ -165,24 +174,8 @@ export function buildCatalogViewMetadata(
 // Product JSON-LD, sitemap and canonicals are intentionally NOT affected.
 // ---------------------------------------------------------------------------
 
-/** HTML → plain text (same normalization the page used for metas). */
-function htmlToPlainText(html: string | null | undefined): string {
-  return (html ?? '')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 /** True when the description carries no text at all (tags/nbsp/whitespace). */
-export function isPlaceholderDescription(html: string | null | undefined): boolean {
-  return htmlToPlainText(html) === '';
-}
+// isPlaceholderDescription — see app/lib/product-description.ts (re-exported above).
 
 /**
  * Supplier boilerplate markers (audit 2026-08-31 + Task #23 V2 audit

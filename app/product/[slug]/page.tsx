@@ -19,6 +19,7 @@ import RelatedProducts from '@/app/components/RelatedProducts'
 import ProductJsonLd from '@/app/components/ProductJsonLd'
 import { buildProductJsonLd, buildProductBreadcrumbJsonLd } from '@/app/lib/schema-org'
 import { buildProductMetaDescription } from '@/app/lib/seo'
+import { shouldRenderDescriptionSection } from '@/app/lib/product-description'
 import { formatPrice } from '@/app/lib/format'
 
 // On-demand ISR (Task #5B 2026-08-31): the route no longer touches any
@@ -233,13 +234,22 @@ export default async function ProductPage({
               )}
             </div>
 
-            <div className="mb-6">
-              <h3 className="mb-2 font-semibold text-gray-900">Опис</h3>
-              <ProductDescription
-                description={product.description}
-                shortDescription={product.short_description}
-              />
-            </div>
+            {/* Task #41: the «Опис» section (heading included) renders only
+                when there is real content — a non-placeholder description or
+                the short_description fallback. Legacy supplier HTML shells
+                (<div><div></div></div>, nbsp-only) stay hidden. */}
+            {shouldRenderDescriptionSection(
+              product.description,
+              product.short_description
+            ) && (
+              <div className="mb-6">
+                <h3 className="mb-2 font-semibold text-gray-900">Опис</h3>
+                <ProductDescription
+                  description={product.description}
+                  shortDescription={product.short_description}
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4 mb-6">
               {product.brand && (
