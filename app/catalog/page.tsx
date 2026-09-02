@@ -245,6 +245,8 @@ export default async function CatalogPage({
   ])
   const products = catalog.products
   const total = catalog.total
+  // When the typo fallback produced the results, the UI must say so.
+  const appliedSearch = catalog.appliedSearch ?? null
   // Server returns the CLAMPED page — out-of-range requests render the last
   // real page instead of an empty grid.
   const page = catalog.page
@@ -322,6 +324,20 @@ export default async function CatalogPage({
                   Знайдено: {total}
                 </span>
               </div>
+
+              {/* Typo fallback notice: the results do NOT match the raw
+                  query, so the user must see which term was actually
+                  applied. Hidden when the original query matched. */}
+              {appliedSearch && (
+                <p
+                  data-testid="fallback-notice"
+                  className="mb-4 text-sm text-gray-600"
+                >
+                  Показані результати для{' '}
+                  <strong>«{appliedSearch}»</strong> — за запитом «
+                  {filters.search}» нічого не знайдено.
+                </p>
+              )}
 
               {/* Unique category intro + crawlable subcategory links
                   (pinned category only — see app/lib/category-seo.ts). */}

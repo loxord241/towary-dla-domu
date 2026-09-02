@@ -11,14 +11,22 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // catalog.ts creates its Supabase client at module load; provide the
 // publishable-env placeholders BEFORE the import (no network happens).
 process.env.NEXT_PUBLIC_SUPABASE_URL ??= 'http://localhost:54321';
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= 'test-anon-key';
-const { sanitizeSearchTerm, buildSearchConditions } = await import(
-  '../app/lib/catalog.ts'
-);
+const {
+  sanitizeSearchTerm,
+  buildSearchConditions,
+  relaxSearchTerm,
+  FALLBACK_MAX_RETRIES,
+} = await import('../app/lib/catalog.ts');
 
 // ---- buildSearchConditions: multi-token AND search (UX fix: word order
 // must not matter — «TEFAL мультипіч» and «мультипіч TEFAL» are equivalent).
@@ -240,4 +248,76 @@ test('sanitizeSearchTerm: real corrupted-name case now yields a usable keyword t
   const out = sanitizeSearchTerm(name);
   assert.equal(out, 'Ніж TRAMONTINA CENTURY поварський6 24010/106');
   assert.ok(out.includes('TRAMONTINA'));
+});
+
+// ---- Task #40: typo fallback candidate generation (relaxSearchTerm) --------
+//
+// Contract: each retry drops the LAST character of ONE token (longest token
+// first, ties → earliest), at most FALLBACK_MAX_RETRIES variants, tokens are
+// never shortened below FALLBACK_MIN_TOKEN_LEN. Output is pure and must be
+// re-fed through buildSearchConditions (which re-sanitizes) before use.
+
+test('relaxSearchTerm: single token drops its last char first', () => {
+  // «блендерр» → «блендер» — the flagship Task #40 case
+  assert.deepEqual(relaxSearchTerm('блендерр'), ['блендер']);
+});
+
+test('relaxSearchTerm: short tokens never produce variants', () => {
+  assert.deepEqual(relaxSearchTerm('чай'), []);
+  assert.deepEqual(relaxSearchTerm('дом'), []);
+});
+
+test('relaxSearchTerm: 4-char token is at the floor and is never trimmed', () => {
+  assert.deepEqual(relaxSearchTerm('мова'), []);
+});
+
+test('relaxSearchTerm: 5-char token trims exactly once (floor = 4)', () => {
+  assert.deepEqual(relaxSearchTerm('щітка'), ['щітк']);
+});
+
+test('relaxSearchTerm: multi-token trims the LONGEST token first', () => {
+  // 'блендерр' (8) before 'tefal' (5)
+  assert.deepEqual(relaxSearchTerm('tefal блендерр'), [
+    'tefal блендер',
+    'tefa блендерр',
+  ]);
+});
+
+test('relaxSearchTerm: retry budget caps the variant list', () => {
+  const many = 'abcdefgh ijklmnop qrstuvwx yzabcdef'; // 4 trimmable tokens
+  const variants = relaxSearchTerm(many);
+  assert.equal(variants.length, FALLBACK_MAX_RETRIES);
+  assert.deepEqual(variants, [
+    'abcdefg ijklmnop qrstuvwx yzabcdef',
+    'abcdefgh ijklmno qrstuvwx yzabcdef',
+    'abcdefgh ijklmnop qrstuvw yzabcdef',
+  ]);
+});
+
+test('relaxSearchTerm: empty / whitespace-only input yields nothing', () => {
+  assert.deepEqual(relaxSearchTerm(''), []);
+  assert.deepEqual(relaxSearchTerm('   '), []);
+});
+
+test('relaxSearchTerm: variants inherit the or= grammar injection guard', () => {
+  const variants = relaxSearchTerm('abcdefgh,ijklm"op');
+  assert.equal(variants.length, 2);
+  for (const variant of variants) {
+    for (const ch of [',', '"', '(', ')', '%']) {
+      assert.ok(
+        !variant.includes(ch),
+        `variant ${JSON.stringify(variant)} contains reserved ${JSON.stringify(ch)}`
+      );
+    }
+  }
+});
+
+test('UI: catalog page renders a fallback notice wired to appliedSearch', () => {
+  const page = readFileSync(path.join(root, 'app/catalog/page.tsx'), 'utf8');
+  // notice reads the lib flag…
+  assert.match(page, /catalog\.appliedSearch/);
+  assert.match(page, /Показані результати для/);
+  // …while the original query stays visible in H1 and the filter chip
+  assert.match(page, /Пошук: «\$\{filters\.search\}»/);
+  assert.match(page, /«\$\{filters\.search\}»`, removeKey: 'q'/);
 });

@@ -395,6 +395,45 @@ export function buildSearchConditions(search: string): string[] | null {
   );
 }
 
+// ---- Typo-tolerance fallback (Task #40) -----------------------------------
+//
+// When a search returns zero results (e.g. «блендерр» instead of «блендер»),
+// we retry with progressively relaxed terms: drop the LAST character of ONE
+// token at a time (longest token first). Constraints:
+//   - Only triggered when the original query matched zero rows.
+//   - Tokens are never shortened below FALLBACK_MIN_TOKEN_LEN — short stems
+//     like «чай» → «ча» would match far too broadly.
+//   - Retry budget is capped (FALLBACK_MAX_RETRIES) so a pathological query
+//     can't turn into a request storm.
+//   - Each variant changes exactly ONE token by exactly ONE character — the
+//     smallest change that could plausibly fix a typo (doubled letter,
+//     missed key). Injection safety is inherited from sanitizeSearchTerm
+//     because variants are re-fed through buildSearchConditions.
+export const FALLBACK_MIN_TOKEN_LEN = 4;
+export const FALLBACK_MAX_RETRIES = 3;
+
+/**
+ * PURE: given a raw search string, yield progressively relaxed variants by
+ * trimming the LAST character of ONE token at a time (longest token first,
+ * ties → earliest). Yields at most FALLBACK_MAX_RETRIES variants; a token is
+ * only trimmed while it stays strictly longer than FALLBACK_MIN_TOKEN_LEN.
+ * Output depends purely on the input; callers must re-run the output through
+ * buildSearchConditions (which re-sanitizes) before using it.
+ */
+export function relaxSearchTerm(search: string): string[] {
+  const tokens = [...new Set(sanitizeSearchTerm(search).split(' ').filter(Boolean))];
+  const candidates = tokens
+    .map((token, idx) => ({ idx, len: token.length }))
+    .filter((t) => t.len > FALLBACK_MIN_TOKEN_LEN)
+    .sort((a, b) => b.len - a.len)
+    .slice(0, FALLBACK_MAX_RETRIES);
+  return candidates.map(({ idx }) => {
+    const next = tokens.slice();
+    next[idx] = next[idx].slice(0, -1);
+    return next.join(' ');
+  });
+}
+
 export type CatalogSort = 'newest' | 'price_asc' | 'price_desc' | 'name_asc';
 
 export interface CatalogFilters {
@@ -485,6 +524,12 @@ export interface CatalogPage {
   total: number;
   page: number;
   size: number;
+  /**
+   * Set ONLY when the zero-result typo fallback rewrote the search term
+   * (e.g. user typed «блендерр», we searched «блендер» instead).
+   * Null/undefined means results come from the user's original query.
+   */
+  appliedSearch?: string | null;
 }
 
 /**
@@ -503,7 +548,11 @@ export async function fetchCatalogProducts(
   // ---- shared filter inputs (computed once, reused by both queries) ----
   // One `or` expression per token; the caller chains .or() per item so the
   // tokens AND together (word-order-independent search, see the helper).
-  const searchConditions = buildSearchConditions(filters.search ?? '');
+  let searchConditions = buildSearchConditions(filters.search ?? '');
+  // Search term actually applied. Null while the user's own query is in
+  // effect; set to the relaxed term when the zero-result typo fallback
+  // (below) rewrites it — the UI shows «Показані результати для ...».
+  let appliedSearch: string | null = null;
 
   const [categoryId, brandId] = await Promise.all([
     filters.categorySlug ? findCategoryIdBySlug(filters.categorySlug) : null,
@@ -531,44 +580,83 @@ export async function fetchCatalogProducts(
   // ---- total count with identical filters (no pagination) ----
   // The eligibility join MUST mirror PRODUCT_SELECT, otherwise totals
   // would count imageless products that the data query can never return.
-  let countQuery = supabase
-    .from('products')
-    .select(categoryId ? JUNCTION_COUNT_SELECT : ELIGIBLE_COUNT_SELECT, {
-      count: 'exact',
-      head: true,
-    })
-    .eq('is_active', true);
+  // Built via a factory so the typo fallback can rebuild the SAME count
+  // query with RELAXED conditions (replacing, not adding to, the original
+  // search terms) without duplicating filter wiring.
+  const buildCountQuery = (conditions: string[] | null) => {
+    let q = supabase
+      .from('products')
+      .select(categoryId ? JUNCTION_COUNT_SELECT : ELIGIBLE_COUNT_SELECT, {
+        count: 'exact',
+        head: true,
+      })
+      .eq('is_active', true);
 
-  if (categoryId) {
-    countQuery = countQuery.in('pc.category_id', subtreeIds);
-  }
-  if (brandId) {
-    countQuery = countQuery.eq('brand_id', brandId);
-  }
-
-  if (searchConditions) {
-    for (const condition of searchConditions) {
-      countQuery = countQuery.or(condition);
+    if (categoryId) {
+      q = q.in('pc.category_id', subtreeIds);
     }
-  }
+    if (brandId) {
+      q = q.eq('brand_id', brandId);
+    }
 
-  if (filters.minPrice !== undefined) {
-    countQuery = countQuery.gte('price', filters.minPrice);
-  }
-  if (filters.maxPrice !== undefined) {
-    countQuery = countQuery.lte('price', filters.maxPrice);
-  }
-  if (filters.inStockOnly) {
-    countQuery = countQuery.eq('availability_status', 'in_stock');
-  }
+    if (conditions) {
+      for (const condition of conditions) {
+        q = q.or(condition);
+      }
+    }
 
-  const { count, error: countError } = await countQuery;
+    if (filters.minPrice !== undefined) {
+      q = q.gte('price', filters.minPrice);
+    }
+    if (filters.maxPrice !== undefined) {
+      q = q.lte('price', filters.maxPrice);
+    }
+    if (filters.inStockOnly) {
+      q = q.eq('availability_status', 'in_stock');
+    }
+    return q;
+  };
+
+  const { count, error: countError } = await buildCountQuery(searchConditions);
   if (countError) {
     console.error('Failed to count catalog products:', countError.message);
     return { products: [], total: 0, page: 1, size };
   }
 
-  const total = count ?? 0;
+  let total = count ?? 0;
+
+  // ---- typo fallback (Task #40): only when the ORIGINAL query matched zero
+  // rows. Progressively drop the LAST character of ONE token (longest first)
+  // until a non-zero count appears or the retry budget / min-length floor is
+  // hit. Same ILIKE grammar, same sanitized tokens — no new operators, no new
+  // API. A fallback hit records `appliedSearch` so the UI can tell the user
+  // which term actually produced the results.
+  if (total === 0 && searchConditions) {
+    for (const relaxedTerm of relaxSearchTerm(filters.search ?? '')) {
+      const relaxedConditions = buildSearchConditions(relaxedTerm);
+      if (!relaxedConditions) continue;
+
+      // The retry REPLACES the original search conditions entirely —
+      // chaining them on top would keep the unmatched term in the AND
+      // tree and pin the count to zero forever.
+      const { count: retryCount, error: retryError } =
+        await buildCountQuery(relaxedConditions);
+      if (retryError) {
+        console.error(
+          'Failed to count catalog products (fallback):',
+          retryError.message
+        );
+        break;
+      }
+      if ((retryCount ?? 0) > 0) {
+        total = retryCount ?? 0;
+        searchConditions = relaxedConditions;
+        appliedSearch = relaxedTerm;
+        break;
+      }
+    }
+  }
+
   const maxPage = Math.max(1, Math.ceil(total / size));
   const page = Math.min(Math.max(filters.page ?? 1, 1), maxPage);
 
@@ -642,6 +730,7 @@ export async function fetchCatalogProducts(
     total,
     page,
     size,
+    appliedSearch,
   };
 }
 
