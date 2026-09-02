@@ -25,6 +25,33 @@ const supabase = createClient(
 const ORDER_NUMBER_RE = /^ORD-[0-9]{8}-[0-9A-F]{6}$/i;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+// Shared hourly ceiling on FAILED lookups (whole site, DB-backed — the
+// in-memory per-IP limiter is per-instance on serverless). A flood ceiling,
+// not an exact quota: check-then-increment races may overshoot slightly.
+const LOOKUP_FAIL_CAP = 100;
+const FAIL_WINDOW_MS = 60 * 60 * 1000;
+
+async function failedLookupCount(): Promise<number | null> {
+  try {
+    const { data, error } = await supabase
+      .from('failed_lookup_counters')
+      .select('count, window_started_at')
+      .eq('name', 'orders_lookup')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return 0;
+    const fresh =
+      Date.parse(data.window_started_at) > Date.now() - FAIL_WINDOW_MS;
+    return fresh ? (data.count ?? 0) : 0;
+  } catch (err) {
+    // Counter unavailable (migration not applied yet / transient): fail
+    // OPEN — the per-IP limiter still applies, and brute force still
+    // requires guessing both number and email.
+    console.error('failed-lookup counter read failed:', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   const limited = enforceRateLimit(request, 'lookup');
   if (limited) return limited;
@@ -47,6 +74,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
   }
 
+  const failCount = await failedLookupCount();
+  if (failCount !== null && failCount >= LOOKUP_FAIL_CAP) {
+    return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 429 });
+  }
+
   try {
     const { data, error } = await supabase
       .from('orders')
@@ -63,6 +95,12 @@ export async function POST(request: Request) {
       );
     }
     if (!data) {
+      // Record the miss for the shared brute-force ceiling; a counter
+      // failure must not change the answer (best effort).
+      const { error: counterError } = await supabase.rpc('record_failed_lookup');
+      if (counterError) {
+        console.error('failed-lookup counter write failed:', counterError.message);
+      }
       return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
     }
 

@@ -27,7 +27,7 @@
  *
  * Usage: node --experimental-strip-types scripts/yugcontract-du-redirect-allowlist.ts
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -182,7 +182,17 @@ export const DU_REDIRECT_SLUGS: ReadonlySet<string> = new Set(
   DU_REDIRECT_PAIRS.map((p) => p.duSlug)
 );
 `;
-writeFileSync(path.join(root, 'app/lib/du-redirects.ts'), out);
+/**
+ * Write via tmp-file + rename: a crash mid-write must not leave a truncated
+ * du-redirects.ts/.json behind — next.config.ts imports the JSON at build
+ * time, so a partial file breaks the next `next build`.
+ */
+function atomicWrite(target: string, data: string): void {
+  const tmp = `${target}.tmp`;
+  writeFileSync(tmp, data);
+  renameSync(tmp, target);
+}
+atomicWrite(path.join(root, 'app/lib/du-redirects.ts'), out);
 
 // 4. Emit the JSON consumed by next.config.ts redirects() — the same
 // same-price pairs (same duYc-ascending order), slugs only.
@@ -190,7 +200,7 @@ const json = {
   generatedAt: AUDIT_DATE,
   redirect: redirect.map((p) => ({ duSlug: p.duSlug, baseSlug: p.baseSlug })),
 };
-writeFileSync(path.join(root, 'app/lib/du-redirects.json'), JSON.stringify(json, null, 2) + '\n');
+atomicWrite(path.join(root, 'app/lib/du-redirects.json'), JSON.stringify(json, null, 2) + '\n');
 
 console.log(`OK: wrote app/lib/du-redirects.ts (${redirect.length} redirect, ${diff.length} price-diff, ${orphans.length} orphans untouched)`);
 console.log(`OK: wrote app/lib/du-redirects.json (${json.redirect.length} redirect pairs for next.config redirects())`);

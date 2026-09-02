@@ -274,8 +274,12 @@ CREATE POLICY "Enable read access to product variants" ON product_variants
 CREATE POLICY "Enable read access to active attributes" ON attributes
     FOR SELECT USING (TRUE);
 
+-- NOTE: attributes has no is_active column in this schema — the policy
+-- grants plain read access filtered by attribute_id only (an earlier
+-- revision referenced attributes.is_active here and failed on a fresh
+-- deployment).
 CREATE POLICY "Enable read access to attribute values" ON attribute_values
-    FOR SELECT USING (attribute_id IN (SELECT id FROM attributes WHERE is_active = TRUE));
+    FOR SELECT USING (attribute_id IN (SELECT id FROM attributes));
 
 CREATE POLICY "Enable read access to active brands" ON brands
     FOR SELECT USING (is_active = TRUE);
@@ -293,5 +297,8 @@ ALTER TABLE order_items ADD CONSTRAINT chk_order_items_quantity_positive CHECK (
 ALTER TABLE order_items ADD CONSTRAINT chk_order_items_price_positive CHECK (price >= 0);
 ALTER TABLE order_items ADD CONSTRAINT chk_order_items_total_positive CHECK (total >= 0);
 
--- Set search path for better performance with translations
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT SELECT ON TABLES TO public;
+-- Tables are NOT world-readable by default: a GRANT SELECT TO public here
+-- made every new table readable by anon until RLS was enabled in the same
+-- migration (this is how admin_users leaked). Privileges are granted
+-- explicitly per-table where anonymous SELECT is actually intended.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE SELECT ON TABLES FROM public;

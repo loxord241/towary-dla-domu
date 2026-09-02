@@ -17,8 +17,9 @@ on:
   workflow_dispatch:
   schedule:
     # Every 6 hours at :17 UTC. GitHub cron is UTC-only and top-of-hour
-    # minutes are congested/delayed; supplier data does not need real-time
-    # freshness, so 4 runs/day is ample headroom (~2 min each).
+    # minutes are congested/delayed. The documented 48h interval between
+    # successful syncs is enforced by the importer's DB gate (last 'done'
+    # batch), so scheduled runs between successful syncs exit 0 as no-ops.
     - cron: "17 */6 * * *"
 
 permissions:
@@ -45,10 +46,13 @@ jobs:
 
       - run: npm ci
 
-      # Canonical CLI, unmodified. --run performs planning + gating itself
-      # (blocking conflicts exit non-zero); a failed run exits non-zero so
-      # the workflow fails. Resume of a crashed run is documented in
-      # docs/: `node scripts/yugcontract-import-run.ts --run --resume RUN_ID`.
+      # Canonical CLI. Since the 2026-09-02 audit, --run enforces the
+      # documented 48h interval itself (DB gate on the last successful
+      # batch), so scheduled runs between successful syncs exit 0 as no-ops.
+      # No bypass flag here by invariant: manual force runs go through the
+      # WSL/Windows launchers. Blocking conflicts exit non-zero so the
+      # workflow fails. Resume of a crashed run is documented in docs/:
+      # `node scripts/yugcontract-import-run.ts --run --resume RUN_ID`.
       - name: Run Yugcontract import
         run: node scripts/yugcontract-import-run.ts --run
         env:

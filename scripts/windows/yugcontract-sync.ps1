@@ -67,16 +67,49 @@ try {
 Write-Output ("[yugcontract-sync] start " + (Get-Date -Format o))
 Write-Output ("[yugcontract-sync] log: " + $logPath)
 
+# --- exclusive lock + 48h interval gate (mirrors scripts/wsl/yugcontract-sync.sh) ---
+# Without the lock, the Windows scheduled task can run in parallel with the
+# WSL launcher (its flock is invisible to Windows processes) or with a manual
+# run. The stamp check enforces the documented 48h interval between
+# SUCCESSFUL syncs; the importer additionally gates on the DB (last 'done'
+# batch), so CI/WSL/Windows share one interval contract.
+$Force = $args -contains '--force'
+$lockPath = Join-Path $logsDir '.yugcontract-sync.lock'
+$stampPath = Join-Path $logsDir '.yugcontract-last-success'
+$lockStream = $null
+try {
+    $lockStream = [System.IO.File]::Open(
+        $lockPath,
+        [System.IO.FileMode]::OpenOrCreate,
+        [System.IO.FileAccess]::Read,
+        [System.IO.FileShare]::None)
+} catch {
+    Write-Output "[yugcontract-sync] another sync is already running (lock held) - skipping"
+    exit 0
+}
+
+if (-not $Force -and (Test-Path -LiteralPath $stampPath)) {
+    $ageH = ((Get-Date) - (Get-Item -LiteralPath $stampPath).LastWriteTime).TotalHours
+    if ($ageH -lt 47) {
+        Write-Output ("[yugcontract-sync] last success {0:N1}h ago - skipping (< 48h interval; use --force to override)" -f $ageH)
+        $lockStream.Close()
+        exit 0
+    }
+}
+
 # --- canonical sync -----------------------------------------------------------
 # Native stderr is merged for logging; ErrorActionPreference is relaxed here so
 # stderr lines never abort the run — the importer's exit code is the truth.
+try {
 $ErrorActionPreference = 'Continue'
-& node $importer --run 2>&1 |
+$importerArgs = @('--run')
+if ($Force) { $importerArgs += '--force' }
+& node $importer @importerArgs 2>&1 |
     ForEach-Object {
         $line = "$_"
         # defensive scrub: never let env-like or token-bearing lines reach the log
         if ($line -match '^\s*[A-Z0-9_]+\s*=') { '[redacted env-like line]' }
-        elseif ($line -match 'requestToken|authToken|Authorization') { '[redacted token-bearing line]' }
+        elseif ($line -match '(?i)requestToken|authToken|Authorization|bearer\s|token=|bot\d+:') { '[redacted token-bearing line]' }
         else { $line }
     } | Tee-Object -FilePath $logPath -Append | Out-String -Width 4096 |
     Write-Output
@@ -89,6 +122,11 @@ if ($importerExit -ne 0) {
     Write-Output "[yugcontract-sync] if the failure is a crashed run, resume manually with:"
     Write-Output "    node scripts/yugcontract-import-run.ts --run --resume <RUN_ID from log>"
 } else {
+    # Stamp the success time for the 48h gate (wall-clock based).
+    Set-Content -LiteralPath $stampPath -Value ([DateTimeOffset]::Now.ToUnixTimeSeconds())
     Write-Output "[yugcontract-sync] done OK"
+}
+} finally {
+    if ($lockStream) { $lockStream.Close() }
 }
 exit $importerExit

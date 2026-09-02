@@ -93,6 +93,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           if (prev.ids.includes(productId)) {
             return { ...prev, ids: prev.ids.filter((id) => id !== productId) };
           }
+          // Same cap the localStorage sanitizer applies on read — without it
+          // the list grew unbounded here and was silently cut to MAX_FAVORITES
+          // on the next load.
+          if (prev.ids.length >= MAX_FAVORITES) return prev;
           return { ...prev, ids: [...prev.ids, productId] };
         });
       },

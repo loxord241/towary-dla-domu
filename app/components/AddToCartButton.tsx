@@ -142,7 +142,10 @@ export default function AddToCartButton({
         disabled={hasVariants && !selectedVariant}
         onClick={() => {
           if (hasVariants && !selectedVariant) return;
-          addItem(productId, hasVariants ? variantId : null, quantity);
+          const addedOk = addItem(productId, hasVariants ? variantId : null, quantity);
+          // addItem is a no-op (returns false) for an out-of-range quantity
+          // or a full cart — showing "У кошику" then would be a lie.
+          if (!addedOk) return;
           // Anonymous analytics: product UUID only, no PII.
           track(ANALYTICS_EVENTS.ADD_TO_CART, { product_id: productId });
           setAdded(true);

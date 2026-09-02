@@ -92,6 +92,17 @@ export async function POST(
       );
     }
 
+    // Same whitelist as the PUT variant route: checkout only blocks
+    // `= 'out_of_stock'`, so a typo like 'in_stock ' would ship a buyable
+    // variant with a broken availability badge.
+    const availabilityStatus = strOrNull(body.availability_status) ?? 'in_stock';
+    if (!['in_stock', 'limited_availability', 'out_of_stock'].includes(availabilityStatus)) {
+      return NextResponse.json(
+        { error: 'Недопустимий статус наявності' },
+        { status: 400 }
+      );
+    }
+
     const { data, error } = await ctx.serviceClient
       .from('product_variants')
       .insert({
@@ -101,7 +112,7 @@ export async function POST(
         price,
         old_price: oldPrice,
         stock_quantity: stock === null ? 0 : Math.trunc(stock),
-        availability_status: strOrNull(body.availability_status) ?? 'in_stock',
+        availability_status: availabilityStatus,
         is_active: body.is_active === undefined ? true : Boolean(body.is_active),
       })
       .select('*')

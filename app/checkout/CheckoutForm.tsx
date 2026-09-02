@@ -155,6 +155,12 @@ export default function CheckoutForm() {
   // dropped instead of overwriting fresher results — otherwise the
   // dropdown can vanish or show another query's list mid-typing.
   const settlementRequestSeq = useRef(0);
+  // Same guard pattern for the divisions and streets lookups: an out-of-order
+  // response (slow network) must not repopulate a list for a settlement the
+  // user has already changed — otherwise the order can end up with a
+  // division/street from a different city.
+  const divisionsRequestSeq = useRef(0);
+  const streetRequestSeq = useRef(0);
 
   // Drop pending debounce timers when the form unmounts.
   useEffect(() => {
@@ -384,6 +390,9 @@ export default function CheckoutForm() {
           'Content-Type': 'application/json',
           'Idempotency-Key': idempotencyKeyRef.current,
         },
+        // A hung socket would otherwise disable the form forever
+        // (submitting stays true); the idempotency key makes the retry safe.
+        signal: AbortSignal.timeout(20_000),
         // ONLY identifiers + quantities + contact/shipping strings. The
         // structured delivery object carries Nova Post ids only — money and
         // payer fields are structurally impossible in this contract.
@@ -393,7 +402,8 @@ export default function CheckoutForm() {
             firstName: firstTrimmed,
             lastName: lastTrimmed,
             patronymic: patronymicTrimmed,
-            email,
+            // The trimmed value is what was validated — send what was checked.
+            email: emailTrimmed,
             phone,
           },
           shipping: {
@@ -627,11 +637,22 @@ export default function CheckoutForm() {
                       setFlat('');
                       setDivisions([]);
                       setDeliveryError(null);
+                      // Drop in-flight divisions/streets responses for the
+                      // previous delivery type / list state.
+                      divisionsRequestSeq.current += 1;
+                      streetRequestSeq.current += 1;
                       if (settlement && t.value !== 'nova_poshta_courier') {
+                        const seq = divisionsRequestSeq.current;
                         fetchDivisionsApi(
                           settlement.id,
-                          (items) => setDivisions(items),
-                          () => setDivisions([])
+                          (items) => {
+                            if (seq !== divisionsRequestSeq.current) return; // stale response
+                            setDivisions(items);
+                          },
+                          () => {
+                            if (seq !== divisionsRequestSeq.current) return;
+                            setDivisions([]);
+                          }
                         );
                       }
                     }}
@@ -723,11 +744,30 @@ export default function CheckoutForm() {
                             setSettlementOpen(false);
                             setSettlementResults([]);
                             setSettlementLoading(false);
+                            // Division/street belong to the chosen settlement:
+                            // keep a previously picked division/street from the
+                            // old settlement from riding along in the order.
+                            setDivision(null);
+                            setStreet(null);
+                            setStreetQuery('');
+                            setStreetResults([]);
+                            setStreetOpen(false);
+                            setBuilding('');
+                            setFlat('');
+                            divisionsRequestSeq.current += 1;
+                            streetRequestSeq.current += 1;
                             if (deliveryType && deliveryType !== 'nova_poshta_courier') {
+                              const seq = divisionsRequestSeq.current;
                               fetchDivisionsApi(
                                 s.id,
-                                (items) => setDivisions(items),
-                                () => setDivisions([])
+                                (items) => {
+                                  if (seq !== divisionsRequestSeq.current) return; // stale response
+                                  setDivisions(items);
+                                },
+                                () => {
+                                  if (seq !== divisionsRequestSeq.current) return;
+                                  setDivisions([]);
+                                }
                               );
                             }
                           }}
@@ -816,18 +856,25 @@ export default function CheckoutForm() {
                       setStreetOpen(true);
                       if (streetDebounceRef.current) clearTimeout(streetDebounceRef.current);
                       if (settlement && q.trim().length >= 2) {
+                        const seq = ++streetRequestSeq.current;
                         streetDebounceRef.current = setTimeout(() => {
+                          if (seq !== streetRequestSeq.current) return; // superseded while debouncing
                           searchStreetsApi(
                             settlement.id,
                             q.trim(),
                             (found) => {
+                              if (seq !== streetRequestSeq.current) return; // stale response
                               setStreetResults(found);
                               setStreetOpen(true);
                             },
-                            () => setStreetResults([])
+                            () => {
+                              if (seq !== streetRequestSeq.current) return;
+                              setStreetResults([]);
+                            }
                           );
                         }, 300);
                       } else {
+                        streetRequestSeq.current += 1;
                         setStreetResults([]);
                       }
                     }}

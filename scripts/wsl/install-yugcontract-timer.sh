@@ -43,8 +43,8 @@ OnFailure=yugcontract-sync-failure.service
 [Service]
 Type=oneshot
 User=$RUN_USER
-WorkingDirectory=$ROOT
-ExecStart=$LAUNCHER
+WorkingDirectory="$ROOT"
+ExecStart="$LAUNCHER"
 # one run at a time is guaranteed by Type=oneshot + the launcher's flock;
 # results are also visible in the journal: journalctl -u yugcontract-sync
 EOF
@@ -57,11 +57,13 @@ Description=Record/notify a failed Yugcontract sync (no secrets sent)
 [Service]
 Type=oneshot
 User=$RUN_USER
-WorkingDirectory=$ROOT
-# Optional outbound channel: YUGCONTRACT_ALERT_WEBHOOK_URL in .env.local.
-# The file is loaded read-only by the script; nothing is printed.
-EnvironmentFile=-$ROOT/.env.local
-ExecStart=$ROOT/scripts/wsl/yugcontract-failure-notify.sh %n
+WorkingDirectory="$ROOT"
+# Optional outbound channel: YUGCONTRACT_ALERT_WEBHOOK_URL, which the script
+# reads itself from .env.local (single-line grep; nothing is printed).
+# Deliberately NO EnvironmentFile here: it would load ALL .env.local secrets
+# (LiqPay/Supabase/Telegram keys) into the unit environment reachable via
+# /proc/<pid>/environ (audit 2026-09-02).
+ExecStart="$ROOT/scripts/wsl/yugcontract-failure-notify.sh" %n
 EOF
 
 # --- post-sync health check: read-only catalog/sync diagnostics --------------
@@ -79,10 +81,10 @@ OnFailure=yugcontract-sync-failure.service
 [Service]
 Type=oneshot
 User=$RUN_USER
-WorkingDirectory=$ROOT
+WorkingDirectory="$ROOT"
 # nvm node is invisible to systemd (no interactive shell) — the launcher
 # resolves Node the same proven way as yugcontract-sync.sh.
-ExecStart=$ROOT/scripts/wsl/yugcontract-health.sh
+ExecStart="$ROOT/scripts/wsl/yugcontract-health.sh"
 # Health classification exit codes: WARN=1 is an EXPECTED outcome (degraded
 # catalog data), not a unit failure. FAIL=2 and launcher errors (3/4) stay
 # failures so a broken sync/import still shows up as "failed" in systemd.

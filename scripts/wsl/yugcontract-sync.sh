@@ -91,10 +91,10 @@ echo "[yugcontract-sync] log: $LOG"
 # --- canonical sync -----------------------------------------------------------
 # Defensive scrub so no env-like or token-bearing line can reach the log/journal.
 set -o pipefail
-node scripts/yugcontract-import-run.ts --run 2>&1 |
+node scripts/yugcontract-import-run.ts --run ${FORCE:+--force} 2>&1 |
     awk '{
-        if ($0 ~ /^[A-Z0-9_]+[ \t]*=/)               print "[redacted env-like line]";
-        else if ($0 ~ /requestToken|authToken|Authorization/) print "[redacted token-bearing line]";
+        if ($0 ~ /^[A-Z0-9_]+[ \t]*=/) print "[redacted env-like line]";
+        else if (tolower($0) ~ /requesttoken|authtoken|authorization|bearer[[:space:]]|token=|bot[0-9]+:/) print "[redacted token-bearing line]";
         else print;
     }' | tee -a "$LOG"
 

@@ -31,10 +31,15 @@ export function parseDivisionsQuery(
   searchParams: URLSearchParams
 ): DivisionsQuery | null {
   const rawSettlementId = searchParams.get('settlementId');
-  const settlementId = Number(rawSettlementId);
+  // Strict digits-only, same contract as streets.ts: Number() would accept
+  // "1e2" / "0x10" / " 5 " as valid integers.
+  const settlementId =
+    rawSettlementId === null || !/^\d{1,18}$/.test(rawSettlementId)
+      ? NaN
+      : Number(rawSettlementId);
   if (
     rawSettlementId === null ||
-    !Number.isInteger(settlementId) ||
+    !Number.isSafeInteger(settlementId) ||
     settlementId < 1
   ) {
     return null;

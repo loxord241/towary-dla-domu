@@ -9,6 +9,7 @@
  *   node scripts/yugcontract-import-run.ts --plan            read-only plan
  *   node scripts/yugcontract-import-run.ts --run             new run (plan first)
  *   node scripts/yugcontract-import-run.ts --run --resume ID resume crashed run
+ *   node scripts/yugcontract-import-run.ts --run --force     skip the 48h gate
  *
  * Safety: prints the full pre-write plan before any write; stops on any
  * blocking conflict; every batch is checkpointed in yc_import_batches.
@@ -43,7 +44,7 @@ const resumeIdx = process.argv.indexOf('--resume');
 const resumeId = resumeIdx !== -1 ? process.argv[resumeIdx + 1] : null;
 
 if (!mode) {
-  console.error('Використання: --plan | --run [--resume RUN_ID]');
+  console.error('Використання: --plan | --run [--resume RUN_ID] [--force]');
   process.exit(1);
 }
 
@@ -55,6 +56,35 @@ if (!supabaseUrl || !serviceKey) {
 }
 const client = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 const deps = makeRealDeps();
+
+// 48h interval gate (audit 2026-09-02). The CLI is the shared entry point for
+// CI (6-hourly cron), the Windows task and manual runs; the WSL launcher
+// enforces the documented 48h interval with a local stamp file, but other
+// paths had no gate. Query the last fully successful run from the DB so every
+// path obeys one contract. --force bypasses (explicit manual GO); --plan and
+// --resume never gate.
+const force = process.argv.includes('--force');
+if (mode === 'run' && !resumeId && !force) {
+  const { data: lastDone, error } = await client
+    .from('yc_import_batches')
+    .select('started_at')
+    .eq('status', 'done')
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error('Не вдалося перевірити останній успішний sync:', error.message);
+    process.exit(1);
+  }
+  const lastMs = lastDone?.started_at ? Date.parse(lastDone.started_at) : 0;
+  const ageH = lastMs > 0 ? (Date.now() - lastMs) / 3_600_000 : Infinity;
+  if (ageH < 47) {
+    console.log(
+      `skipping (< 48h interval): останній успішний sync ${ageH.toFixed(1)} год тому. Для примусового запуску: --force`
+    );
+    process.exit(0);
+  }
+}
 
 const t0 = Date.now();
 console.log(`== План імпорту (read-only, ${new Date().toISOString()}) ==`);

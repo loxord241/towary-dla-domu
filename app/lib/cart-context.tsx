@@ -108,7 +108,11 @@ interface CartContextValue {
   items: CartItem[];
   /** false until localStorage has been read — prevents SSR hydration mismatch */
   hydrated: boolean;
-  addItem: (productId: string, variantId: string | null, quantity?: number) => void;
+  addItem: (
+    productId: string,
+    variantId: string | null,
+    quantity?: number
+  ) => boolean;
   removeItem: (productId: string, variantId: string | null) => void;
   updateQuantity: (
     productId: string,
@@ -159,14 +163,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return {
       items: state.items,
       hydrated: state.hydrated,
-      addItem: (productId, variantId, quantity = 1) => {
+      addItem: (productId, variantId, quantity = 1): boolean => {
         const qty = clampQuantity(quantity);
-        if (qty === null || !UUID_RE.test(productId)) return;
-        if (variantId !== null && !UUID_RE.test(variantId)) return;
+        if (qty === null || !UUID_RE.test(productId)) return false;
+        if (variantId !== null && !UUID_RE.test(variantId)) return false;
+        // Mirror the ADD_ITEM reducer's drop condition so callers can tell
+        // a real add from a silent no-op (cart already holds MAX_CART_LINES
+        // distinct lines — merging into an existing line always succeeds).
+        const exists = state.items.some(
+          (i) =>
+            lineKey(i.productId, i.variantId) === lineKey(productId, variantId)
+        );
+        if (!exists && state.items.length >= MAX_CART_LINES) return false;
         dispatch({
           type: 'ADD_ITEM',
           item: { productId, variantId, quantity: qty },
         });
+        return true;
       },
       removeItem: (productId, variantId) => {
         dispatch({

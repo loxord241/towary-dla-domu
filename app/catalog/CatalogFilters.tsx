@@ -67,6 +67,23 @@ export default function CatalogFilters({
   );
   const [inStockOnly, setInStockOnly] = useState(initial?.inStockOnly ?? false);
 
+  // `initial` is only a useState seed, so Back/Forward navigation, chip
+  // removal or a sort change within the same mounted component would leave
+  // the draft stale relative to the URL/grid. Re-sync the draft whenever the
+  // applied filter set changes, using React's "adjust state when a prop
+  // changes" render-time pattern (an effect would cascade renders and is
+  // rejected by the project lint rule).
+  const initialKey = `${initial?.categorySlug ?? ''}|${initial?.brandSlug ?? ''}|${initial?.minPrice ?? ''}|${initial?.maxPrice ?? ''}|${initial?.inStockOnly ?? ''}`;
+  const [syncedKey, setSyncedKey] = useState(initialKey);
+  if (syncedKey !== initialKey) {
+    setSyncedKey(initialKey);
+    setCategory(initial?.categorySlug ?? '');
+    setBrand(initial?.brandSlug ?? '');
+    setMinPrice(initial?.minPrice !== undefined ? String(initial.minPrice) : '');
+    setMaxPrice(initial?.maxPrice !== undefined ? String(initial.maxPrice) : '');
+    setInStockOnly(initial?.inStockOnly ?? false);
+  }
+
   useEffect(() => {
     if (!open) {
       const flip = requestAnimationFrame(() => setShown(false));

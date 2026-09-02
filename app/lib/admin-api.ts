@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { storagePathFromImageUrl } from './supabase-storage';
+import { escapeIlikePattern } from './ilike';
 
 export type AdminApiContext = {
   userId: string;
@@ -65,10 +66,12 @@ export async function requireAdminApi(): Promise<AdminApiContext | NextResponse>
 
   // Case-insensitive match: Supabase Auth lowercases emails in tokens,
   // but rows in admin_users may have been written with mixed case.
+  // escapeIlikePattern: the email is a JWT-verified but user-chosen value —
+  // an unescaped `_` would make `suppo_t@x` match `support@x` (admin bypass).
   const { data: adminRow, error } = await serviceClient
     .from('admin_users')
     .select('email')
-    .ilike('email', user.email)
+    .ilike('email', escapeIlikePattern(user.email))
     .maybeSingle();
 
   if (error || !adminRow) {

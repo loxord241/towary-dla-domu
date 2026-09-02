@@ -77,12 +77,6 @@ ALTER TABLE orders ADD CONSTRAINT chk_orders_status_valid CHECK (status IN ('pen
 -- relationship embedding ambiguous ("more than one relationship was found")
 -- and serve no purpose, so they were dropped from this migration.
 
--- Add attribute translations foreign key constraint
-ALTER TABLE attributes_translations ADD CONSTRAINT chk_attributes_translations_attribute_id FOREIGN KEY (attribute_id) REFERENCES attributes(id) ON DELETE CASCADE;
-
--- Add attribute value translations foreign key constraint
-ALTER TABLE attribute_values_translations ADD CONSTRAINT chk_attribute_values_translations_attribute_value_id FOREIGN KEY (attribute_value_id) REFERENCES attribute_values(id) ON DELETE CASCADE;
-
 -- Create partial indexes for better query performance
 CREATE INDEX idx_products_active_featured ON products(is_active, is_featured) WHERE is_active = TRUE;
 CREATE INDEX idx_products_category_active ON products(category_id, is_active) WHERE is_active = TRUE;
@@ -115,11 +109,13 @@ CREATE TRIGGER validate_product_stock BEFORE UPDATE OR INSERT ON products FOR EA
 CREATE TRIGGER validate_variant_stock BEFORE UPDATE OR INSERT ON product_variants FOR EACH ROW EXECUTE FUNCTION check_stock_update();
 
 -- Add more RLS policies for better security
+-- NOTE: attributes has no is_active column — predicates filter through the
+-- attribute/attribute_value id only (matches the corrected 003 policies).
 CREATE POLICY "Enable read access to active attribute values" ON attribute_values
-    FOR SELECT USING (attribute_id IN (SELECT id FROM attributes WHERE is_active = TRUE));
+    FOR SELECT USING (attribute_id IN (SELECT id FROM attributes));
 
 CREATE POLICY "Enable read access to attribute value translations" ON attribute_values_translations
-    FOR SELECT USING (attribute_value_id IN (SELECT id FROM attribute_values WHERE attribute_id IN (SELECT id FROM attributes WHERE is_active = TRUE)));
+    FOR SELECT USING (attribute_value_id IN (SELECT id FROM attribute_values WHERE attribute_id IN (SELECT id FROM attributes)));
 
 -- Add translation policies for other entities
 CREATE POLICY "Enable read access to product translations" ON products_translations
@@ -132,4 +128,4 @@ CREATE POLICY "Enable read access to brand translations" ON brands_translations
     FOR SELECT USING (brand_id IN (SELECT id FROM brands WHERE is_active = TRUE));
 
 CREATE POLICY "Enable read access to attribute translations" ON attributes_translations
-    FOR SELECT USING (attribute_id IN (SELECT id FROM attributes WHERE is_active = TRUE));
+    FOR SELECT USING (attribute_id IN (SELECT id FROM attributes));

@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { escapeIlikePattern } from '@/app/lib/ilike';
 
 // The whole admin dashboard is a private surface: never index it
 // (SEO package 2026-08-26, spec E). Access is additionally guarded by proxy.
@@ -70,8 +71,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       .from('admin_users')
       .select('email')
       // Case-insensitive: auth tokens carry lowercased emails while
-      // admin_users rows may be written with mixed case.
-      .ilike('email', user.email ?? '')
+      // admin_users rows may be written with mixed case. The email is
+      // escaped so `_`/`%` cannot widen the match (admin bypass via
+      // e.g. `suppo_t@` matching `support@`).
+      .ilike('email', escapeIlikePattern(user.email ?? ''))
       .maybeSingle();
 
     isAdmin = !error && !!data;

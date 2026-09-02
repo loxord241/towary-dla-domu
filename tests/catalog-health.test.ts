@@ -220,7 +220,7 @@ test('HEALTH: installer wires OnFailure + post-sync health units, importer untou
   assert.match(installer, /OnFailure=yugcontract-sync-failure\.service/);
   assert.match(installer, /yugcontract-health\.service/);
   assert.match(installer, /yugcontract-health\.timer/);
-  assert.match(installer, /ExecStart=\$ROOT\/scripts\/wsl\/yugcontract-health\.sh/);
+  assert.match(installer, /ExecStart="?\$ROOT\/scripts\/wsl\/yugcontract-health\.sh"?/);
   // WARN=1 is an expected classification, not a systemd failure.
   assert.match(installer, /SuccessExitStatus=1/);
   // The importer script is NOT referenced by any monitoring unit.
