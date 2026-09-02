@@ -8,12 +8,14 @@
  *   - exactly 122 `_du` products with an existing base;
  *   - exactly 25 `_du` orphans without a base;
  *   - 122/122 base_slug === du_slug minus the `_du` suffix;
- *   - exactly 18 pairs with differing price (fixed id set).
+ *   - exactly 17 pairs with differing price (fixed id set).
  *
  * Task #34 audit 2026-09-01 (regeneration after supplier catalog churn —
  * investigation in Task #33):
  *   - live state: 147 _du total = 122 paired + 25 orphan; slug derivation
  *     verified 122/122; 104 same-price pairs; 18 price-diff pairs.
+ *   - 2026-09-02 regeneration: 7290720_du drifted back to equal prices
+ *     (du 4999 -> 4799, base 4799) -> 105 same-price + 17 price-diff.
  *   - 9 former redirect pairs drifted to differing prices since the Task #26
  *     generation and move to the price-diff list (their 301s are removed —
  *     they were the mis-redirect risk identified in Task #33):
@@ -46,7 +48,7 @@ const svc = createClient(
   { auth: { persistSession: false } }
 );
 
-const AUDIT_DATE = '2026-09-01';
+const AUDIT_DATE = '2026-09-02';
 const PRICE_DIFF_YC = new Set([
   // 6 documented by the 2026-08-31 audit (still differ on 2026-09-01)
   '6241811_du', '6849632_du', '6873343_du', '6988988_du', '7204300_du', '7270074_du',
@@ -57,9 +59,13 @@ const PRICE_DIFF_YC = new Set([
   // drifted from the redirect set since the Task #26 generation (supplier
   // price churn, Task #33/#34) — their stale 301s are removed by this run
   '6349848_du', '6482008_du', '6885495_du', '7067155_du', '7109372_du',
-  '7232191_du', '7264937_du', '7269797_du', '7290720_du',
-  // note: 6871226_du left this list — its du and base prices are now equal
-  // (19499.00 both sides), so it qualifies as a verified same-price redirect
+  '7232191_du', '7264937_du', '7269797_du',
+  // notes:
+  // - 6871226_du left this list on 2026-09-01 — its du and base prices are
+  //   now equal (19499.00 both sides), so it qualifies as a verified
+  //   same-price redirect;
+  // - 7290720_du left this list on 2026-09-02 — same case (du 4999 -> 4799,
+  //   base 4799; prices equal), flagged by catalog-health-check price-drift.
 ]);
 const stripDu = (s: string) => s.replace(/_du$/, '');
 
@@ -128,9 +134,9 @@ if (pairs.length !== 122) fail(`pairs ${pairs.length} !== 122`);
 if (orphans.length !== 25) fail(`orphans ${orphans.length} !== 25`);
 if (pairs.some((p) => p.baseSlug !== stripDu(p.duSlug))) fail('slug derivation changed');
 const priceDiff = pairs.filter((p) => p.duPrice !== undefined);
-if (priceDiff.length !== 18) fail(`price-diff ${priceDiff.length} !== 18`);
+if (priceDiff.length !== 17) fail(`price-diff ${priceDiff.length} !== 17`);
 if (priceDiff.some((p) => !PRICE_DIFF_YC.has(p.duYc))) fail('price-diff set changed');
-if (PRICE_DIFF_YC.size !== 18) fail(`PRICE_DIFF_YC ${PRICE_DIFF_YC.size} !== 18`);
+if (PRICE_DIFF_YC.size !== 17) fail(`PRICE_DIFF_YC ${PRICE_DIFF_YC.size} !== 17`);
 
 // 3. Emit the module (104 redirect pairs = pairs minus 18 price-diff).
 const redirect = pairs
