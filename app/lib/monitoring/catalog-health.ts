@@ -8,10 +8,12 @@
  * Status model (production audit 2026-08-28):
  *   FAIL — sync is actually broken: a failed import batch, a stuck running
  *          batch, or no successful Yugcontract run in the last 96h;
- *   WARN — degraded catalog data (products without images/price/category)
+ *   WARN — degraded catalog data (products without price/category)
  *          or a sync that is older than its 48h schedule allows;
- *   PASS — no critical problems. Manual (non-YC) products and pending
- *          orders are informational and do not escalate the overall status.
+ *   PASS — no critical problems. Manual (non-YC) products, pending orders
+ *          and imageless active products (expected import backlog before
+ *          photo upload; storefront eligibility = product_images!inner)
+ *          are informational and do not escalate the overall status.
  *
  * Exit codes (systemd-friendly): PASS=0, WARN=1, FAIL=2.
  */
@@ -254,9 +256,9 @@ export function buildCatalogChecks(
       count: counts.noImages,
       description:
         counts.noImages > 0
-          ? 'Товари без жодного фото: невидимі на вітрині та відсутні в sitemap (eligibility = product_images!inner). Виправляється контентною кампанією, не автоматикою.'
+          ? 'Товари без жодного фото: невидимі на вітрині та відсутні в sitemap (eligibility = product_images!inner). Очікуваний стан свіжого імпорту до завантаження фото — advisory, статус не погіршує, інакше беклог зображень тримає health у WARN і маскує реальні регресії.'
           : 'Усі активні товари мають зображення.',
-      affectsStatus: true,
+      affectsStatus: false,
       ...(counts.noImages > 0 && input.noImageItems?.length
         ? { items: input.noImageItems }
         : {}),

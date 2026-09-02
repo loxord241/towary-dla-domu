@@ -76,7 +76,7 @@ test('HEALTH: healthy input classifies as PASS with exit 0', () => {
   }
 });
 
-test('HEALTH: products without images escalate to WARN (exit 1) and carry items', () => {
+test('HEALTH: products without images stay visible but advisory (expected import backlog)', () => {
   const checks = buildCatalogChecks(
     input({
       counts: { activeTotal: 4721, noYcId: 0, noCategory: 0, noImages: 591, noPrice: 0, nonPositivePrice: 0 },
@@ -87,7 +87,11 @@ test('HEALTH: products without images escalate to WARN (exit 1) and carry items'
   assert.equal(noImages.level, 'warn');
   assert.equal(noImages.count, 591);
   assert.deepEqual(noImages.items, ['24010/106 | ABC-1 | slug-x | Name X']);
-  assert.deepEqual(overallResult(checks), { status: 'WARN', exitCode: 1 });
+  // Imageless active products are the documented import backlog (storefront
+  // eligibility = product_images!inner): reported with items, never escalate
+  // the overall status — the image backlog must not hold health at WARN.
+  assert.equal(noImages.affectsStatus, false);
+  assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
 });
 
 test('HEALTH: no category / no price / non-positive price are WARN, not FAIL', () => {

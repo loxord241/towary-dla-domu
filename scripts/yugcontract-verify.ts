@@ -47,11 +47,17 @@ interface SampleRow {
   category_id: string | null;
   brand_id: string | null;
 }
+// Storefront-eligible sample only (smoke eligibility 2026-09-02): the PDP,
+// catalog and search surface products through `product_images!inner`, so an
+// active product with zero images is a legitimate HTTP 404 and must never be
+// picked as the smoke sample (is_active alone ≠ видимость на витрине).
 const { data: sampleRows } = await client
   .from('products')
-  .select('id,yugcontract_id,sku,name,slug,price,old_price,stock_quantity,availability_status,category_id,brand_id')
+  .select('id,yugcontract_id,sku,name,slug,price,old_price,stock_quantity,availability_status,category_id,brand_id,images:product_images!inner(id)')
+  .eq('is_active', true)
   .not('yugcontract_id', 'is', null)
   .gte('stock_quantity', 5)
+  .order('created_at', { ascending: false })
   .limit(1)
   .returns<SampleRow[]>();
 const sample = sampleRows?.[0];
