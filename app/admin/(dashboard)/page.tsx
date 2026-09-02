@@ -68,6 +68,12 @@ export default async function AdminPage() {
       title: "Зворотний зв'язок",
       description: 'Анонімні пропозиції відвідувачів',
     },
+    {
+      href: '/admin/announcements',
+      icon: '📢',
+      title: 'Повідомлення магазину',
+      description: 'Оголошення та попередження для покупців',
+    },
   ];
 
   return (

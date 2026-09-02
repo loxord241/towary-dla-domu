@@ -6,6 +6,7 @@ import { fetchProductBySlug, fetchPublishedReviews, fetchReviewSummary, fetchRel
 import { getPublicImageUrls, getMainPublicImageUrl } from '@/app/lib/supabase-storage'
 import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
+import Announcements from '@/app/components/Announcements'
 import AddToCartButton from '@/app/components/AddToCartButton'
 import FavoriteButton from '@/app/components/FavoriteButton'
 import ProductGallery from '@/app/components/ProductGallery'
@@ -150,6 +151,7 @@ export default async function ProductPage({
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <SiteHeader />
+      <Announcements />
 
       <main className="container mx-auto flex-1 px-4 py-8">
         <nav aria-label="Навігація" className="mb-5 text-sm text-gray-500">

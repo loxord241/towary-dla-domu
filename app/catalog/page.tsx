@@ -26,6 +26,7 @@ import {
 } from '@/app/lib/schema-org'
 import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
+import Announcements from '@/app/components/Announcements'
 import ProductJsonLd from '@/app/components/ProductJsonLd'
 import SearchViewTracker from '@/app/components/SearchViewTracker'
 import CatalogFilters from './CatalogFilters'
@@ -287,6 +288,7 @@ export default async function CatalogPage({
   return (
     <div className="min-h-screen bg-gray-50">
       <SiteHeader />
+      <Announcements />
       {/* BreadcrumbList for category views — ProductJsonLd is the sanctioned
           JSON-LD script sink (same serializeJsonLd escaping). */}
       <ProductJsonLd data={breadcrumbJsonLd} />

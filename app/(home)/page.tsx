@@ -8,6 +8,7 @@ import {
 import { getMainPublicImageUrl } from '@/app/lib/supabase-storage'
 import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
+import Announcements from '@/app/components/Announcements'
 import ProductCard from '@/app/components/ProductCard'
 
 // Unique home metadata (SEO package 2026-08-26): previously the page fell
@@ -43,6 +44,7 @@ export default async function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <SiteHeader />
+      <Announcements />
 
       {/* Hero */}
       <section className="bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-600 text-white">

@@ -3,10 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import SiteHeader from '@/app/components/SiteHeader'
 import EmptyState from '@/app/components/EmptyState';
 import { CartIcon } from '@/app/components/icons';
-import SiteFooter from '@/app/components/SiteFooter';
 import { useCart, MAX_ITEM_QUANTITY } from '@/app/lib/cart-context';
 import {
   fetchCartPreview,
@@ -127,36 +125,30 @@ export default function CartPage() {
   // content settles instead of "blank page → sudden pop-in".
   if (!hydrated || (loading && items.length > 0)) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <SiteHeader />
-        <div className="container mx-auto px-4 py-8">
-          <h1 className="text-2xl font-bold mb-6">Кошик</h1>
-          <div className="flex flex-col lg:flex-row gap-6">
-            <div className="lg:w-2/3 space-y-3" aria-hidden>
-              {Array.from({ length: Math.min(Math.max(items.length, 2), 4) }).map((_, i) => (
-                <CartLineSkeleton key={i} />
-              ))}
-            </div>
-            <div className="lg:w-1/3">
-              <div className="card p-6 space-y-3">
-                <div className="skeleton h-5 w-24" />
-                <div className="skeleton h-4 w-32" />
-                <div className="skeleton h-6 w-40" />
-                <div className="skeleton h-12 w-full rounded-lg" />
-              </div>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold mb-6">Кошик</h1>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="lg:w-2/3 space-y-3" aria-hidden>
+            {Array.from({ length: Math.min(Math.max(items.length, 2), 4) }).map((_, i) => (
+              <CartLineSkeleton key={i} />
+            ))}
+          </div>
+          <div className="lg:w-1/3">
+            <div className="card p-6 space-y-3">
+              <div className="skeleton h-5 w-24" />
+              <div className="skeleton h-4 w-32" />
+              <div className="skeleton h-6 w-40" />
+              <div className="skeleton h-12 w-full rounded-lg" />
             </div>
           </div>
         </div>
-        <SiteFooter />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <SiteHeader />
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Кошик</h1>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">Кошик</h1>
 
         {error && (
           <div
@@ -337,8 +329,6 @@ export default function CartPage() {
             </div>
           </div>
         )}
-      </div>
-      <SiteFooter />
     </div>
   );
 }

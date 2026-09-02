@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Injects a one-time graphify reminder per session when the knowledge graph exists.
+# Port of the opencode graphify plugin: opencode could rewrite the bash command,
+# ZCode hooks cannot - so the reminder is injected as context on the first user
+# prompt instead of being prepended to the first bash call.
+
+set -euo pipefail
+
+dir="${ZCODE_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$PWD}}"
+[ -f "$dir/graphify-out/graph.json" ] || exit 0
+
+sid="${CLAUDE_SESSION_ID:-${ZCODE_SESSION_ID:-default}}"
+marker="/tmp/zcode-graphify-${sid}"
+[ -e "$marker" ] && exit 0
+touch "$marker" 2>/dev/null || exit 0
+
+msg='[graphify] knowledge graph at graphify-out/. For focused questions, run graphify query with your question (scoped subgraph, usually much smaller than GRAPH_REPORT.md) instead of grepping raw files. Read GRAPH_REPORT.md only for broad architecture context.'
+
+printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"%s"}}\n' "$msg"

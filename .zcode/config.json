@@ -1,0 +1,30 @@
+{
+  "mcp": {
+    "servers": {
+      "graphify": {
+        "type": "stdio",
+        "command": "/home/loxord/.local/bin/graphify-mcp",
+        "args": ["graphify-out/graph.json"],
+        "cwd": "/home/loxord/projects/my-shop",
+        "enabled": true,
+        "timeoutMs": 60000
+      }
+    }
+  },
+  "hooks": {
+    "enabled": true,
+    "events": {
+      "UserPromptSubmit": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash \"${ZCODE_PROJECT_DIR}/.zcode/hooks/graphify-reminder\"",
+              "timeoutMs": 5000
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

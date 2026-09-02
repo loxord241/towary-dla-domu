@@ -11946,7 +11946,7 @@
       "file_type": "code",
       "norm_label": "announcements()",
       "source_file": "app/components/Announcements.tsx",
-      "source_location": "L69"
+      "source_location": "L66"
     },
     {
       "id": "app_components_icons_base",
@@ -26164,7 +26164,7 @@
       "file_type": "code",
       "norm_label": "type_styles",
       "source_file": "app/components/Announcements.tsx",
-      "source_location": "L39"
+      "source_location": "L36"
     },
     {
       "id": "app_components_icons",
@@ -36374,7 +36374,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/components/Announcements.tsx",
-      "source_location": "L70",
+      "source_location": "L67",
       "weight": 1.0
     },
     {
@@ -59482,7 +59482,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/components/Announcements.tsx",
-      "source_location": "L39",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -59493,7 +59493,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/components/Announcements.tsx",
-      "source_location": "L69",
+      "source_location": "L66",
       "weight": 1.0
     },
     {
@@ -84178,7 +84178,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "app/components/Announcements.tsx",
-      "source_location": "L48",
+      "source_location": "L45",
       "weight": 1.0
     },
     {
@@ -84190,7 +84190,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "app/components/Announcements.tsx",
-      "source_location": "L53",
+      "source_location": "L50",
       "weight": 1.0
     },
     {
@@ -84202,7 +84202,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "app/components/Announcements.tsx",
-      "source_location": "L58",
+      "source_location": "L55",
       "weight": 1.0
     },
     {
@@ -84214,7 +84214,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "app/components/Announcements.tsx",
-      "source_location": "L63",
+      "source_location": "L60",
       "weight": 1.0
     },
     {
