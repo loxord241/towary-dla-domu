@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 # WSL/Linux launcher for the EXISTING Yugcontract sync.
 #
-# Runs the UNCHANGED canonical importer:
+# Phase 1 — products/prices: the UNCHANGED canonical importer
 #   node scripts/yugcontract-import-run.ts --run
-# Credentials come ONLY from the repo-local .env.local, which the importer
-# itself reads. No secrets are passed as arguments and none are printed.
+# Phase 2 — supplier content (descriptions + specifications): the EXISTING
+#   two-stage content importer, run only after phase 1 succeeded:
+#   node scripts/yugcontract-content-fetch.ts --stage   (one get-content-goods call → staging)
+#   node scripts/yugcontract-content-apply.ts --run     (diff-aware batches → products)
+# No new importer logic lives here — both phases are the production scripts.
+# Credentials come ONLY from the repo-local .env.local, which the importers
+# themselves read. No secrets are passed as arguments and none are printed.
 #
 # Designed to be invoked by the systemd timer (see
 # scripts/wsl/install-yugcontract-timer.sh) or manually.
@@ -51,6 +56,8 @@ esac
 # --- preflight ----------------------------------------------------------------
 [ -f "$ROOT/.env.local" ] || { echo "[yugcontract-sync] FAILED: .env.local not found in $ROOT"; exit 4; }
 [ -f "$ROOT/scripts/yugcontract-import-run.ts" ] || { echo "[yugcontract-sync] FAILED: importer script missing"; exit 5; }
+[ -f "$ROOT/scripts/yugcontract-content-fetch.ts" ] || { echo "[yugcontract-sync] FAILED: content fetch script missing"; exit 5; }
+[ -f "$ROOT/scripts/yugcontract-content-apply.ts" ] || { echo "[yugcontract-sync] FAILED: content apply script missing"; exit 5; }
 
 # --- logs: dir, daily file, ~14 day rotation ----------------------------------
 LOGS="$ROOT/logs"
@@ -91,22 +98,57 @@ echo "[yugcontract-sync] log: $LOG"
 # --- canonical sync -----------------------------------------------------------
 # Defensive scrub so no env-like or token-bearing line can reach the log/journal.
 set -o pipefail
-node scripts/yugcontract-import-run.ts --run ${FORCE:+--force} 2>&1 |
+log_pipe() {
     awk '{
         if ($0 ~ /^[A-Z0-9_]+[ \t]*=/) print "[redacted env-like line]";
         else if (tolower($0) ~ /requesttoken|authtoken|authorization|bearer[[:space:]]|token=|bot[0-9]+:/) print "[redacted token-bearing line]";
         else print;
     }' | tee -a "$LOG"
+}
+
+node scripts/yugcontract-import-run.ts --run ${FORCE:+--force} 2>&1 | log_pipe
 
 RC=${PIPESTATUS[0]}
 if [ "$RC" -ne 0 ]; then
     echo "[yugcontract-sync] importer exited with code $RC"
     echo "[yugcontract-sync] crashed runs can be resumed with:"
     echo "    node scripts/yugcontract-import-run.ts --run --resume <RUN_ID from log>"
-else
-    # stamp success for the 48h interval guard (failed runs are NOT stamped,
-    # so the next daily trigger will retry)
-    date +%s > "$LAST_STAMP"
-    echo "[yugcontract-sync] done OK"
+    exit "$RC"
 fi
-exit "$RC"
+
+# --- content phase (description + specifications) ------------------------------
+# The EXISTING two-stage content importer, invoked exactly once per sync:
+#   fetch --stage : ONE full get-content-goods call → upsert yc_content_goods
+#                   (staging only; product_images is never touched here)
+#   apply --run   : diff-aware checkpointed batches over staging → writes ONLY
+#                   products.description + products.specifications
+#                   (assertContentFields guard; empty-HTML supplier shells
+#                   excluded; identical values are no-ops; resumable).
+# Ordering guard: apply runs ONLY after fetch exited 0 — it never applies a
+# stale snapshot on top of a failed refresh. Products phase failure above
+# already exits before this point.
+echo "[yugcontract-sync] content phase: fetch --stage"
+node scripts/yugcontract-content-fetch.ts --stage 2>&1 | log_pipe
+FETCH_RC=${PIPESTATUS[0]}
+if [ "$FETCH_RC" -ne 0 ]; then
+    echo "[yugcontract-sync] content fetch exited with code $FETCH_RC — apply skipped"
+    echo "[yugcontract-sync] (products/price phase above DID complete; content will retry on the next sync)"
+    exit "$FETCH_RC"
+fi
+
+echo "[yugcontract-sync] content phase: apply --run"
+node scripts/yugcontract-content-apply.ts --run 2>&1 | log_pipe
+APPLY_RC=${PIPESTATUS[0]}
+if [ "$APPLY_RC" -ne 0 ]; then
+    echo "[yugcontract-sync] content apply exited with code $APPLY_RC"
+    echo "[yugcontract-sync] crashed content runs can be resumed with:"
+    echo "    node scripts/yugcontract-content-apply.ts --run --resume <RUN_ID from log>"
+    exit "$APPLY_RC"
+fi
+
+# stamp success for the 48h interval guard — only when ALL phases succeeded
+# (failed runs are NOT stamped, so the next daily trigger will retry; the
+# products re-run is diff-aware and costs ~2 min).
+date +%s > "$LAST_STAMP"
+echo "[yugcontract-sync] done OK"
+exit 0

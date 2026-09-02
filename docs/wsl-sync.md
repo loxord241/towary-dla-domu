@@ -1,8 +1,18 @@
 # Yugcontract Sync в WSL2 (systemd timer)
 
-Ежедневная синхронизация цен/остатков Yugcontract напрямую из WSL2 на домашнем
-ПК (разрешённый поставщиком IP). Запускается **существующий** импортер без
-изменений: `node scripts/yugcontract-import-run.ts --run`. Credentials — только
+Ежедневная синхронизация Yugcontract напрямую из WSL2 на домашнем
+ПК (разрешённый поставщиком IP). Две фазы, обе — **существующие** импортеры
+без изменений:
+
+1. товары/цены/остатки: `node scripts/yugcontract-import-run.ts --run`;
+2. supplier content (описания + характеристики) — только если фаза 1
+   успешно завершилась: `node scripts/yugcontract-content-fetch.ts --stage`
+   (один вызов get-content-goods → staging `yc_content_goods`), затем
+   `node scripts/yugcontract-content-apply.ts --run` (diff-aware батчи →
+   ONLY `products.description` + `products.specifications`, checkpoint в
+   `yc_content_batches`, пустые HTML-шеллы поставщика исключены).
+
+Credentials — только
 из `.env.local` в корне репо; в юнитах, скриптах и логах секретов нет.
 
 Расписание: systemd будит лаунчер **ежедневно в 18:00**, но реальный интервал
@@ -21,7 +31,7 @@ Persistent-догона после простоя — чистый «кажды�
 
 | Файл | Назначение |
 |---|---|
-| `scripts/wsl/yugcontract-sync.sh` | лаунчер: root/node/.env.local проверки, лог `logs/yugcontract-sync-ГГГГММДД.log` с ротацией 14 дней, scrub секретов, `flock` против параллельных запусков, корректный exit code |
+| `scripts/wsl/yugcontract-sync.sh` | лаунчер: root/node/.env.local проверки, лог `logs/yugcontract-sync-ГГГГММДД.log` с ротацией 14 дней, scrub секретов, `flock` против параллельных запусков, корректный exit code; после успешной фазы 1 запускает content-фазу (fetch --stage → apply --run) |
 | `scripts/wsl/install-yugcontract-timer.sh` | идемпотентная установка systemd unit'ов (`yugcontract-sync.service` + `yugcontract-sync.timer`) и включение таймера |
 
 ## 1. Установить таймер
@@ -124,6 +134,14 @@ sudo systemctl daemon-reload
 
 Примечания:
 
+* Content-фаза (описания/характеристики) не импортирует изображения в
+  `product_images` — fetch лишь обновляет метаданные staging
+  (`yc_content_goods.pictures`); apply пишет только description/specifications.
+* Если content-фаза упала при успешной фазе 1 — sync возвращает ≠ 0 и штамп
+  48h-гейта НЕ ставится: следующий дневной триггер повторит весь sync
+  (фаза 1 при этом diff-aware и отработает как дёешевый no-op), content
+  догонится тогда же. Упавший content-run также можно продолжить вручную:
+  `node scripts/yugcontract-content-apply.ts --run --resume <RUN_ID>`.
 * Отсутствие новых изображений ошибкой НЕ считается: price/stock sync
   изображения не импортирует (изображения — отдельная контентная кампания).
 * Деактивации/удаления товаров sync не выполняет по дизайну — такой пункт в

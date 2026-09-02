@@ -41,10 +41,10 @@ const {
   loadOurProductsForContent,
 } = await import('../app/lib/yugcontract/content-import.ts');
 
-// yugcontract_ids whose supplier "descriptions" are empty HTML shells (no
-// text after stripping tags). Writing them would store markup-only strings
-// while marking the product as "has description". Excluded here ONLY from the
-// description field; their specification updates still flow normally.
+// Legacy belt-and-suspenders barrier for KNOWN empty-shell supplier ids
+// (2026-08/09 audit). Detection of NEW shells no longer depends on this
+// list: planContentUpdates applies the dynamic isEmptyHtmlShell guard to
+// every staged description. Kept for compatibility/historical ids only.
 const EXCLUDE_EMPTY_HTML_DESC_IDS: ReadonlySet<string> = new Set([
   '6377542', '6377543', '6466242', '6546069', '6655320', '6806965',
   '6819981', '6824731', '6837160', '6858140', '6860593', '6863794',
@@ -120,7 +120,8 @@ if (mode === 'plan') {
   console.log(`  описів ЗАПОВНЕННЯ (було порожньо): ${fmtInt(plan.updates.filter((u) => !u.currentHadDescription && u.fields.description).length)}`);
   console.log(`  описів ПЕРЕЗАПИС (було непорожньо): ${fmtInt(plan.overwriteNonEmptyCount)} ← перевірте вручну`);
   console.log(`  specifications зміниться:           ${fmtInt(plan.updates.filter((u) => u.fields.specifications).length)}`);
-  console.log(`  описів ВИКЛЮЧЕНО (порожні HTML):    ${fmtInt(plan.excludedDescription)}`);
+  console.log(`  описів ВИКЛЮЧЕНО (статичний список): ${fmtInt(plan.excludedDescription)}`);
+  console.log(`  описів ПОРОЖНІ HTML-ШЕЛЛІ (динамічний guard): ${fmtInt(plan.emptyShellDescription)}`);
   console.log(`ідентичних (no-op):               ${fmtInt(plan.identical)}`);
   console.log(`без опису в staging:              ${fmtInt(plan.noDescriptionAvailable)}`);
   console.log(`unmatched staging рядків:         ${fmtInt(plan.unmatchedStaged)}`);

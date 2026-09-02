@@ -33,7 +33,10 @@ import { duBaseIdOf, DU_BASE_TO_DU } from './content-du-mapping.ts';
  *  - resumable: one checkpoint row per (run, phase, batch); crashed
  *    'running' batches become retryable after STALE_RUNNING_MS;
  *  - every write is derived from staging rows only — get-content-goods is
- *    never called here.
+ *    never called here;
+ *  - markup-only empty HTML shell descriptions are NEVER written
+ *    (isEmptyHtmlShell dynamic guard); the static excludeDescriptionIds
+ *    list remains as a legacy extra barrier only.
  */
 
 export const CONTENT_BATCH_SIZE = 200;
@@ -41,6 +44,29 @@ export const CONTENT_STALE_RUNNING_MS = 10 * 60 * 1000;
 
 /** Columns the content pipeline may EVER touch. Nothing else. */
 const WRITABLE_FIELDS = new Set(['description', 'specifications']);
+
+/**
+ * True when a supplier description carries NO real text after safe tag/entity
+ * stripping: markup-only HTML shells like `<div><div><div></div></div></div>`,
+ * `<p>&nbsp;</p>` or pure whitespace. Conservative by design — anything that
+ * retains a single non-whitespace character (including entities that decode to
+ * punctuation, e.g. `&amp;`) is treated as real text and still imports.
+ *
+ * This is the DYNAMIC guard that keeps new empty-shell supplier ids out of
+ * products.description without maintaining a static id list (2026-09-02:
+ * ids 7202243 / 7270047 slipped past the static list). EXCLUDE_EMPTY_HTML_DESC_IDS
+ * in scripts/yugcontract-content-apply.ts stays as a belt-and-suspenders
+ * barrier for historical ids but is no longer required for detection.
+ */
+export function isEmptyHtmlShell(html: string): boolean {
+  return (
+    html
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&#160;|&#x0*a0;/gi, ' ')
+      .trim() === ''
+  );
+}
 
 /** Defense-in-depth guard applied before every client.update(). */
 export function assertContentFields(fields: Record<string, unknown>): void {
@@ -84,6 +110,8 @@ export interface ContentPlan {
   overwriteNonEmptyCount: number;
   /** matched rows whose staged description existed but was suppressed (excludeDescriptionIds) */
   excludedDescription: number;
+  /** matched rows whose staged description is a markup-only empty HTML shell (dynamic guard) */
+  emptyShellDescription: number;
 }
 
 function specsDiffer(
@@ -138,6 +166,7 @@ export function planContentUpdates(
   let noDescriptionAvailable = 0;
   let overwriteNonEmptyCount = 0;
   let excludedDescription = 0;
+  let emptyShellDescription = 0;
 
   for (const s of staged) {
     const targets: {
@@ -162,7 +191,12 @@ export function planContentUpdates(
     for (const { product, ycId, duBase } of targets) {
       const fields: ContentUpdateOp['fields'] = {};
 
-      const stagedDesc = s.description !== null && s.description.trim() !== '' ? s.description : null;
+      const rawStagedDesc = s.description !== null && s.description.trim() !== '' ? s.description : null;
+      // Dynamic empty-shell guard (2026-09-02): markup-only supplier HTML
+      // (no real text after tag/entity stripping) is treated like an absent
+      // description — never written, existing content never blanked out.
+      // Specifications below still flow normally for such rows.
+      const stagedDesc = rawStagedDesc !== null && !isEmptyHtmlShell(rawStagedDesc) ? rawStagedDesc : null;
       const currentDesc = product.description !== null && product.description.trim() !== '' ? product.description : null;
       // Excluded ids: never emit a description, but still allow specs below.
       // A `_du` product inherits the exclusion of its base id.
@@ -182,7 +216,11 @@ export function planContentUpdates(
         fields.specifications = buildSpecificationJson(s.params);
       }
 
-      if (skipDesc) {
+      if (rawStagedDesc !== null && stagedDesc === null) {
+        // dynamic empty-shell guard: counted for observability, never written
+        // (checked FIRST — primary detection; the static list is legacy)
+        emptyShellDescription += 1;
+      } else if (skipDesc) {
         if (stagedDesc !== null) excludedDescription += 1;
       } else if (stagedDesc === null) {
         // keep existing description untouched (never blank out content)
@@ -210,7 +248,7 @@ export function planContentUpdates(
     }
   }
 
-  return { updates, identical, unmatchedStaged, noDescriptionAvailable, overwriteNonEmptyCount, excludedDescription };
+  return { updates, identical, unmatchedStaged, noDescriptionAvailable, overwriteNonEmptyCount, excludedDescription, emptyShellDescription };
 }
 
 export interface PlannedBatch {

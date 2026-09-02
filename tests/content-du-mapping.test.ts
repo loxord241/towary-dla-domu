@@ -162,6 +162,7 @@ test('REGRESSION: regular (non-du) plan output is pinned byte-identically', () =
     noDescriptionAvailable: 0,
     overwriteNonEmptyCount: 0,
     excludedDescription: 0,
+    emptyShellDescription: 0,
   });
 });
 
