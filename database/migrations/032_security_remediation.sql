@@ -147,10 +147,6 @@ $$;
 
 -- ---------------------------------------------------------------------------
 -- 6) admin_replace_shipment_plan: restore the 023 cap (10), keep 026 logic
--- ---------------------------------------------------------------------------
-
--- ---------------------------------------------------------------------------
--- 6) admin_replace_shipment_plan: restore the 023 cap (10), keep 026 logic
 -- (026 re-created it verbatim from 021 and reverted the 023 cap; the body
 -- below is 026's current definition with ONLY the cap and the error index
 -- changed — verified by diff against 021/023/026.)
@@ -468,10 +464,6 @@ $$;
 revoke all on function public.admin_replace_shipment_plan(uuid, jsonb) from public;
 revoke execute on function public.admin_replace_shipment_plan(uuid, jsonb) from anon, authenticated;
 grant execute on function public.admin_replace_shipment_plan(uuid, jsonb) to service_role;
-
--- ---------------------------------------------------------------------------
--- 7) place_order: bind idempotency replay to the caller's email
--- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
 -- 7) place_order: bind idempotency replay to the caller's email
