@@ -27,4 +27,4 @@ Rules:
 
 1. `bash scripts/wsl/yugcontract-sync.sh` с увеличенным bash-таймаутом (15–30 мин). Не запускать `node scripts/yugcontract-import-run.ts --run` напрямую — только лаунчер (flock + лог). Если ответ «skipping (< 48h interval)», а владелец явно хочет запустить сейчас — повторить с `--force`.
 2. Exit 0 → прочитать хвост сегодняшнего `logs/yugcontract-sync-ГГГГММДД.log` и выполнить `node scripts/catalog-health-check.ts` (read-only). Exit ≠ 0 → хвост лога; при упавшем батче предложить `node scripts/yugcontract-import-run.ts --run --resume <RUN_ID>`.
-3. Отчитаться: exit code, inserted/updated/skipped/errors, длительность, health-check RESULT, RUN_ID. Отсутствие новых изображений ошибкой не считается (sync изображения не импортирует). Подробности: docs/wsl-sync.md, раздел 7.
+3. Отчитаться: exit code, inserted/updated/skipped/errors (включая images-фазу), длительность, health-check RESULT, RUN_ID. Sync состоит из трёх фаз — товары/цены, контент, изображения (hotlink в `product_images`); упавшая images-фаза лечится `node scripts/yugcontract-content-images.ts --run --resume <RUN_ID>`. Подробности: docs/wsl-sync.md, раздел 7.

@@ -7,7 +7,10 @@
 #   two-stage content importer, run only after phase 1 succeeded:
 #   node scripts/yugcontract-content-fetch.ts --stage   (one get-content-goods call → staging)
 #   node scripts/yugcontract-content-apply.ts --run     (diff-aware batches → products)
-# No new importer logic lives here — both phases are the production scripts.
+# Phase 3 — product images (hotlink): the EXISTING images importer, run only
+#   after phase 2 succeeded (staging must be fresh):
+#   node scripts/yugcontract-content-images.ts --run    (diff-aware batches → product_images)
+# No new importer logic lives here — all phases are the production scripts.
 # Credentials come ONLY from the repo-local .env.local, which the importers
 # themselves read. No secrets are passed as arguments and none are printed.
 #
@@ -58,6 +61,7 @@ esac
 [ -f "$ROOT/scripts/yugcontract-import-run.ts" ] || { echo "[yugcontract-sync] FAILED: importer script missing"; exit 5; }
 [ -f "$ROOT/scripts/yugcontract-content-fetch.ts" ] || { echo "[yugcontract-sync] FAILED: content fetch script missing"; exit 5; }
 [ -f "$ROOT/scripts/yugcontract-content-apply.ts" ] || { echo "[yugcontract-sync] FAILED: content apply script missing"; exit 5; }
+[ -f "$ROOT/scripts/yugcontract-content-images.ts" ] || { echo "[yugcontract-sync] FAILED: content images script missing"; exit 5; }
 
 # --- logs: dir, daily file, ~14 day rotation ----------------------------------
 LOGS="$ROOT/logs"
@@ -144,6 +148,26 @@ if [ "$APPLY_RC" -ne 0 ]; then
     echo "[yugcontract-sync] crashed content runs can be resumed with:"
     echo "    node scripts/yugcontract-content-apply.ts --run --resume <RUN_ID from log>"
     exit "$APPLY_RC"
+fi
+
+# --- images phase (product_images hotlink) -------------------------------------
+# The EXISTING images importer, invoked exactly once per sync:
+#   images --run : diff-aware checkpointed batches over staging
+#                  (yc_content_goods.pictures) → writes ONLY product_images
+#                  as external hotlink URLs (manual Storage rows untouched;
+#                  deletions intentionally NOT implemented; resumable).
+# Ordering guard: runs ONLY after fetch + apply exited 0 — the staging the
+# image URLs come from must be a fresh snapshot. Products/content phase
+# failures above already exit before this point.
+echo "[yugcontract-sync] images phase: content-images --run"
+node scripts/yugcontract-content-images.ts --run 2>&1 | log_pipe
+IMAGES_RC=${PIPESTATUS[0]}
+if [ "$IMAGES_RC" -ne 0 ]; then
+    echo "[yugcontract-sync] images importer exited with code $IMAGES_RC"
+    echo "[yugcontract-sync] (products/content phases above DID complete; images will retry on the next sync)"
+    echo "[yugcontract-sync] crashed images runs can be resumed with:"
+    echo "    node scripts/yugcontract-content-images.ts --run --resume <RUN_ID from log>"
+    exit "$IMAGES_RC"
 fi
 
 # stamp success for the 48h interval guard — only when ALL phases succeeded

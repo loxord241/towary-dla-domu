@@ -1,7 +1,7 @@
 # Yugcontract Sync в WSL2 (systemd timer)
 
 Ежедневная синхронизация Yugcontract напрямую из WSL2 на домашнем
-ПК (разрешённый поставщиком IP). Две фазы, обе — **существующие** импортеры
+ПК (разрешённый поставщиком IP). Три фазы, все — **существующие** импортеры
 без изменений:
 
 1. товары/цены/остатки: `node scripts/yugcontract-import-run.ts --run`;
@@ -10,7 +10,12 @@
    (один вызов get-content-goods → staging `yc_content_goods`), затем
    `node scripts/yugcontract-content-apply.ts --run` (diff-aware батчи →
    ONLY `products.description` + `products.specifications`, checkpoint в
-   `yc_content_batches`, пустые HTML-шеллы поставщика исключены).
+   `yc_content_batches`, пустые HTML-шеллы поставщика исключены);
+3. изображения (hotlink) — только если фаза 2 успешно завершилась:
+   `node scripts/yugcontract-content-images.ts --run` (diff-aware батчи из
+   staging `yc_content_goods.pictures` → ONLY `product_images` как внешние
+   URL; ручные Storage-строки не трогаются; удаления сознательно не
+   реализованы; checkpoint в `yc_content_batches`, phase='images').
 
 Credentials — только
 из `.env.local` в корне репо; в юнитах, скриптах и логах секретов нет.
@@ -31,7 +36,7 @@ Persistent-догона после простоя — чистый «кажды�
 
 | Файл | Назначение |
 |---|---|
-| `scripts/wsl/yugcontract-sync.sh` | лаунчер: root/node/.env.local проверки, лог `logs/yugcontract-sync-ГГГГММДД.log` с ротацией 14 дней, scrub секретов, `flock` против параллельных запусков, корректный exit code; после успешной фазы 1 запускает content-фазу (fetch --stage → apply --run) |
+| `scripts/wsl/yugcontract-sync.sh` | лаунчер: root/node/.env.local проверки, лог `logs/yugcontract-sync-ГГГГММДД.log` с ротацией 14 дней, scrub секретов, `flock` против параллельных запусков, корректный exit code; после успешной фазы 1 запускает content-фазу (fetch --stage → apply --run), после неё — images-фазу (`content-images --run`) |
 | `scripts/wsl/install-yugcontract-timer.sh` | идемпотентная установка systemd unit'ов (`yugcontract-sync.service` + `yugcontract-sync.timer`) и включение таймера |
 
 ## 1. Установить таймер
@@ -106,7 +111,8 @@ sudo systemctl daemon-reload
    ```
 
    Bash-таймаут команды — увеличенный, 15–30 минут (типичный полный sync —
-   несколько минут; ориентир: 2026-08-31 прошёл за ~197 с + планирование).
+   несколько минут; ориентир: 2026-09-03 (с images-фазой) прошёл за ~10 мин,
+   более ранние без неё — ~200 с).
    Если лаунчер ответил «skipping (< 48h interval)», а владелец явно хочет
    запустить сейчас — повторить с `--force` (обходит только 48h-гейт;
    flock/логи/остальные защиты действуют).
@@ -134,16 +140,16 @@ sudo systemctl daemon-reload
 
 Примечания:
 
-* Content-фаза (описания/характеристики) не импортирует изображения в
-  `product_images` — fetch лишь обновляет метаданные staging
-  (`yc_content_goods.pictures`); apply пишет только description/specifications.
-* Если content-фаза упала при успешной фазе 1 — sync возвращает ≠ 0 и штамп
-  48h-гейта НЕ ставится: следующий дневной триггер повторит весь sync
-  (фаза 1 при этом diff-aware и отработает как дёешевый no-op), content
-  догонится тогда же. Упавший content-run также можно продолжить вручную:
-  `node scripts/yugcontract-content-apply.ts --run --resume <RUN_ID>`.
-* Отсутствие новых изображений ошибкой НЕ считается: price/stock sync
-  изображения не импортирует (изображения — отдельная контентная кампания).
+* Content-фаза (описания/характеристики) сама не пишет в `product_images` —
+  fetch лишь обновляет метаданные staging (`yc_content_goods.pictures`);
+  apply пишет только description/specifications. Изображения импортирует
+  отдельная images-фаза (`yugcontract-content-images.ts --run`), которая
+  идёт третьей и берёт URL из того же staging.
+* Если images-фаза упала при успешных фазах 1–2 — sync возвращает ≠ 0 и
+  штамп 48h-гейта НЕ ставится: следующий дневной триггер повторит весь sync
+  (фаза 1 diff-aware и отработает как дешёвый no-op), images догонятся
+  тогда же. Упавший images-run также можно продолжить вручную:
+  `node scripts/yugcontract-content-images.ts --run --resume <RUN_ID>`.
 * Деактивации/удаления товаров sync не выполняет по дизайну — такой пункт в
   отчёт не включается.
 * GitHub Actions / Yugcontract 403 — не чинить, вне сценария.
