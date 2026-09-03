@@ -46,12 +46,16 @@ export default function AddToCartButton({
     [variants, variantId]
   );
 
-  const effectiveStock = hasVariants
-    ? selectedVariant?.stockQuantity ?? 0
+  // Variant products have no buyable stock until a variant is chosen: an
+  // unselected variant is "unknown", never out-of-stock — otherwise the
+  // selector below becomes unreachable (P0 2026-09-03: every variant
+  // product rendered disabled «Немає в наявності» before a choice).
+  const effectiveStock: number | null = hasVariants
+    ? (selectedVariant?.stockQuantity ?? null)
     : stockQuantity;
   const outOfStock =
     availabilityStatus === 'out_of_stock' ||
-    effectiveStock <= 0 ||
+    (effectiveStock !== null && effectiveStock <= 0) ||
     (hasVariants && selectedVariant?.availabilityStatus === 'out_of_stock');
 
   const maxQty = Math.max(1, Math.min(effectiveStock || MAX_QTY, MAX_QTY));

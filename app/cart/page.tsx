@@ -108,12 +108,23 @@ export default function CartPage() {
     item,
     preview: lineFor(item.productId, item.variantId),
   }));
+  // Checkout parity (CheckoutForm.tsx): a MISSING preview (preview fetch
+  // failed or a line is absent) is UNKNOWN, never unavailable — only a
+  // RECEIVED preview proving !found / no price / out_of_stock marks the row
+  // unavailable. An unknown row must not read as «no longer available» and
+  // must not block the checkout CTA; place_order() revalidates server-side.
+  const isConfirmedUnavailable = (preview: CartPreviewLine | undefined) =>
+    preview !== undefined &&
+    (!preview.found ||
+      preview.unitPrice === null ||
+      preview.availabilityStatus === 'out_of_stock');
   const purchasableRows = rows.filter(
     ({ preview }) =>
       preview?.found === true &&
       preview.unitPrice !== null &&
       preview.availabilityStatus !== 'out_of_stock'
   );
+  const unknownRows = rows.filter(({ preview }) => preview === undefined);
   const subtotal = purchasableRows.reduce(
     (sum, { item, preview }) => sum + (preview?.unitPrice ?? 0) * item.quantity,
     0
@@ -179,10 +190,7 @@ export default function CartPage() {
             {/* Lines */}
             <div className="lg:w-2/3 space-y-3">
               {rows.map(({ item, preview }) => {
-                const unavailable =
-                  !preview?.found ||
-                  preview.unitPrice === null ||
-                  preview.availabilityStatus === 'out_of_stock';
+                const unavailable = isConfirmedUnavailable(preview);
                 const maxQty = Math.max(
                   1,
                   Math.min(preview?.stock ?? MAX_ITEM_QUANTITY, MAX_ITEM_QUANTITY)
@@ -230,6 +238,11 @@ export default function CartPage() {
                             </p>
                           )}
                         </>
+                      ) : preview === undefined ? (
+                        <p className="text-sm text-gray-500">
+                          Дані товару не завантажились — ціну та наявність буде
+                          перевірено при оформленні.
+                        </p>
                       ) : (
                         <p className="text-sm text-red-600">
                           Товар більше не доступний у каталозі
@@ -309,7 +322,7 @@ export default function CartPage() {
                 <p className="text-xs text-gray-400 mb-4">
                   Остаточна сума буде перерахована сервером при оформленні.
                 </p>
-                {purchasableRows.length > 0 ? (
+                {purchasableRows.length > 0 || unknownRows.length > 0 ? (
                   <Link
                     href="/checkout"
                     className="btn btn-primary w-full py-3 text-base"
