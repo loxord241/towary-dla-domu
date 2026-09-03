@@ -259,6 +259,15 @@ type CatalogCardRow = Omit<CatalogCardProduct, 'images'> & {
   pc?: { category_id: string }[] | null;
 };
 
+/**
+ * Row shape of the relevance-ranked data query: the card projection plus the
+ * scoring fields (searchRelevanceScore reads name/short_description/sku/
+ * yugcontract_id; rankSearchResults ties on created_at/id). Only fetched on
+ * the ranked search path — the plain path selects CATALOG_CARD_SELECT, whose
+ * rows still satisfy this type (the scoring fields are optional).
+ */
+type SearchCardRow = CatalogCardRow & SearchRankable;
+
 /** Card variant of normalizeProduct: sorts images, strips the junction embed. */
 function normalizeCatalogCard(row: CatalogCardRow): CatalogCardProduct {
   const { pc: _pc, ...rest } = row;
@@ -383,16 +392,26 @@ export function sanitizeSearchTerm(term: string): string {
  * pattern value, verified by tests/catalog-search.test.ts.
  */
 export function buildSearchConditions(search: string): string[] | null {
-  const sanitized = sanitizeSearchTerm(search);
-  if (!sanitized) return null;
-  // Cap the fan-out: each token becomes an `or` expression on the count AND
-  // the data query, so an absurdly long `q=` must not multiply ILIKE cost
-  // without bound. Ten tokens is far beyond any meaningful storefront query.
-  const tokens = [...new Set(sanitized.split(' ').filter(Boolean))].slice(0, 10);
+  const tokens = searchTokens(search);
+  if (tokens.length === 0) return null;
   return tokens.map(
     (token) =>
       `name.ilike.%${token}%,short_description.ilike.%${token}%,sku.ilike.%${token}%,yugcontract_id.ilike.%${token}%`
   );
+}
+
+/**
+ * Tokenize a raw search string EXACTLY as buildSearchConditions does:
+ * sanitize, split on spaces, dedupe, cap the fan-out. Each token becomes an
+ * `or` expression on the count AND the data query, so an absurdly long `q=`
+ * must not multiply ILIKE cost without bound. Ten tokens is far beyond any
+ * meaningful storefront query. The relevance scorer reuses this so it always
+ * sees the same token set the conditions matched the rows with.
+ */
+function searchTokens(search: string): string[] {
+  const sanitized = sanitizeSearchTerm(search);
+  if (!sanitized) return [];
+  return [...new Set(sanitized.split(' ').filter(Boolean))].slice(0, 10);
 }
 
 // ---- Typo-tolerance fallback (Task #40) -----------------------------------
@@ -432,6 +451,105 @@ export function relaxSearchTerm(search: string): string[] {
     next[idx] = next[idx].slice(0, -1);
     return next.join(' ');
   });
+}
+
+// ---- Search relevance ranking (2026-09 audit, search C1) -------------------
+//
+// PostgREST can only ORDER BY columns — there is no expression ordering and
+// this project deliberately adds no RPC/extension, so relevance is computed
+// in JS over the matched rows. The match SET is unchanged (same or=
+// conditions as the count query); only the ORDER of the default «нові»
+// search view changes, because created_at ordering surfaced the newest
+// imports instead of the best textual matches.
+
+/**
+ * Hard cap on rows scanned for relevance ranking. The ranked data query
+ * fetches up to this many matched rows in ONE request (PostgREST caps a
+ * single response at 1000 rows anyway), ranks them and slices the page in
+ * JS. Searches matching more rows than the cap keep the plain SQL ordering
+ * (deterministic created_at desc, id desc) instead of ranking a truncated
+ * set — at that width the match quality is nearly uniform anyway.
+ */
+export const SEARCH_RANK_SCAN_LIMIT = 1000;
+
+/** Fields the ranking reads; a superset of the catalog card projection. */
+export interface SearchRankable {
+  id: string;
+  name: string;
+  short_description?: string | null;
+  sku?: string | null;
+  yugcontract_id?: string | null;
+  created_at?: string | null;
+}
+
+/**
+ * PURE: relevance of one row for one search term — higher wins. Weights are
+ * spaced so the tiers can never overlap (a stronger tier always dominates
+ * every combination of weaker ones):
+ *   exact name (800) > name prefix (600) > name contains the query (400)
+ *   > per-token name hits (100 each, +50 when every token hits)
+ *   > SKU / supplier-article match (60 full, 30 per token)
+ *   > short-description hits (10 each).
+ * Matching semantics mirror the ILIKE conditions that matched the row:
+ * case-folded substring containment. The raw URL term is re-sanitized here,
+ * so special characters can never widen or corrupt the scoring.
+ */
+export function searchRelevanceScore(
+  row: SearchRankable,
+  search: string
+): number {
+  const query = sanitizeSearchTerm(search).toLowerCase();
+  if (!query) return 0;
+  // ILIKE folds case, the DB matched case-insensitively — the scorer must
+  // fold too, and re-dedupe AFTER folding («Tefal tefal» is one token).
+  const tokens = [...new Set(searchTokens(search).map((t) => t.toLowerCase()))];
+  const name = (row.name ?? '').toLowerCase();
+  const shortDescription = (row.short_description ?? '').toLowerCase();
+  const sku = (row.sku ?? '').toLowerCase();
+  const yugcontractId = (row.yugcontract_id ?? '').toLowerCase();
+
+  let score = 0;
+  if (name === query) score += 800;
+  if (name.startsWith(query)) score += 600;
+  if (name.includes(query)) score += 400;
+
+  const nameHits = tokens.filter((token) => name.includes(token)).length;
+  score += nameHits * 100;
+  if (tokens.length > 1 && nameHits === tokens.length) score += 50;
+
+  if (sku.includes(query) || yugcontractId.includes(query)) score += 60;
+  score +=
+    tokens.filter((t) => sku.includes(t) || yugcontractId.includes(t)).length *
+    30;
+
+  score +=
+    tokens.filter((token) => shortDescription.includes(token)).length * 10;
+  return score;
+}
+
+/**
+ * PURE: order matched rows by relevance (best first). Ties keep the SQL base
+ * order — created_at desc, then id desc, the exact deterministic order the
+ * un-ranked view used — so pagination never overlaps. Returns a new array;
+ * the input is not mutated.
+ */
+export function rankSearchResults<T extends SearchRankable>(
+  rows: T[],
+  search: string
+): T[] {
+  const scored = rows.map((row) => ({
+    row,
+    score: searchRelevanceScore(row, search),
+  }));
+  scored.sort((a, b) => {
+    if (a.score !== b.score) return b.score - a.score;
+    const aAt = a.row.created_at ?? '';
+    const bAt = b.row.created_at ?? '';
+    if (aAt !== bAt) return aAt < bAt ? 1 : -1; // newer first
+    if (a.row.id !== b.row.id) return a.row.id < b.row.id ? 1 : -1; // id desc
+    return 0;
+  });
+  return scored.map((entry) => entry.row);
 }
 
 export type CatalogSort = 'newest' | 'price_asc' | 'price_desc' | 'name_asc';
@@ -661,12 +779,28 @@ export async function fetchCatalogProducts(
   const page = Math.min(Math.max(filters.page ?? 1, 1), maxPage);
 
   // ---- paged data query ----
+  // Relevance ranking (2026-09 audit): with an active search and the default
+  // «нові» sort (undefined or 'newest' — the sort switch's default branch),
+  // matched rows are ranked by match quality instead of raw recency — the
+  // newest import is not automatically the best answer. An
+  // explicitly chosen sort (price/name) keeps its SQL ordering: the user
+  // overrode the default on purpose. The ranked path fetches up to
+  // SEARCH_RANK_SCAN_LIMIT rows in one request, ranks them and slices the
+  // page in JS; broader searches keep server-side pagination with the plain
+  // SQL ordering.
+  const rankedSearch =
+    searchConditions !== null &&
+    (filters.sort === undefined || filters.sort === 'newest') &&
+    total <= SEARCH_RANK_SCAN_LIMIT;
+
   let query = supabase
     .from('products')
     .select(
-      categoryId
-        ? CATALOG_CARD_SELECT + ', pc:product_categories!inner(category_id)'
-        : CATALOG_CARD_SELECT
+      (rankedSearch
+        ? CATALOG_CARD_SELECT +
+          ', short_description, sku, yugcontract_id, created_at'
+        : CATALOG_CARD_SELECT) +
+        (categoryId ? ', pc:product_categories!inner(category_id)' : '')
     )
     .eq('is_active', true);
 
@@ -698,24 +832,32 @@ export async function fetchCatalogProducts(
   // Every sort gets `id` as a deterministic tiebreaker: imported rows share
   // created_at timestamps in bulk, and without a unique secondary key
   // Postgres may return ties in different orders per request, which makes
-  // pagination overlap.
-  switch (filters.sort) {
-    case 'price_asc':
-      query = query.order('price', { ascending: true }).order('id', { ascending: true });
-      break;
-    case 'price_desc':
-      query = query.order('price', { ascending: false }).order('id', { ascending: false });
-      break;
-    case 'name_asc':
-      query = query.order('name', { ascending: true }).order('id', { ascending: true });
-      break;
-    default:
-      query = query.order('created_at', { ascending: false }).order('id', { ascending: false });
+  // pagination overlap. The ranked search path uses the same recency pair as
+  // its deterministic BASE order — relevance ties fall back to it in JS.
+  if (rankedSearch) {
+    query = query
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(0, SEARCH_RANK_SCAN_LIMIT - 1);
+  } else {
+    switch (filters.sort) {
+      case 'price_asc':
+        query = query.order('price', { ascending: true }).order('id', { ascending: true });
+        break;
+      case 'price_desc':
+        query = query.order('price', { ascending: false }).order('id', { ascending: false });
+        break;
+      case 'name_asc':
+        query = query.order('name', { ascending: true }).order('id', { ascending: true });
+        break;
+      default:
+        query = query.order('created_at', { ascending: false }).order('id', { ascending: false });
+    }
+
+    query = query.range((page - 1) * size, page * size - 1);
   }
 
-  query = query.range((page - 1) * size, page * size - 1);
-
-  const { data, error } = await query.returns<CatalogCardRow[]>();
+  const { data, error } = await query.returns<SearchCardRow[]>();
 
   if (error) {
     // A data error must reach app/error.tsx (honest failure) — an empty
@@ -723,7 +865,19 @@ export async function fetchCatalogProducts(
     throw new Error(`Failed to load catalog products: ${error.message}`);
   }
 
-  const products = (data ?? []).map(normalizeCatalogCard);
+  const rows = data ?? [];
+  // Ranked path: rank the full scanned match set (total ≤ cap ⇒ the scan is
+  // complete) and slice the requested page in JS. Ties resolve to the same
+  // created_at/id order the SQL base ordering produced, so page windows are
+  // identical to the un-ranked layout whenever scores tie.
+  const products = (
+    rankedSearch
+      ? rankSearchResults(rows, appliedSearch ?? filters.search ?? '').slice(
+          (page - 1) * size,
+          page * size
+        )
+      : rows
+  ).map(normalizeCatalogCard);
 
   return {
     products,
