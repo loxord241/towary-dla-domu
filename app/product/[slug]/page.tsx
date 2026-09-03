@@ -138,6 +138,14 @@ export default async function ProductPage({
 
   const galleryUrls = getPublicImageUrls(product.images)
 
+  // PDP UX: ONE decision point for both placements — «Опис» inside the
+  // details card, or Характеристики in its slot when there is nothing to
+  // describe (see shouldRenderDescriptionSection contract).
+  const renderDescription = shouldRenderDescriptionSection(
+    product.description,
+    product.short_description
+  )
+
   // Structured data from REAL fields only; review summary is the try/catch
   // fallback (total=0) when reviews are unavailable → aggregateRating drops.
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
@@ -237,11 +245,11 @@ export default async function ProductPage({
             {/* Task #41: the «Опис» section (heading included) renders only
                 when there is real content — a non-placeholder description or
                 the short_description fallback. Legacy supplier HTML shells
-                (<div><div></div></div>, nbsp-only) stay hidden. */}
-            {shouldRenderDescriptionSection(
-              product.description,
-              product.short_description
-            ) && (
+                (<div><div></div></div>, nbsp-only) stay hidden.
+                PDP UX: with nothing to describe, Характеристики take the
+                description slot inside the card so the page does not feel
+                empty; the below-grid section is skipped to avoid a duplicate. */}
+            {renderDescription ? (
               <div className="mb-6">
                 <h3 className="mb-2 font-semibold text-gray-900">Опис</h3>
                 <ProductDescription
@@ -249,6 +257,11 @@ export default async function ProductPage({
                   shortDescription={product.short_description}
                 />
               </div>
+            ) : (
+              <ProductSpecifications
+                specifications={product.specifications}
+                variant="inline"
+              />
             )}
 
             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -309,8 +322,12 @@ export default async function ProductPage({
           </div>
         </div>
 
-        {/* Product Specifications */}
-        <ProductSpecifications specifications={product.specifications} />
+        {/* Product Specifications — full-width below the grid only when the
+            «Опис» section is shown; otherwise specs already render in its
+            slot inside the details card (no duplicate block). */}
+        {renderDescription && (
+          <ProductSpecifications specifications={product.specifications} />
+        )}
 
         {/* Product Variants */}
         {product.variants.length > 0 && (
