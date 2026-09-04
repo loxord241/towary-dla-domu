@@ -458,6 +458,233 @@ export function relaxSearchTerm(search: string): string[] {
   });
 }
 
+// ---- Fuzzy typo fallback (Phase 1, 2026-09-04) -----------------------------
+//
+// Second tier of the zero-result fallback, AFTER the trim ladder above:
+// when the original query AND every trim variant matched zero rows, we probe
+// once with 1-edit fuzzy candidates per token:
+//   - keyboard-layout remap (QWERTY ↔ ЙЦУКЕН) — «ktylth» → «лендер»;
+//   - single-char deletion at ANY position — «бленддер» → «блендер»;
+//   - adjacent-char transposition — «блендре» → «блендер»;
+//   - one-char ILIKE gap «_» — «блндер» → «бл_ндер» matches «блендер»
+//     (covers a MISSING letter, which deletion/transposition cannot).
+//
+// Invariants:
+//   - tokens shorter than FALLBACK_MIN_TOKEN_LEN are never fuzzied;
+//   - ONE extra count request total: per token, a single or= value OR-ing
+//     [original, ...variants]; tokens AND together exactly like
+//     buildSearchConditions. The probe count REPLACES the search conditions
+//     for BOTH the count and the data query, so total/pagination stay
+//     consistent by construction (no per-variant retry storm);
+//   - `appliedSearch` is identified afterwards in JS from the actually
+//     returned rows (per token: first emitted candidate that matches);
+//   - deterministic emission: originals first, then round-robin over each
+//     token's variant list (layout → deletions → transpositions → gaps),
+//     globally capped at FALLBACK_FUZZY_MAX_ATTEMPTS;
+//   - injection safety: candidates originate from sanitizeSearchTerm output
+//     (no , " ( ) % possible), mutations add only letters or a single `_`
+//     (an ILIKE single-char wildcard — deliberately scoped here; it is
+//     rejected in USER input by sanitizeSearchTerm but generated
+//     intentionally at a known interior position), and every candidate is
+//     re-checked against the reserved-char class before use.
+// Worst case request budget on a zero-result query: 1 original count +
+// FALLBACK_MAX_RETRIES trim counts + 1 fuzzy probe + 1 data query = 6.
+// ---------------------------------------------------------------------------
+export const FALLBACK_FUZZY_MAX_ATTEMPTS = 32;
+
+/** ILIKE/or= grammar characters that must never appear inside a candidate. */
+const FUZZY_RESERVED = /[,"()%]/;
+
+// Standard ЙЦУКЕН key positions, Ukrainian layout («і» on the s key).
+// Used in BOTH directions: latin garbage → cyrillic («ktylth» → «лендер»)
+// and cyrillic-typed brand names → latin («ЕУАФД» → «tefal»).
+const QWERTY_TO_CYR: Record<string, string> = {
+  q: 'й', w: 'ц', e: 'у', r: 'к', t: 'е', y: 'н', u: 'г', i: 'ш', o: 'щ', p: 'з',
+  a: 'ф', s: 'і', d: 'в', f: 'а', g: 'п', h: 'р', j: 'о', k: 'л', l: 'д',
+  z: 'я', x: 'ч', c: 'с', v: 'м', b: 'и', n: 'т', m: 'ь',
+};
+const CYR_TO_QWERTY: Record<string, string> = {};
+for (const [lat, cyr] of Object.entries(QWERTY_TO_CYR)) {
+  CYR_TO_QWERTY[cyr] = lat;
+}
+// ru-layout tolerance on the reverse direction («ы» sits on the s key).
+CYR_TO_QWERTY['ы'] = 's';
+
+/**
+ * PURE: remap a whole token across keyboard layouts (QWERTY ↔ ЙЦУКЕН).
+ * Returns null when ANY character is unmappable (digits, punctuation,
+ * Ukrainian є/ї/ґ, mixed scripts) or the mapping is the identity — a
+ * partial remap would fabricate garbage candidates.
+ */
+export function mapKeyboardLayout(token: string): string | null {
+  if (!token) return null;
+  let out = '';
+  for (const ch of token) {
+    const lower = ch.toLowerCase();
+    const mapped = QWERTY_TO_CYR[lower] ?? CYR_TO_QWERTY[lower];
+    if (mapped === undefined) return null;
+    out += mapped;
+  }
+  const lowerToken = token.toLowerCase();
+  return out === lowerToken ? null : out;
+}
+
+/**
+ * PURE: fuzzy 1-edit variants of ONE token (never the token itself, never
+ * below FALLBACK_MIN_TOKEN_LEN). Deterministic kind order: layout,
+ * deletions (any position), transpositions, interior gaps. Candidates that
+ * would carry or=/ILIKE grammar characters (e.g. a layout remap of «б»,
+ * whose key IS the comma) are dropped, not escaped.
+ */
+export function fuzzyTokenVariants(token: string): string[] {
+  if (token.length < FALLBACK_MIN_TOKEN_LEN) return [];
+  const seen = new Set<string>([token]);
+  const out: string[] = [];
+  const push = (variant: string): void => {
+    if (!seen.has(variant) && !FUZZY_RESERVED.test(variant)) {
+      seen.add(variant);
+      out.push(variant);
+    }
+  };
+
+  const mapped = mapKeyboardLayout(token);
+  if (mapped) push(mapped);
+
+  for (let i = 0; i < token.length; i += 1) {
+    push(token.slice(0, i) + token.slice(i + 1));
+  }
+  for (let i = 0; i + 1 < token.length; i += 1) {
+    push(
+      token.slice(0, i) +
+        token.charAt(i + 1) +
+        token.charAt(i) +
+        token.slice(i + 2)
+    );
+  }
+  // Missing-letter class: one ILIKE `_` (exactly one unknown char) at an
+  // INTERIOR position. Leading/trailing gaps would only re-test deletions.
+  for (let i = 1; i < token.length; i += 1) {
+    push(`${token.slice(0, i)}_${token.slice(i)}`);
+  }
+  return out;
+}
+
+export interface FuzzyFallbackPlan {
+  /** Sanitized, deduped, fan-out-capped tokens of the original query. */
+  tokens: string[];
+  /**
+   * Emitted candidates in probe/identification order — round 0 is every
+   * token's original, then round-robin over the per-token variant lists,
+   * capped at FALLBACK_FUZZY_MAX_ATTEMPTS overall.
+   */
+  candidates: { tokenIndex: number; variant: string }[];
+  /**
+   * One or= value per token: OR over that token's emitted candidates
+   * (a token with no variants degrades to the exact buildSearchConditions
+   * shape). Caller chains .or() once per entry — same AND semantics.
+   */
+  conditions: string[];
+}
+
+function fuzzyOrCondition(variants: string[]): string {
+  const preds: string[] = [];
+  for (const field of ['name', 'short_description', 'sku', 'yugcontract_id']) {
+    for (const variant of variants) {
+      preds.push(`${field}.ilike.%${variant}%`);
+    }
+  }
+  return preds.join(',');
+}
+
+/**
+ * PURE: build the batched fuzzy probe for a raw search string. Returns null
+ * when NO token produced variants (nothing to fuzz — e.g. all tokens below
+ * the floor). Originals are always part of each token's OR set so intact
+ * tokens keep their exact match semantics inside the probe.
+ */
+export function buildFuzzyFallbackPlan(search: string): FuzzyFallbackPlan | null {
+  const tokens = [
+    ...new Set(sanitizeSearchTerm(search).split(' ').filter(Boolean)),
+  ].slice(0, 10);
+  const perToken = tokens.map((t) => [t, ...fuzzyTokenVariants(t)]);
+  if (perToken.every((list) => list.length === 1)) return null;
+
+  const candidates: { tokenIndex: number; variant: string }[] = [];
+  const maxRounds = Math.max(...perToken.map((list) => list.length));
+  let round = 0;
+  while (round < maxRounds && candidates.length < FALLBACK_FUZZY_MAX_ATTEMPTS) {
+    for (
+      let i = 0;
+      i < perToken.length && candidates.length < FALLBACK_FUZZY_MAX_ATTEMPTS;
+      i += 1
+    ) {
+      const variant = perToken[i]?.[round];
+      if (variant === undefined) continue;
+      candidates.push({ tokenIndex: i, variant });
+    }
+    round += 1;
+  }
+
+  const conditions = perToken.map((_, i) =>
+    fuzzyOrCondition(
+      candidates
+        .filter((c) => c.tokenIndex === i)
+        .map((c) => c.variant)
+    )
+  );
+  return { tokens, candidates, conditions };
+}
+
+/** JS-side ILIKE semantics for one candidate against one fetched row. */
+function fuzzyVariantMatchesRow(variant: string, row: SearchRankable): boolean {
+  const fields = [
+    row.name,
+    row.short_description,
+    row.sku,
+    row.yugcontract_id,
+  ];
+  if (variant.includes('_')) {
+    const pattern = variant
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/_/g, '.');
+    const re = new RegExp(pattern, 'i');
+    return fields.some((f) => typeof f === 'string' && re.test(f));
+  }
+  const needle = variant.toLowerCase();
+  return fields.some(
+    (f) => typeof f === 'string' && f.toLowerCase().includes(needle)
+  );
+}
+
+/**
+ * PURE: derive the user-facing appliedSearch from the probe plan and the
+ * rows the probe actually returned. Per token: the FIRST emitted candidate
+ * that matches any row (emission order = likelihood order; the original
+ * token, when it matches, wins — intact tokens display verbatim). Returns
+ * null when every token kept its original (probe rows should always match
+ * at least one non-original candidate, but a data race between the probe
+ * and the data query degrades to "no notice", never to wrong conditions).
+ */
+function identifyAppliedSearch(
+  rows: SearchCardRow[],
+  plan: FuzzyFallbackPlan
+): string | null {
+  const display = plan.tokens.slice();
+  let changed = false;
+  plan.tokens.forEach((token, i) => {
+    const best = plan.candidates.find(
+      (c) =>
+        c.tokenIndex === i &&
+        rows.some((row) => fuzzyVariantMatchesRow(c.variant, row))
+    );
+    if (best && best.variant !== token) {
+      display[i] = best.variant;
+      changed = true;
+    }
+  });
+  return changed ? display.join(' ') : null;
+}
+
 // ---- Search relevance ranking (2026-09 audit, search C1) -------------------
 //
 // PostgREST can only ORDER BY columns — there is no expression ordering and
@@ -780,6 +1007,30 @@ export async function fetchCatalogProducts(
     }
   }
 
+  // ---- fuzzy fallback (Phase 1): ONE batched probe, only when the trim
+  // ladder ALSO matched zero rows. The probe REPLACES the search conditions
+  // for both the count and the data query (same contract as the trim
+  // ladder); `appliedSearch` is identified from the fetched rows further
+  // below, so no per-variant retry requests exist at all.
+  let fuzzyPlan: FuzzyFallbackPlan | null = null;
+  if (total === 0 && searchConditions) {
+    const plan = buildFuzzyFallbackPlan(filters.search ?? '');
+    if (plan) {
+      const { count: probeCount, error: probeError } =
+        await buildCountQuery(plan.conditions);
+      if (probeError) {
+        console.error(
+          'Failed to count catalog products (fuzzy probe):',
+          probeError.message
+        );
+      } else if ((probeCount ?? 0) > 0) {
+        total = probeCount ?? 0;
+        searchConditions = plan.conditions;
+        fuzzyPlan = plan;
+      }
+    }
+  }
+
   const maxPage = Math.max(1, Math.ceil(total / size));
   const page = Math.min(Math.max(filters.page ?? 1, 1), maxPage);
 
@@ -871,6 +1122,14 @@ export async function fetchCatalogProducts(
   }
 
   const rows = data ?? [];
+  // Fuzzy probe adoption: derive the human-facing appliedSearch from the
+  // rows actually returned, BEFORE ranking — the ranked path scores against
+  // the adopted term (appliedSearch ?? original), same contract as the trim
+  // ladder. The probe CONDITIONS (not the identified term) remain the
+  // count/data filter set, so total and pagination never diverge.
+  if (fuzzyPlan) {
+    appliedSearch = identifyAppliedSearch(rows, fuzzyPlan);
+  }
   // Ranked path: rank the full scanned match set (total ≤ cap ⇒ the scan is
   // complete) and slice the requested page in JS. Ties resolve to the same
   // created_at/id order the SQL base ordering produced, so page windows are

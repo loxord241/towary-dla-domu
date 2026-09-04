@@ -26,6 +26,10 @@ const {
   buildSearchConditions,
   relaxSearchTerm,
   FALLBACK_MAX_RETRIES,
+  FALLBACK_FUZZY_MAX_ATTEMPTS,
+  fuzzyTokenVariants,
+  mapKeyboardLayout,
+  buildFuzzyFallbackPlan,
 } = await import('../app/lib/catalog.ts');
 
 // ---- buildSearchConditions: multi-token AND search (UX fix: word order
@@ -337,4 +341,156 @@ test('UI: catalog page renders a fallback notice wired to appliedSearch', () => 
   // …while the original query stays visible in H1 and the filter chip
   assert.match(page, /Пошук: «\$\{filters\.search\}»/);
   assert.match(page, /«\$\{filters\.search\}»`, removeKey: 'q'/);
+});
+
+// ---- Fuzzy fallback (Phase 1): pure candidate generation --------------------
+//
+// Contract: tokens below FALLBACK_MIN_TOKEN_LEN never produce variants;
+// deterministic kind order (layout → deletions → transpositions → gaps);
+// deduped against the token itself; every candidate free of or=/ILIKE
+// grammar characters; the probe plan ORs [original, ...variants] per token
+// and caps global emission at FALLBACK_FUZZY_MAX_ATTEMPTS.
+
+test('fuzzyTokenVariants: transposition «блендре» yields «блендер»', () => {
+  assert.ok(fuzzyTokenVariants('блендре').includes('блендер'));
+});
+
+test('fuzzyTokenVariants: deletion at any position «бленддер» yields «блендер»', () => {
+  const variants = fuzzyTokenVariants('бленддер');
+  assert.ok(variants.includes('блендер'));
+  // interior deletion covered too: «блндер» → delete idx2? no — deletion of
+  // the FIRST char proves position 0 is covered
+  assert.ok(fuzzyTokenVariants('блндер').includes('лндер'));
+});
+
+test('fuzzyTokenVariants: missing letter «блндер» yields interior gap «бл_ндер»', () => {
+  assert.ok(fuzzyTokenVariants('блндер').includes('бл_ндер'));
+  // no leading/trailing gaps — they would only re-test deletions
+  assert.ok(!fuzzyTokenVariants('блндер').some((v) => v.startsWith('_')));
+  assert.ok(!fuzzyTokenVariants('блндер').some((v) => v.endsWith('_')));
+});
+
+test('mapKeyboardLayout: QWERTY → ЙЦУКЕН «ktylth» → «лендер»', () => {
+  assert.equal(mapKeyboardLayout('ktylth'), 'лендер');
+  assert.ok(fuzzyTokenVariants('ktylth').includes('лендер'));
+});
+
+test('mapKeyboardLayout: ЙЦУКЕН → QWERTY «ЕУАФД» → «tefal»', () => {
+  assert.equal(mapKeyboardLayout('ЕУАФД'), 'tefal');
+});
+
+test('mapKeyboardLayout: mixed/unmappable tokens yield null (no partial remap)', () => {
+  assert.equal(mapKeyboardLayout('abc1'), null, 'digit is unmappable');
+  assert.equal(mapKeyboardLayout('блендер'), null, '«б» remaps to the comma key — rejected, not corrupted');
+  assert.equal(mapKeyboardLayout('фото-10'), null, 'hyphen/digit unmappable');
+  assert.equal(mapKeyboardLayout(''), null);
+});
+
+test('fuzzyTokenVariants: tokens below the floor yield nothing', () => {
+  assert.deepEqual(fuzzyTokenVariants('чай'), []);
+  assert.deepEqual(fuzzyTokenVariants('дом'), []);
+  // a 4-char token is AT the floor (>= 4) — eligible by design
+  assert.ok(fuzzyTokenVariants('мова').length > 0);
+});
+
+test('fuzzyTokenVariants: doubled-letter deletions dedupe to one variant', () => {
+  const variants = fuzzyTokenVariants('блендерр');
+  assert.equal(
+    variants.filter((v) => v === 'блендер').length,
+    1,
+    'deleting either «р» yields the same string — must appear once'
+  );
+});
+
+test('fuzzyTokenVariants: deterministic output for the same input', () => {
+  assert.deepEqual(
+    fuzzyTokenVariants('блендре'),
+    fuzzyTokenVariants('блендре')
+  );
+  // kind order is fixed: layout first, then deletions, transpositions, gaps
+  const variants = fuzzyTokenVariants('tefalx');
+  assert.equal(variants[0], 'еуафдч'); // layout remap comes first
+});
+
+test('fuzzyTokenVariants: no variant can carry or= grammar characters', () => {
+  const inputs = [
+    'блендерр',
+    'блндер',
+    'ktylth',
+    'abcdefgh',
+    "l'orealx", // apostrophe is safe, must not become grammar
+    'YC-706189',
+  ];
+  for (const input of inputs) {
+    for (const variant of fuzzyTokenVariants(input)) {
+      for (const ch of [',', '"', '(', ')', '%']) {
+        assert.ok(
+          !variant.includes(ch),
+          `variant ${JSON.stringify(variant)} of ${JSON.stringify(input)} contains reserved ${JSON.stringify(ch)}`
+        );
+      }
+    }
+  }
+});
+
+test('buildFuzzyFallbackPlan: all tokens below the floor → null (no probe)', () => {
+  assert.equal(buildFuzzyFallbackPlan('чай дом'), null);
+  assert.equal(buildFuzzyFallbackPlan(''), null);
+});
+
+test('buildFuzzyFallbackPlan: one or= per token, original first in the OR set', () => {
+  const plan = buildFuzzyFallbackPlan('блндер');
+  assert.notEqual(plan, null);
+  assert.equal(plan?.conditions.length, 1);
+  const cond = plan?.conditions[0];
+  assert.ok(cond !== undefined);
+  assert.ok(cond.startsWith('name.ilike.%блндер%'), 'original token first');
+  assert.ok(cond.includes('name.ilike.%бл_ндер%'));
+  assert.ok(cond.includes('short_description.ilike.%бл_ндер%'));
+  assert.ok(cond.includes('sku.ilike.%бл_ндер%'));
+  assert.ok(cond.includes('yugcontract_id.ilike.%бл_ндер%'));
+});
+
+test('buildFuzzyFallbackPlan: short tokens stay exact inside a mixed query', () => {
+  const plan = buildFuzzyFallbackPlan('чай блндер');
+  assert.notEqual(plan, null);
+  assert.equal(plan?.conditions.length, 2);
+  const shortCond = plan?.conditions[0];
+  assert.ok(shortCond !== undefined);
+  // «чай» has no variants → degrades to the exact buildSearchConditions shape
+  assert.equal(
+    shortCond,
+    'name.ilike.%чай%,short_description.ilike.%чай%,sku.ilike.%чай%,yugcontract_id.ilike.%чай%'
+  );
+});
+
+test('buildFuzzyFallbackPlan: round-robin emission starts with every original', () => {
+  const plan = buildFuzzyFallbackPlan('bosch блндер');
+  assert.notEqual(plan, null);
+  const candidates = plan?.candidates ?? [];
+  assert.deepEqual(candidates[0], { tokenIndex: 0, variant: 'bosch' });
+  assert.equal(candidates[1]?.tokenIndex, 1);
+  assert.equal(candidates[1]?.variant, 'блндер');
+  // deterministic and capped
+  assert.deepEqual(
+    buildFuzzyFallbackPlan('bosch блндер')?.candidates ?? [],
+    candidates
+  );
+  assert.ok(candidates.length <= FALLBACK_FUZZY_MAX_ATTEMPTS);
+  for (const c of candidates) {
+    for (const ch of [',', '"', '(', ')', '%']) {
+      assert.ok(!c.variant.includes(ch));
+    }
+  }
+});
+
+test('buildFuzzyFallbackPlan: fan-out cap bounds the global emission', () => {
+  // four 8-char junk tokens each generate ~23 candidates; the global cap
+  // must keep the emitted list bounded
+  const plan = buildFuzzyFallbackPlan('abcdefgh ijklmnop qrstuvwx yzabcdef');
+  assert.notEqual(plan, null);
+  assert.ok(
+    (plan?.candidates.length ?? 0) <= FALLBACK_FUZZY_MAX_ATTEMPTS,
+    'emission must respect FALLBACK_FUZZY_MAX_ATTEMPTS'
+  );
 });

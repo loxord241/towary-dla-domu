@@ -30,7 +30,11 @@ interface Row {
 function cardRow(
   id: string,
   name: string,
-  extras: { short_description?: string | null; brand?: { name: string } | null }
+  extras: {
+    short_description?: string | null;
+    brand?: { name: string } | null;
+    created_at?: string;
+  }
 ): Row {
   return {
     id,
@@ -45,13 +49,24 @@ function cardRow(
     sku: `YC-${id}`,
     yugcontract_id: id,
     brand: extras.brand ?? null,
+    created_at: extras.created_at ?? '2026-01-10T00:00:00Z',
     images: [{ id: `img-${id}`, product_id: id, image_url: 'img', is_main: true, sort_order: 0 }],
   };
 }
 
 const ROWS: Row[] = [
-  cardRow('100', 'Блендер Bosch SilentMix', { brand: { name: 'Bosch' }, short_description: 'плавний пуск' }),
-  cardRow('101', 'Блендер Philips Pro', { brand: { name: 'Philips' } }),
+  // «блендер» set. r100 is the OLDER blender but carries a description that
+  // also matches fuzzy tokens — the ranking test relies on score beating
+  // recency (r100 must sort FIRST despite being oldest).
+  cardRow('100', 'Блендер Bosch SilentMix', {
+    brand: { name: 'Bosch' },
+    short_description: 'блендер',
+    created_at: '2026-01-01T00:00:00Z',
+  }),
+  cardRow('101', 'Блендер Philips Pro', {
+    brand: { name: 'Philips' },
+    created_at: '2026-01-05T00:00:00Z',
+  }),
   cardRow('102', 'Чашка керамічна', {}),
   cardRow('103', 'Мультипіч TEFAL 300', { brand: { name: 'TEFAL' } }),
 ];
@@ -72,6 +87,12 @@ function stripOuterParens(expr: string): string {
   return depth === 0 ? e.slice(1, -1) : e;
 }
 
+/** SQL ILIKE value → RegExp: `_` = exactly one unknown char, case-folded. */
+function ilikeValueToRegExp(value: string): RegExp {
+  const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(escaped.replace(/_/g, '.'), 'i');
+}
+
 function orExprMatches(row: Row, expr: string): boolean {
   const inner = stripOuterParens(expr);
   return inner.split(',').some((pred) => {
@@ -83,9 +104,7 @@ function orExprMatches(row: Row, expr: string): boolean {
       .slice(dot + marker.length)
       .replace(/^%/, '')
       .replace(/%$/, '');
-    return String(row[field] ?? '')
-      .toLowerCase()
-      .includes(value.toLowerCase());
+    return ilikeValueToRegExp(value).test(String(row[field] ?? ''));
   });
 }
 
@@ -193,23 +212,39 @@ test('FALLBACK: short query below the floor is never relaxed', async () => {
   assert.equal(page.products.length, 0);
 });
 
-test('FALLBACK: floor of 4 chars — a 5-char token trims exactly once', async () => {
+test('FALLBACK: floor of 4 chars — a 5-char token trims exactly once, then one fuzzy probe', async () => {
   const before = reqLog.length;
   const page = await fetchCatalogProducts({ search: 'щітка' });
-  // 'щітка'(5) → one variant 'щітк'(4) → no deeper trimming to 3/2/1 chars
-  assert.equal(countCalls(before).length, 2);
+  // 'щітка'(5) → one trim variant 'щітк'(4) → miss → ONE batched fuzzy
+  // probe (layout/deletions/transpositions/gaps) → miss → stop. 3 counts.
+  assert.equal(countCalls(before).length, 3);
   assert.equal(page.total, 0);
   assert.equal(page.appliedSearch ?? null, null);
 });
 
-test('FALLBACK: retry budget is capped at FALLBACK_MAX_RETRIES', async () => {
+test('FALLBACK: retry budget is capped — trim ladder + ONE fuzzy probe', async () => {
   const before = reqLog.length;
   const page = await fetchCatalogProducts({
     search: 'abcdefgh ijklmnop qrstuvwx yzabcdef', // 4 trimmable junk tokens
   });
-  assert.equal(countCalls(before).length, 1 + FALLBACK_MAX_RETRIES);
+  // 1 original + FALLBACK_MAX_RETRIES trim counts + 1 fuzzy probe = 5.
+  // The probe misses (junk tokens share no affixes with the dataset), so
+  // NO further requests happen — the budget bound is observable here.
+  assert.equal(countCalls(before).length, 1 + FALLBACK_MAX_RETRIES + 1);
   assert.equal(page.total, 0);
   assert.equal(page.appliedSearch ?? null, null);
+
+  // probe shape: one or= param per token, OR-ing [original, ...variants]
+  const probe = countCalls(before)[countCalls(before).length - 1];
+  assert.ok(probe !== undefined, 'fuzzy probe count call expected');
+  assert.equal(probe.or.length, 4);
+  const firstParam = probe.or[0];
+  assert.ok(firstParam !== undefined);
+  assert.ok(firstParam.includes('%abcdefgh%'), 'original stays in the probe OR set');
+  assert.ok(firstParam.includes('%bcdefgh%'), 'deletion variant present');
+  assert.ok(firstParam.includes('%фисвуапр%'), 'layout remap present');
+  // the TRAILING deletion («abcdefg») is deliberately NOT in the probe —
+  // the trim ladder above already tested it; rounds 8+ are cut by the cap
 });
 
 test('FALLBACK: multi-token relaxes only the broken token (AND preserved)', async () => {
@@ -270,4 +305,165 @@ test('FALLBACK: specials-only query keeps the no-filter contract', async () => {
   assert.equal(page.total, ROWS.length);
   assert.equal(page.appliedSearch ?? null, null);
   assert.equal(countCalls(before).length, 1);
+});
+
+// ---- Fuzzy fallback (Phase 1): transposition / deletion / gap / layout -----
+//
+// Contract: the fuzzy probe runs ONLY after the original query and every
+// trim variant matched zero rows; it costs exactly ONE extra count request;
+// the adopted probe conditions flow into BOTH the count and the data query;
+// appliedSearch is identified from the returned rows.
+
+test('FUZZY: transposition «блендре» finds «блендер» via one batched probe', async () => {
+  const before = reqLog.length;
+  const page = await fetchCatalogProducts({ search: 'блендре' });
+  const counts = countCalls(before);
+
+  // 1 original + 1 trim («блендр», miss) + 1 fuzzy probe — NO retry storm
+  assert.equal(counts.length, 3);
+  const probe = counts[2];
+  assert.ok(probe !== undefined);
+  assert.ok(
+    probe.or.some((e) => e.includes('%блендер%')),
+    'probe must OR the transposition candidate «блендер»'
+  );
+  assert.ok(
+    probe.or.every((e) => !e.includes('%блендерр%')),
+    'no trim-era typo token may survive the probe'
+  );
+
+  assert.equal(page.total, 2);
+  assert.equal(page.products.length, 2);
+  assert.equal(page.appliedSearch, 'бленде'); // first emitted matching candidate
+});
+
+test('FUZZY: missing letter «блндер» via ILIKE gap «_», count/data consistent', async () => {
+  const before = reqLog.length;
+  const page = await fetchCatalogProducts({ search: 'блндер' });
+  const counts = countCalls(before);
+
+  assert.equal(counts.length, 3); // original + trim miss + probe
+  const probe = counts[2];
+  assert.ok(probe !== undefined);
+  assert.ok(
+    probe.or.some((e) => e.includes('%бл_ндер%')),
+    'probe must include the one-char gap candidate'
+  );
+
+  // BOTH count and data queries carry the SAME probe condition set
+  assert.equal(page.total, 2);
+  const dataCall = reqLog[reqLog.length - 1];
+  assert.ok(dataCall !== undefined);
+  assert.ok(
+    dataCall.or.some((e) => e.includes('%бл_ндер%')),
+    'data query must use the adopted probe conditions'
+  );
+
+  assert.equal(page.appliedSearch, 'бл_ндер');
+  assert.deepEqual(page.products.map((p) => p.id), ['100', '101']);
+});
+
+test('FUZZY: extra letter in the middle «бленддер» via deletion', async () => {
+  const before = reqLog.length;
+  const page = await fetchCatalogProducts({ search: 'бленддер' });
+  const counts = countCalls(before);
+
+  assert.equal(counts.length, 3);
+  const probe = counts[2];
+  assert.ok(probe !== undefined);
+  assert.ok(probe.or.some((e) => e.includes('%блендер%')));
+
+  assert.equal(page.total, 2);
+  assert.equal(page.appliedSearch, 'блендер');
+});
+
+test('FUZZY: wrong keyboard layout «ktylth» → «лендер»', async () => {
+  const before = reqLog.length;
+  const page = await fetchCatalogProducts({ search: 'ktylth' });
+  const counts = countCalls(before);
+
+  assert.equal(counts.length, 3);
+  const probe = counts[2];
+  assert.ok(probe !== undefined);
+  assert.ok(
+    probe.or.some((e) => e.includes('%лендер%')),
+    'probe must OR the layout-remapped candidate'
+  );
+
+  assert.equal(page.total, 2);
+  assert.equal(page.appliedSearch, 'лендер');
+});
+
+test('FUZZY: multi-token probes every token, intact tokens stay exact', async () => {
+  const before = reqLog.length;
+  const page = await fetchCatalogProducts({ search: 'bosch блндер' });
+  const counts = countCalls(before);
+
+  // 1 original + 2 trim variants (both tokens trimmable, both miss) + 1 probe
+  assert.equal(counts.length, 4);
+  const probe = counts[3];
+  assert.ok(probe !== undefined);
+  assert.equal(probe.or.length, 2, 'one or= param per token');
+  const boschParam = probe.or[0];
+  const typoParam = probe.or[1];
+  assert.ok(boschParam !== undefined && typoParam !== undefined);
+  assert.ok(
+    boschParam.includes('%bosch%'),
+    'intact token keeps its exact ILIKE in the probe OR set'
+  );
+  assert.ok(typoParam.includes('%бл_ндер%'));
+
+  // AND semantics: only the Bosch blender satisfies both tokens
+  assert.equal(page.total, 1);
+  assert.deepEqual(page.products.map((p) => p.id), ['100']);
+  assert.equal(page.appliedSearch, 'bosch бл_ндер');
+});
+
+test('FUZZY: ranking ranks against adopted appliedSearch, beating recency', async () => {
+  // «блндер» → gap candidate «бл_ндер» → rank tokens «бл»+«ндер».
+  // r100 (OLDEST, 2026-01-01) scores higher: its description also hits both
+  // tokens. Plain recency would put r101 first — ranking must invert that.
+  const page = await fetchCatalogProducts({ search: 'блндер' });
+  assert.equal(page.total, 2);
+  assert.deepEqual(page.products.map((p) => p.id), ['100', '101']);
+});
+
+test('FUZZY: pagination stays consistent with the adopted probe total', async () => {
+  const page1 = await fetchCatalogProducts({
+    search: 'блндер',
+    size: 1,
+    page: 1,
+  });
+  assert.equal(page1.total, 2);
+  assert.equal(page1.products.length, 1);
+  assert.equal(page1.page, 1);
+  assert.equal(page1.appliedSearch, 'бл_ндер');
+
+  const page2 = await fetchCatalogProducts({
+    search: 'блндер',
+    size: 1,
+    page: 2,
+  });
+  assert.equal(page2.total, 2);
+  assert.equal(page2.products.length, 1);
+  assert.equal(page2.page, 2);
+  assert.equal(page2.appliedSearch, 'бл_ндер');
+  const dataCall = reqLog[reqLog.length - 1];
+  assert.ok(dataCall !== undefined);
+  assert.ok(dataCall.or.some((e) => e.includes('%бл_ндер%')));
+});
+
+test('FUZZY: probe never fires when the trim ladder already matched', async () => {
+  const before = reqLog.length;
+  const page = await fetchCatalogProducts({ search: 'блендерр' });
+  assert.equal(countCalls(before).length, 2); // original + successful trim only
+  assert.equal(page.appliedSearch, 'блендер');
+});
+
+test('FUZZY: tokens below the floor produce no probe at all', async () => {
+  const before = reqLog.length;
+  const page = await fetchCatalogProducts({ search: 'чай дом' });
+  assert.equal(countCalls(before).length, 1);
+  assert.equal(page.total, 0);
+  assert.equal(page.appliedSearch ?? null, null);
 });
