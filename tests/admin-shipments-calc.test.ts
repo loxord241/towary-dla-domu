@@ -110,8 +110,10 @@ describe('buildCalculationInput', () => {
     );
     assert.ok(res.ok, JSON.stringify(res));
     if (res.ok) {
-      assert.equal(res.input.parcels[0].cargoCategory, 'pallet');
-      assert.equal(res.input.parcels[0].insuranceCost, 5000);
+      const parcel = res.input.parcels[0];
+      assert.ok(parcel !== undefined, 'mapped parcel must exist');
+      assert.equal(parcel.cargoCategory, 'pallet');
+      assert.equal(parcel.insuranceCost, 5000);
     }
   });
 });

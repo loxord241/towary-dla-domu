@@ -108,7 +108,19 @@ test('CSP: other security headers are preserved', async () => {
     'Referrer-Policy',
     'X-Frame-Options',
     'Permissions-Policy',
+    'Strict-Transport-Security',
+    'Cross-Origin-Opener-Policy',
+    'Cross-Origin-Resource-Policy',
   ]) {
     assert.ok(keys.includes(key), `${key} must stay configured`);
   }
+});
+
+test('CSP: HSTS / COOP / CORP values', async () => {
+  const hsts = await findHeader('Strict-Transport-Security');
+  assert.equal(hsts?.value, 'max-age=31536000; includeSubDomains');
+  const coop = await findHeader('Cross-Origin-Opener-Policy');
+  assert.equal(coop?.value, 'same-origin');
+  const corp = await findHeader('Cross-Origin-Resource-Policy');
+  assert.equal(corp?.value, 'cross-origin');
 });

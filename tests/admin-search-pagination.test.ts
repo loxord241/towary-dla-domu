@@ -66,18 +66,23 @@ function makeDataset(nProducts: number, nBrands: number, nCategories: number): F
     sort_order: i,
     created_at: new Date(Date.UTC(2026, 1, 2) - i * 1000).toISOString(),
   }));
-  const products: Row[] = Array.from({ length: nProducts }, (_, i) => ({
-    id: uuidAt('p', i),
-    name: i === 32 ? 'Мультипіч TEFAL Ultra 32' : `Товар звичайний №${i + 1}`,
-    sku: `SKU-${i + 1}`,
-    slug: `tovar-${i + 1}`,
-    yugcontract_id: String(900000 + i),
-    price: i,
-    stock_quantity: i % 7,
-    created_at: new Date(Date.UTC(2026, 1, 3) - i * 1000).toISOString(),
-    brand_id: brands[i % nBrands].id as string,
-    category_id: categories[i % nCategories].id as string,
-  }));
+  const products: Row[] = Array.from({ length: nProducts }, (_, i) => {
+    const brand = brands[i % nBrands];
+    const category = categories[i % nCategories];
+    assert.ok(brand !== undefined && category !== undefined, 'fixture brand/category must exist');
+    return {
+      id: uuidAt('p', i),
+      name: i === 32 ? 'Мультипіч TEFAL Ultra 32' : `Товар звичайний №${i + 1}`,
+      sku: `SKU-${i + 1}`,
+      slug: `tovar-${i + 1}`,
+      yugcontract_id: String(900000 + i),
+      price: i,
+      stock_quantity: i % 7,
+      created_at: new Date(Date.UTC(2026, 1, 3) - i * 1000).toISOString(),
+      brand_id: brand.id as string,
+      category_id: category.id as string,
+    };
+  });
   return { products, brands, categories };
 }
 
@@ -110,7 +115,7 @@ function splitTopLevel(expr: string): string[] {
 
 function evalPredicate(row: Row, pred: string): boolean {
   const m = pred.match(/^([A-Za-z_][\w.]*)\.(ilike|in|eq)\.([\s\S]+)$/);
-  if (!m) throw new Error(`fake PostgREST: unparsable predicate ${JSON.stringify(pred)}`);
+  if (!m?.[1] || !m[2] || !m[3]) throw new Error(`fake PostgREST: unparsable predicate ${JSON.stringify(pred)}`);
   const [, field, op, rawValue] = m;
   const value = row[field];
   if (op === 'ilike') {
@@ -211,7 +216,7 @@ async function startFakePostgrest(dataset: FakeDataset) {
     for (const [key, value] of url.searchParams.entries()) {
       if (['select', 'or', 'order', 'offset', 'limit', 'apikey'].includes(key)) continue;
       const fm = value.match(/^(ilike|eq)\.(.*)$/);
-      if (!fm) continue;
+      if (!fm?.[1] || fm[2] === undefined) continue;
       const [, op, v] = fm;
       filtered = filtered.filter((row) =>
         op === 'ilike'
@@ -242,7 +247,7 @@ async function startFakePostgrest(dataset: FakeDataset) {
       table === 'products'
         ? windowRows.map((row) => {
             const out = { ...row };
-            for (const e of embeds.products) {
+            for (const e of embeds.products ?? []) {
               const target = e.byId.get(String(out[e.key]));
               (out as Record<string, unknown>)[e.alias] = target ?? null;
             }
@@ -277,7 +282,9 @@ async function startFakePostgrest(dataset: FakeDataset) {
 
 function lastRequest(log: LoggedRequest[], table: string, method = 'GET'): LoggedRequest | undefined {
   for (let i = log.length - 1; i >= 0; i -= 1) {
-    if (log[i].table === table && log[i].method === method) return log[i];
+    const entry = log[i];
+    if (entry === undefined) continue;
+    if (entry.table === table && entry.method === method) return entry;
   }
   return undefined;
 }
@@ -295,6 +302,7 @@ test('PRODUCT: item beyond page 1 is found by server-side search (total=matches,
   // manual paging; the fixed pipeline must find it on page 1 of the search.
   const dataset = makeDataset(45, 5, 5);
   const target = dataset.products[32];
+  assert.ok(target !== undefined, 'fixture target product must exist');
   const fake = await startFakePostgrest(dataset);
   try {
     const result = await adminList.listAdminProducts(fake.client, {
@@ -307,7 +315,9 @@ test('PRODUCT: item beyond page 1 is found by server-side search (total=matches,
     assert.equal(result.page, 1);
     assert.equal(result.size, 20);
     assert.equal(result.products.length, 1);
-    assert.equal(result.products[0].id, target.id);
+    const found = result.products[0];
+    assert.ok(found !== undefined, 'search must return the matched product');
+    assert.equal(found.id, target.id);
 
     // The COUNT request itself must have carried the search filter.
     const countReq = lastRequest(fake.log, 'products', 'HEAD');
@@ -332,7 +342,11 @@ test('PRODUCT: item beyond page 1 is found by server-side search (total=matches,
 test('PRODUCT: pagination continues INSIDE the filtered set (page 2 = offset 20 of matches)', async () => {
   const dataset = makeDataset(45, 3, 3);
   // 25 products named with «пошук» → total=25 → pages=2 (20+5)
-  for (let i = 0; i < 25; i += 1) dataset.products[i].name = `Пошуковий товар №${i + 1}`;
+  for (let i = 0; i < 25; i += 1) {
+    const row = dataset.products[i];
+    assert.ok(row !== undefined, 'fixture product must exist');
+    row.name = `Пошуковий товар №${i + 1}`;
+  }
   const fake = await startFakePostgrest(dataset);
   try {
     const page2 = await adminList.listAdminProducts(fake.client, {
@@ -345,7 +359,7 @@ test('PRODUCT: pagination continues INSIDE the filtered set (page 2 = offset 20 
     const dataReq = lastRequest(fake.log, 'products', 'GET');
     assert.equal(dataReq?.params.get('offset'), '20', 'страница 2 должна вырезать окно ИЗ отфильтрованного набора');
     assert.equal(dataReq?.params.get('limit'), '20');
-    assert.ok(decodedOr(dataReq)[0].includes('%пошуковий%'));
+    assert.ok(decodedOr(dataReq)[0]?.includes('%пошуковий%'));
   } finally {
     await fake.close();
   }
@@ -374,7 +388,9 @@ test('PRODUCT: multi-token search ANDs tokens (two chained or= expressions)', as
       search: 'tefal ultra',
     });
     assert.equal(result.total, 1);
-    assert.equal(result.products[0].name.includes('Ultra'), true);
+    const matched = result.products[0];
+    assert.ok(matched !== undefined, 'search must return the matched product');
+    assert.equal(matched.name.includes('Ultra'), true);
     const dataReq = lastRequest(fake.log, 'products', 'GET');
     assert.equal(decodedOr(dataReq).length, 2, 'два токена → два AND-ированных or=');
   } finally {
@@ -487,6 +503,7 @@ test('BRAND: brand beyond the first 20 is found by server-side search', async ()
   // 30 brands; ZZZ Rare Brand is LAST (position 30 → page 2 unsearched).
   const dataset = makeDataset(10, 30, 5);
   const target = dataset.brands[29];
+  assert.ok(target !== undefined, 'fixture target brand must exist');
   const fake = await startFakePostgrest(dataset);
   try {
     const result = await adminList.listAdminBrands(fake.client, {
@@ -496,7 +513,9 @@ test('BRAND: brand beyond the first 20 is found by server-side search', async ()
     });
     assert.equal(result.total, 1, 'total по брендам считается по фильтру');
     assert.equal(result.brands.length, 1);
-    assert.equal(result.brands[0].id, target.id);
+    const brandHit = result.brands[0];
+    assert.ok(brandHit !== undefined, 'search must return the matched brand');
+    assert.equal(brandHit.id, target.id);
     const countOr = decodedOr(lastRequest(fake.log, 'brands', 'HEAD'));
     const dataOr = decodedOr(lastRequest(fake.log, 'brands', 'GET'));
     assert.deepEqual(dataOr, countOr);
@@ -523,6 +542,7 @@ test('BRAND: clearing the search returns the full paginated list again', async (
 test('CATEGORY: category beyond the first 20 is found by server-side search (incl. slug)', async () => {
   const dataset = makeDataset(5, 5, 48);
   const target = dataset.categories[47]; // slug rare-slug-xyz, позиция 48
+  assert.ok(target !== undefined, 'fixture target category must exist');
   const fake = await startFakePostgrest(dataset);
   try {
     const bySlug = await adminList.listAdminCategories(fake.client, {
@@ -531,7 +551,9 @@ test('CATEGORY: category beyond the first 20 is found by server-side search (inc
       search: 'rare-slug-xyz',
     });
     assert.equal(bySlug.total, 1);
-    assert.equal(bySlug.categories[0].id, target.id);
+    const bySlugHit = bySlug.categories[0];
+    assert.ok(bySlugHit !== undefined, 'search must return the matched category');
+    assert.equal(bySlugHit.id, target.id);
 
     const byName = await adminList.listAdminCategories(fake.client, {
       page: 1,
@@ -539,7 +561,9 @@ test('CATEGORY: category beyond the first 20 is found by server-side search (inc
       search: 'рідкісна категорія',
     });
     assert.equal(byName.total, 1);
-    assert.equal(byName.categories[0].id, target.id);
+    const byNameHit = byName.categories[0];
+    assert.ok(byNameHit !== undefined, 'search must return the matched category');
+    assert.equal(byNameHit.id, target.id);
   } finally {
     await fake.close();
   }

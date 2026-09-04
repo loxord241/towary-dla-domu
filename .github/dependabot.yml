@@ -1,0 +1,9 @@
+# Dependabot: weekly npm dependency updates only.
+# Minimal scope — no versioning-strategy extras, no grouping, no extra
+# ecosystems (GitHub Actions bumps are managed manually in this repo).
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"

@@ -103,6 +103,7 @@ test('PLANNER: allowlisted _du product is planned from its base staged row', () 
   const plan = planContentUpdates([staged()], [duProduct()]);
   assert.equal(plan.updates.length, 1);
   const op = plan.updates[0];
+  assert.ok(op !== undefined, 'planner must emit the update');
   assert.equal(op.productDbId, 'uuid-du');
   // the op carries the du id — the executor guard .eq('yugcontract_id')
   // must match the du row, not the staged base id
@@ -116,17 +117,22 @@ test('PLANNER: allowlisted _du product is planned from its base staged row', () 
 test('PLANNER: base product AND its _du twin both get the same staged row', () => {
   const plan = planContentUpdates([staged()], [product(), duProduct()]);
   assert.equal(plan.updates.length, 2);
-  assert.equal(plan.updates[0].productDbId, 'uuid-base');
-  assert.equal(plan.updates[0].yugcontractId, BASE_YC);
-  assert.equal(plan.updates[1].productDbId, 'uuid-du');
-  assert.equal(plan.updates[1].yugcontractId, DU_YC);
-  assert.equal(plan.updates[0].fields.description, plan.updates[1].fields.description);
+  const baseOp = plan.updates[0];
+  const duOp = plan.updates[1];
+  assert.ok(baseOp !== undefined && duOp !== undefined, 'both updates must be planned');
+  assert.equal(baseOp.productDbId, 'uuid-base');
+  assert.equal(baseOp.yugcontractId, BASE_YC);
+  assert.equal(duOp.productDbId, 'uuid-du');
+  assert.equal(duOp.yugcontractId, DU_YC);
+  assert.equal(baseOp.fields.description, duOp.fields.description);
 });
 
 test('PLANNER: orphan _du (no base product row) still gets base content', () => {
   const plan = planContentUpdates([staged()], [duProduct()]);
   assert.equal(plan.updates.length, 1);
-  assert.equal(plan.updates[0].productDbId, 'uuid-du');
+  const op = plan.updates[0];
+  assert.ok(op !== undefined, 'planner must emit the update');
+  assert.equal(op.productDbId, 'uuid-du');
 });
 
 test('PLANNER: allowlisted _du WITHOUT a staged base row → nothing planned', () => {
@@ -190,7 +196,9 @@ test('GUARD: _du with a DIFFERENT non-empty description counts as overwrite', ()
   );
   assert.equal(plan.updates.length, 1);
   assert.equal(plan.overwriteNonEmptyCount, 1);
-  assert.equal(plan.updates[0].currentHadDescription, true);
+  const op = plan.updates[0];
+  assert.ok(op !== undefined, 'planner must emit the update');
+  assert.equal(op.currentHadDescription, true);
 });
 
 test('GUARD: _du with the SAME description AND specs → no-op (identical)', () => {
@@ -226,6 +234,7 @@ test('EXCLUDE: base id in excludeDescriptionIds suppresses the _du description t
   // specs still flow, description does not
   assert.equal(plan.updates.length, 1);
   const op = plan.updates[0];
+  assert.ok(op !== undefined, 'planner must emit the update');
   assert.equal(op.fields.description, undefined);
   assert.ok(op.fields.specifications);
   assert.equal(plan.excludedDescription, 1);
@@ -248,10 +257,14 @@ test('SHADOW: exact staged row for the _du id wins, base mapping suppressed', ()
   assert.equal(plan.updates.length, 2);
   const duOps = plan.updates.filter((u) => u.yugcontractId === DU_YC);
   assert.equal(duOps.length, 1); // planned exactly once
-  assert.equal(duOps[0].fields.description, '<p>Власний du опис</p>');
+  const duOp = duOps[0];
+  assert.ok(duOp !== undefined, 'du op must be planned');
+  assert.equal(duOp.fields.description, '<p>Власний du опис</p>');
   const baseOps = plan.updates.filter((u) => u.yugcontractId === BASE_YC);
   assert.equal(baseOps.length, 1);
-  assert.equal(baseOps[0].productDbId, 'uuid-base');
+  const baseOp = baseOps[0];
+  assert.ok(baseOp !== undefined, 'base op must be planned');
+  assert.equal(baseOp.productDbId, 'uuid-base');
 });
 
 // ---- idempotency -------------------------------------------------------------
@@ -316,7 +329,9 @@ test('MATCH: allowlisted _du product matches the base content good', () => {
   const m = matchContentGoodsToProducts(byId, [duProduct()]);
   assert.equal(m.matchedLocal.length, 1);
   assert.equal(m.unmatchedLocal.length, 0);
-  assert.equal(m.matchedLocal[0].good.externalId, BASE_YC);
+  const matched = m.matchedLocal[0];
+  assert.ok(matched !== undefined, 'du product must match');
+  assert.equal(matched.good.externalId, BASE_YC);
 });
 
 test('MATCH: unknown _du stays unmatched; exact du row shadows the base', () => {
@@ -331,6 +346,8 @@ test('MATCH: unknown _du stays unmatched; exact du row shadows the base', () => 
   ]);
   const m2 = matchContentGoodsToProducts(byId, [duProduct()]);
   assert.equal(m2.matchedLocal.length, 1);
-  assert.equal(m2.matchedLocal[0].good.externalId, DU_YC);
-  assert.equal(m2.matchedLocal[0].good.description, '<p>власний</p>');
+  const matched2 = m2.matchedLocal[0];
+  assert.ok(matched2 !== undefined, 'du product must match');
+  assert.equal(matched2.good.externalId, DU_YC);
+  assert.equal(matched2.good.description, '<p>власний</p>');
 });

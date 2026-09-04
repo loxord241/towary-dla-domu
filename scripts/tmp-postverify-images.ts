@@ -7,7 +7,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 try {
   for (const line of readFileSync(path.join(root, '.env.local'), 'utf8').split('\n')) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+    if (m && m[1] !== undefined && m[2] !== undefined && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
   }
 } catch {}
 
@@ -124,7 +124,7 @@ if (zeroMainPure === 0) ok('каждый pure-imported товар: ровно о
 else bad(`проблемных товаров: ${zeroMainPure}`);
 if (nonCanonical === 0) ok('sort_order = 0..N-1 канонично во всех pure-imported наборах');
 else bad(`не-каноничных наборов: ${nonCanonical}`);
-if (manual.length === 1 && manual[0].is_main === true) ok('manual строка не изменена (main=true сохранён)');
+if (manual.length === 1 && manual[0]?.is_main === true) ok('manual строка не изменена (main=true сохранён)');
 else bad('manual строка изменилась');
 
 console.log('\n== PRODUCTS / SPOT-CHECK IDS ==');

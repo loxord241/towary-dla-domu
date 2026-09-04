@@ -125,10 +125,17 @@ export default function CartPage() {
       preview.availabilityStatus !== 'out_of_stock'
   );
   const unknownRows = rows.filter(({ preview }) => preview === undefined);
-  const subtotal = purchasableRows.reduce(
-    (sum, { item, preview }) => sum + (preview?.unitPrice ?? 0) * item.quantity,
-    0
-  );
+  // Subtotals are grouped per currency: summing UAH and USD into one
+  // number and signing it with the first row's currency is meaningless.
+  // Single-currency carts keep the exact pre-existing display shape.
+  const subtotalByCurrency = new Map<string, number>();
+  for (const { item, preview } of purchasableRows) {
+    const cur = preview?.currency ?? '';
+    subtotalByCurrency.set(
+      cur,
+      (subtotalByCurrency.get(cur) ?? 0) + (preview?.unitPrice ?? 0) * item.quantity
+    );
+  }
   const currency = purchasableRows[0]?.preview?.currency ?? '';
 
   // First load: skeleton rows instead of a full-page spinner (perf audit
@@ -313,12 +320,19 @@ export default function CartPage() {
                   <span>Товарів</span>
                   <span>{items.reduce((s, i) => s + i.quantity, 0)} шт</span>
                 </div>
-                <div className="flex justify-between font-semibold text-lg mb-1">
-                  <span>До сплати</span>
-                  <span>
-                    {formatPrice(subtotal, currency)}
-                  </span>
-                </div>
+                 <div className="flex justify-between font-semibold text-lg mb-1">
+                   <span>До сплати</span>
+                   <span>
+                     {subtotalByCurrency.size <= 1
+                       ? formatPrice(
+                           [...subtotalByCurrency.values()][0] ?? 0,
+                           currency
+                         )
+                       : [...subtotalByCurrency.entries()]
+                           .map(([cur, sum]) => formatPrice(sum, cur))
+                           .join(' + ')}
+                   </span>
+                 </div>
                 <p className="text-xs text-gray-400 mb-4">
                   Остаточна сума буде перерахована сервером при оформленні.
                 </p>

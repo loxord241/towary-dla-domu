@@ -155,6 +155,7 @@ test('INVARIANT: sanitize-html is imported only by content-sanitize.ts (import/s
   const files = walkApp(path.join(root, 'app'));
   const hits = files.filter((f) => readFileSync(f, 'utf8').includes("from 'sanitize-html'"));
   assert.equal(hits.length, 1);
+  assert.ok(hits[0] !== undefined);
   assert.match(hits[0], /content-sanitize\.ts$/);
 });
 

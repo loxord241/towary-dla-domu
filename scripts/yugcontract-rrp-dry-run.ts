@@ -15,7 +15,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 try {
   for (const line of readFileSync(path.join(root, '.env.local'), 'utf8').split('\n')) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+    if (m && m[1] !== undefined && m[2] !== undefined && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
   }
 } catch {}
 
@@ -169,7 +169,7 @@ if (rrps.length > 0) {
 }
 if (changedRrps.length > 0) {
   const s = changedRrps.reduce((a, b) => a + b, 0);
-  console.log(`RRP (лише ті, що зміняться): min=${fmt(changedRrps[0])} max=${fmt(changedRrps[changedRrps.length - 1])} avg=${fmt(s / changedRrps.length)}`);
+  console.log(`RRP (лише ті, що зміняться): min=${fmt(changedRrps[0]!)} max=${fmt(changedRrps[changedRrps.length - 1]!)} avg=${fmt(s / changedRrps.length)}`);
 }
 console.log('');
 console.log(`Зараз price < rrp:  ${priceBelowRrp}`);

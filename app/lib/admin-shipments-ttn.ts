@@ -105,7 +105,8 @@ export type TtnBuildSkipReason =
   | 'bad_destination'
   | 'no_parcels'
   | 'bad_recipient_name'
-  | 'bad_recipient_phone';
+  | 'bad_recipient_phone'
+  | 'bad_sender_phone';
 
 export type TtnBuildResult =
   | { ok: true; payload: NpShipmentPayload; clientOrder: string }
@@ -194,7 +195,7 @@ export function buildShipmentTtnPayload(
 
   const senderPhone = normalizePhone(sender.phone);
   if (!senderPhone) {
-    return { ok: false, reason: 'bad_recipient_phone' };
+    return { ok: false, reason: 'bad_sender_phone' };
   }
   const recipientName =
     typeof s.recipientName === 'string' ? s.recipientName.trim() : '';

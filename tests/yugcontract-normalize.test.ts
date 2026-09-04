@@ -128,6 +128,7 @@ test('buildFieldTypeHistogram counts real runtime types', () => {
     undefined: 1,
     other: 0,
   });
+  assert.ok(histogram['price'] !== undefined && histogram['rrp'] !== undefined && histogram['qty_main'] !== undefined);
   assert.equal(histogram['price']['number'], 1);
   assert.equal(histogram['price']['string'], 1);
   assert.equal(histogram['rrp']['null'], 1);
@@ -164,6 +165,7 @@ test('buildPreviewStats aggregates counts, prices, brands, categories, duplicate
     stats.duplicateIds.map((d) => d.externalId),
     ['a']
   );
+  assert.ok(stats.duplicateIds[0] !== undefined);
   assert.equal(stats.duplicateIds[0].count, 2);
 
   const fuji = stats.brandSamples.find((b) => b.name === 'FUJI');
@@ -201,6 +203,7 @@ test('buildCrossAnalysis matches sku/name/brand/category without false confidenc
   assert.deepEqual(cross.skuMatches.examples, [{ sku: 'YC-4684', name: 'щось інше' }]);
   assert.equal(cross.nameMatches.count, 1);
   assert.equal(cross.brandOverlap.count, 1);
+  assert.ok(cross.brandOverlap.examples[0] !== undefined);
   assert.equal(cross.brandOverlap.examples[0].ycBrand, 'FUJI');
   assert.equal(cross.categoryOverlap.count, 1);
 });

@@ -364,13 +364,6 @@ export async function getContentGoodsWithMeta(
   );
 }
 
-export async function getContentGoods(
-  fetchImpl: FetchLike = fetch
-): Promise<unknown> {
-  const { parsed } = await getContentGoodsWithMeta(fetchImpl);
-  return parsed;
-}
-
 /**
  * Fetch the get-categories catalog (read-only preview support).
  * Minimal documented-generic body; the response envelope is intentionally

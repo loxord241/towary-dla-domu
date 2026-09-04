@@ -22,7 +22,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 try {
   for (const line of readFileSync(path.join(root, '.env.local'), 'utf8').split('\n')) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+    if (m && m[1] !== undefined && m[2] !== undefined && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
   }
 } catch {}
 
@@ -127,7 +127,7 @@ console.log('\n== BRANDS ==');
   const target = laterPage.brands[laterPage.brands.length - 1];
   check('взят бренд за пределами первой страницы', !!target, target ? `${target.name} (default position ≥41)` : '-');
   if (target) {
-    const token = target.name.split(' ')[0].toLowerCase();
+    const token = target.name.split(' ')[0]!.toLowerCase();
     const found = await adminList.listAdminBrands(client, { page: 1, size: 20, search: token });
     check(
       'REGRESSION: бренд вне первых 20 найден поиском на странице 1',

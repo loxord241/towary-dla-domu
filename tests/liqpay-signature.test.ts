@@ -100,7 +100,9 @@ test('VERIFY: data/signature pair matches byte-for-byte after transport shape', 
   assert.equal(verifyLiqPaySignature(data, sig, PRIV), true);
   // even a 1-bit change in signature breaks it
   const buf = Buffer.from(sig, 'base64');
-  buf[0] ^= 0x01;
+  const firstByte = buf[0];
+  assert.ok(firstByte !== undefined, 'signature buffer must not be empty');
+  buf[0] = firstByte ^ 0x01;
   assert.equal(verifyLiqPaySignature(data, buf.toString('base64'), PRIV), false);
 });
 
@@ -116,7 +118,9 @@ test('VERIFY: rejects tampered/altered signature', () => {
   const sig = createLiqPaySignature(data, PRIV);
   const flipped = (() => {
     const buf = Buffer.from(sig, 'base64');
-    buf[5] ^= 0x01;
+    const byte = buf[5];
+    assert.ok(byte !== undefined, 'signature buffer must have a 6th byte');
+    buf[5] = byte ^ 0x01;
     return buf.toString('base64');
   })();
   assert.equal(flipped !== sig, true);

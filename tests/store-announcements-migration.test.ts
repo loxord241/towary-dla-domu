@@ -47,6 +47,7 @@ test('ANN-MIGRATION: type is restricted to info|warning|important|success', () =
   const m = src(MIGRATION);
   const check = m.match(/type\s+text[^;]*check\s*\(([^)]*)\)/i);
   assert.ok(check, 'type CHECK constraint missing');
+  assert.ok(check[1] !== undefined);
   for (const t of ['info', 'warning', 'important', 'success']) {
     assert.match(check[1], new RegExp(`'${t}'`), `type option '${t}' missing`);
   }
@@ -72,6 +73,7 @@ test('ANN-MIGRATION: public SELECT policy exposes ONLY active rows', () => {
     /create\s+policy\s+\w+[\s\S]*?on\s+(public\.)?store_announcements[\s\S]*?for\s+select[\s\S]*?to\s+anon,\s*authenticated[\s\S]*?using\s*\(([\s\S]*?)\);/i
   );
   assert.ok(policy, 'public SELECT policy for anon, authenticated missing');
+  assert.ok(policy[2] !== undefined);
   assert.match(policy[2], /is_active/i, 'policy must filter by is_active');
 });
 

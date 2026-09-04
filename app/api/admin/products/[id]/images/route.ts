@@ -29,7 +29,7 @@ async function detectImageMime(file: File): Promise<string | null> {
   if (has(0, 'GIF8')) return 'image/gif'; // GIF87a/GIF89a
   if (hex(0, 0x52, 0x49, 0x46, 0x46) && has(8, 'WEBP')) return 'image/webp';
   if (has(4, 'ftyp')) {
-    const brand = String.fromCharCode(head[8], head[9], head[10], head[11]);
+    const brand = String.fromCharCode(head[8] ?? 0, head[9] ?? 0, head[10] ?? 0, head[11] ?? 0);
     if (['avif', 'avis', 'mif1', 'msf1'].includes(brand)) return 'image/avif';
   }
   return null;

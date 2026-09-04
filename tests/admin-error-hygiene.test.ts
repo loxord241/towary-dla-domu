@@ -45,6 +45,7 @@ test('ERROR-HYGIENE: no admin route returns a raw *.message in an error JSON bod
     const lines = src.split('\n');
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      assert.ok(line !== undefined, 'line index must be in bounds');
       if (!/(?:Response|NextResponse)?\.json\(\s*\{[^}]*\.message/.test(line)) continue;
       const context = lines
         .slice(Math.max(0, i - 3), i + 1)

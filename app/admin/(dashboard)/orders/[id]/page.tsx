@@ -395,34 +395,45 @@ export default function ShipmentPlannerPage() {
   };
 
   const updateItemQty = (idx: number, itemId: string, qty: string) => {
+    const target = draft[idx];
+    if (!target) return;
     updateShipment(idx, {
-      items: draft[idx].items.map((it) =>
+      items: target.items.map((it) =>
         it.order_item_id === itemId ? { ...it, quantity: qty } : it
       ),
     });
   };
 
   const addItemToShipment = (idx: number, itemId: string) => {
-    if (draft[idx].items.some((it) => it.order_item_id === itemId)) return;
+    const target = draft[idx];
+    if (!target) return;
+    if (target.items.some((it) => it.order_item_id === itemId)) return;
     updateShipment(idx, {
-      items: [...draft[idx].items, { order_item_id: itemId, quantity: '1' }],
+      items: [...target.items, { order_item_id: itemId, quantity: '1' }],
     });
   };
 
   const removeItemFromShipment = (idx: number, itemId: string) => {
+    const target = draft[idx];
+    if (!target) return;
     updateShipment(idx, {
-      items: draft[idx].items.filter((it) => it.order_item_id !== itemId),
+      items: target.items.filter((it) => it.order_item_id !== itemId),
     });
   };
 
   const updateParcel = (idx: number, parcelIdx: number, patch: Partial<PlanParcel>) => {
+    const target = draft[idx];
+    if (!target) return;
     updateShipment(idx, {
-      parcels: draft[idx].parcels.map((p, i) => (i === parcelIdx ? { ...p, ...patch } : p)),
+      parcels: target.parcels.map((p, i) => (i === parcelIdx ? { ...p, ...patch } : p)),
     });
   };
 
-  const allocatedInShipment = (idx: number, itemId: string): number =>
-    Number(draft[idx].items.find((it) => it.order_item_id === itemId)?.quantity ?? 0);
+  const allocatedInShipment = (idx: number, itemId: string): number => {
+    const target = draft[idx];
+    if (!target) return 0;
+    return Number(target.items.find((it) => it.order_item_id === itemId)?.quantity ?? 0);
+  };
 
   const remainingFor = (item: ServerItem): number =>
     item.quantity -
@@ -430,7 +441,7 @@ export default function ShipmentPlannerPage() {
     draft.reduce(
       (sum, _, idx) =>
         sum +
-        (draft[idx].items.some((it) => it.order_item_id === item.id)
+        (draft[idx]?.items.some((it) => it.order_item_id === item.id)
           ? allocatedInShipment(idx, item.id)
           : 0),
       0
@@ -494,7 +505,7 @@ export default function ShipmentPlannerPage() {
 
   const createTtn = async (idx: number) => {
     const shipment = draft[idx];
-    if (!orderId || !shipment.id) return;
+    if (!orderId || !shipment || !shipment.id) return;
     setTtnBusy(idx);
     setError(null);
     setNotice(null);
@@ -521,7 +532,7 @@ export default function ShipmentPlannerPage() {
 
   const rollbackTtn = async (idx: number) => {
     const shipment = draft[idx];
-    if (!orderId || !shipment.id) return;
+    if (!orderId || !shipment || !shipment.id) return;
     setTtnBusy(idx);
     setError(null);
     setNotice(null);

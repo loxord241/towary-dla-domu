@@ -46,6 +46,7 @@ test('RECATEGORY: changed category produces category_id update + junction replac
     category_id: 'uuid-new',
   }));
   assert.equal(res.updates.length, 1);
+  assert.ok(res.updates[0] !== undefined);
   assert.equal(res.updates[0].fields.category_id, 'uuid-new');
   assert.deepEqual(res.updates[0].categorySync, {
     oldCategoryId: 'uuid-old',
@@ -66,6 +67,7 @@ test('RECATEGORY: same category -> no categorySync op emitted', () => {
     [existing('p1', '1', 'uuid-new')],
     () => ({ brand_id: null, category_id: 'uuid-new' })
   );
+  assert.ok(res2.updates[0] !== undefined);
   assert.equal(res2.updates[0].fields.category_id, undefined);
   assert.equal(res2.updates[0].categorySync, undefined);
 });
@@ -75,6 +77,7 @@ test('RECATEGORY: insert op carries resolved category for junction insert', () =
     brand_id: null,
     category_id: 'uuid-c',
   }));
+  assert.ok(res.inserts[0] !== undefined);
   assert.equal(res.inserts[0].category_id, 'uuid-c');
 });
 
@@ -84,6 +87,7 @@ test('RECATEGORY: unresolved category on existing -> no category fields/junction
     [existing('p1', '1', 'uuid-old')],
     () => ({ brand_id: null, category_id: null })
   );
+  assert.ok(res.updates[0] !== undefined);
   assert.equal(res.updates[0].fields.category_id, undefined);
   assert.equal(res.updates[0].categorySync, undefined);
 });

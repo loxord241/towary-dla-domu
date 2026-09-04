@@ -196,7 +196,8 @@ function parseShipment(raw: unknown, position: number): ShipmentPlanInput | stri
     parcels.push(parsed);
   }
   for (let p = 0; p < parcels.length; p++) {
-    if (parcels[p].parcel_index !== p + 1) {
+    const parcel = parcels[p];
+    if (!parcel || parcel.parcel_index !== p + 1) {
       return `${label}: номери місць мають бути послідовними: 1, 2, 3…`;
     }
   }

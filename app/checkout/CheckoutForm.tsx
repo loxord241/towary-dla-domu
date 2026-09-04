@@ -70,7 +70,10 @@ async function searchSettlementsApi(
 ) {
   try {
     const res = await fetch(
-      `/api/delivery/novapost/settlements?q=${encodeURIComponent(q)}`
+      `/api/delivery/novapost/settlements?q=${encodeURIComponent(q)}`,
+      // A hung dictionary fetch must not spin "Шукаємо…" forever — 12 s
+      // matches the cart-preview PREVIEW_TIMEOUT_MS convention.
+      { signal: AbortSignal.timeout(12_000) }
     );
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new Error('search failed');
@@ -87,7 +90,8 @@ async function fetchDivisionsApi(
 ) {
   try {
     const res = await fetch(
-      `/api/delivery/novapost/divisions?settlementId=${settlementId}`
+      `/api/delivery/novapost/divisions?settlementId=${settlementId}`,
+      { signal: AbortSignal.timeout(12_000) }
     );
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new Error('divisions failed');
@@ -105,7 +109,8 @@ async function searchStreetsApi(
 ) {
   try {
     const res = await fetch(
-      `/api/delivery/novapost/streets?settlementId=${settlementId}&name=${encodeURIComponent(name)}`
+      `/api/delivery/novapost/streets?settlementId=${settlementId}&name=${encodeURIComponent(name)}`,
+      { signal: AbortSignal.timeout(12_000) }
     );
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new Error('streets failed');
@@ -138,6 +143,9 @@ export default function CheckoutForm() {
   const [settlementOpen, setSettlementOpen] = useState(false);
   const [settlementLoading, setSettlementLoading] = useState(false);
   const [divisions, setDivisions] = useState<NpDivision[]>([]);
+  // Distinct from "loaded and empty": the «Немає доступних варіантів» branch
+  // is honest ONLY after a fetch has finished.
+  const [divisionsLoading, setDivisionsLoading] = useState(false);
   const [division, setDivision] = useState<NpDivision | null>(null);
   const [street, setStreet] = useState<NpStreet | null>(null);
   const [streetQuery, setStreetQuery] = useState('');
@@ -248,10 +256,17 @@ export default function CheckoutForm() {
         preview.unitPrice === null ||
         preview.availabilityStatus === 'out_of_stock')
   );
-  const subtotal = purchasable.reduce(
-    (sum, { item, preview }) => sum + (preview?.unitPrice ?? 0) * item.quantity,
-    0
-  );
+  // Subtotals are grouped per currency: summing UAH and USD into one
+  // number and signing it with the first row's currency is meaningless.
+  // Single-currency carts keep the exact pre-existing display shape.
+  const subtotalByCurrency = new Map<string, number>();
+  for (const { item, preview } of purchasable) {
+    const cur = preview?.currency ?? '';
+    subtotalByCurrency.set(
+      cur,
+      (subtotalByCurrency.get(cur) ?? 0) + (preview?.unitPrice ?? 0) * item.quantity
+    );
+  }
   const currency = purchasable[0]?.preview?.currency ?? '';
 
   if (hydrated && items.length === 0) {
@@ -337,6 +352,16 @@ export default function CheckoutForm() {
     if (lastTrimmed.length === 0) errs.lastName = 'Вкажіть прізвище';
     else if (lastTrimmed.length > 120) errs.lastName = 'Максимум 120 символів';
     if (patronymicTrimmed.length > 120) errs.patronymic = 'Максимум 120 символів';
+    // Composed ПІБ keeps the legacy single-string `name` contract alive;
+    // structured parts travel alongside for customer_info.
+    const name = [lastTrimmed, firstTrimmed, patronymicTrimmed]
+      .filter((part) => part !== '')
+      .join(' ');
+    // The server caps the COMPOSED name at 120 — per-field limits alone let
+    // a valid form die on a misleading 400, so check the joined length here.
+    if (name.length > 120) {
+      errs.lastName = 'Прізвище, ім’я та по батькові разом — до 120 символів';
+    }
     const emailTrimmed = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailTrimmed))
       errs.email = 'Вкажіть коректний email';
@@ -347,12 +372,6 @@ export default function CheckoutForm() {
       return;
     }
     setFieldErrors({});
-
-    // Composed ПІБ keeps the legacy single-string `name` contract alive;
-    // structured parts travel alongside for customer_info.
-    const name = [lastTrimmed, firstTrimmed, patronymicTrimmed]
-      .filter((part) => part !== '')
-      .join(' ');
     const phone = toE164Ua(phoneDigits);
 
     const delivery = deliveryObject();
@@ -433,7 +452,16 @@ export default function CheckoutForm() {
         `/checkout/success?order=${encodeURIComponent(data.orderNumber)}&t=${data.accessToken}`
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Помилка оформлення');
+      // Browser/DOMException messages ("signal timed out", crypto failures
+      // on insecure contexts) mean nothing to a shopper — map them to an
+      // actionable message; the idempotency key makes a retry safe.
+      if (err instanceof Error && err.name === 'TimeoutError') {
+        setError('Сервер не відповів вчасно. Спробуйте ще раз.');
+      } else if (err instanceof TypeError && /randomUUID|crypto/.test(err.message)) {
+        setError('Помилка сесії. Оновіть сторінку та спробуйте ще раз.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Помилка оформлення');
+      }
       setSubmitting(false);
     }
   };
@@ -636,6 +664,7 @@ export default function CheckoutForm() {
                       setBuilding('');
                       setFlat('');
                       setDivisions([]);
+                      setDivisionsLoading(false);
                       setDeliveryError(null);
                       // Drop in-flight divisions/streets responses for the
                       // previous delivery type / list state.
@@ -643,15 +672,18 @@ export default function CheckoutForm() {
                       streetRequestSeq.current += 1;
                       if (settlement && t.value !== 'nova_poshta_courier') {
                         const seq = divisionsRequestSeq.current;
+                        setDivisionsLoading(true);
                         fetchDivisionsApi(
                           settlement.id,
                           (items) => {
                             if (seq !== divisionsRequestSeq.current) return; // stale response
                             setDivisions(items);
+                            setDivisionsLoading(false);
                           },
                           () => {
                             if (seq !== divisionsRequestSeq.current) return;
                             setDivisions([]);
+                            setDivisionsLoading(false);
                           }
                         );
                       }
@@ -681,11 +713,12 @@ export default function CheckoutForm() {
                 }
                 onChange={(e) => {
                   const q = e.target.value;
-                  setSettlementQuery(q);
-                  setSettlement(null);
-                  setDivision(null);
-                  setDivisions([]);
-                  setStreet(null);
+                   setSettlementQuery(q);
+                   setSettlement(null);
+                   setDivision(null);
+                   setDivisions([]);
+                   setDivisionsLoading(false);
+                   setStreet(null);
                   setStreetQuery('');
                   setStreetResults([]);
                   setSettlementOpen(true);
@@ -756,20 +789,23 @@ export default function CheckoutForm() {
                             setFlat('');
                             divisionsRequestSeq.current += 1;
                             streetRequestSeq.current += 1;
-                            if (deliveryType && deliveryType !== 'nova_poshta_courier') {
-                              const seq = divisionsRequestSeq.current;
-                              fetchDivisionsApi(
-                                s.id,
-                                (items) => {
-                                  if (seq !== divisionsRequestSeq.current) return; // stale response
-                                  setDivisions(items);
-                                },
-                                () => {
-                                  if (seq !== divisionsRequestSeq.current) return;
-                                  setDivisions([]);
-                                }
-                              );
-                            }
+                             if (deliveryType && deliveryType !== 'nova_poshta_courier') {
+                               const seq = divisionsRequestSeq.current;
+                               setDivisionsLoading(true);
+                               fetchDivisionsApi(
+                                 s.id,
+                                 (items) => {
+                                   if (seq !== divisionsRequestSeq.current) return; // stale response
+                                   setDivisions(items);
+                                   setDivisionsLoading(false);
+                                 },
+                                 () => {
+                                   if (seq !== divisionsRequestSeq.current) return;
+                                   setDivisions([]);
+                                   setDivisionsLoading(false);
+                                 }
+                               );
+                             }
                           }}
                         >
                           <span className="block">{s.name}</span>
@@ -798,7 +834,11 @@ export default function CheckoutForm() {
                   {deliveryType === 'nova_poshta_locker' ? 'Поштомат *' : 'Відділення *'}
                 </label>
                 {settlement ? (
-                  divisionsForType.length > 0 ? (
+                  divisionsLoading ? (
+                    <p className="text-sm text-gray-400" role="status">
+                      Завантажуємо варіанти…
+                    </p>
+                  ) : divisionsForType.length > 0 ? (
                     <select
                       id="co-division"
                       value={division ? String(division.id) : ''}
@@ -1039,26 +1079,38 @@ export default function CheckoutForm() {
                       )}
                       <span className="text-xs text-gray-400">{item.quantity} шт</span>
                     </span>
-                    <span className="whitespace-nowrap font-medium">
-                      {((preview?.unitPrice ?? 0) * item.quantity).toFixed(2)} {currency}
-                    </span>
+                     <span className="whitespace-nowrap font-medium">
+                       {((preview?.unitPrice ?? 0) * item.quantity).toFixed(2)} {preview?.currency ?? currency}
+                     </span>
                   </li>
                 ))}
               </ul>
-              <dl className="space-y-1 border-t border-gray-100 pt-3 text-sm">
-                <div className="flex justify-between text-gray-600">
-                  <dt>Товари</dt>
-                  <dd>{subtotal.toFixed(2)} {currency}</dd>
-                </div>
-                <div className="flex justify-between text-gray-600">
-                  <dt>Доставка</dt>
-                  <dd>за тарифами перевізника</dd>
-                </div>
-                <div className="flex justify-between pt-1 text-base font-bold text-gray-900">
-                  <dt>До сплати</dt>
-                  <dd>{subtotal.toFixed(2)} {currency}</dd>
-                </div>
-              </dl>
+               <dl className="space-y-1 border-t border-gray-100 pt-3 text-sm">
+                 <div className="flex justify-between text-gray-600">
+                   <dt>Товари</dt>
+                   <dd>
+                     {subtotalByCurrency.size <= 1
+                       ? `${[...subtotalByCurrency.values()][0]?.toFixed(2) ?? '0.00'} ${currency}`
+                       : [...subtotalByCurrency.entries()]
+                           .map(([cur, sum]) => `${sum.toFixed(2)} ${cur}`)
+                           .join(' + ')}
+                   </dd>
+                 </div>
+                 <div className="flex justify-between text-gray-600">
+                   <dt>Доставка</dt>
+                   <dd>за тарифами перевізника</dd>
+                 </div>
+                 <div className="flex justify-between pt-1 text-base font-bold text-gray-900">
+                   <dt>До сплати</dt>
+                   <dd>
+                     {subtotalByCurrency.size <= 1
+                       ? `${[...subtotalByCurrency.values()][0]?.toFixed(2) ?? '0.00'} ${currency}`
+                       : [...subtotalByCurrency.entries()]
+                           .map(([cur, sum]) => `${sum.toFixed(2)} ${cur}`)
+                           .join(' + ')}
+                   </dd>
+                 </div>
+               </dl>
               {previewError && (
                 <p
                   className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"

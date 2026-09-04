@@ -14,6 +14,11 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const { mapLiqPayStatus, isKnownLiqPayStatus } = await import(
   '../app/lib/payment/liqpay-status.ts'
@@ -70,4 +75,21 @@ test('STATUS: isKnownLiqPayStatus distinguishes documented statuses for logging'
   assert.equal(isKnownLiqPayStatus(''), false);
   assert.equal(isKnownLiqPayStatus('nope'), false);
   assert.equal(isKnownLiqPayStatus(null), false);
+});
+
+test('STATUS: callback path logs unknown statuses (policy stays unknown → pending)', () => {
+  // The "unknown values are logged" promise is implemented at the callback
+  // orchestration point (order-payment-update.ts), not silently dropped.
+  const src = readFileSync(
+    path.join(root, 'app/lib/payment/order-payment-update.ts'),
+    'utf8'
+  );
+  assert.match(src, /isKnownLiqPayStatus/);
+  assert.match(
+    src,
+    /if \(!isKnownLiqPayStatus\(payload\.status\)\) \{\n\s*console\.error\('liqpay\/callback: unknown status'/,
+    'unknown provider statuses must reach the server log'
+  );
+  // …while the mapping policy itself is untouched (pending, never terminal).
+  assert.equal(mapLiqPayStatus('brand_new_provider_status'), 'pending');
 });

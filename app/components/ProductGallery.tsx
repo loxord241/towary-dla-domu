@@ -23,7 +23,7 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
     );
   }
 
-  const main = images[Math.min(selected, images.length - 1)];
+  const main = images[Math.min(selected, images.length - 1)]!;
 
   return (
     <div>

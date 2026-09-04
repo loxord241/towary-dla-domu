@@ -73,6 +73,7 @@ describe('nova post client deleteJson', () => {
     const { calls, client } = stubClient(() => new Response('{"success":true}', { status: 200 }));
     await client.deleteJson('shipments/01a044c8-018a-7952-8e2d-d60ad39839b7');
     assert.equal(calls.length, 1);
+    assert.ok(calls[0] !== undefined);
     assert.equal(calls[0].method, 'DELETE');
     assert.ok(calls[0].url.endsWith('/v.1.0/shipments/01a044c8-018a-7952-8e2d-d60ad39839b7'));
     assert.equal(calls[0].body, undefined);
@@ -131,6 +132,7 @@ describe('createShipment (POST /shipments adapter)', () => {
     );
     const created = await createShipment(client, payload);
     assert.equal(calls.length, 1);
+    assert.ok(calls[0] !== undefined);
     assert.equal(calls[0].method, 'POST');
     assert.ok(calls[0].url.endsWith('/v.1.0/shipments'));
     assert.deepEqual(JSON.parse(calls[0].body ?? '{}'), payload);
@@ -187,13 +189,16 @@ describe('findShipmentsByClientOrder (GET /shipments?clientOrder=…)', () => {
     );
     const items = await findShipmentsByClientOrder(client, 'ship-1');
     assert.equal(calls.length, 1);
+    assert.ok(calls[0] !== undefined);
     assert.ok(calls[0].url.includes('clientOrder=ship-1'));
     assert.ok(calls[0].url.includes('limit=15'));
     assert.equal(items.length, 1);
-    assert.equal(items[0].id, '01a044c8-5b57-7d30-a4c4-3eb2a8cee77b');
-    assert.equal(items[0].number, '20451522053870');
-    assert.equal(items[0].clientOrder, 'ship-1');
-    assert.equal(items[0].deletedAt, null);
+    const first = items[0];
+    assert.ok(first !== undefined);
+    assert.equal(first.id, '01a044c8-5b57-7d30-a4c4-3eb2a8cee77b');
+    assert.equal(first.number, '20451522053870');
+    assert.equal(first.clientOrder, 'ship-1');
+    assert.equal(first.deletedAt, null);
   });
 
   test('empty result -> []', async () => {
@@ -220,6 +225,7 @@ describe('findShipmentsByClientOrder (GET /shipments?clientOrder=…)', () => {
     );
     const items = await findShipmentsByClientOrder(client, 'c');
     assert.equal(items.length, 1);
+    assert.ok(items[0] !== undefined);
     assert.equal(items[0].number, 'N1');
   });
 
@@ -267,6 +273,7 @@ describe('deleteShipmentByRef (DELETE /shipments/{ref})', () => {
     const result = await deleteShipmentByRef(client, '01a044c8-018a-7952-8e2d-d60ad39839b7');
     assert.equal(result, 'deleted');
     assert.equal(calls.length, 1);
+    assert.ok(calls[0] !== undefined);
     assert.equal(calls[0].method, 'DELETE');
   });
 

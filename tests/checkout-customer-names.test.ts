@@ -100,6 +100,14 @@ test('CUSTOMER-FORM: three structured name fields rendered', () => {
   assert.match(f, /errs\.lastName = 'Вкажіть прізвище'/);
 });
 
+test('CUSTOMER-FORM: composed ПІБ validated against the server-side 120 cap', () => {
+  const f = src('app/checkout/CheckoutForm.tsx');
+  // Per-field ≤120 checks alone let a joined name exceed the server limit
+  // and die on a misleading 400 — the composed length is validated locally.
+  assert.match(f, /name\.length > 120/);
+  assert.match(f, /разом — до 120 символів/);
+});
+
 test('CUSTOMER-FORM: phone has fixed +380 prefix and E.164 normalization', () => {
   const f = src('app/checkout/CheckoutForm.tsx');
   assert.match(f, /\+380/);

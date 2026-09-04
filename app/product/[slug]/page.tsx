@@ -188,14 +188,14 @@ export default async function ProductPage({
           {/* Product Images */}
           <div className="bg-white rounded-lg shadow p-4">
             <ProductGallery
-              images={galleryUrls.map((url, idx) => ({
-                url,
-                alt:
-                  product.images.find((image) => image.is_main && idx === 0)
-                    ?.alt ??
-                  product.images[idx]?.alt ??
-                  product.name,
-              }))}
+              images={product.images.flatMap((image, idx) => {
+                // galleryUrls is index-preserving (null for unresolvable
+                // rows): idx lines up with product.images, so each slide's
+                // alt comes from ITS OWN row — never from a shifted index.
+                const url = galleryUrls[idx];
+                if (!url) return [];
+                return [{ url, alt: image.alt ?? product.name }];
+              })}
             />
           </div>
 

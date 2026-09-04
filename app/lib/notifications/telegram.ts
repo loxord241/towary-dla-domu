@@ -246,7 +246,7 @@ export async function sendTelegramOrderMessage(
   for (let index = 0; index < total; index++) {
     const result = await postTelegramMessage(
       config.token!,
-      config.chatIds[index],
+      config.chatIds[index]!,
       text
     );
     if (result.sent) {

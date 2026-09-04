@@ -80,6 +80,7 @@ test('PARCELS-020: cargo_category whitelist (live NP enum)', () => {
     /chk_order_shipment_parcels_category\s+check \(cargo_category in \(([\s\S]*?)\)\)/
   );
   assert.ok(whitelist, 'cargo_category CHECK missing');
+  assert.ok(whitelist[1] !== undefined);
   for (const value of ['parcel', 'documents', 'pallet']) {
     assert.match(whitelist[1], new RegExp(`'${value}'`));
   }

@@ -176,7 +176,7 @@ export function moveInGroup(
   if (index === -1) return null;
   const target = direction === 'up' ? index - 1 : index + 1;
   if (target < 0 || target >= sorted.length) return null;
-  [sorted[index], sorted[target]] = [sorted[target], sorted[index]];
+  [sorted[index], sorted[target]] = [sorted[target]!, sorted[index]!];
   return sorted.map((c, i) => ({ ...c, sort_order: i }));
 }
 

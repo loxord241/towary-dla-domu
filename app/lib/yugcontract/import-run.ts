@@ -343,18 +343,17 @@ export async function applyCategoryPlan(
   }
 
   let inserted = 0;
-  // Parent resolution must happen PER CHUNK: creates are globally
-  // depth-sorted, so by the time a chunk is built its parents already sit
-  // in extToUuid (from earlier chunks or earlier rows of the same INSERT,
-  // which PostgreSQL checks row-by-row). Resolving upfront would null
-  // every child's parent_id.
+  // Pass 1 — creates WITHOUT parent_id, in plan (depth) order. Parent
+  // links are wired in pass 2: resolving per-chunk from a pre-insert
+  // extToUuid snapshot silently nulled every child whose parent sat in
+  // the SAME chunk (the map only learns new uuids after the whole chunk
+  // INSERT returns).
   for (const ops of chunk(plan.creates)) {
     const rows = ops.map((op) => ({
       yugcontract_id: op.yugcontract_id,
       name: op.name,
       slug: op.slug,
-      parent_id:
-        op.parentYcId !== null ? extToUuid.get(op.parentYcId) ?? null : null,
+      parent_id: null,
       sort_order: 0,
       is_active: true,
     }));
@@ -367,9 +366,35 @@ export async function applyCategoryPlan(
     inserted += created.length;
   }
 
-  let updated = 0;
+  // Pass 2 — separate update pass over the FULL extToUuid (earlier chunks,
+  // this chunk, existing rows): every create now has its uuid, so each
+  // parent link resolves. Unresolvable parents stay NULL (parent outside
+  // the selection) and are recorded as row diagnostics.
   let errors = 0;
   const rowErrors = new RowErrorCollector();
+  for (const op of plan.creates) {
+    if (op.parentYcId === null) continue;
+    const childId = extToUuid.get(op.yugcontract_id);
+    const parentId = extToUuid.get(op.parentYcId);
+    if (childId === undefined || parentId === undefined) {
+      errors += 1;
+      rowErrors.add(
+        `категорія ${op.yugcontract_id}`,
+        `батька ${op.parentYcId} не знайдено — parent_id залишено порожнім`
+      );
+      continue;
+    }
+    const { error } = await client
+      .from('categories')
+      .update({ parent_id: parentId })
+      .eq('id', childId);
+    if (error) {
+      errors += 1;
+      rowErrors.add(`категорія ${op.yugcontract_id}`, error.message);
+    }
+  }
+
+  let updated = 0;
   for (const op of plan.updates) {
     const fields: Record<string, unknown> = {};
     if (op.name !== undefined) fields.name = op.name;
@@ -551,7 +576,6 @@ async function runProductsBatch(
     let updatedCount = 0;
     let recategorized = 0;
     let errors = 0;
-    const history: StockHistoryRow[] = [];
 
     for (const part of chunk(split.inserts.map((r) => ({ ...r })))) {
       const done = await insertChunked(client, 'products', part, 'id,yugcontract_id');
@@ -575,65 +599,103 @@ async function runProductsBatch(
 
     // Row failures never fail the batch (checkpoint semantics) — the only
     // persistent trace is last_error, so record id + message for the first few.
+    // Stock is recomputed against a fresh read per row: the split-time value
+    // is stale by the time this batch writes (place_order may have
+    // decremented under FOR UPDATE since), so the written absolute preserves
+    // concurrent order deltas instead of silently erasing them (oversell).
+    // Stock history is inserted per chunk right after its updates so a crash
+    // between the updates loop and a single trailing insert cannot lose the
+    // audit trail of already-applied writes.
     const rowErrors = new RowErrorCollector();
-    for (const op of split.updates) {
-      const { data, error } = await client
-        .from('products')
-        .update(op.fields)
-        .eq('id', op.id)
-        .select('id');
-      if (error || !data || data.length === 0) {
-        errors += 1;
-        rowErrors.add(
-          `${op.id} (yc ${op.yugcontractId})`,
-          error?.message ?? '0 rows updated (товар зник під час батчу?)'
-        );
-        continue;
-      }
-      updatedCount += 1;
-      if (op.categorySync) {
-        // Replace-all semantics for YC rows: upsert first (idempotent on
-        // retry), then drop every other direct link of this product.
-        const { error: upErr } = await client
-          .from('product_categories')
-          .upsert(
-            { product_id: op.id, category_id: op.categorySync.newCategoryId },
-            { onConflict: 'product_id,category_id' }
-          );
-        if (upErr) {
-          errors += 1;
-          rowErrors.add(
-            `${op.id} (yc ${op.yugcontractId})`,
-            `product_categories upsert: ${upErr.message}`
-          );
-        } else {
-          const { error: delErr } = await client
-            .from('product_categories')
-            .delete()
-            .eq('product_id', op.id)
-            .neq('category_id', op.categorySync.newCategoryId);
-          if (delErr) {
+    for (const ops of chunk(split.updates)) {
+      const history: StockHistoryRow[] = [];
+      for (const op of ops) {
+        let fields = op.fields;
+        let freshStock: number | null = null;
+        if (op.stockChanged) {
+          const { data: freshRows, error: freshErr } = await client
+            .from('products')
+            .select('stock_quantity')
+            .eq('id', op.id)
+            .limit(1);
+          const freshRow = !freshErr && freshRows && freshRows.length > 0
+            ? (freshRows[0] as { stock_quantity: number | null })
+            : null;
+          freshStock = freshRow?.stock_quantity ?? null;
+          if (freshStock === null) {
             errors += 1;
             rowErrors.add(
               `${op.id} (yc ${op.yugcontractId})`,
-              `product_categories cleanup: ${delErr.message}`
+              freshErr?.message ?? '0 rows read (товар зник під час батчу?)'
             );
-          } else recategorized += 1;
+            continue;
+          }
+          if (freshStock !== (op.oldStock ?? 0)) {
+            // Preserve the concurrent delta (orders placed after the split):
+            // absolute = fresh + (target - stale).
+            fields = {
+              ...op.fields,
+              stock_quantity: freshStock + (op.newStock - (op.oldStock ?? 0)),
+            };
+          }
+        }
+        const { data, error } = await client
+          .from('products')
+          .update(fields)
+          .eq('id', op.id)
+          .select('id');
+        if (error || !data || data.length === 0) {
+          errors += 1;
+          rowErrors.add(
+            `${op.id} (yc ${op.yugcontractId})`,
+            error?.message ?? '0 rows updated (товар зник під час батчу?)'
+          );
+          continue;
+        }
+        updatedCount += 1;
+        if (op.categorySync) {
+          // Replace-all semantics for YC rows: upsert first (idempotent on
+          // retry), then drop every other direct link of this product.
+          const { error: upErr } = await client
+            .from('product_categories')
+            .upsert(
+              { product_id: op.id, category_id: op.categorySync.newCategoryId },
+              { onConflict: 'product_id,category_id' }
+            );
+          if (upErr) {
+            errors += 1;
+            rowErrors.add(
+              `${op.id} (yc ${op.yugcontractId})`,
+              `product_categories upsert: ${upErr.message}`
+            );
+          } else {
+            const { error: delErr } = await client
+              .from('product_categories')
+              .delete()
+              .eq('product_id', op.id)
+              .neq('category_id', op.categorySync.newCategoryId);
+            if (delErr) {
+              errors += 1;
+              rowErrors.add(
+                `${op.id} (yc ${op.yugcontractId})`,
+                `product_categories cleanup: ${delErr.message}`
+              );
+            } else recategorized += 1;
+          }
+        }
+        if (op.stockChanged) {
+          history.push({
+            product_id: op.id,
+            old_quantity: freshStock ?? op.oldStock ?? 0,
+            new_quantity: op.newStock,
+            reason: 'yugcontract_sync',
+            source: 'yugcontract',
+          });
         }
       }
-      if (op.stockChanged) {
-        history.push({
-          product_id: op.id,
-          old_quantity: op.oldStock ?? 0,
-          new_quantity: op.newStock,
-          reason: 'yugcontract_sync',
-          source: 'yugcontract',
-        });
+      if (history.length > 0) {
+        await insertChunked(client, 'product_stock_history', history, 'id');
       }
-    }
-
-    if (history.length > 0) {
-      await insertChunked(client, 'product_stock_history', history, 'id');
     }
 
     const counters: BatchCounters = {

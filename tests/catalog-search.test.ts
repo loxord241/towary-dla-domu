@@ -50,7 +50,11 @@ test('buildSearchConditions: every token becomes an AND-ed or() expression', () 
       /^name\.ilike\.%[^%]+%,short_description\.ilike\.%[^%]+%,sku\.ilike\.%[^%]+%,yugcontract_id\.ilike\.%[^%]+%$/
     );
   }
-  const tokens = conds.map((c) => c.split('ilike.%')[1].split('%')[0]);
+  const tokens = conds.map((c) => {
+    const token = c.split('ilike.%')[1]?.split('%')[0];
+    assert.ok(token !== undefined, 'token must be captured from the condition');
+    return token;
+  });
   assert.deepEqual(tokens.sort(), ['парова', 'щітка'].sort());
 });
 
@@ -74,8 +78,10 @@ test('buildSearchConditions: full SKU with YC- prefix matches sku column', () =>
 test('buildSearchConditions: bare numeric SKU matches yugcontract_id', () => {
   const cond = buildSearchConditions('7061899') as string[];
   assert.equal(cond.length, 1);
-  assert.match(cond[0], /sku\.ilike\.%7061899%/);
-  assert.match(cond[0], /yugcontract_id\.ilike\.%7061899%/);
+  const firstCond = cond[0];
+  assert.ok(firstCond !== undefined, 'expected a single condition');
+  assert.match(firstCond, /sku\.ilike\.%7061899%/);
+  assert.match(firstCond, /yugcontract_id\.ilike\.%7061899%/);
 });
 
 test('buildSearchConditions: SKU search is case-insensitive by construction', () => {
@@ -156,7 +162,7 @@ test('buildSearchConditions: adversarial input can never inject or= grammar', ()
     if (!conds) continue;
     for (const cond of conds) {
       // strip the known scaffolding, inspect only the pattern values
-      const values = [...cond.matchAll(/ilike\.%([^%]*)%/g)].map((m) => m[1]);
+      const values = [...cond.matchAll(/ilike\.%([^%]*)%/g)].map((m) => m[1]).filter((v): v is string => v !== undefined);
       for (const value of values) {
         for (const ch of [',', '"', '(', ')', '%']) {
           assert.ok(
@@ -199,6 +205,15 @@ test('sanitizeSearchTerm: parens and percent are stripped too', () => {
   assert.equal(sanitizeSearchTerm('фото (10x15)"'), 'фото 10x15');
 });
 
+test('sanitizeSearchTerm: PostgREST %-synonym (*) and ILIKE _ wildcards are stripped', () => {
+  // '*' is a PostgREST ilike wildcard synonym (q=*** matched everything
+  // pre-fix); '_' is the single-char ILIKE wildcard — same broadening class.
+  assert.equal(sanitizeSearchTerm('***'), '');
+  assert.equal(sanitizeSearchTerm('___'), '');
+  assert.equal(sanitizeSearchTerm('a*b_c'), 'a b c');
+  assert.equal(sanitizeSearchTerm('100_*'), '100');
+});
+
 test('sanitizeSearchTerm: ordinary product text is preserved', () => {
   assert.equal(sanitizeSearchTerm('Фотоальбом 10x15'), 'Фотоальбом 10x15');
   assert.equal(sanitizeSearchTerm('Парова щітка TEFAL DT2026E1'), 'Парова щітка TEFAL DT2026E1');
@@ -227,12 +242,14 @@ test('sanitizeSearchTerm: output can never inject or= grammar characters', () =>
     'foo,bar"baz',
     '",("',
     '%","%("',
+    '***',
+    'a_b*c',
     'Ніж TRAMONTINA CENTURY поварський6" (24010/106)',
     '"iphone 15", (в наявності) 100%',
   ];
   for (const input of adversarial) {
     const out = sanitizeSearchTerm(input);
-    for (const ch of [',', '"', '(', ')', '%']) {
+    for (const ch of [',', '"', '(', ')', '%', '*', '_']) {
       assert.ok(
         !out.includes(ch),
         `output ${JSON.stringify(out)} contains reserved ${JSON.stringify(ch)}`

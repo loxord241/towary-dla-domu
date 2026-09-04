@@ -26,11 +26,13 @@ test('produces a three-segment base64url JWT', () => {
 
 test('header is {"alg":"HS256","typ":"JWT"}', () => {
   const [head] = signHs256Jwt(PAYLOAD, SECRET, 180).split('.');
+  assert.ok(head !== undefined);
   assert.deepEqual(decodeSegment(head), { alg: 'HS256', typ: 'JWT' });
 });
 
 test('payload carries user fields plus iat/exp with the exact TTL', () => {
   const [, body] = signHs256Jwt(PAYLOAD, SECRET, 180).split('.');
+  assert.ok(body !== undefined);
   const payload = decodeSegment(body);
   assert.equal(payload.algorithm, 'HS256');
   assert.equal(payload.user_key, 'my-public-user-key');

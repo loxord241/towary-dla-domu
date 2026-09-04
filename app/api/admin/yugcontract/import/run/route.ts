@@ -31,14 +31,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Потрібен runId' }, { status: 400 });
     }
 
-    const batch = await claimNextBatch(ctx.serviceClient, body.runId.trim());
+    const runId = body.runId.trim().slice(0, 100);
+    const batch = await claimNextBatch(ctx.serviceClient, runId);
     if (batch === null) {
-      return NextResponse.json({ runId: body.runId, nextBatch: null });
+      return NextResponse.json({ runId, nextBatch: null });
     }
 
     const outcome = await executeBatch(ctx.serviceClient, batch, makeRealDeps());
     return NextResponse.json({
-      runId: body.runId,
+      runId,
       nextBatch: outcome.status === 'done' ? 'continue' : 'retry-or-inspect',
       outcome,
     });

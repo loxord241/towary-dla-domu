@@ -40,7 +40,9 @@ function extractOrTemplate(source: string, file: string): string {
     `${file}: keyset pagination must build the composite cursor via q.or(\`...\`) ` +
       `(next page = created_at > T OR (created_at = T AND order_number > N))`
   );
-  return m[1];
+  const template = m[1];
+  assert.ok(template !== undefined, 'capture group must hold the or() template');
+  return template;
 }
 
 function instantiate(
@@ -94,7 +96,11 @@ function compare(col: keyof Row, rowVal: string, rawVal: string): number {
 function evalTerm(row: Row, term: string): boolean {
   const t = term.trim();
   const andMatch = t.match(/^and\((.+)\)$/);
-  if (andMatch) return splitTopLevel(andMatch[1]).every((inner) => evalTerm(row, inner));
+  if (andMatch) {
+    const terms = andMatch[1];
+    assert.ok(terms !== undefined, 'and(...) must capture its terms');
+    return splitTopLevel(terms).every((inner) => evalTerm(row, inner));
+  }
   const m = t.match(/^(created_at|order_number)\.(eq|gt|gte)\."(.*)"$/);
   assert.ok(m, `unsupported predicate term (cursor filter drift?): ${t}`);
   const [, col, op, value] = m as unknown as [string, keyof Row, 'eq' | 'gt' | 'gte', string];
@@ -137,6 +143,7 @@ function paginateAll(
     if (page.length === 0) break;
     for (const r of page) out.push(r.order_number);
     const last = page[page.length - 1];
+    assert.ok(last !== undefined, 'page must be non-empty to advance the cursor');
     cursor = { createdAt: last.created_at, orderNumber: last.order_number };
   }
   return out;

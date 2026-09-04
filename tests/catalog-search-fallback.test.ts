@@ -154,11 +154,14 @@ test('FALLBACK: «блендерр» (0 hits) retries with «блендер» an
 
   // exactly one retry: the original count + one relaxed count
   assert.equal(counts.length, 2);
+  const originalCount = counts[0];
+  const retryCount = counts[1];
+  assert.ok(originalCount !== undefined && retryCount !== undefined, 'original + retry count calls expected');
   // the ORIGINAL count carried the typo token…
-  assert.ok(counts[0].or.some((e) => e.includes('%блендерр%')));
+  assert.ok(originalCount.or.some((e) => e.includes('%блендерр%')));
   // …the retry REPLACED it with the trimmed term
-  assert.ok(counts[1].or.some((e) => e.includes('%блендер%')));
-  assert.ok(!counts[1].or.some((e) => e.includes('%блендерр%')));
+  assert.ok(retryCount.or.some((e) => e.includes('%блендер%')));
+  assert.ok(!retryCount.or.some((e) => e.includes('%блендерр%')));
 
   assert.equal(page.total, 2);
   assert.equal(page.products.length, 2);
@@ -166,6 +169,7 @@ test('FALLBACK: «блендерр» (0 hits) retries with «блендер» an
 
   // the data query must use the SAME relaxed conditions (count/data sync)
   const dataCall = reqLog[reqLog.length - 1];
+  assert.ok(dataCall !== undefined, 'data request must be logged');
   assert.ok(dataCall.or.some((e) => e.includes('%блендер%')));
   assert.ok(!dataCall.or.some((e) => e.includes('%блендерр%')));
 });
@@ -214,7 +218,9 @@ test('FALLBACK: multi-token relaxes only the broken token (AND preserved)', asyn
   const counts = countCalls(before);
 
   assert.equal(counts.length, 2); // original + first (successful) retry
-  const retryOr = counts[1].or.join('|');
+  const retryCount = counts[1];
+  assert.ok(retryCount !== undefined, 'retry count call expected');
+  const retryOr = retryCount.or.join('|');
   assert.ok(retryOr.includes('%bosch%'), 'intact token must stay verbatim');
   assert.ok(retryOr.includes('%блендер%'), 'broken token must be relaxed');
   assert.ok(!retryOr.includes('%блендерр%'), 'typo must not survive the retry');

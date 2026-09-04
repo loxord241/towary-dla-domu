@@ -169,6 +169,16 @@ test('ANN-LIB: fetchActiveAnnouncements filters is_active and orders by sort_ord
   assert.match(lib, /sort_order/);
 });
 
+test('ANN-LIB: SSR read carries a deadline — hung upstream never stalls the page (2026-09-04)', () => {
+  const lib = src('app/lib/announcements.ts');
+  // supabase-js queries take no AbortSignal, so the deadline is a race
+  // against a timer; the timeout path stays fail-open ([]) and logs.
+  assert.match(lib, /ANNOUNCEMENTS_DEADLINE_MS = 8_000/);
+  assert.match(lib, /Promise\.race\(\[query, deadline\]\)/);
+  assert.match(lib, /console\.error\('store announcements: deadline exceeded/);
+  assert.match(lib, /return \[\];/, 'fail-open contract preserved');
+});
+
 // ---- admin route: guard ----
 
 test('ANN-ADMIN-API: every handler sits behind requireAdminApi', () => {

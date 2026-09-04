@@ -32,7 +32,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 try {
   for (const line of readFileSync(path.join(root, '.env.local'), 'utf8').split('\n')) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && process.env[m[1]] === undefined) {
+    if (m && m[1] !== undefined && m[2] !== undefined && process.env[m[1]] === undefined) {
       process.env[m[1]] = m[2].replace(/^"|"$/g, '').trim();
     }
   }
@@ -84,6 +84,13 @@ const { classifyReconcileRow, findDuplicatePaymentIdGroups } = await import(
 const { fetchLiqPayProviderStatus } = await import(
   '../app/lib/payment/liqpay-status-api.ts'
 );
+const { getLiqPayConfig } = await import(
+  '../app/lib/payment/liqpay-config.ts'
+);
+
+// Fail-fast on misconfiguration: getLiqPayConfig throws LIQPAY_NOT_CONFIGURED
+// with a key-free message instead of signing with an 'undefined' key.
+const liqpay = getLiqPayConfig();
 
 // ---------------------------------------------------------------------------
 // LiqPay Status API — shared read-only client (single implementation)
@@ -140,6 +147,7 @@ async function* loadRows(): AsyncGenerator<OrderRowShim> {
       if (loaded >= LIMIT) return;
     }
     const last = rows[rows.length - 1];
+    if (last === undefined) return;
     cursor = { createdAt: last.created_at, orderNumber: last.order_number };
   }
 }
@@ -164,7 +172,11 @@ for await (const row of loadRows()) {
   if (!first) await sleep(THROTTLE_MS); // polite pacing; no parallelism
   first = false;
 
-  const provider = await fetchLiqPayProviderStatus(row.liqpay_order_id);
+  const provider = await fetchLiqPayProviderStatus(
+    row.liqpay_order_id,
+    liqpay.publicKey,
+    liqpay.privateKey
+  );
   const cls = classifyReconcileRow(
     {
       order_number: row.order_number,

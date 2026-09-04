@@ -75,6 +75,19 @@ test('CATEGORY-SELECT: ArrowDown/ArrowUp navigate, Enter selects', () => {
   assert.match(s, /Math\.min\(|Math\.max\(/, 'active index must stay in bounds');
 });
 
+test('CATEGORY-SELECT: «Всі категорії» is part of the keyboard path (2026-09-04)', () => {
+  const s = select();
+  // The all-row is activeIndex 0: activedescendant can point AT it, Enter
+  // on it clears the selection, and it carries the stable option id.
+  assert.match(s, /id="category-opt-0"/, 'all-row must own activedescendant slot 0');
+  assert.match(s, /activeIndex === 0[\s\S]{0,200}?onChange\(''\)/,
+    'Enter on the all-row must clear the selection');
+  assert.match(s, /filtered\[activeIndex - 1\]/,
+    'category rows sit at activeIndex n → filtered[n-1]');
+  assert.match(s, /onMouseMove=\{\(\) => setRawActiveIndex\(0\)\}/,
+    'hover parity with keyboard for the all-row');
+});
+
 test('CATEGORY-SELECT: search input is a real focusable field', () => {
   const s = select();
   assert.match(s, /<input\b/, 'search must be a native input');

@@ -64,13 +64,17 @@ test('auth token is requested once and reused across price calls', async () => {
   assert.equal(priceCalls.length, 2);
 
   // The requestToken JWT must be present in the auth body…
-  const authBody = JSON.parse(String(authCalls[0].init?.body));
+  const authCall = authCalls[0];
+  assert.ok(authCall !== undefined);
+  const authBody = JSON.parse(String(authCall.init?.body));
   assert.match(authBody.requestToken, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
   // …and the secret/user key must NOT appear anywhere in it or in headers.
   assert.ok(!String(authBody.requestToken).includes('test-secret-NOT-REAL'));
   assert.ok(!String(authBody.init).includes('test-secret-NOT-REAL'));
 
-  const priceAuthHeader = new Headers(priceCalls[0].init?.headers).get('Authorization');
+  const priceCall = priceCalls[0];
+  assert.ok(priceCall !== undefined);
+  const priceAuthHeader = new Headers(priceCall.init?.headers).get('Authorization');
   assert.equal(priceAuthHeader, 'Bearer TOKEN-1');
 });
 
@@ -89,8 +93,10 @@ test('401 on price triggers exactly one re-auth + retry, then succeeds', async (
   const priceCalls = calls.filter((c) => c.url.includes('get-price'));
   assert.equal(authCalls.length, 2); // initial + refresh
   assert.equal(priceCalls.length, 2); // original + ONE retry
+  const retryCall = priceCalls[1];
+  assert.ok(retryCall !== undefined);
   assert.equal(
-    new Headers(priceCalls[1].init?.headers).get('Authorization'),
+    new Headers(retryCall.init?.headers).get('Authorization'),
     'Bearer TOKEN-FRESH'
   );
 });

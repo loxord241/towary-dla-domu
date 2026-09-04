@@ -81,8 +81,10 @@ test('SHIPMENTS-026: courier structured address must not leak into warehouse row
     /if v_sh ->> 'service_type' = 'nova_poshta_warehouse' then([\s\S]*?)else/
   );
   assert.ok(courierGuard, 'warehouse/courier branch structure missing');
-  assert.match(courierGuard[1], /street_name/);
-  assert.match(courierGuard[1], /building/);
+  const guardBody = courierGuard[1];
+  assert.ok(guardBody !== undefined, 'branch body capture group must be present');
+  assert.match(guardBody, /street_name/);
+  assert.match(guardBody, /building/);
 });
 
 test('SHIPMENTS-026: RPC grants unchanged (service_role only)', () => {

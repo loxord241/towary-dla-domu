@@ -30,6 +30,9 @@ export default function PayWithLiqPayButton({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: accessToken }),
+          // A hung init call would pin «Підготовка оплати…» forever; 20 s
+          // matches the CheckoutForm submit deadline convention.
+          signal: AbortSignal.timeout(20_000),
         }
       );
       if (!res.ok) {
@@ -62,8 +65,12 @@ export default function PayWithLiqPayButton({
       }
       document.body.appendChild(form);
       form.submit();
-    } catch {
-      setError('Мережева помилка. Спробуйте ще раз.');
+    } catch (err) {
+      if (err instanceof Error && err.name === 'TimeoutError') {
+        setError('Сервер не відповів вчасно. Спробуйте ще раз.');
+      } else {
+        setError('Мережева помилка. Спробуйте ще раз.');
+      }
       setStatus('error');
     }
   }

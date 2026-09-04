@@ -28,7 +28,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 try {
   for (const line of readFileSync(path.join(root, '.env.local'), 'utf8').split('\n')) {
     const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (match && process.env[match[1]] === undefined) {
+    if (match && match[1] !== undefined && match[2] !== undefined && process.env[match[1]] === undefined) {
       process.env[match[1]] = match[2];
     }
   }
@@ -209,7 +209,7 @@ async function main(): Promise<void> {
   const batchStats: BatchStat[] = [];
 
   for (let i = 0; i < batches.length; i++) {
-    const batchCats = batches[i].map(Number);
+    const batchCats = batches[i]!.map(Number);
     const t0 = Date.now();
     const { parsed, byteLength } = await getPriceCatalogWithMeta({
       cats: batchCats,

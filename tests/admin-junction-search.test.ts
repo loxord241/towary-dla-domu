@@ -122,7 +122,7 @@ function stripOuterParens(expr: string): string {
 }
 function evalPredicate(row: Row, pred: string): boolean {
   const m = pred.match(/^([A-Za-z_][\w.]*)\.(ilike|in|eq)\.([\s\S]+)$/);
-  if (!m) throw new Error(`fake: unparsable predicate ${pred}`);
+  if (!m?.[1] || !m[2] || !m[3]) throw new Error(`fake: unparsable predicate ${pred}`);
   const [, field, op, rawValue] = m;
   const value = row[field];
   if (op === 'ilike') {
@@ -190,7 +190,7 @@ async function startFake(): Promise<{ client: import('@supabase/supabase-js').Su
         continue;
       }
       const fm = value.match(/^(ilike|eq)\.(.*)$/);
-      if (!fm) continue;
+      if (!fm?.[1] || fm[2] === undefined) continue;
       const [, op, v] = fm;
       filtered = filtered.filter((row) =>
         op === 'ilike'
@@ -249,6 +249,15 @@ test('ADMIN-JUNCTION: explicit categoryId filter matches every subtree assignmen
     const ids = new Set(result.products.map((p) => p.id));
     assert.equal(ids.size, 5, 'жодних дублів при множинних зв’язках');
     assert.ok(
+      products[0] !== undefined &&
+        products[1] !== undefined &&
+        products[2] !== undefined &&
+        products[3] !== undefined &&
+        products[4] !== undefined &&
+        products[5] !== undefined,
+      'fixture products must exist'
+    );
+    assert.ok(
       ids.has(String(products[0].id)) &&
         ids.has(String(products[1].id)) &&
         ids.has(String(products[2].id)),
@@ -280,6 +289,10 @@ test('ADMIN-JUNCTION: token-search expands matched categories to full subtrees',
     // Token matches rootB by NAME; subtree covers P1/P2/P3 via their defaults
     // AND P5/P6 via their NON-default junction links. P4 must stay out.
     assert.equal(result.total, 5);
+    assert.ok(
+      products[3] !== undefined && products[4] !== undefined && products[5] !== undefined,
+      'fixture products must exist'
+    );
     const ids = new Set(result.products.map((p) => p.id));
     assert.ok(ids.has(String(products[4].id)), 'P5 знайдений по НЕ-default категорії');
     assert.ok(ids.has(String(products[5].id)), 'P6 знайдений по НЕ-default категорії');
@@ -302,6 +315,10 @@ test('ADMIN-JUNCTION: token-search finds a product assigned EXCLUSIVELY via non-
     assert.equal(result.total, 5, 'P1,P2,P3,P5,P6 — без дублів і без P4');
     const ids = result.products.map((p) => p.id);
     assert.equal(new Set(ids).size, ids.length, 'жодного дубля');
+    assert.ok(
+      products[3] !== undefined && products[5] !== undefined,
+      'fixture products must exist'
+    );
     assert.ok(ids.includes(String(products[5].id)), 'P6 знайдений виключно за додатковою категорією');
     assert.ok(!ids.includes(String(products[3].id)), 'P4 не потрапляє у піддерево');
   } finally {
@@ -318,7 +335,9 @@ test('ADMIN-JUNCTION: token-search scalar fields (name/sku/brand/slug) unaffecte
       search: 'sku-5',
     });
     assert.equal(bySku.total, 1);
-    assert.equal(bySku.products[0].id, String(products[4].id));
+    const firstBySku = bySku.products[0];
+    assert.ok(firstBySku !== undefined && products[4] !== undefined, 'fixture/row must exist');
+    assert.equal(firstBySku.id, String(products[4].id));
 
     const byNameToken = await adminList.listAdminProducts(fake.client, {
       page: 1,
@@ -349,4 +368,26 @@ test('ADMIN-JUNCTION: admin-list drives the filter through the shared tree helpe
   const s = readFileSync('app/lib/admin-list.ts', 'utf8');
   assert.match(s, /collectSubtreeIds/);
   assert.match(s, /pc\.category_id/);
+});
+
+test('ADMIN-JUNCTION: search blast radius is capped — tree read once, junction branch bounded (2026-09-04)', () => {
+  const s = readFileSync('app/lib/admin-list.ts', 'utf8');
+  // The full categories table is read ONCE per search (outside the token
+  // loop), not once per token.
+  assert.match(s, /tokens\.length > 0 \? await toTreeCategories\(fetchAllCategories\(client\)\) : \[\]/,
+    'fetchAllCategories must run once before the token loop');
+  const fnBody = s.slice(
+    s.indexOf('async function buildProductExpressions'),
+    s.indexOf('/** Paged ≤1000 read of product ids')
+  );
+  const loopBody = fnBody.slice(fnBody.indexOf('for (const token of tokens)'));
+  assert.ok(!loopBody.includes('fetchAllCategories'),
+    'token loop must not re-read the categories table');
+  // The junction id.in.(...) branch degrades gracefully beyond hard caps —
+  // never a 500 from an oversized or= URL.
+  assert.match(s, /MAX_EXPANDED_CATEGORY_IDS = 50/);
+  assert.match(s, /MAX_JUNCTION_PRODUCT_IDS = 500/);
+  assert.match(s, /matchedCategoryIds\.length <= MAX_EXPANDED_CATEGORY_IDS/);
+  assert.match(s, /expanded\.size <= MAX_EXPANDED_CATEGORY_IDS/);
+  assert.match(s, /productIds\.length <= MAX_JUNCTION_PRODUCT_IDS/);
 });

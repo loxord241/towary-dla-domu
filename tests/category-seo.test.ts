@@ -94,7 +94,10 @@ test('SEO-CAT: listDirectChildren falls back to ukrainian name ordering (compare
   const categories = [cat('x', 'root', 5, 'Яблуко'), cat('y', 'root', 5, 'Абриc')];
   const kids = listDirectChildren(categories, 'root');
   assert.deepEqual(kids.map((c) => c.id), ['y', 'x']);
-  assert.ok(compareCategories(categories[1], categories[0]) < 0);
+  const y = categories[1];
+  const x = categories[0];
+  assert.ok(y !== undefined && x !== undefined, 'fixture categories must exist');
+  assert.ok(compareCategories(y, x) < 0);
 });
 
 test('SEO-CAT: leaf category has no children', () => {

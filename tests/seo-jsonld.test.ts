@@ -151,6 +151,7 @@ test('BreadcrumbList: categorized product → 4 sequential items, real names', (
   assert.equal(ld['@type'], 'BreadcrumbList');
   const items = ld.itemListElement;
   assert.equal(items.length, 4);
+  assert.ok(items[0] !== undefined && items[1] !== undefined && items[2] !== undefined && items[3] !== undefined);
   assert.deepEqual(
     items.map((i) => i.position),
     [1, 2, 3, 4]
@@ -170,6 +171,7 @@ test('BreadcrumbList: every URL is absolute; last item is the product URL', () =
   for (const i of items) {
     assert.match(i.item, /^https:\/\/towary-dla-domu\.com\//);
   }
+  assert.ok(items[0] !== undefined && items[1] !== undefined && items[2] !== undefined && items[3] !== undefined);
   assert.equal(items[0].item, 'https://towary-dla-domu.com/');
   assert.equal(items[1].item, 'https://towary-dla-domu.com/catalog');
   assert.equal(
@@ -188,6 +190,7 @@ test('BreadcrumbList: category slug is URL-encoded like the visible nav link', (
     { name: 'Категорія/з "спецсимволами"', slug: 'kat z probilom' },
     SITE
   ) as { itemListElement: { item: string }[] };
+  assert.ok(items[2] !== undefined);
   assert.equal(
     items[2].item,
     'https://towary-dla-domu.com/catalog?category=kat%20z%20probilom'
@@ -222,8 +225,10 @@ test('BreadcrumbList: cyrillic/special chars survive serializeJsonLd', () => {
     itemListElement: { name: string }[];
   };
   assert.equal(parsed.itemListElement.length, 4);
+  const lastItem = parsed.itemListElement[3];
+  assert.ok(lastItem !== undefined);
   assert.equal(
-    parsed.itemListElement[3].name,
+    lastItem.name,
     'Ніж TRAMONTINA "CENTURY" <поварський>'
   );
   assert.ok(!/<\//.test(html), 'raw </ must never survive serialization');
@@ -261,6 +266,7 @@ test('JSONLD: catalog breadcrumb emits Головна → Каталог → К�
     items.map((i) => i.position),
     [1, 2, 3]
   );
+  assert.ok(items[2] !== undefined);
   assert.equal(
     items[2].item,
     `${SITE}/catalog?category=hospodarchi-tovary-1451`

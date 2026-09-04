@@ -193,6 +193,8 @@ test('CALC-COURIER: calculateDeliveryCost posts settlementId branch and normaliz
   const sent = (calls[0] as { path: string; body: Record<string, any> }).body;
   assert.equal(sent.recipient.settlementId, 119638);
   assert.equal(sent.payerType, 'Recipient');
-  assert.equal(quote.services[0].cost, 85.5);
+  const service = quote.services[0];
+  assert.ok(service !== undefined);
+  assert.equal(service.cost, 85.5);
   assert.equal(quote.recipientSettlementId, 119638);
 });

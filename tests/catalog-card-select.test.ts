@@ -20,7 +20,9 @@ const src = () => readFileSync('app/lib/catalog.ts', 'utf8');
 function cardSelectLiteral(s: string): string {
   const m = s.match(/const CATALOG_CARD_SELECT =\s*'([^']+)';/);
   assert.ok(m, 'CATALOG_CARD_SELECT constant must exist in app/lib/catalog.ts');
-  return m[1];
+  const literal = m[1];
+  assert.ok(literal !== undefined, 'capture group must hold the select literal');
+  return literal;
 }
 
 test('CARD-SELECT: /catalog card projection contains only card-render fields', () => {

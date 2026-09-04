@@ -68,7 +68,9 @@ function exportedHandlers(source: string): Array<{ name: string; body: string }>
         if (depth === 0) break;
       }
     }
-    handlers.push({ name: match[1], body: source.slice(match.index, i) });
+    const name = match[1];
+    assert.ok(name !== undefined, 'regex group 1 must capture the handler name');
+    handlers.push({ name, body: source.slice(match.index, i) });
   }
   return handlers;
 }

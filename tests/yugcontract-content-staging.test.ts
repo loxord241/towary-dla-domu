@@ -102,6 +102,7 @@ test('reduceGoodsToStagedRows sanitizes description and filters pictures determi
   const res = reduceGoodsToStagedRows([good]);
   assert.equal(res.rows.length, 1);
   const row = res.rows[0];
+  assert.ok(row !== undefined);
   assert.equal(row.yugcontract_id, '777');
   assert.equal(row.category_id, '42');
   // script content and iframe gone, handler gone, trimmed
@@ -132,6 +133,8 @@ test('reduceGoodsToStagedRows keeps duplicate name+different value pairs (array 
   }).good;
   assert.ok(good);
   const res = reduceGoodsToStagedRows([good]);
+  assert.equal(res.rows.length, 1);
+  assert.ok(res.rows[0] !== undefined);
   assert.deepEqual(res.rows[0].params, [
     { name: 'Матеріал', value: 'Нержавіюча сталь' },
     { name: 'Матеріал', value: 'Пластик' },

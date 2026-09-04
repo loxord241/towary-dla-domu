@@ -128,7 +128,9 @@ export function buildFieldTypeHistogram(rows: YcRawProduct[]): FieldTypeHistogra
   }
   for (const row of rows) {
     for (const field of HISTOGRAM_FIELDS) {
-      histogram[field][classify(row[field])] += 1;
+      const entry = histogram[field];
+      if (!entry) continue;
+      entry[classify(row[field])] += 1;
     }
   }
   return histogram;
@@ -467,9 +469,9 @@ export function normalizeCategoryNode(
   detected: YcDetectedFields
 ): YcCategoryNode {
   const idValue =
-    detected.id !== null ? row[detected.id] : row[CATEGORY_ID_KEYS[0]];
+    detected.id !== null ? row[detected.id] : row[CATEGORY_ID_KEYS[0]!];
   const nameValue =
-    detected.name !== null ? row[detected.name] : row[CATEGORY_NAME_KEYS[0]];
+    detected.name !== null ? row[detected.name] : row[CATEGORY_NAME_KEYS[0]!];
   const parentValue =
     detected.parent !== null ? row[detected.parent] : undefined;
 

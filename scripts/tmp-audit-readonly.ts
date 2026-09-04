@@ -11,7 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 try {
   for (const line of readFileSync(path.join(root, '.env.local'), 'utf8').split('\n')) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+    if (m && m[1] !== undefined && m[2] !== undefined && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
   }
 } catch {}
 
@@ -241,7 +241,7 @@ for (const p of products) {
   }
   for (const m of d.matchAll(/<img[^>]*?\ssrc=["']?([^"'\s>]+)/gi)) {
     try {
-      const host = new URL(m[1]).host;
+      const host = new URL(m[1] ?? '').host;
       imgSrcHosts.set(host, (imgSrcHosts.get(host) ?? 0) + 1);
     } catch {
       imgSrcHosts.set('<unparseable>', (imgSrcHosts.get('<unparseable>') ?? 0) + 1);

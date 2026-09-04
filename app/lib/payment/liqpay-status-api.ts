@@ -23,20 +23,23 @@ import { encodeLiqPayData, createLiqPaySignature } from './liqpay-signature.ts';
 const LIQPAY_REQUEST_URL = 'https://www.liqpay.ua/api/request';
 
 export async function fetchLiqPayProviderStatus(
-  liqpayOrderId: string
+  liqpayOrderId: string,
+  publicKey: string,
+  privateKey: string
 ): Promise<Record<string, unknown> | null> {
   try {
     const data = encodeLiqPayData({
       action: 'status', // READ — no other action is ever sent here
       version: 3,
-      public_key: process.env.LIQPAY_PUBLIC_KEY,
+      public_key: publicKey,
       order_id: liqpayOrderId,
     });
-    const signature = createLiqPaySignature(data, process.env.LIQPAY_PRIVATE_KEY!);
+    const signature = createLiqPaySignature(data, privateKey);
     const res = await fetch(LIQPAY_REQUEST_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ data, signature }),
+      signal: AbortSignal.timeout(12_000),
     });
     if (!res.ok) return null;
     return (await res.json()) as Record<string, unknown>;

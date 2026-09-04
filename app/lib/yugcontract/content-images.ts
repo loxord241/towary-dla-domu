@@ -135,10 +135,17 @@ export function planImageOps(
   const updates: ImageUpdateOp[] = [];
   let noops = 0;
   let productsWithoutPictures = 0;
-  const unmatchedStaged = 0;
+  // Staged goods ids with no matching product row in THIS plan input —
+  // real data for the skipped-counters report (was a hardcoded 0).
+  let unmatchedStaged = 0;
   const staleImported: ImagePlan['staleImported'] = [];
   let productsWithManualImages = 0;
   let manualMainPreserved = 0;
+
+  const plannedYcIds = new Set(products.map((p) => p.yugcontractId));
+  for (const stagedId of stagedPicturesByYcId.keys()) {
+    if (!plannedYcIds.has(stagedId)) unmatchedStaged += 1;
+  }
 
   for (const product of products) {
     const desired = stagedPicturesByYcId.get(product.yugcontractId);

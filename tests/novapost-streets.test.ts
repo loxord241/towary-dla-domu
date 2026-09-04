@@ -105,14 +105,17 @@ test('STREETS: searchStreets sends name param (not textSearch) and normalizes it
   });
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].path, 'streets');
-  assert.equal(calls[0].params.get('settlementId'), '119638');
-  assert.equal(calls[0].params.get('name'), 'Мазепи');
-  assert.equal(calls[0].params.get('textSearch'), null);
+  const call = calls[0];
+  assert.ok(call !== undefined);
+  assert.equal(call.path, 'streets');
+  assert.equal(call.params.get('settlementId'), '119638');
+  assert.equal(call.params.get('name'), 'Мазепи');
+  assert.equal(call.params.get('textSearch'), null);
   // Live-verified 2026-08-28: without `Accept-Language: uk` street names
   // come back transliterated (e.g. "Mazepy" instead of "вул. Мазепи").
-  assert.equal(calls[0].headers?.['Accept-Language'], 'uk');
+  assert.equal(call.headers?.['Accept-Language'], 'uk');
   assert.equal(items.length, 1);
+  assert.ok(items[0] !== undefined);
   assert.equal(items[0].id, 5694732);
 });
 

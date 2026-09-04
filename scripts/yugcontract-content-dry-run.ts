@@ -24,7 +24,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 try {
   for (const line of readFileSync(path.join(root, '.env.local'), 'utf8').split('\n')) {
     const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (match && process.env[match[1]] === undefined) {
+    if (match && match[1] !== undefined && match[2] !== undefined && process.env[match[1]] === undefined) {
       process.env[match[1]] = match[2];
     }
   }
@@ -322,7 +322,7 @@ if (SAMPLE_IMAGES > 0) {
   const pool: string[] = [];
   const step = Math.max(1, Math.floor(matchedPairs.length / SAMPLE_IMAGES));
   for (let i = 0; i < matchedPairs.length && pool.length < SAMPLE_IMAGES; i += step) {
-    const url = matchedPairs[i].good.pictures[0];
+    const url = matchedPairs[i]?.good.pictures[0];
     if (url) pool.push(url);
   }
   for (const g of deduped.unique) {
@@ -401,8 +401,8 @@ if (SAMPLE_IMAGES > 0) {
   const median =
     sorted.length > 0
       ? sorted.length % 2 === 1
-        ? sorted[(sorted.length - 1) / 2].bytes
-        : Math.round(((sorted[sorted.length / 2 - 1].bytes as number) + (sorted[sorted.length / 2].bytes as number)) / 2)
+        ? sorted[(sorted.length - 1) / 2]!.bytes
+        : Math.round(((sorted[sorted.length / 2 - 1]!.bytes as number) + (sorted[sorted.length / 2]!.bytes as number)) / 2)
       : null;
   const avg = sized.length > 0
     ? Math.round(sized.reduce((acc, r) => acc + (r.bytes as number), 0) / sized.length)

@@ -40,6 +40,7 @@ test('planContentUpdates fills empty descriptions and sets specifications', () =
   const plan = planContentUpdates([staged()], [product()]);
   assert.equal(plan.updates.length, 1);
   const op = plan.updates[0];
+  assert.ok(op !== undefined);
   assert.equal(op.fields.description, '<p>Опис</p>');
   assert.deepEqual(op.fields.specifications, [
     { name: 'Матеріал', value: 'Сталь' },
@@ -92,6 +93,7 @@ test('planContentUpdates updates specifications even when description is absent'
     [product()]
   );
   assert.equal(plan.updates.length, 1);
+  assert.ok(plan.updates[0] !== undefined);
   assert.equal(plan.updates[0].fields.description, undefined);
   assert.ok(plan.updates[0].fields.specifications);
 });
@@ -104,6 +106,7 @@ test('planContentUpdates: duplicate names with different values BOTH survive', (
     ],
   });
   const plan = planContentUpdates([s], [product()]);
+  assert.ok(plan.updates[0] !== undefined);
   assert.deepEqual(plan.updates[0].fields.specifications, [
     { name: 'Матеріал', value: 'Нержавіюча сталь' },
     { name: 'Матеріал', value: 'Пластик' },
@@ -189,6 +192,7 @@ test('planContentUpdates: empty-shell staged description is NOT written, specs s
     [product()]
   );
   assert.equal(plan.updates.length, 1);
+  assert.ok(plan.updates[0] !== undefined);
   assert.equal(plan.updates[0].fields.description, undefined);
   assert.ok(plan.updates[0].fields.specifications);
   assert.equal(plan.emptyShellDescription, 1);
@@ -219,6 +223,7 @@ test('planContentUpdates: real-text HTML still imports normally (guard does not 
   const desc = '<div><div>Крутий чайник, 1,7 л<br />потужність 2200 Вт</div></div>';
   const plan = planContentUpdates([staged({ description: desc })], [product()]);
   assert.equal(plan.updates.length, 1);
+  assert.ok(plan.updates[0] !== undefined);
   assert.equal(plan.updates[0].fields.description, desc);
   assert.equal(plan.emptyShellDescription, 0);
 });
@@ -239,6 +244,7 @@ test('planContentUpdates: static excludeDescriptionIds still suppresses descript
     excludeDescriptionIds: new Set(['101']),
   });
   assert.equal(plan.updates.length, 1);
+  assert.ok(plan.updates[0] !== undefined);
   assert.equal(plan.updates[0].fields.description, undefined);
   assert.ok(plan.updates[0].fields.specifications);
   assert.equal(plan.excludedDescription, 1);

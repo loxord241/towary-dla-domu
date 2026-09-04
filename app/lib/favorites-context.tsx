@@ -48,7 +48,8 @@ interface FavoritesContextValue {
   /** false until localStorage has been read — prevents SSR hydration mismatch */
   hydrated: boolean;
   isFavorite: (productId: string) => boolean;
-  toggleFavorite: (productId: string) => void;
+  /** true when the toggle actually changed the list; false at the MAX cap. */
+  toggleFavorite: (productId: string) => boolean;
   removeFavorite: (productId: string) => void;
   clearFavorites: () => void;
   totalCount: number;
@@ -89,6 +90,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       hydrated,
       isFavorite: (productId) => set.has(productId),
       toggleFavorite: (productId) => {
+        // Mirror the drop condition before dispatching so callers can tell
+        // a real toggle from a silent no-op at the MAX_FAVORITES cap.
+        if (!set.has(productId) && ids.length >= MAX_FAVORITES) return false;
         setState((prev) => {
           if (prev.ids.includes(productId)) {
             return { ...prev, ids: prev.ids.filter((id) => id !== productId) };
@@ -99,6 +103,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           if (prev.ids.length >= MAX_FAVORITES) return prev;
           return { ...prev, ids: [...prev.ids, productId] };
         });
+        return true;
       },
       removeFavorite: (productId) => {
         setState((prev) => ({

@@ -31,8 +31,10 @@ test('FOOTER-CAT: merchandising anchors come first with merch labels', () => {
   ].map((c) => ({ ...c, slug: c.slug === 'tdd' ? TDD.slug : c.slug }));
 
   const picked = selectFooterCategories(all);
-  assert.equal(picked[0].slug, TDD.slug, 'merch anchor must lead the list');
-  assert.equal(footerCategoryLabel(picked[0]), TDD.label, 'merch label wins over the DB name');
+  const merchAnchor = picked[0];
+  assert.ok(merchAnchor !== undefined, 'merch anchor must be picked');
+  assert.equal(merchAnchor.slug, TDD.slug, 'merch anchor must lead the list');
+  assert.equal(footerCategoryLabel(merchAnchor), TDD.label, 'merch label wins over the DB name');
   assert.equal(picked.length, 2, 'merch slug must not repeat in the top-level list');
 });
 

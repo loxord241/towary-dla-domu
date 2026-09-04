@@ -353,15 +353,18 @@ async function fetchProducts(options: {
  *        ilike pattern — a product named `…поварський6" (24010/106)`
  *        was unfindable by its own name;
  *   '(' ')' same silent corruption class;
- *   '%'  ILIKE wildcard — silently broadens matches (searching "100%"
- *        matched everything containing "100").
- * Dots, hyphens, apostrophes, colons and any letters/digits are proven
- * safe literals and deliberately preserved. Interior whitespace runs are
- * collapsed so adjacent specials don't leave unmatched gaps.
- */
+  *   '%'  ILIKE wildcard — silently broadens matches (searching "100%"
+  *        matched everything containing "100");
+  *   '*'  PostgREST treats it as a %-synonym in ilike patterns (`q=***`
+  *        matched everything);
+  *   '_'  ILIKE single-char wildcard — same silent broadening class.
+  * Dots, hyphens, apostrophes, colons and any letters/digits are proven
+  * safe literals and deliberately preserved. Interior whitespace runs are
+  * collapsed so adjacent specials don't leave unmatched gaps.
+  */
 export function sanitizeSearchTerm(term: string): string {
   return term
-    .replace(/[%,()"]/g, ' ')
+    .replace(/[%,()"*_]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -448,7 +451,9 @@ export function relaxSearchTerm(search: string): string[] {
     .slice(0, FALLBACK_MAX_RETRIES);
   return candidates.map(({ idx }) => {
     const next = tokens.slice();
-    next[idx] = next[idx].slice(0, -1);
+    const token = next[idx];
+    if (token === undefined) return next.join(' ');
+    next[idx] = token.slice(0, -1);
     return next.join(' ');
   });
 }

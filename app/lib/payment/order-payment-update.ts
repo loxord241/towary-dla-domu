@@ -5,7 +5,11 @@ import {
   verifyLiqPaySignature,
   decodeLiqPayData,
 } from './liqpay-signature.ts';
-import { mapLiqPayStatus, type PaymentStatus } from './liqpay-status.ts';
+import {
+  mapLiqPayStatus,
+  isKnownLiqPayStatus,
+  type PaymentStatus,
+} from './liqpay-status.ts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -180,12 +184,9 @@ export async function createPaymentInit(
     return { kind: 'expired' };
   }
 
-  let liqpayOrderId: string;
-  try {
-    liqpayOrderId = nextAttemptOrderId(order.order_number, order.liqpay_order_id);
-  } catch {
-    return { kind: 'conflict' };
-  }
+  // Pure helper — never throws; a failed reservation below is the only
+  // conflict source (concurrent inits racing the conditional UPDATE).
+  const liqpayOrderId = nextAttemptOrderId(order.order_number, order.liqpay_order_id);
   const reserved = await deps.gateway.saveAttempt({
     orderNumber: order.order_number,
     liqpayOrderId,
@@ -285,6 +286,15 @@ export async function processLiqPayCallback(
   }
 
   const mapped = mapLiqPayStatus(payload.status);
+  // Unknown statuses stay mapped to pending (policy unchanged), but never
+  // silently: a new/undocumented provider status must be visible in the
+  // server log so the mapping table can catch up with reality.
+  if (!isKnownLiqPayStatus(payload.status)) {
+    console.error('liqpay/callback: unknown status', {
+      status: payload.status,
+      order_id: payload.order_id,
+    });
+  }
 
   // 5. find the order by its per-attempt LiqPay id.
   const order = await deps.gateway.findOrderByLiqpayOrderId(payload.order_id);

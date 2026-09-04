@@ -142,6 +142,7 @@ test('MANUAL WITHOUT MAIN: vacant main slot may be taken — manual row still un
     new Map([['101', [URL1]]]),
     existing
   );
+  assert.ok(plan.inserts[0] !== undefined);
   assert.equal(plan.inserts[0].is_main, true);
   assert.equal(plan.inserts[0].sort_order, 1);
   assert.equal(plan.updates.length, 0); // manual row untouched
@@ -180,6 +181,7 @@ test('invalid URLs inside staging are dropped by revalidation BEFORE planning (e
     []
   );
   assert.equal(plan.inserts.length, 1);
+  assert.ok(plan.inserts[0] !== undefined);
   assert.equal(plan.inserts[0].image_url, URL1);
 });
 

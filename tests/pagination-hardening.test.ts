@@ -83,7 +83,10 @@ test('fetchAllRows: exactly 1000 rows → data complete after the boundary probe
   const { client, state } = makeMockClient(rows);
   const out = await fetchAllRows<{ id: number }>(client, 't', 'id');
   assert.equal(state.requests, 2);
-  assert.equal(state.windows[1][0], 1000);
+  const boundaryWindow = state.windows[1];
+  assert.ok(boundaryWindow !== undefined);
+  assert.ok(boundaryWindow[0] !== undefined);
+  assert.equal(boundaryWindow[0], 1000);
   assert.equal(out.length, 1000);
 });
 
@@ -253,7 +256,9 @@ function collectRangeCallSites(src: string): { index: number; line: number; firs
   const out: { index: number; line: number; firstArg: string }[] = [];
   for (const m of src.matchAll(/\.range\(\s*([^\s,)]+)/g)) {
     const line = src.slice(0, m.index).split('\n').length;
-    out.push({ index: m.index, line, firstArg: m[1] });
+    const firstArg = m[1];
+    assert.ok(firstArg !== undefined);
+    out.push({ index: m.index, line, firstArg });
   }
   return out;
 }

@@ -227,7 +227,9 @@ test('SECURITY: token is never in the request body (endpoint path only)', async 
     try {
       await sendTelegramOrderMessage(BASE_DATA);
       assert.equal(stub.calls.length, 1);
-      const body = String(stub.calls[0].init.body);
+      const call = stub.calls[0];
+      assert.ok(call !== undefined);
+      const body = String(call.init.body);
       assert.ok(!body.includes(TOKEN));
       assert.ok(body.includes('"chat_id":"424242"'));
       // message text travels in the body — parse_mode must never be set
@@ -255,6 +257,7 @@ test('SECURITY: failure log line contains only order number + reason', async () 
         console.error = original;
       }
       assert.equal(logs.length, 1);
+      assert.ok(logs[0] !== undefined);
       assert.ok(logs[0].includes('ORD-20260829-ABC123'));
       assert.ok(!logs[0].includes(TOKEN));
       assert.ok(!logs[0].includes('Петренко'));
@@ -320,7 +323,9 @@ test('CLIENT: correct endpoint, POST, JSON content type, abort signal', async ()
       const result = await sendTelegramOrderMessage(BASE_DATA);
       assert.equal(result.sent, true);
       assert.equal(stub.calls.length, 1);
-      const { url, init } = stub.calls[0];
+      const captured = stub.calls[0];
+      assert.ok(captured !== undefined);
+      const { url, init } = captured;
       assert.equal(url, `https://api.telegram.org/bot${TOKEN}/sendMessage`);
       assert.equal(init.method, 'POST');
       assert.equal((init.headers as Record<string, string>)['Content-Type'], 'application/json');
@@ -335,7 +340,10 @@ test('CLIENT: message text in body is built from the order data', async () =>
     const stub = stubFetch(() => okResponse());
     try {
       await sendTelegramOrderMessage(BASE_DATA);
-      const body = JSON.parse(String(stub.calls[0].init.body)) as {
+      assert.equal(stub.calls.length, 1);
+      const captured = stub.calls[0];
+      assert.ok(captured !== undefined);
+      const body = JSON.parse(String(captured.init.body)) as {
         chat_id: string;
         text: string;
       };
@@ -526,7 +534,9 @@ test('DB READ: maps orders + order_items rows into notification data', async () 
   assert.equal(data.customerName, 'Петренко Іван');
   assert.equal(data.customerPhone, '+380501234567');
   assert.equal(data.items.length, 1);
-  assert.equal(data.items[0].total, 1199);
+  const item = data.items[0];
+  assert.ok(item !== undefined);
+  assert.equal(item.total, 1199);
   assert.ok(selectCalls.includes('orders'));
   assert.ok(selectCalls.includes('order_items'));
 

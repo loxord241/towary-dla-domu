@@ -131,6 +131,24 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: buildCsp(isDev),
           },
+          {
+            // HTTPS-only storefront: force one year of HSTS on every
+            // response, covering subdomains.
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
+          {
+            // Cross-origin isolation: blocks window.opener abuse on pages
+            // that navigate away to LiqPay checkout.
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin",
+          },
+          {
+            // Explicitly permits cross-origin loads of shop resources
+            // (payment provider flows and integrations that embed them).
+            key: "Cross-Origin-Resource-Policy",
+            value: "cross-origin",
+          },
         ],
       },
     ];

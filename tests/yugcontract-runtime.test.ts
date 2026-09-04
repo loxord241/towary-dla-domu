@@ -117,6 +117,7 @@ test('runtime: full auth+price happy path over real HTTP', async () => {
 
       assert.equal(requests.length, 2);
       const [authReq, priceReq] = requests;
+      assert.ok(authReq !== undefined && priceReq !== undefined);
 
       // Auth: POST JSON with a well-formed HS256 requestToken JWT that
       // carries the user key — and NOT the secret.
@@ -169,6 +170,7 @@ test('runtime: 401 triggers one re-auth + retry over real HTTP', async () => {
       const authReqs = requests.filter((r) => r.url === '/get-auth-token');
       assert.equal(priceReqs.length, 2); // original + exactly ONE retry
       assert.equal(authReqs.length, 2); // initial + refresh
+      assert.ok(priceReqs[0] !== undefined && priceReqs[1] !== undefined);
       assert.equal(priceReqs[0].headers.authorization, 'Bearer T1');
       assert.equal(priceReqs[1].headers.authorization, 'Bearer T2');
     }
@@ -226,6 +228,7 @@ test('runtime: get-categories happy path reuses the cached auth token', async ()
       assert.equal(authReqs.length, 1); // token requested once…
       assert.equal(catReqs.length, 1);
       // …and reused as Bearer for the categories call.
+      assert.ok(catReqs[0] !== undefined);
       assert.equal(catReqs[0].headers.authorization, 'Bearer CAT-TOKEN');
       const catBody = JSON.parse(catReqs[0].body);
       assert.deepEqual(catBody, { format: 'json', type: 'regular' });
@@ -257,6 +260,7 @@ test('runtime: categories 401 triggers one re-auth + retry', async () => {
 
       const catReqs = requests.filter((r) => r.url === '/get-categories');
       assert.equal(catReqs.length, 2); // original + ONE retry
+      assert.ok(catReqs[0] !== undefined && catReqs[1] !== undefined);
       assert.equal(catReqs[0].headers.authorization, 'Bearer CT1');
       assert.equal(catReqs[1].headers.authorization, 'Bearer CT2');
     }

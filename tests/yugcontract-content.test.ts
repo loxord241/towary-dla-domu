@@ -64,6 +64,7 @@ test('normalizeContentGood maps all documented fields through coercion', () => {
 test('normalizeContentGood drops rows without id but keeps counting others', () => {
   const missing = normalizeContentGood(makeGood({ id: '' }));
   assert.equal(missing.good, null);
+  assert.ok(missing.issues[0] !== undefined);
   assert.match(missing.issues[0].reason, /id/);
 
   const junk = normalizeContentGood(makeGood({ id: null }));
@@ -134,6 +135,7 @@ test('matchContentGoodsToProducts splits matched/unmatched/manual/unused', () =>
   const m = matchContentGoodsToProducts(byId, ours);
   assert.equal(m.matchedLocal.length, 1);
   assert.equal(m.unmatchedLocal.length, 1);
+  assert.ok(m.unmatchedLocal[0] !== undefined);
   assert.equal(m.unmatchedLocal[0].sku, 'YC-999');
   assert.equal(m.manualLocal.length, 1);
   assert.deepEqual(m.ycUnusedIds, ['102']);
@@ -156,7 +158,9 @@ test('buildDescriptionStats counts html/plain and scans danger patterns only', (
   assert.equal(s.emptyDescription, 1);
   assert.equal(s.htmlCount, 2);
   assert.equal(s.plainTextCount, 1);
-  assert.equal(s.maxDescriptionLength, pairs[1].description!.length);
+  const second = pairs[1];
+  assert.ok(second !== undefined);
+  assert.equal(s.maxDescriptionLength, second.description!.length);
   assert.equal(s.danger.scriptTag, 1);
   assert.equal(s.danger.iframeTag, 1);
   assert.equal(s.danger.eventHandlers, 1);
@@ -233,6 +237,7 @@ test('buildImagesStats counts hosts, extensions, dup URLs and suspicious entries
   assert.equal(s.totalPictureUrls, 5);
   assert.equal(s.uniquePictureUrls, 4); // ftp + junk are counted as rows but not hosts
   assert.equal(s.duplicateUrlRows, 1);
+  assert.ok(s.duplicateExamples[0] !== undefined);
   assert.deepEqual(s.duplicateExamples[0].count, 2);
   assert.deepEqual(s.hosts.map((h) => h.host), ['b2b.yugcontract.ua']);
   assert.ok(s.extensions.some((e) => e.ext === '.jpg' && e.count === 2));

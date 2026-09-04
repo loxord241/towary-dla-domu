@@ -81,9 +81,11 @@ export default function CategorySelect({
     [allOptions, value]
   );
 
-  // Active index must always point at a rendered option, even right after
-  // the filtered set shrinks — derived clamp instead of effect-based reset.
-  const activeIndex = Math.min(rawActiveIndex, Math.max(filtered.length - 1, 0));
+  // Keyboard navigation covers the «Всі категорії» row too: activeIndex 0
+  // is that row, activeIndex n>0 is filtered[n-1]. The derived clamp keeps
+  // the index pointing at a rendered option even right after the filtered
+  // set shrinks (no effect-based reset).
+  const activeIndex = Math.min(rawActiveIndex, filtered.length);
 
   useEffect(() => {
     if (!open) return;
@@ -124,20 +126,26 @@ export default function CategorySelect({
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setRawActiveIndex((i) => Math.min(i + 1, Math.max(filtered.length - 1, 0)));
+      setRawActiveIndex((i) => Math.min(i + 1, filtered.length));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setRawActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const option = filtered[activeIndex];
+      if (activeIndex === 0) {
+        commitAndClose();
+        onChange('');
+        return;
+      }
+      const option = filtered[activeIndex - 1];
       if (option) {
         commitAndClose();
         onChange(option.slug);
       }
     } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
       e.preventDefault();
-      const option = filtered[activeIndex];
+      if (activeIndex === 0) return;
+      const option = filtered[activeIndex - 1];
       if (!option || !hasChildren.has(option.id)) return;
       setExpandedIds((prev) => {
         const next = new Set(prev);
@@ -208,12 +216,14 @@ export default function CategorySelect({
             className="max-h-72 overflow-y-auto py-1"
           >
             <li
-              id="category-opt-all"
+              id="category-opt-0"
               role="option"
               aria-selected={!value}
+              className={activeIndex === 0 ? 'bg-gray-50' : ''}
             >
               <button
                 type="button"
+                onMouseMove={() => setRawActiveIndex(0)}
                 onClick={() => {
                   commitAndClose();
                   onChange('');
@@ -228,22 +238,23 @@ export default function CategorySelect({
             {filtered.map((option, index) => {
               const canExpand = hasChildren.has(option.id);
               const isOpen = expandedIds.has(option.id);
+              const row = index + 1;
               return (
                 <li
                   key={option.id}
-                  id={`category-opt-${index}`}
+                  id={`category-opt-${row}`}
                   role="option"
                   aria-selected={value === option.slug}
                 >
                   {/* Nested list lives outside the option button flow but
                       inside the li for DOM locality of aria-controls. */}
                   <div
-                    className={`flex items-center pr-2 ${index === activeIndex ? 'bg-gray-50' : ''}`}
+                    className={`flex items-center pr-2 ${row === activeIndex ? 'bg-gray-50' : ''}`}
                     style={{ paddingLeft: `${12 + option.depth * 16}px` }}
                   >
                     {canExpand && (
                       <span
-                        id={`category-kids-${index}`}
+                        id={`category-kids-${row}`}
                         hidden
                         aria-hidden="true"
                       />
@@ -252,9 +263,9 @@ export default function CategorySelect({
                       type="button"
                       aria-label={`${option.name}: розгорнути/згорнути`}
                       aria-expanded={canExpand ? isOpen : undefined}
-                      aria-controls={isOpen ? `category-kids-${index}` : undefined}
+                      aria-controls={isOpen ? `category-kids-${row}` : undefined}
                       tabIndex={-1}
-                      onMouseMove={() => setRawActiveIndex(index)}
+                      onMouseMove={() => setRawActiveIndex(row)}
                       onClick={() => {
                         if (!canExpand) return;
                         setExpandedIds((prev) => {
@@ -278,7 +289,7 @@ export default function CategorySelect({
                     </button>
                     <button
                       type="button"
-                      onMouseMove={() => setRawActiveIndex(index)}
+                      onMouseMove={() => setRawActiveIndex(row)}
                       title={option.label}
                       onClick={() => {
                         commitAndClose();

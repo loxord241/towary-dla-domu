@@ -39,9 +39,9 @@ test('escaped lookalike email no longer matches the plain admin row', () => {
     const esc = (ch: string) => ch.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
     let re = '^';
     for (let i = 0; i < pattern.length; i++) {
-      const ch = pattern[i];
+      const ch = pattern.charAt(i);
       if (ch === '\\' && i + 1 < pattern.length) {
-        re += esc(pattern[++i]); // escaped wildcard -> literal character
+        re += esc(pattern.charAt(++i)); // escaped wildcard -> literal character
       } else if (ch === '_') {
         re += '.';
       } else if (ch === '%') {
@@ -96,9 +96,12 @@ function migrationFiles(): string[] {
 test('migrations are sequentially numbered with no gaps above 030', () => {
   const nums = migrationFiles().map((f) => parseInt(f.slice(0, 3), 10));
   for (let i = 1; i < nums.length; i++) {
-    assert.equal(nums[i], nums[i - 1] + 1, `gap between ${nums[i - 1]} and ${nums[i]}`);
+    const prev = nums[i - 1];
+    const curr = nums[i];
+    assert.ok(prev !== undefined && curr !== undefined);
+    assert.equal(curr, prev + 1, `gap between ${prev} and ${curr}`);
   }
-  assert.equal(nums[nums.length - 1], 32);
+  assert.equal(nums[nums.length - 1], 34);
 });
 
 const m032 = readFileSync(
@@ -270,7 +273,11 @@ test('POST /variants validates availability_status like PUT does', () => {
 test('AddToCartButton only shows "added" when addItem succeeded', () => {
   const btn = readFileSync(join(root, 'app/components/AddToCartButton.tsx'), 'utf8');
   assert.match(btn, /const addedOk = addItem\(/);
-  assert.match(btn, /if \(!addedOk\) return;/);
+  // A failed add must never flip to the "У кошику" state; since 2026-09-04
+  // the full-cart case surfaces an explicit limit notice instead of silence.
+  assert.match(btn, /if \(!addedOk\) \{\n\s*setLimitNotice\(true\);\n\s*return;\n\s*\}/);
+  assert.match(btn, /setAdded\(true\)/);
+  assert.match(btn, /У кошику максимум/);
   const ctx = readFileSync(join(root, 'app/lib/cart-context.tsx'), 'utf8');
   assert.match(ctx, /\) => boolean;/);
   assert.match(ctx, /state\.items\.length >= MAX_CART_LINES\) return false/);

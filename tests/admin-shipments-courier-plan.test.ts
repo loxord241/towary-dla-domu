@@ -32,9 +32,11 @@ test('PLAN-COURIER: courier accepts structured address parts', () => {
   });
   assert.ok(res.ok, res.ok ? '' : res.error);
   if (res.ok) {
-    assert.equal(res.plan.shipments[0].street_name, 'вул. Гетьмана Івана Мазепи');
-    assert.equal(res.plan.shipments[0].building, '64');
-    assert.equal(res.plan.shipments[0].flat, '12');
+    const shipment = res.plan.shipments[0];
+    assert.ok(shipment !== undefined, 'plan must contain the shipment');
+    assert.equal(shipment.street_name, 'вул. Гетьмана Івана Мазепи');
+    assert.equal(shipment.building, '64');
+    assert.equal(shipment.flat, '12');
   }
 });
 
@@ -50,9 +52,11 @@ test('PLAN-COURIER: structured fields are optional for courier (legacy plans kee
   });
   assert.ok(res.ok, res.ok ? '' : res.error);
   if (res.ok) {
-    assert.equal(res.plan.shipments[0].street_name, null);
-    assert.equal(res.plan.shipments[0].building, null);
-    assert.equal(res.plan.shipments[0].flat, null);
+    const shipment = res.plan.shipments[0];
+    assert.ok(shipment !== undefined, 'plan must contain the shipment');
+    assert.equal(shipment.street_name, null);
+    assert.equal(shipment.building, null);
+    assert.equal(shipment.flat, null);
   }
 });
 

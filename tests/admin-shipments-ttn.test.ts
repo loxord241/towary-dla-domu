@@ -143,7 +143,9 @@ describe('buildShipmentTtnPayload (sandbox-verified domestic UA warehouse)', () 
       SENDER
     );
     assert.ok(built.ok);
-    const desc = built.payload.parcels[0].parcelDescription;
+    const parcel = built.payload.parcels[0];
+    assert.ok(parcel !== undefined, 'payload must contain the parcel');
+    const desc = parcel.parcelDescription;
     assert.ok(desc.length <= 255);
     assert.ok(desc.startsWith('A'.repeat(200)));
   });
@@ -151,7 +153,9 @@ describe('buildShipmentTtnPayload (sandbox-verified domestic UA warehouse)', () 
   test('description falls back when there are no product names', () => {
     const built = buildShipmentTtnPayload(source({ productNames: [] }), SENDER);
     assert.ok(built.ok);
-    assert.ok(built.payload.parcels[0].parcelDescription.length > 0);
+    const firstParcel = built.payload.parcels[0];
+    assert.ok(firstParcel !== undefined, 'payload must contain the parcel');
+    assert.ok(firstParcel.parcelDescription.length > 0);
   });
 
   test('normalizes recipient phone (+, spaces) to digits', () => {
@@ -230,6 +234,15 @@ describe('buildShipmentTtnPayload (sandbox-verified domestic UA warehouse)', () 
       buildShipmentTtnPayload(source({ recipientPhone: null }), SENDER).ok,
       false
     );
+  });
+
+  test('bad SENDER phone is diagnosed separately (bad_sender_phone, not recipient)', () => {
+    const built = buildShipmentTtnPayload(source(), { ...SENDER, phone: '123' });
+    assert.ok(!built.ok);
+    assert.equal(built.reason, 'bad_sender_phone');
+    const nullBuilt = buildShipmentTtnPayload(source(), { ...SENDER, phone: '' });
+    assert.ok(!nullBuilt.ok);
+    assert.equal(nullBuilt.reason, 'bad_sender_phone');
   });
 });
 
@@ -364,8 +377,10 @@ describe('createTtnForShipment orchestration', () => {
     assert.equal(np.createCalls.length, 1);
     assert.equal(np.lookupCalls.length, 1, 'exactly the pre-check lookup');
     assert.equal(marks.length, 1);
-    assert.equal(marks[0].ttnRef, 'ref-1');
-    assert.equal(marks[0].deliveryCost, 115);
+    const mark = marks[0];
+    assert.ok(mark !== undefined, 'mark must be recorded');
+    assert.equal(mark.ttnRef, 'ref-1');
+    assert.equal(mark.deliveryCost, 115);
   });
 
   test('POST ok but mark loses the race → best-effort DELETE of our TTN → conflict', async () => {
@@ -425,8 +440,10 @@ describe('createTtnForShipment orchestration', () => {
     });
     assert.equal(outcome.kind, 'provider_rejected');
     assert.equal(saved.length, 1);
-    assert.equal(saved[0].code, 'parcels.0.cargoCategory');
-    assert.match(saved[0].message, /required/);
+    const savedError = saved[0];
+    assert.ok(savedError !== undefined, 'provider error must be saved');
+    assert.equal(savedError.code, 'parcels.0.cargoCategory');
+    assert.match(savedError.message, /required/);
     assert.equal(np.lookupCalls.length, 1, 'no recovery loop for validation errors');
   });
 });

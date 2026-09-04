@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useCart } from '@/app/lib/cart-context';
+import { useCart, MAX_CART_LINES } from '@/app/lib/cart-context';
 import { ANALYTICS_EVENTS } from '@/app/lib/analytics';
 import { track } from '@vercel/analytics';
 
@@ -40,6 +40,7 @@ export default function AddToCartButton({
   const [variantId, setVariantId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [limitNotice, setLimitNotice] = useState(false);
 
   const selectedVariant = useMemo(
     () => variants.find((v) => v.id === variantId) ?? null,
@@ -148,8 +149,13 @@ export default function AddToCartButton({
           if (hasVariants && !selectedVariant) return;
           const addedOk = addItem(productId, hasVariants ? variantId : null, quantity);
           // addItem is a no-op (returns false) for an out-of-range quantity
-          // or a full cart — showing "У кошику" then would be a lie.
-          if (!addedOk) return;
+          // or a full cart — showing "У кошику" then would be a lie; the
+          // full-cart case gets an explicit notice instead of silence.
+          if (!addedOk) {
+            setLimitNotice(true);
+            return;
+          }
+          setLimitNotice(false);
           // Anonymous analytics: product UUID only, no PII.
           track(ANALYTICS_EVENTS.ADD_TO_CART, { product_id: productId });
           setAdded(true);
@@ -159,6 +165,13 @@ export default function AddToCartButton({
       >
         Додати в кошик
       </button>
+
+      {limitNotice && (
+        <p className="text-sm text-red-600" role="alert">
+          У кошику максимум {MAX_CART_LINES} позицій. Видаліть щось, щоб
+          додати новий товар.
+        </p>
+      )}
     </div>
   );
 }

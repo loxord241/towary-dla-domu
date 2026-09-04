@@ -52,8 +52,10 @@ test('UNRESOLVED-CAT: existing product still gets field updates when category un
     () => ({ brand_id: null, category_id: null })
   );
   assert.equal(res.unresolvedCategoryUpdates.length, 1);
+  assert.ok(res.unresolvedCategoryUpdates[0] !== undefined);
   assert.match(res.unresolvedCategoryUpdates[0].reason, /42 не знайдено/);
   assert.equal(withPriceChange.updates.length, 1, 'field update must survive');
+  assert.ok(withPriceChange.updates[0] !== undefined);
   assert.equal(withPriceChange.updates[0].fields.category_id, undefined);
 });
 
@@ -63,6 +65,7 @@ test('UNRESOLVED-CAT: new product without resolvable category is skipped with re
     category_id: null,
   }));
   assert.equal(res.inserts.length, 0);
+  assert.ok(res.unresolvedRefs[0] !== undefined);
   assert.match(res.unresolvedRefs[0].reason, /новий товар не створено/);
 });
 

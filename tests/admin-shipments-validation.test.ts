@@ -48,7 +48,9 @@ describe('shipment plan payload — valid input', () => {
     const res = ok();
     assert.ok(res.ok, JSON.stringify(res));
     assert.equal(res.plan.shipments.length, 1);
-    assert.equal(res.plan.shipments[0].cod_amount, 100.5);
+    const shipment = res.plan.shipments[0];
+    assert.ok(shipment !== undefined, 'plan must contain the shipment');
+    assert.equal(shipment.cod_amount, 100.5);
   });
 
   test('accepts a courier shipment with a free-text address', () => {
@@ -83,13 +85,17 @@ describe('shipment plan payload — valid input', () => {
       ],
     });
     assert.ok(res.ok, JSON.stringify(res));
-    assert.equal(res.plan.shipments[0].parcels.length, 1);
+    const firstShipment = res.plan.shipments[0];
+    assert.ok(firstShipment !== undefined, 'plan must contain the shipment');
+    assert.equal(firstShipment.parcels.length, 1);
   });
 
   test('numeric cod_amount as string is coerced', () => {
     const res = ok({ cod_amount: '250' });
     assert.ok(res.ok, JSON.stringify(res));
-    assert.equal(res.plan.shipments[0].cod_amount, 250);
+    const shipment = res.plan.shipments[0];
+    assert.ok(shipment !== undefined, 'plan must contain the shipment');
+    assert.equal(shipment.cod_amount, 250);
   });
 });
 
@@ -198,7 +204,10 @@ describe('shipment plan payload — items', () => {
   test('quantity as numeric string is coerced', () => {
     const res = ok({ items: [{ order_item_id: ITEM_A, quantity: '2' }] });
     assert.ok(res.ok, JSON.stringify(res));
-    assert.equal(res.plan.shipments[0].items[0].quantity, 2);
+    const shipment = res.plan.shipments[0];
+    const item = shipment?.items[0];
+    assert.ok(item !== undefined, 'plan must contain the item');
+    assert.equal(item.quantity, 2);
   });
 });
 

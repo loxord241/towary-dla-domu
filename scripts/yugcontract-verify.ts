@@ -18,7 +18,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 try {
   for (const line of readFileSync(path.join(root, '.env.local'), 'utf8').split('\n')) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+    if (m && m[1] !== undefined && m[2] !== undefined && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
   }
 } catch {}
 
@@ -142,7 +142,7 @@ const { data: manual } = await client
   .returns<{ id: string; sku: string; name: string; yugcontract_id: string | null; is_active: boolean }[]>();
 check(
   'manualProduct.intact',
-  manual?.length === 1 && manual[0].yugcontract_id === null && manual[0].is_active === true,
+  manual?.length === 1 && manual[0]?.yugcontract_id === null && manual[0]?.is_active === true,
   JSON.stringify(manual?.[0] ?? null)
 );
 

@@ -59,6 +59,7 @@ test('buildCategoryPlan: creates are depth-sorted parents-first; updates minimal
   const nodes = [node('1', null), node('2', '1'), node('3', '2')];
   const plan = buildCategoryPlan(nodes, new Set(['1', '2', '3']), []);
   assert.equal(plan.creates.length, 3);
+  assert.ok(plan.creates[0] !== undefined && plan.creates[1] !== undefined);
   assert.deepEqual(
     plan.creates.map((c) => c.yugcontract_id),
     ['1', '2', '3']
@@ -78,6 +79,7 @@ test('buildCategoryPlan: creates are depth-sorted parents-first; updates minimal
   ];
   const plan2 = buildCategoryPlan(nodes, new Set(['1', '2', '3']), existing);
   assert.equal(plan2.updates.length, 1);
+  assert.ok(plan2.updates[0] !== undefined);
   assert.equal(plan2.updates[0].id, 'uuid-1');
   assert.equal(plan2.updates[0].name, 'Категорія 1');
   // children of existing id=1 still created with correct parent link
@@ -88,6 +90,7 @@ test('buildCategoryPlan: parent outside selection becomes root', () => {
   const nodes = [node('50', null), node('884', '50')];
   const plan = buildCategoryPlan(nodes, new Set(['884']), []);
   assert.equal(plan.creates.length, 1);
+  assert.ok(plan.creates[0] !== undefined);
   assert.equal(plan.creates[0].parentYcId, null);
 });
 
@@ -151,18 +154,23 @@ test('mapFeedProducts applies rrp-as-price/stock rules and skips broken rows', (
   assert.equal(skipped.length, 3);
 
   const first = mapped[0];
+  assert.ok(first !== undefined);
   assert.equal(first.price, 1200); // price = rrp
   assert.equal(first.old_price, null); // no proven discounts — always null
   assert.equal(first.availability_status, 'in_stock');
   assert.equal(first.sku, 'YC-100');
   const rrpWins = mapped[1];
+  assert.ok(rrpWins !== undefined);
   assert.equal(rrpWins.price, 500);
   assert.equal(rrpWins.old_price, null);
   const zeroStock = mapped[2];
+  assert.ok(zeroStock !== undefined);
   assert.equal(zeroStock.stock_quantity, 0);
   assert.equal(zeroStock.availability_status, 'out_of_stock');
+  assert.ok(mapped[3] !== undefined);
   assert.equal(mapped[3].brandKey, null);
   const noRrp = mapped[4];
+  assert.ok(noRrp !== undefined);
   assert.equal(noRrp.price, null);
   assert.equal(noRrp.old_price, null);
 });
@@ -244,6 +252,7 @@ test('splitProductWrites: diff-only updates, stable slug, history flag', () => {
   assert.equal(split.inserts.length, 0);
   assert.equal(split.updates.length, 1);
   const upd = split.updates[0];
+  assert.ok(upd !== undefined);
   assert.equal(upd.id, 'uuid-p1');
   assert.deepEqual(Object.keys(upd.fields).sort(), [
     'name',
@@ -283,5 +292,6 @@ test('splitProductWrites blocks on manual sku squatters, resolves refs', () => {
   assert.equal(split.inserts.length, 0); // 200 blocked, 300 unresolved
   assert.equal(split.hardConflicts.length, 1);
   assert.equal(split.unresolvedRefs.length, 1);
+  assert.ok(split.unresolvedRefs[0] !== undefined);
   assert.equal(split.unresolvedRefs[0].id, '300');
 });

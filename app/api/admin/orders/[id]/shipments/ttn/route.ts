@@ -57,6 +57,7 @@ const INVALID_MESSAGES: Record<string, string> = {
   no_parcels: 'Немає місць (посилок) у відправленні',
   bad_recipient_name: 'Некоректне ім’я отримувача в замовленні',
   bad_recipient_phone: 'Некоректний телефон отримувача в замовленні',
+  bad_sender_phone: 'Некоректний телефон відправника (NOVA_POST_SENDER_PHONE)',
 };
 
 interface ShipmentRow {

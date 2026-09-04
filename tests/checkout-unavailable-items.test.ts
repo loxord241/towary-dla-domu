@@ -109,7 +109,13 @@ test('F1: submit is guarded BEFORE the POST when unavailable lines exist', () =>
 
 test('F1: totals still come from the purchasable-only subtotal (no second pricing mechanism)', () => {
   const f = form();
-  assert.match(f, /purchasable\.reduce/);
+  // Since 2026-09-04 the subtotal is grouped per currency (mixed-currency
+  // carts used to sum UAH+USD into one meaningless number) — the source of
+  // truth is unchanged: ONLY purchasable lines feed the totals.
+  assert.match(f, /subtotalByCurrency/);
+  assert.match(f, /for \(const \{ item, preview \} of purchasable\)/);
+  assert.doesNotMatch(f, /unavailableItems\.reduce/,
+    'unavailable lines must never feed any total');
   // purchasable excludes unavailable lines (out_of_stock must not count)
   const purch = f.indexOf('const purchasable');
   const unavailable = f.indexOf('const unavailableItems');

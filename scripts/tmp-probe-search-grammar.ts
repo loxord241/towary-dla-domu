@@ -11,7 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 try {
   for (const line of readFileSync(path.join(root, '.env.local'), 'utf8').split('\n')) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+    if (m && m[1] !== undefined && m[2] !== undefined && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
   }
 } catch {}
 
@@ -95,7 +95,7 @@ if (q1) {
 // sanity: точное имя товара БЕЗ кавычек должно находиться
 const { data: plain } = await client.from('products').select('name').eq('is_active', true).not('name', 'ilike', '%"%').limit(1);
 if ((plain ?? []).length > 0) {
-  await probe('exact name without any quote', String((plain ?? [])[0] ? (plain as { name: string }[])[0].name : ''), currentSanitize);
+  await probe('exact name without any quote', String((plain ?? [])[0] ? ((plain as { name: string }[])[0]?.name ?? '') : ''), currentSanitize);
 }
 
 console.log('\n== ФИНАЛЬНЫЕ ПОДТВЕРЖДЕНИЯ ==');

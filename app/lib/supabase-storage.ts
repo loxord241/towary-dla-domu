@@ -49,9 +49,12 @@ export function storagePathFromImageUrl(imageUrl: string): string {
 }
 
 /**
- * Get multiple public image URLs for a product
+ * Get multiple public image URLs for a product.
+ * Index-preserving: an unresolvable image_url yields null AT ITS INDEX
+ * (callers align alt/metadata with product.images by position — dropping
+ * entries here would shift every later alt onto the wrong slide).
  * @param productImages - Array of product image objects from database
- * @returns Array of public URLs
+ * @returns Array of public URLs (null where the row cannot produce one)
  */
 export function getPublicImageUrls(productImages: {
   id: string;
@@ -60,12 +63,10 @@ export function getPublicImageUrls(productImages: {
   alt?: string | null;
   sort_order?: number;
   is_main?: boolean;
-}[]): string[] {
+}[]): (string | null)[] {
   if (!productImages || productImages.length === 0) return []
 
-  return productImages
-    .map(img => getPublicImageUrl(img.image_url))
-    .filter(Boolean) as string[]
+  return productImages.map(img => getPublicImageUrl(img.image_url))
 }
 
 /**
@@ -89,5 +90,6 @@ export function getMainPublicImageUrl(productImages: {
   }
 
   // Fallback: return first image
-  return getPublicImageUrl(productImages[0].image_url)
+  const first = productImages[0]
+  return first ? getPublicImageUrl(first.image_url) : null
 }

@@ -114,10 +114,17 @@ const supabase = createClient(
 /**
  * Fetch the active announcements for the storefront. Resolves to [] on any
  * failure so an empty or unreachable table can never break a page render.
+ *
+ * Deadline: supabase-js does not accept an AbortSignal on a query builder,
+ * so the SELECT is raced against an 8 s timer — a hung upstream must not
+ * stall the awaited SSR render of home/catalog/PDP/cart. The timer losing
+ * the race logs server-side (fail-open policy unchanged).
  */
+const ANNOUNCEMENTS_DEADLINE_MS = 8_000;
+
 export async function fetchActiveAnnouncements(): Promise<Announcement[]> {
   try {
-    const { data, error } = await supabase
+    const query = supabase
       .from('store_announcements')
       .select(
         'id, title, message, type, is_active, sort_order, created_at, updated_at'
@@ -126,6 +133,16 @@ export async function fetchActiveAnnouncements(): Promise<Announcement[]> {
       .order('sort_order', { ascending: true })
       .limit(10);
 
+    const deadline = new Promise<'__timeout__'>((resolve) => {
+      setTimeout(() => resolve('__timeout__'), ANNOUNCEMENTS_DEADLINE_MS);
+    });
+    const raced = await Promise.race([query, deadline]);
+    if (raced === '__timeout__') {
+      console.error('store announcements: deadline exceeded — rendering without them');
+      return [];
+    }
+
+    const { data, error } = raced;
     if (error || !data) return [];
     return selectActiveAnnouncements(data as Announcement[]);
   } catch {

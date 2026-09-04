@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 const root = '/home/loxord/projects/my-shop';
 for (const line of readFileSync(root + '/.env.local', 'utf8').split('\n')) {
   const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-  if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+  if (m && m[1] !== undefined && m[2] !== undefined && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
 }
 const { createClient } = await import('@supabase/supabase-js');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

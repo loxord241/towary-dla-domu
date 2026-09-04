@@ -141,9 +141,11 @@ export function selectDeliveryService(quote: NpDeliveryQuote): ServiceSelection 
   );
   if (rows.length === 0) return { ok: false, error: 'no_services' };
   if (rows.length > 1) return { ok: false, error: 'ambiguous_services' };
+  const row = rows[0];
+  if (!row) return { ok: false, error: 'no_services' };
   return {
     ok: true,
-    cost: rows[0].cost,
+    cost: row.cost,
     scheduledDeliveryDate: quote.scheduledDeliveryDate,
   };
 }

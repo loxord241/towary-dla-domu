@@ -5,6 +5,11 @@ import {
   findDuplicatePaymentIdGroups,
 } from '@/app/lib/payment/reconciliation';
 import { fetchLiqPayProviderStatus } from '@/app/lib/payment/liqpay-status-api';
+import { getLiqPayConfig } from '@/app/lib/payment/liqpay-config';
+
+// Sequential throttled Status calls over up to MAX_LIMIT rows (~20 s worst
+// case) plus provider round-trips — a bounded but not tiny workload.
+export const maxDuration = 60;
 
 /**
  * GET /api/admin/orders/reconciliation — READ-ONLY LiqPay ↔ DB audit report.
@@ -132,8 +137,13 @@ export async function GET(request: Request) {
       if (chunk.length === 0) break;
       rows.push(...chunk);
       const last = chunk[chunk.length - 1];
+      if (!last) break;
       cursor = { createdAt: last.created_at, orderNumber: last.order_number };
     }
+
+    // Fail-fast on misconfiguration: an unset key must surface as a 500 with
+    // a clear server log, never as a silent wave of UNREACHABLE rows.
+    const liqpay = getLiqPayConfig();
 
     // Sequential, throttled Status lookups; per-order failures degrade to
     // UNREACHABLE (classifier sees null), never abort the whole report.
@@ -145,7 +155,11 @@ export async function GET(request: Request) {
       first = false;
 
       const provider = row.liqpay_order_id
-        ? await fetchLiqPayProviderStatus(row.liqpay_order_id)
+        ? await fetchLiqPayProviderStatus(
+            row.liqpay_order_id,
+            liqpay.publicKey,
+            liqpay.privateKey
+          )
         : null;
       const classification = classifyReconcileRow(
         {
@@ -218,7 +232,11 @@ export async function GET(request: Request) {
       duplicate_payment_ids: duplicates,
       readonly: true,
     });
-  } catch {
+  } catch (err) {
+    console.error(
+      'admin reconciliation failed:',
+      err instanceof Error ? err.message : 'unknown error'
+    );
     return NextResponse.json({ error: 'Reconciliation failed' }, { status: 500 });
   }
 }

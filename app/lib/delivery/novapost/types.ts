@@ -84,24 +84,3 @@ export interface NpDeliveryService {
   cost: number;
   paymentStatus: string | null;
 }
-
-/** Parsed calculation request (our route -> provider body). */
-export interface NpCalculationRequest {
-  parcels: {
-    cargoCategory: 'parcel' | 'documents' | 'pallet';
-    rowNumber: number;
-    actualWeightGrams: number;
-    widthMm: number | null;
-    lengthMm: number | null;
-    heightMm: number | null;
-    insuranceCost: number | null;
-  }[];
-  recipientDivisionId: number | null;
-  recipientAddress: {
-    city: string;
-    street: string;
-    building: string;
-    flat: string | null;
-    postCode: string | null;
-  } | null;
-}

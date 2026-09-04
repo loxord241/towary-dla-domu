@@ -67,10 +67,13 @@ function reducer(state: CartState, action: CartAction): CartState {
         (i) => lineKey(i.productId, i.variantId) === key
       );
       if (idx !== -1) {
-        items[idx] = {
-          ...items[idx],
-          quantity: Math.min(MAX_ITEM_QUANTITY, items[idx].quantity + action.item.quantity),
-        };
+        const existing = items[idx];
+        if (existing) {
+          items[idx] = {
+            ...existing,
+            quantity: Math.min(MAX_ITEM_QUANTITY, existing.quantity + action.item.quantity),
+          };
+        }
       } else if (items.length < MAX_CART_LINES) {
         items.push(action.item);
       } else {
@@ -197,7 +200,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       clearCart: () => dispatch({ type: 'CLEAR' }),
       getItemQuantity: (productId, variantId) => {
         const idx = indexOf(productId, variantId);
-        return idx === -1 ? 0 : state.items[idx].quantity;
+        const item = state.items[idx];
+        return idx === -1 || !item ? 0 : item.quantity;
       },
       totalCount: state.items.reduce((sum, i) => sum + i.quantity, 0),
     };

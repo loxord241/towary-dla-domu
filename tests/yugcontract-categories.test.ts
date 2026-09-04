@@ -76,6 +76,7 @@ test('detectCategoryFields finds id/name/parent keys', () => {
 
 test('normalizeCategoryNode coerces types and maps parent=0 to root', () => {
   const detected = detectCategoryFields(ROWS);
+  assert.ok(ROWS[0] !== undefined && ROWS[2] !== undefined);
   assert.deepEqual(normalizeCategoryNode(ROWS[0], detected), {
     externalId: '1',
     parentId: null, // "0" means no parent
@@ -101,6 +102,7 @@ test('normalizeCategoryNode coerces types and maps parent=0 to root', () => {
 });
 
 function sampleTree() {
+  assert.ok(ROWS[0] !== undefined && ROWS[1] !== undefined && ROWS[2] !== undefined);
   const nodes = [
     normalizeCategoryNode(ROWS[0], detectCategoryFields(ROWS)),
     normalizeCategoryNode(ROWS[1], detectCategoryFields(ROWS)),
@@ -125,9 +127,12 @@ test('buildCategoryTree computes roots, depths, levels and orphans', () => {
   assert.ok(photoRoot);
   assert.equal(photoRoot.children.length, 1);
   const chem = photoRoot.children[0];
+  assert.ok(chem !== undefined);
   assert.equal(chem.externalId, '446');
   assert.equal(chem.children.length, 1);
-  assert.equal(chem.children[0].depth, 2);
+  const chemChild = chem.children[0];
+  assert.ok(chemChild !== undefined);
+  assert.equal(chemChild.depth, 2);
 });
 
 test('filterCategoryTree keeps matches together with their ancestors', () => {
@@ -140,14 +145,26 @@ test('filterCategoryTree keeps matches together with their ancestors', () => {
   // Leaf match keeps the full chain top → 2l → leaf.
   const byLeaf = filterCategoryTree(roots, 'хімія');
   assert.equal(byLeaf.length, 1);
-  assert.equal(byLeaf[0].externalId, '1');
-  assert.equal(byLeaf[0].children.length, 1);
-  assert.equal(byLeaf[0].children[0].children[0].name, 'Хімія');
+  const leafRoot = byLeaf[0];
+  assert.ok(leafRoot !== undefined);
+  assert.equal(leafRoot.externalId, '1');
+  assert.equal(leafRoot.children.length, 1);
+  const leafChild = leafRoot.children[0];
+  assert.ok(leafChild !== undefined);
+  const leafGrand = leafChild.children[0];
+  assert.ok(leafGrand !== undefined);
+  assert.equal(leafGrand.name, 'Хімія');
 
   // Search also matches by ID.
   const byId = filterCategoryTree(roots, '453');
   assert.equal(byId.length, 1);
-  assert.equal(byId[0].children[0].children[0].externalId, '453');
+  const idRoot = byId[0];
+  assert.ok(idRoot !== undefined);
+  const idChild = idRoot.children[0];
+  assert.ok(idChild !== undefined);
+  const idGrand = idChild.children[0];
+  assert.ok(idGrand !== undefined);
+  assert.equal(idGrand.externalId, '453');
 
   // No false positives from unrelated branches.
   assert.equal(filterCategoryTree(roots, 'несуществующее').length, 0);

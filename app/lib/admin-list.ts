@@ -27,6 +27,13 @@ import type { Product, Category, Brand, ProductImage, ProductVariant } from './c
 export const ADMIN_LIST_DEFAULT_PAGE_SIZE = 20;
 export const ADMIN_LIST_MAX_PAGE_SIZE = 100;
 const RESOLUTION_PAGE = 1000; // PostgREST max_rows cap per response
+// Search-blast-radius caps: an `id.in.(...)` branch lives inside a single
+// or= expression — thousands of UUIDs blow past PostgREST/gateway URL
+// limits and turn a search into a 500. Beyond a cap the junction branch is
+// dropped (degradation to the plain name/sku/slug/yugcontract_id branches),
+// never an error.
+const MAX_EXPANDED_CATEGORY_IDS = 50;
+const MAX_JUNCTION_PRODUCT_IDS = 500;
 
 export interface AdminListParams {
   page: number;
@@ -186,22 +193,30 @@ async function buildProductExpressions(
   client: SupabaseClient,
   search: string
 ): Promise<string[]> {
+  const tokens = searchTokens(search);
+  // The full category tree is fetched ONCE per search, not per token —
+  // identical data for every token, and each fetch is a full-table read.
+  const allCategories =
+    tokens.length > 0 ? await toTreeCategories(fetchAllCategories(client)) : [];
   const expressions: string[] = [];
-  for (const token of searchTokens(search)) {
+  for (const token of tokens) {
     const parts = ['name', 'sku', 'slug', 'yugcontract_id'].map(
       (field) => `${field}.ilike.%${token}%`
     );
     const brandIds = await resolveNameOrSlugIds(client, 'brands', token);
     if (brandIds.length > 0) parts.push(`brand_id.in.(${brandIds.join(',')})`);
     const matchedCategoryIds = await resolveNameOrSlugIds(client, 'categories', token);
-    if (matchedCategoryIds.length > 0) {
-      const allCategories = await toTreeCategories(fetchAllCategories(client));
+    if (matchedCategoryIds.length > 0 && matchedCategoryIds.length <= MAX_EXPANDED_CATEGORY_IDS) {
       const expanded = new Set<string>();
       for (const id of matchedCategoryIds) {
         for (const sub of collectSubtreeIds(allCategories, id)) expanded.add(sub);
       }
-      const productIds = await resolveProductIdsForCategories(client, [...expanded]);
-      if (productIds.length > 0) parts.push(`id.in.(${productIds.join(',')})`);
+      if (expanded.size <= MAX_EXPANDED_CATEGORY_IDS) {
+        const productIds = await resolveProductIdsForCategories(client, [...expanded]);
+        if (productIds.length > 0 && productIds.length <= MAX_JUNCTION_PRODUCT_IDS) {
+          parts.push(`id.in.(${productIds.join(',')})`);
+        }
+      }
     }
     expressions.push(parts.join(','));
   }
@@ -272,6 +287,7 @@ async function pagedAdminRead(
 ): Promise<{ items: unknown[]; total: number; page: number; size: number }> {
   const { table, select, params, sorts, expressions, mapRow, extraFilter } = options;
   const orderSpec = sorts[params.sort] ?? sorts.default;
+  if (!orderSpec) throw new Error(`Unknown sort: ${params.sort}`);
 
   // COUNT mirrors the data filters exactly (extraFilter included both here
   // and on the data query; the pc embed must join into this select for the

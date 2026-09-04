@@ -123,7 +123,7 @@ export default function ProductReviews({
             </div>
             <div className="flex-1 space-y-1.5">
               {[5, 4, 3, 2, 1].map((stars) => {
-                const count = summary.distribution[stars - 1];
+                const count = summary.distribution[stars - 1] ?? 0;
                 const percent =
                   summary.total > 0
                     ? Math.round((count / summary.total) * 100)

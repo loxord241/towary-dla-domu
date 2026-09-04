@@ -169,7 +169,8 @@ test('META: placeholder description falls back to the generic name-based meta', 
 });
 
 test('META: boilerplate description falls back to the generic meta (no duplicated metas)', () => {
-  const cs: string = V2_BOILERPLATE_SAMPLES[16]; // Chef&Sommelier sample
+  const cs = V2_BOILERPLATE_SAMPLES[16]; // Chef&Sommelier sample
+  assert.ok(cs !== undefined);
   for (const boiler of [TRAMONTINA, LUMINARC_R, LUMINARC_PLAIN, PYREX, cs]) {
     assert.equal(
       buildProductMetaDescription({ productName: 'Набір посуду', description: boiler }),
@@ -390,14 +391,17 @@ test('META V3: recognition is prefix-only — template mid-text is NOT boilerpla
     assert.equal(isBoilerplateDescription(sample), false, sample.slice(0, 80));
   }
   // synthetic: same template text after a unique factual head must not flag
+  const sample0 = V3_TEMPLATE_SAMPLES[0];
+  assert.ok(sample0 !== undefined);
   assert.equal(
-    isBoilerplateDescription('Тільки цей товар має особливу гарантію. ' + V3_TEMPLATE_SAMPLES[0].slice(3)),
+    isBoilerplateDescription('Тільки цей товар має особливу гарантію. ' + sample0.slice(3)),
     false
   );
 });
 
 test('META V3: template check is capped to the first 160 plain-text chars', () => {
   const full = V3_TEMPLATE_SAMPLES[0];
+  assert.ok(full !== undefined);
   const plain = full.slice(3, -4); // strip <p> </p>
   assert.equal(isBoilerplateDescription(full), true);
   assert.equal(isBoilerplateDescription('<p>' + plain + '</p>'), true, 'exactly 160 chars still flags');

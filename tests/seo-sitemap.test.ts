@@ -19,7 +19,9 @@ test('SITEMAP: collectPaged walks exact windows and stops on a short page', asyn
 
   assert.deepEqual(calls, [[0, 1000], [1000, 1000], [2000, 1000]]);
   assert.equal(out.length, 2500);
-  assert.equal(out[2499].slug, 's2499');
+  const last = out[2499];
+  assert.ok(last !== undefined);
+  assert.equal(last.slug, 's2499');
 });
 
 test('SITEMAP: collectPaged enforces pageSize ≤1000 and honors maxRows cap', async () => {

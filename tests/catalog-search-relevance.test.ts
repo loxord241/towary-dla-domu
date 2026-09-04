@@ -126,6 +126,7 @@ function applyOrder(rows: Row[], orders: string[]): Row[] {
     .flatMap((entry) => entry.split(','))
     .map((part) => {
       const [col, dir = 'asc'] = part.split('.');
+      assert.ok(col !== undefined, 'order column must be present');
       return { col, desc: dir.startsWith('desc') };
     });
   const sorted = [...rows];
@@ -319,6 +320,7 @@ test('RANK: pagination slices the ranked order consistently', async () => {
   );
   // ranked path requests the scan window (0..limit), not a 2-row page
   const scan = dataCalls(before)[0];
+  assert.ok(scan !== undefined, 'scan request must be logged');
   assert.equal(scan.offset, 0);
   assert.equal(scan.limit, SEARCH_RANK_SCAN_LIMIT);
 });
@@ -385,6 +387,7 @@ test('RANK: match set wider than the scan cap keeps plain recency order', async 
   assert.equal(countCalls(before).length, 1);
   // legacy path: server-side pagination window, not a full scan
   const dataCall = dataCalls(before)[0];
+  assert.ok(dataCall !== undefined, 'data request must be logged');
   assert.equal(dataCall.offset, 0);
   assert.equal(dataCall.limit, 12);
   // newest bulk row first — the exact-match row (oldest ts) must NOT lead
@@ -396,6 +399,7 @@ test('RANK: no search → non-search path untouched (recency order)', async () =
   const before = reqLog.length;
   const page = await fetchCatalogProducts({});
   const dataCall = dataCalls(before)[0];
+  assert.ok(dataCall !== undefined, 'data request must be logged');
   assert.equal(dataCall.limit, 12); // page-sized window, not a scan
   assert.equal(page.products[0]?.id, 't2'); // newest first
 });

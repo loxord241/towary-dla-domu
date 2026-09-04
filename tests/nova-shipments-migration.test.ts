@@ -74,6 +74,7 @@ test('SHIPMENTS-019: warehouse vs courier delivery modes enforced', () => {
   );
   const xor = code.match(/constraint chk_order_shipments_destination check \(([\s\S]*?)\),\n\n/);
   assert.ok(xor, 'destination XOR constraint missing');
+  assert.ok(xor[1] !== undefined);
   // warehouse branch: a warehouse ref, never an address
   assert.match(xor[1], /service_type = 'nova_poshta_warehouse'/);
   assert.match(xor[1], /warehouse_ref is not null/);
