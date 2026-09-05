@@ -24,6 +24,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
   ),
+  // Google Merchant Center ownership verification (2026-09-05): renders as
+  // <meta name="google-site-verification"> in <head>. Must stay — removing
+  // it de-verifies the shop in Merchant Center.
+  verification: {
+    google: 'nbNl-kRrgRqXRmhVQx4YtAQZAatM2MgisQW_A68WOTw',
+  },
   title: "Товари для дому — Інтернет-магазин",
   description:
     "Найкращі товари за найкращими цінами — з доставкою по всій Україні",
