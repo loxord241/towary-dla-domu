@@ -747,21 +747,96 @@ export function buildFuzzyFallbackPlan(search: string): FuzzyFallbackPlan | null
   return { tokens, candidates, conditions };
 }
 
+/**
+ * PURE: the JS-side regex for one wildcard candidate — each ILIKE «_» maps
+ * to EXACTLY ONE unknown character (`.`), everything else is a literal. The
+ * pattern never contains quantifiers, so EVERY match of this regex has
+ * exactly the candidate's own length — a recovered display word (see
+ * recoverWildcardDisplay) is by construction a same-length substring of a
+ * row field, never a longer/shorter artifact. Non-global form: a stateless
+ * `.test()` predicate (a global regex would carry `lastIndex` between calls).
+ */
+function wildcardVariantRegExp(variant: string, global: boolean): RegExp {
+  const pattern = variant
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/_/g, '.');
+  return new RegExp(pattern, global ? 'gi' : 'i');
+}
+
 /** JS-side ILIKE semantics for one candidate against one fetched row.
  *  Mirrors FUZZY_PROBE_FIELDS (no description/sku — see there). */
 function fuzzyVariantMatchesRow(variant: string, row: SearchRankable): boolean {
   const fields = [row.name, row.short_description];
   if (variant.includes('_')) {
-    const pattern = variant
-      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      .replace(/_/g, '.');
-    const re = new RegExp(pattern, 'i');
+    const re = wildcardVariantRegExp(variant, false);
     return fields.some((f) => typeof f === 'string' && re.test(f));
   }
   const needle = variant.toLowerCase();
   return fields.some(
     (f) => typeof f === 'string' && f.toLowerCase().includes(needle)
   );
+}
+
+/**
+ * PURE: recover the REAL word a wildcard candidate matched, from the rows
+ * the probe returned. The candidate's own regex (wildcardVariantRegExp — the
+ * exact semantics that selected it) is re-run over the same fields the probe
+ * matched (name, short_description — mirrors FUZZY_PROBE_FIELDS) and every
+ * matched substring is a recovered word. Each match has EXACTLY the
+ * candidate's length (one `.` per «_`, no quantifiers — see
+ * wildcardVariantRegExp), so the result is a same-length real catalog word
+ * (e.g. «сковоро_ка» over «Електросковородка…» → «сковородка»), lowercased
+ * to read like the (typically lowercase) search term the notice renders.
+ *
+ * Choice among several DIFFERENT recovered words: the MOST FREQUENT one
+ * wins — a word counts once per row, so a row repeating it in name +
+ * description cannot outweigh other rows; ties keep the word seen FIRST in
+ * row order. Rationale (vs plain first-occurrence): in a homogeneous
+ * catalog every matched row holds the same word and frequency degenerates
+ * to first-occurrence, but when rows disagree (a stray brand or a compound
+ * word hit the same gap pattern) the word the majority of the result page
+ * actually shows is the better hint — and the choice is independent of the
+ * probe's row ordering, with first-seen order as the deterministic
+ * tie-break. Deterministic for a given rows array; no I/O.
+ *
+ * Returns null when nothing matches (a probe/data race, rows fetched
+ * through a different filter set) — identifyAppliedSearch falls back to the
+ * honest wildcard candidate; it never returns a wrong word.
+ */
+export function recoverWildcardDisplay(
+  variant: string,
+  rows: SearchRankable[]
+): string | null {
+  if (!variant.includes('_')) return null;
+  const re = wildcardVariantRegExp(variant, true);
+  const counts = new Map<string, { count: number; first: number }>();
+  let seen = 0;
+  for (const row of rows) {
+    const fields = [row.name, row.short_description];
+    const rowWords = new Set<string>();
+    for (const field of fields) {
+      if (typeof field !== 'string') continue;
+      for (const match of field.matchAll(re)) {
+        rowWords.add(match[0].toLowerCase());
+      }
+    }
+    for (const word of rowWords) {
+      const entry = counts.get(word);
+      if (entry) entry.count += 1;
+      else counts.set(word, { count: 1, first: seen++ });
+    }
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  let bestFirst = Number.POSITIVE_INFINITY;
+  for (const [word, { count, first }] of counts) {
+    if (count > bestCount || (count === bestCount && first < bestFirst)) {
+      best = word;
+      bestCount = count;
+      bestFirst = first;
+    }
+  }
+  return best;
 }
 
 /**
@@ -774,15 +849,28 @@ function fuzzyVariantMatchesRow(variant: string, row: SearchRankable): boolean {
  *      deletion/stem candidate is shorter than the full word it came from
  *      («ендер» vs «б_ендер»), so length is the best readability proxy
  *      among matched candidates — the notice keeps a human-readable term;
- *   3. equal lengths keep the EARLIEST emitted candidate (emission order =
- *      likelihood order — the same tie-break the old first-match rule used).
+ *   3. equal lengths prefer the LITERAL candidate (no ILIKE «_») over the
+ *      wildcard one: a literal and a wildcard of the same length can both
+ *      match rows (the substitution «te_la» hits «tesla» while the
+ *      transposition «tefal» hits «tefal»), and the plain word is the more
+ *      readable, intended display;
+ *   4. same length and same wildcard-ness keep the EARLIEST emitted
+ *      candidate (emission order = likelihood order — the same tie-break
+ *      the old first-match rule used);
+ *   5. a WILDCARD winner (contains ILIKE «_») is finally rewritten into the
+ *      REAL word it matched: the candidate's own regex is re-run over the
+ *      same rows and the most frequent recovered word displays instead
+ *      (recoverWildcardDisplay). The probe CONDITIONS keep the wildcard —
+ *      only the notice term becomes human-readable («бл_ндер» → «блендер»);
+ *      when recovery finds no match (probe/data race) the raw wildcard
+ *      stays, so the display is never null and never fabricated.
  * Returns null when every token kept its original (probe rows should always
  * match at least one non-original candidate, but a data race between the
  * probe and the data query degrades to "no notice", never to wrong
  * conditions).
  */
-function identifyAppliedSearch(
-  rows: SearchCardRow[],
+export function identifyAppliedSearch(
+  rows: SearchRankable[],
   plan: FuzzyFallbackPlan
 ): string | null {
   const display = plan.tokens.slice();
@@ -791,16 +879,34 @@ function identifyAppliedSearch(
     if (rows.some((row) => fuzzyVariantMatchesRow(token, row))) return;
     let best: string | null = null;
     for (const candidate of plan.candidates) {
+      const variant = candidate.variant;
       if (candidate.tokenIndex !== i) continue;
-      // Strictly-longer only: candidates arrive in emission order, so this
-      // keeps the EARLIEST candidate among the longest matches.
-      if (best !== null && candidate.variant.length <= best.length) continue;
-      if (rows.some((row) => fuzzyVariantMatchesRow(candidate.variant, row))) {
-        best = candidate.variant;
+      if (best !== null) {
+        // Strictly-longer first: candidates arrive in emission order, so
+        // among the longest matches this keeps the EARLIEST one — except at
+        // equal length the LITERAL (no «_») form displaces a wildcard: both
+        // are 1-edit variants of the token, and when both match, the plain
+        // word is the more readable display. Same wildcard-ness keeps the
+        // earliest emitted candidate (rule 4 in the docstring).
+        if (variant.length < best.length) continue;
+        if (
+          variant.length === best.length &&
+          (best.indexOf('_') === -1 || variant.indexOf('_') !== -1)
+        ) {
+          continue;
+        }
+      }
+      if (rows.some((row) => fuzzyVariantMatchesRow(variant, row))) {
+        best = variant;
       }
     }
     if (best !== null) {
-      display[i] = best;
+      // Rule 5: a wildcard winner is technical ILIKE syntax — recover the
+      // real word it matched from the same rows so the notice reads like
+      // the user's word. Recovery reuses the candidate's match semantics,
+      // so a selected wildcard always has ≥1 recoverable match here; null
+      // (a probe/data race) keeps the honest wildcard form.
+      display[i] = recoverWildcardDisplay(best, rows) ?? best;
       changed = true;
     }
   });

@@ -77,6 +77,47 @@ const ROWS: Row[] = [
   cardRow('200', 'Сковорідкаа Tebo', {
     created_at: '2026-01-12T00:00:00Z',
   }),
+  // Display tie-break fixtures (2026-09-05): equal-length literal-vs-wildcard
+  // ties need two DIFFERENT words per token, because a literal candidate is a
+  // transposition (or deletion) of the token while a same-length wildcard is
+  // its substitution — one word cannot be both. Engineered minimal pairs:
+  //   «tefla» → substitution «te_la» hits «Tesla» (300), transposition
+  //   «tefal» hits «TEFAL» (103) — literal must win the tie;
+  //   «ztefal» → deletions «tefal» and «zefal» — two literals, earliest wins;
+  //   «zebo» → gaps «ze_bo» and «zeb_o» both hit «Zebbo» — two wildcards,
+  //   earliest wins (the display then recovers the real word «zebbo»).
+  // None of these words collides with the other tests' probe tokens, so every
+  // pre-existing total stays unchanged.
+  cardRow('300', 'Павербанк Tesla Slim', {
+    created_at: '2026-01-13T00:00:00Z',
+  }),
+  cardRow('301', 'Насос Zefal Papillon', {
+    created_at: '2026-01-14T00:00:00Z',
+  }),
+  cardRow('302', 'Дуршлаг Zebbo', {
+    created_at: '2026-01-15T00:00:00Z',
+  }),
+  // Wildcard-display recovery fixtures (2026-09-05):
+  //   - 303: the token «сковорока» probes the gap «сковоро_ка», whose regex
+  //     matches INSIDE the compound word «Електросковородка» — recovery must
+  //     yield the matched substring «сковородка», not the whole word;
+  //   - 304–306: the token «zumo» probes the gap «zu_mo», which matches THREE
+  //     different words («zumbo», «zummo» ×2 rows) — the most FREQUENT
+  //     recovered word must win («zummo»), even though the singleton «zumbo»
+  //     row comes FIRST in dataset order (a first-occurrence policy would
+  //     wrongly show it). 304 is deliberately the oldest of the three.
+  cardRow('303', 'Електросковородка Зліт', {
+    created_at: '2026-01-16T00:00:00Z',
+  }),
+  cardRow('304', 'Термокружка Zumbo', {
+    created_at: '2026-01-16T00:00:00Z',
+  }),
+  cardRow('305', 'Термокружка Zummo', {
+    created_at: '2026-01-17T00:00:00Z',
+  }),
+  cardRow('306', 'Термокружка Zummo Pro', {
+    created_at: '2026-01-18T00:00:00Z',
+  }),
 ];
 
 // --- fake PostgREST ---------------------------------------------------------
@@ -165,9 +206,12 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = `http://127.0.0.1:${
 }`;
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= 'test-anon-key';
 
-const { fetchCatalogProducts, FALLBACK_MAX_RETRIES } = await import(
-  '../app/lib/catalog.ts'
-);
+const {
+  fetchCatalogProducts,
+  FALLBACK_MAX_RETRIES,
+  identifyAppliedSearch,
+  recoverWildcardDisplay,
+} = await import('../app/lib/catalog.ts');
 
 const countCalls = (from: number): LoggedRequest[] =>
   reqLog
@@ -373,8 +417,14 @@ test('FUZZY: missing letter «блндер» via ILIKE gap «_», count/data con
     'data query must use the adopted probe conditions'
   );
 
-  assert.equal(page.appliedSearch, 'бл_ндер');
+  assert.equal(page.appliedSearch, 'блендер');
   assert.deepEqual(page.products.map((p) => p.id), ['100', '101']);
+  // The gap candidate «бл_ндер» wins selection (for a missing-letter token
+  // the literal «блендер» is NOT a 1-edit candidate — insertion of the
+  // unknown letter is not invertible — so the gap pattern is the only 7-char
+  // match), but the DISPLAY recovers the real word from the matched rows:
+  // the candidate's regex re-run over «Блендер…» yields «блендер». The probe
+  // conditions above keep the wildcard form.
 });
 
 test('FUZZY: extra letter at the start «бблендер» via deletion', async () => {
@@ -431,13 +481,14 @@ test('FUZZY: multi-token probes every token, intact tokens stay exact', async ()
   // AND semantics: only the Bosch blender satisfies both tokens
   assert.equal(page.total, 1);
   assert.deepEqual(page.products.map((p) => p.id), ['100']);
-  assert.equal(page.appliedSearch, 'bosch бл_ндер');
+  assert.equal(page.appliedSearch, 'bosch блендер');
 });
 
 test('FUZZY: ranking ranks against adopted appliedSearch, beating recency', async () => {
-  // «блндер» → gap candidate «бл_ндер» → rank tokens «бл»+«ндер».
-  // r100 (OLDEST, 2026-01-01) scores higher: its description also hits both
-  // tokens. Plain recency would put r101 first — ranking must invert that.
+  // «блндер» → gap candidate «бл_ндер» wins selection, the display recovers
+  // the real word «блендер» from the matched rows → rank tokens «блендер».
+  // r100 (OLDEST, 2026-01-01) scores higher: its description also hits the
+  // token. Plain recency would put r101 first — ranking must invert that.
   const page = await fetchCatalogProducts({ search: 'блндер' });
   assert.equal(page.total, 2);
   assert.deepEqual(page.products.map((p) => p.id), ['100', '101']);
@@ -452,7 +503,7 @@ test('FUZZY: pagination stays consistent with the adopted probe total', async ()
   assert.equal(page1.total, 2);
   assert.equal(page1.products.length, 1);
   assert.equal(page1.page, 1);
-  assert.equal(page1.appliedSearch, 'бл_ндер');
+  assert.equal(page1.appliedSearch, 'блендер');
 
   const page2 = await fetchCatalogProducts({
     search: 'блндер',
@@ -462,7 +513,10 @@ test('FUZZY: pagination stays consistent with the adopted probe total', async ()
   assert.equal(page2.total, 2);
   assert.equal(page2.products.length, 1);
   assert.equal(page2.page, 2);
-  assert.equal(page2.appliedSearch, 'бл_ндер');
+  // page 2's only row is «Блендер Philips Pro» — the recovered word is the
+  // same, so the notice is stable across pages even though recovery runs on
+  // each page's own rows.
+  assert.equal(page2.appliedSearch, 'блендер');
   const dataCall = reqLog[reqLog.length - 1];
   assert.ok(dataCall !== undefined);
   assert.ok(dataCall.or.some((e) => e.includes('%бл_ндер%')));
@@ -489,9 +543,14 @@ test('FUZZY: tokens below the floor produce no probe at all', async () => {
 // total and pagination are unchanged. Per token: an intact original always
 // displays verbatim; otherwise the LONGEST matching candidate wins (a
 // deletion stem is shorter than the word it came from — the audit case where
-// the notice showed a truncated stem instead of a readable word); ties keep
-// the earliest emitted candidate; when only a technical candidate matched,
-// it is shown honestly.
+// the notice showed a truncated stem instead of a readable word); at equal
+// length the LITERAL (no «_») candidate beats the wildcard one; same
+// length and same wildcard-ness keep the earliest emitted candidate. A
+// WILDCARD winner is then rewritten into the REAL word it matched: the
+// candidate's regex is re-run over the probe rows and the most FREQUENT
+// recovered word displays («бл_ндер» → «блендер») — ties keep the word seen
+// first; when nothing can be recovered (probe/data race) the honest
+// wildcard stays. Literal winners are never touched.
 
 test('FUZZY display: longest matched candidate wins over the earlier stem («бендер»)', async () => {
   const before = reqLog.length;
@@ -500,11 +559,10 @@ test('FUZZY display: longest matched candidate wins over the earlier stem («б�
   assert.equal(countCalls(before).length, 4);
   assert.equal(page.total, 2);
   // The deletion stem «ендер» (emitted first, at position 0) matches too,
-  // but the longer gap candidate «б_ендер» is the readable word — it must
-  // win. This also pins the tie rule: among equal-length matches the
-  // earliest emitted stays (a last-longest policy would differ whenever two
-  // 7-char candidates matched, as with «бендер»-shaped tokens).
-  assert.equal(page.appliedSearch, 'б_ендер');
+  // but the longer gap candidate «б_ендер» wins selection; since the winner
+  // is a wildcard, the display recovers the real word from the matched rows
+  // («Блендер…») — the notice reads «блендер», not the technical «б_ендер».
+  assert.equal(page.appliedSearch, 'блендер');
 });
 
 test('FUZZY display: only the stem matched — it is shown honestly («нендер»)', async () => {
@@ -534,4 +592,125 @@ test('FUZZY display: intact token stays verbatim even when a longer variant matc
   // policy would show «сковорідк_а».) The broken token keeps its only
   // matched candidate «tebo».
   assert.equal(page.appliedSearch, 'сковорідка tebo');
+});
+
+test('FUZZY display: literal beats equal-length wildcard («tefla»)', async () => {
+  const before = reqLog.length;
+  const page = await fetchCatalogProducts({ search: 'tefla' });
+  // original + 1 trim miss («tefl») + 1 probe
+  assert.equal(countCalls(before).length, 3);
+  // The substitution wildcard «te_la» is emitted BEFORE the transposition
+  // «tefal» (position-major: sub at position 2 precedes the transposition at
+  // position 3); both are 5 chars and both match a row — «te_la» hits
+  // «Tesla» (row 300), «tefal» hits «TEFAL» (row 103). The old earliest-wins
+  // tie rule displayed the wildcard «te_la»; the literal word must win.
+  assert.equal(page.total, 2);
+  assert.equal(page.appliedSearch, 'tefal');
+});
+
+test('FUZZY display: two literals tie — earliest emitted wins («ztefal»)', async () => {
+  const page = await fetchCatalogProducts({ search: 'ztefal' });
+  // Deletions «tefal» (position 0) and «zefal» (position 1) both match (rows
+  // 103 and 301) at the same length; the literal-preference rule must not
+  // reorder same-kind ties — the earliest emitted stays.
+  assert.equal(page.total, 2);
+  assert.equal(page.appliedSearch, 'tefal');
+});
+
+test('FUZZY display: two wildcards tie — earliest emitted wins («zebo»)', async () => {
+  const page = await fetchCatalogProducts({ search: 'zebo' });
+  // Both gap candidates «ze_bo» (position 2) and «zeb_o» (position 3) are 5
+  // chars and match «Zebbo» (row 302); both carry «_», so the literal rule
+  // does not apply and the earliest emitted stays (a last-longest or
+  // prefer-later policy would show «zeb_o»). (The short deletion «ebo» also
+  // matches «Tebo» (row 200) but loses on length.) The wildcard winner is
+  // then recovered: row 200 holds no «ze?bo» shape at all, row 302 yields
+  // the real word «zebbo» — per-row non-matches are simply skipped.
+  assert.equal(page.total, 2);
+  assert.equal(page.appliedSearch, 'zebbo');
+});
+
+// ---- Wildcard display RECOVERY: pure-helper contracts (2026-09-05) ---------
+//
+// The wildcard rewrite lives in two PURE helpers exported for these tests:
+// identifyAppliedSearch (candidate selection + recovery integration) and
+// recoverWildcardDisplay (regex re-run over the matched rows). The runtime
+// tests above pin the wired behavior; these pin the edges the fake-PostgREST
+// harness cannot reach (a probe/data race, compound-word internals).
+
+test('FUZZY display recovery: frequency beats first occurrence across rows («zumo»)', async () => {
+  // Probe gap «zu_mo» matches three DIFFERENT words: «zumbo» (row 304, FIRST
+  // in dataset order) and «zummo» (rows 305, 306). Unranked path (explicit
+  // sort) feeds rows in dataset order, so a first-occurrence policy would
+  // display «zumbo»; the most FREQUENT word «zummo» must win instead.
+  const before = reqLog.length;
+  const page = await fetchCatalogProducts({
+    search: 'zumo',
+    sort: 'price_asc',
+  });
+  // 4-char token is below no-trim floor: 1 original + 1 probe, no trims.
+  assert.equal(countCalls(before).length, 2);
+  assert.equal(page.total, 3);
+  assert.equal(page.appliedSearch, 'zummo');
+
+  // Ranked path (default sort) feeds rows in created_at desc order — the
+  // frequency choice must be independent of row ordering.
+  const ranked = await fetchCatalogProducts({ search: 'zumo' });
+  assert.equal(ranked.total, 3);
+  assert.equal(ranked.appliedSearch, 'zummo');
+});
+
+test('FUZZY display recovery: substring inside a compound word («сковоро_ка»)', () => {
+  const row303 = ROWS.find((r) => r.id === '303');
+  assert.ok(row303 !== undefined);
+  // The gap candidate «сковоро_ка» matches INSIDE «Електросковородка…» —
+  // recovery must yield the matched substring «сковородка» (exactly the
+  // candidate's length: one «.» per «_», no quantifiers), never the whole
+  // compound word and never a fabricated form.
+  const recovered = recoverWildcardDisplay('сковоро_ка', [
+    { id: '303', name: String(row303.name) },
+  ]);
+  assert.equal(recovered, 'сковородка');
+});
+
+test('FUZZY display recovery: no match in rows (data race) → null → wildcard fallback', () => {
+  // A race between the probe and the data query can hand identifyAppliedSearch
+  // rows that no longer contain the matched word: recovery must return null
+  // (the caller keeps the honest wildcard candidate) — never a guessed word,
+  // never a crash.
+  assert.equal(recoverWildcardDisplay('бл_ндер', [{ id: 'x', name: 'Кофемолка' }]), null);
+  assert.equal(recoverWildcardDisplay('бл_ндер', []), null);
+  // Literal candidates never go through recovery at all.
+  assert.equal(recoverWildcardDisplay('блендер', [{ id: 'x', name: 'Кофемолка' }]), null);
+
+  // End-to-end guard on the same principle: rows matching nothing keep the
+  // original token display contract (null notice), never a fabricated term.
+  const applied = identifyAppliedSearch([{ id: 'x', name: 'Кофемолка' }], {
+    tokens: ['блндер'],
+    candidates: [{ tokenIndex: 0, variant: 'бл_ндер' }],
+    conditions: [],
+  });
+  assert.equal(applied, null);
+});
+
+test('FUZZY display recovery: literal winner is untouched by recovery', () => {
+  // Rows hold BOTH tie words: the literal «tefal» and the wildcard «te_la»
+  // both match, equal length — the literal wins selection, and recovery must
+  // not rewrite it (no «_», so recoverWildcardDisplay is never consulted;
+  // the notice shows the plain word, not the wildcard's own match «tesla»).
+  const applied = identifyAppliedSearch(
+    [
+      { id: '300', name: 'Павербанк Tesla Slim' },
+      { id: '103', name: 'Мультипіч TEFAL 300' },
+    ],
+    {
+      tokens: ['tefla'],
+      candidates: [
+        { tokenIndex: 0, variant: 'te_la' },
+        { tokenIndex: 0, variant: 'tefal' },
+      ],
+      conditions: [],
+    }
+  );
+  assert.equal(applied, 'tefal');
 });
