@@ -69,6 +69,14 @@ const ROWS: Row[] = [
   }),
   cardRow('102', 'Чашка керамічна', {}),
   cardRow('103', 'Мультипіч TEFAL 300', { brand: { name: 'TEFAL' } }),
+  // Dedicated to the appliedSearch display tests: a doubled-letter word so
+  // the intact token «сковорідка» matches verbatim while the LONGER gap
+  // candidate «сковорідк_а» matches too — the original must still win.
+  // Deliberately contains none of the other tests' probe tokens («блендер»,
+  // «мультипіч», «tefal», …) so every pre-existing total stays unchanged.
+  cardRow('200', 'Сковорідкаа Tebo', {
+    created_at: '2026-01-12T00:00:00Z',
+  }),
 ];
 
 // --- fake PostgREST ---------------------------------------------------------
@@ -473,4 +481,57 @@ test('FUZZY: tokens below the floor produce no probe at all', async () => {
   assert.equal(countCalls(before).length, 1);
   assert.equal(page.total, 0);
   assert.equal(page.appliedSearch ?? null, null);
+});
+
+// ---- Fuzzy appliedSearch DISPLAY: human-readable candidate choice ----------
+//
+// Contract: the notice term is a DISPLAY decision only — probe conditions,
+// total and pagination are unchanged. Per token: an intact original always
+// displays verbatim; otherwise the LONGEST matching candidate wins (a
+// deletion stem is shorter than the word it came from — the audit case where
+// the notice showed a truncated stem instead of a readable word); ties keep
+// the earliest emitted candidate; when only a technical candidate matched,
+// it is shown honestly.
+
+test('FUZZY display: longest matched candidate wins over the earlier stem («бендер»)', async () => {
+  const before = reqLog.length;
+  const page = await fetchCatalogProducts({ search: 'бендер' });
+  // original + 2 trim misses («бенде», «бенд») + 1 probe
+  assert.equal(countCalls(before).length, 4);
+  assert.equal(page.total, 2);
+  // The deletion stem «ендер» (emitted first, at position 0) matches too,
+  // but the longer gap candidate «б_ендер» is the readable word — it must
+  // win. This also pins the tie rule: among equal-length matches the
+  // earliest emitted stays (a last-longest policy would differ whenever two
+  // 7-char candidates matched, as with «бендер»-shaped tokens).
+  assert.equal(page.appliedSearch, 'б_ендер');
+});
+
+test('FUZZY display: only the stem matched — it is shown honestly («нендер»)', async () => {
+  const before = reqLog.length;
+  const page = await fetchCatalogProducts({ search: 'нендер' });
+  // original + 2 trim misses + 1 probe
+  assert.equal(countCalls(before).length, 4);
+  assert.equal(page.total, 2);
+  // «ендер» (deletion stem) is the ONLY candidate matching any row — no
+  // longer candidate exists, so the notice must show the stem itself rather
+  // than keeping the unmatched original.
+  assert.equal(page.appliedSearch, 'ендер');
+  assert.deepEqual(page.products.map((p) => p.id), ['100', '101']);
+});
+
+test('FUZZY display: intact token stays verbatim even when a longer variant matches', async () => {
+  const before = reqLog.length;
+  const page = await fetchCatalogProducts({ search: 'сковорідка tebbo' });
+  // 3 trim retries (breadth-first across both tokens) all miss, then probe
+  assert.equal(countCalls(before).length, 1 + FALLBACK_MAX_RETRIES + 1);
+  assert.equal(page.total, 1);
+  assert.deepEqual(page.products.map((p) => p.id), ['200']);
+  // Token «сковорідка» matches row 200 verbatim, but the LONGER gap
+  // candidate «сковорідк_а» matches too (the row word is «сковорідкаа») —
+  // an intact token must never be rewritten into a wildcard form. (The old
+  // first-match rule showed «коворідка»; a longest-without-original-first
+  // policy would show «сковорідк_а».) The broken token keeps its only
+  // matched candidate «tebo».
+  assert.equal(page.appliedSearch, 'сковорідка tebo');
 });

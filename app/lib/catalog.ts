@@ -766,12 +766,20 @@ function fuzzyVariantMatchesRow(variant: string, row: SearchRankable): boolean {
 
 /**
  * PURE: derive the user-facing appliedSearch from the probe plan and the
- * rows the probe actually returned. Per token: the FIRST emitted candidate
- * that matches any row (emission order = likelihood order; the original
- * token, when it matches, wins — intact tokens display verbatim). Returns
- * null when every token kept its original (probe rows should always match
- * at least one non-original candidate, but a data race between the probe
- * and the data query degrades to "no notice", never to wrong conditions).
+ * rows the probe actually returned. Per token, in order:
+ *   1. the original token, when it matches any row, displays verbatim —
+ *      even when a longer variant also matches (an intact token must never
+ *      be rewritten into a wildcard form);
+ *   2. otherwise the LONGEST emitted candidate matching any row wins: a
+ *      deletion/stem candidate is shorter than the full word it came from
+ *      («ендер» vs «б_ендер»), so length is the best readability proxy
+ *      among matched candidates — the notice keeps a human-readable term;
+ *   3. equal lengths keep the EARLIEST emitted candidate (emission order =
+ *      likelihood order — the same tie-break the old first-match rule used).
+ * Returns null when every token kept its original (probe rows should always
+ * match at least one non-original candidate, but a data race between the
+ * probe and the data query degrades to "no notice", never to wrong
+ * conditions).
  */
 function identifyAppliedSearch(
   rows: SearchCardRow[],
@@ -780,13 +788,19 @@ function identifyAppliedSearch(
   const display = plan.tokens.slice();
   let changed = false;
   plan.tokens.forEach((token, i) => {
-    const best = plan.candidates.find(
-      (c) =>
-        c.tokenIndex === i &&
-        rows.some((row) => fuzzyVariantMatchesRow(c.variant, row))
-    );
-    if (best && best.variant !== token) {
-      display[i] = best.variant;
+    if (rows.some((row) => fuzzyVariantMatchesRow(token, row))) return;
+    let best: string | null = null;
+    for (const candidate of plan.candidates) {
+      if (candidate.tokenIndex !== i) continue;
+      // Strictly-longer only: candidates arrive in emission order, so this
+      // keeps the EARLIEST candidate among the longest matches.
+      if (best !== null && candidate.variant.length <= best.length) continue;
+      if (rows.some((row) => fuzzyVariantMatchesRow(candidate.variant, row))) {
+        best = candidate.variant;
+      }
+    }
+    if (best !== null) {
+      display[i] = best;
       changed = true;
     }
   });
