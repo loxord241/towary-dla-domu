@@ -12,7 +12,14 @@
  *  - the _du section (2026-08-31 allowlist audit) compares the live _du
  *    rows against the generated allowlist (du-redirects.ts): FAIL on new
  *    _du pairs outside the allowlist or broken known pairs, WARN on
- *    price-drift / orphan-count drift ⇒ regenerate the allowlist.
+ *    price-drift / orphan-count drift ⇒ regenerate the allowlist;
+ *  - the newest-products section (2026-09-05) measures the out_of_stock
+ *    share among the 100 newest active products (is_active=true, created_at
+ *    desc — one range read, no paging): FAIL at ≥ 50%, WARN at ≥ 20%.
+ *    This catches the "first storefront screen consists of missing items"
+ *    skew (seen with Yugcontract data: top-100 = 86% OOS while the whole
+ *    active catalog was ~6%); samples < 20 products are advisory (WARN at
+ *    most), 0 active products ⇒ skip.
  *
  * Usage: node scripts/catalog-health-check.ts
  * Exit:  0 = PASS, 1 = WARN, 2 = FAIL (see catalog-health.ts).
@@ -25,8 +32,10 @@ import {
   overallResult,
   analyzeDuDrift,
   DU_EXPECTED_ORPHANS,
+  NEWEST_SAMPLE_SIZE,
   type ImportBatchInfo,
   type DuProductRow,
+  type NewestProductRow,
 } from '../app/lib/monitoring/catalog-health.ts';
 import {
   DU_PRICE_DIFF_PAIRS,
@@ -186,7 +195,24 @@ async function main(): Promise<void> {
         24 * 60 * 60 * 1000
   ).length;
 
-  // ---- 5. classify + report ----------------------------------------------
+  // ---- 6. newest active products — storefront first-screen OOS skew ------
+  // Exactly ONE range read (order created_at desc, limit 100): the paged
+  // fetchAll helper is unnecessary for a fixed-size window. The slice is
+  // classified purely in the lib; thresholds and the small-sample advisory
+  // live there. Measured against created_at directly — batch windows in
+  // yc_import_batches are too short (~40s) to give a stable sample.
+  const newestRes = await db
+    .from('products')
+    .select('availability_status')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .range(0, NEWEST_SAMPLE_SIZE - 1);
+  if (newestRes.error) {
+    throw new Error(`select failed: ${newestRes.error.message}`);
+  }
+  const newestProducts = (newestRes.data ?? []) as unknown as NewestProductRow[];
+
+  // ---- 7. classify + report ----------------------------------------------
   const checks = buildCatalogChecks({
     now,
     counts: {
@@ -200,6 +226,7 @@ async function main(): Promise<void> {
     noImageItems,
     batches,
     pendingOrdersOlderThan24h: pending24h,
+    newestProducts,
     du: {
       duRows,
       baseRows,

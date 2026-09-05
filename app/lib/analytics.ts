@@ -4,6 +4,9 @@
  * Privacy contract (2026-08 analytics stage):
  * - Exactly six events, no PII: product ids, sanitized search text,
  *   traffic-source class. No contacts, no order contents, no cookies.
+ * - The `search` event additionally carries a boolean `hasResults` flag
+ *   (whether the rendered search view had any products). Result counts
+ *   never leave the client — only the boolean.
  * - Traffic source is FIRST-TOUCH only, kept in localStorage under
  *   `eshop-traffic-source-v1` and never overwritten after the first visit.
  * - payment_success fires at most once per order number; the dedupe list
@@ -61,6 +64,27 @@ export function sanitizeSearchQuery(raw: unknown): string | null {
     return null;
   }
   return cleaned;
+}
+
+/** Type alias (not interface) so the payload stays assignable to track()'s Record. */
+export type SearchEventPayload = {
+  query: string;
+  hasResults: boolean;
+};
+
+/**
+ * Pure payload builder for the `search` event: sanitizes the raw query and
+ * returns null when nothing may be sent (empty or contact-shaped input —
+ * the caller must not fire). `hasResults` is a boolean only; result counts
+ * never enter the payload (2026-09 zero-result observability stage).
+ */
+export function buildSearchEventPayload(
+  rawQuery: unknown,
+  hasResults: boolean
+): SearchEventPayload | null {
+  const clean = sanitizeSearchQuery(rawQuery);
+  if (!clean) return null;
+  return { query: clean, hasResults };
 }
 
 function hostOf(referrer: string): string | null {

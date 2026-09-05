@@ -15,6 +15,14 @@
  *          photo upload; storefront eligibility = product_images!inner)
  *          are informational and do not escalate the overall status.
  *
+ * Newest-products OOS skew (2026-09-05): the storefront's first screen is
+ *   populated by the newest active products (created_at desc), so a supplier
+ *   data drift that marks them out_of_stock empties the whole first screen
+ *   while the global OOS share stays low. Monitoring measures the newest-100
+ *   slice directly: FAIL at ≥ 50% out_of_stock, WARN at ≥ 20%. A sample
+ *   smaller than 20 products is advisory (warn at most, never escalates);
+ *   0 active products ⇒ skip.
+ *
  * Exit codes (systemd-friendly): PASS=0, WARN=1, FAIL=2.
  */
 
@@ -69,6 +77,12 @@ export interface CatalogHealthInput {
   pendingOrdersOlderThan24h: number;
   /** optional _du allowlist drift section (checked when the script provides it) */
   du?: DuDriftInput;
+  /**
+   * Optional newest-active-products slice (created_at desc, is_active=true,
+   * capped at NEWEST_SAMPLE_SIZE) for the storefront first-screen OOS skew
+   * check — measured when the script provides it.
+   */
+  newestProducts?: NewestProductRow[];
 }
 
 // A running batch older than the importer's own STALE_RUNNING_MS (10 min)
@@ -89,6 +103,51 @@ export const PENDING_ORDER_WARN_HOURS = 24;
 // mirrors it as a WARN regenerate signal. (2026-08-31 audit: 26 → Task #26
 // regeneration: 24 → Task #34 audit: 25, one new orphan from supplier churn.)
 export const DU_EXPECTED_ORPHANS = 25;
+
+// ---- newest-products OOS skew (2026-09-05) ------------------------------
+// The storefront's first screen is populated by the newest active products
+// (created_at desc). A Yugcontract sync once made that slice ~86%
+// out_of_stock while the whole active catalog sat at ~6% — the global share
+// hides the skew, so monitoring measures the newest slice directly.
+export const NEWEST_SAMPLE_SIZE = 100;
+// Thresholds are inclusive: exactly 20% ⇒ WARN, exactly 50% ⇒ FAIL.
+export const OOS_WARN_SHARE = 0.2;
+export const OOS_FAIL_SHARE = 0.5;
+// A slice below this size is too small to trust the share: the check is
+// reported as advisory WARN at most and never escalates the overall status.
+export const NEWEST_MIN_SAMPLE = 20;
+
+/** Minimal plain shape of a newest-products sample row (read-only select). */
+export interface NewestProductRow {
+  availability_status: string | null;
+}
+
+export interface NewestOosAnalysis {
+  /** actual size of the newest-active slice (≤ NEWEST_SAMPLE_SIZE) */
+  sampleSize: number;
+  oosCount: number;
+  /** oosCount / sampleSize, null when there is nothing to measure */
+  oosShare: number | null;
+  /** sample smaller than NEWEST_MIN_SAMPLE — the result is advisory only */
+  smallSample: boolean;
+}
+
+/**
+ * Classify the out_of_stock share among the newest active products.
+ * The slice itself (is_active=true, created_at desc, limit) is the script's
+ * responsibility — pinned by a wiring test; this function only classifies.
+ * Pure — no I/O.
+ */
+export function analyzeNewestOos(
+  rows: ReadonlyArray<NewestProductRow>
+): NewestOosAnalysis {
+  const sampleSize = rows.length;
+  const oosCount = rows.filter(
+    (r) => r.availability_status === 'out_of_stock'
+  ).length;
+  const oosShare = sampleSize === 0 ? null : oosCount / sampleSize;
+  return { sampleSize, oosCount, oosShare, smallSample: sampleSize < NEWEST_MIN_SAMPLE };
+}
 
 /** Minimal plain shape of a products row needed for _du drift (read-only select). */
 export interface DuProductRow {
@@ -388,6 +447,51 @@ export function buildCatalogChecks(
         affectsStatus: true,
       },
     );
+  }
+
+  // ---- newest-products OOS skew (2026-09-05) ------------------------------
+  // FAIL ≥ 50% / WARN ≥ 20% out_of_stock among the newest active products;
+  // a sample < NEWEST_MIN_SAMPLE is advisory (warn at most, never
+  // escalates); 0 active products ⇒ skip (pass).
+  if (input.newestProducts) {
+    const a = analyzeNewestOos(input.newestProducts);
+    const pct =
+      a.oosShare === null ? null : Math.round(a.oosShare * 1000) / 10;
+    let level: HealthLevel = 'pass';
+    let description: string;
+    let advisory = false;
+    if (a.oosShare === null) {
+      description =
+        'Пропущено: немає активних товарів — міряти частку out-of-stock нема чого.';
+    } else if (a.smallSample) {
+      advisory = true;
+      level = a.oosShare >= OOS_WARN_SHARE ? 'warn' : 'pass';
+      description =
+        `Вибірка мала (${a.sampleSize} < ${NEWEST_MIN_SAMPLE} товарів): ${a.oosCount} з ${a.sampleSize} out-of-stock (${pct}%). ` +
+        'Мала вибірка — advisory, статус не погіршує, але перекос видно вже зараз.';
+    } else if (a.oosShare >= OOS_FAIL_SHARE) {
+      level = 'fail';
+      description =
+        `${pct}% із ${a.sampleSize} нових активних товарів out-of-stock (≥ ${OOS_FAIL_SHARE * 100}%). ` +
+        'Перший екран вітрини складається з відсутніх товарів — зсув даних імпорту/постачальника.';
+    } else if (a.oosShare >= OOS_WARN_SHARE) {
+      level = 'warn';
+      description =
+        `${pct}% із ${a.sampleSize} нових активних товарів out-of-stock (≥ ${OOS_WARN_SHARE * 100}%) — ` +
+        'перший екран вітрини починає «просідати».';
+    } else {
+      description =
+        `${pct}% із ${a.sampleSize} нових активних товарів out-of-stock — ` +
+        'новинки доступні, перший екран вітрини здоровий.';
+    }
+    checks.push({
+      id: 'newest-oos-skew',
+      label: `Перекос «новинки = out-of-stock» (топ-${NEWEST_SAMPLE_SIZE} за created_at)`,
+      level,
+      count: a.oosCount,
+      description,
+      affectsStatus: !advisory,
+    });
   }
 
   return checks;

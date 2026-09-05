@@ -12,13 +12,19 @@ import path from 'node:path';
 import {
   analyzeDuDrift,
   analyzeImportBatches,
+  analyzeNewestOos,
   buildCatalogChecks,
   overallResult,
   DU_EXPECTED_ORPHANS,
+  NEWEST_MIN_SAMPLE,
+  NEWEST_SAMPLE_SIZE,
+  OOS_FAIL_SHARE,
+  OOS_WARN_SHARE,
   type CatalogHealthInput,
   type DuAllowlistSnapshot,
   type DuProductRow,
   type ImportBatchInfo,
+  type NewestProductRow,
 } from '../app/lib/monitoring/catalog-health.ts';
 import {
   DU_PRICE_DIFF_PAIRS,
@@ -426,4 +432,102 @@ test('DU-DRIFT: production script wires the generated allowlist with read-only s
 test('DU-DRIFT: classifier stays decoupled — the lib never imports the generated allowlist', () => {
   const lib = src('app/lib/monitoring/catalog-health.ts');
   assert.ok(!/import\s+[^;]*du-redirects/.test(lib), 'lib must receive the allowlist as plain data');
+});
+
+// ---- newest-products OOS skew (2026-09-05: live top-100 = 86% OOS) ----
+
+function newestRows(oos: number, total: number): NewestProductRow[] {
+  return Array.from({ length: total }, (_, i) => ({
+    availability_status: i < oos ? 'out_of_stock' : 'in_stock',
+  }));
+}
+
+test('NEWEST-OOS: all in stock classifies as PASS', () => {
+  const a = analyzeNewestOos(newestRows(0, 100));
+  assert.equal(a.sampleSize, 100);
+  assert.equal(a.oosCount, 0);
+  assert.equal(a.oosShare, 0);
+  assert.equal(a.smallSample, false);
+  const checks = buildCatalogChecks(input({ newestProducts: newestRows(0, 100) }));
+  const check = byId(checks, 'newest-oos-skew');
+  assert.equal(check.level, 'pass');
+  assert.equal(check.affectsStatus, true);
+  assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
+});
+
+test('NEWEST-OOS: exactly 20% of 100 is WARN (threshold inclusive)', () => {
+  const checks = buildCatalogChecks(input({ newestProducts: newestRows(20, 100) }));
+  const check = byId(checks, 'newest-oos-skew');
+  assert.equal(check.level, 'warn');
+  assert.equal(check.count, 20);
+  assert.deepEqual(overallResult(checks), { status: 'WARN', exitCode: 1 });
+});
+
+test('NEWEST-OOS: exactly 50% of 100 is FAIL (threshold inclusive)', () => {
+  const checks = buildCatalogChecks(input({ newestProducts: newestRows(50, 100) }));
+  const check = byId(checks, 'newest-oos-skew');
+  assert.equal(check.level, 'fail');
+  assert.deepEqual(overallResult(checks), { status: 'FAIL', exitCode: 2 });
+});
+
+test('NEWEST-OOS: 86% of 100 (live 2026-09-05 shape) is FAIL with exit 2', () => {
+  const checks = buildCatalogChecks(input({ newestProducts: newestRows(86, 100) }));
+  const check = byId(checks, 'newest-oos-skew');
+  assert.equal(check.level, 'fail');
+  assert.equal(check.count, 86);
+  assert.match(check.description, /86%/);
+  assert.deepEqual(overallResult(checks), { status: 'FAIL', exitCode: 2 });
+});
+
+test('NEWEST-OOS: sample of 10 with 50% OOS is advisory WARN — reported, never escalates', () => {
+  const a = analyzeNewestOos(newestRows(5, 10));
+  assert.equal(a.smallSample, true);
+  const checks = buildCatalogChecks(input({ newestProducts: newestRows(5, 10) }));
+  const check = byId(checks, 'newest-oos-skew');
+  // Not worse than WARN even though the share hits the FAIL threshold.
+  assert.equal(check.level, 'warn');
+  assert.match(check.description, /Вибірка мала/);
+  // Advisory: the small-sample result must not hold the overall status.
+  assert.equal(check.affectsStatus, false);
+  assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
+});
+
+test('NEWEST-OOS: 0 active products is a skip (pass, non-escalating)', () => {
+  const a = analyzeNewestOos([]);
+  assert.equal(a.sampleSize, 0);
+  assert.equal(a.oosShare, null);
+  const checks = buildCatalogChecks(input({ newestProducts: [] }));
+  const check = byId(checks, 'newest-oos-skew');
+  assert.equal(check.level, 'pass');
+  assert.match(check.description, /Пропущено/);
+  assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
+});
+
+test('NEWEST-OOS: thresholds and sample-size constants match the contract', () => {
+  assert.equal(NEWEST_SAMPLE_SIZE, 100);
+  assert.equal(NEWEST_MIN_SAMPLE, 20);
+  assert.equal(OOS_WARN_SHARE, 0.2);
+  assert.equal(OOS_FAIL_SHARE, 0.5);
+});
+
+test('NEWEST-OOS: the newest check is omitted when the script provides no slice (backward compatible)', () => {
+  const checks = buildCatalogChecks(input());
+  assert.ok(!checks.some((c) => c.id === 'newest-oos-skew'));
+});
+
+test('NEWEST-OOS: production script reads the newest slice with a single range query', () => {
+  const s = src('scripts/catalog-health-check.ts');
+  const start = s.indexOf('const newestRes = await db');
+  assert.ok(start !== -1, 'newest products query must exist');
+  const end = s.indexOf('as unknown as NewestProductRow', start);
+  assert.ok(end !== -1);
+  const segment = s.slice(start, end);
+  assert.match(segment, /\.select\('availability_status'\)/);
+  assert.match(segment, /\.eq\('is_active', true\)/);
+  assert.match(segment, /\.order\('created_at', \{ ascending: false \}\)/);
+  assert.match(segment, /\.range\(0, NEWEST_SAMPLE_SIZE - 1\)/);
+  // Fixed-size window: the paged fetchAll helper must not be used here.
+  assert.ok(!segment.includes('fetchAll'), 'single range read must not use fetchAll');
+  // The slice is fed into the classifier.
+  assert.match(s, /newestProducts,/);
 });

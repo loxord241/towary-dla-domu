@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import {
   ANALYTICS_EVENTS,
+  buildSearchEventPayload,
   classifyTrafficSource,
   resolveFirstTouchSource,
   sanitizeSearchQuery,
@@ -248,10 +249,50 @@ test('STATIC: checkout_start fired once on CheckoutForm mount', () => {
   assert.doesNotMatch(s, /ANALYTICS_EVENTS\.(?!CHECKOUT_START)[A-Z_]+/);
 });
 
-test('STATIC: search fired from SearchViewTracker with sanitized query only', () => {
+test('STATIC: search fired from SearchViewTracker with sanitized query + boolean hasResults', () => {
   const s = src('app/components/SearchViewTracker.tsx');
-  assert.match(s, /track\(\s*ANALYTICS_EVENTS\.SEARCH\s*,\s*\{\s*query/);
-  assert.match(s, /sanitizeSearchQuery\(/, 'query must pass the PII sanitizer before track()');
+  assert.match(s, /track\(\s*ANALYTICS_EVENTS\.SEARCH\s*,\s*payload\s*\)/);
+  assert.match(
+    s,
+    /buildSearchEventPayload\(/,
+    'payload must come from the pure sanitizer-gated builder'
+  );
+  assert.match(
+    s,
+    /if\s*\(\s*payload\s*\)\s*\{\s*track\(/,
+    'nothing fired when the sanitized query is empty/contact-shaped'
+  );
+  assert.match(
+    s,
+    /hasResults:\s*boolean/,
+    'the flag stays a boolean — no numeric result counts in the props'
+  );
+});
+
+test('buildSearchEventPayload: hasResults true/false, no event for empty sanitized query', () => {
+  assert.deepEqual(buildSearchEventPayload('  чайник  ', true), {
+    query: 'чайник',
+    hasResults: true,
+  });
+  assert.deepEqual(buildSearchEventPayload('чайник', false), {
+    query: 'чайник',
+    hasResults: false,
+  });
+  // Contact-shaped / empty sanitized input -> null payload = no event.
+  assert.equal(buildSearchEventPayload('john@example.com', true), null);
+  assert.equal(buildSearchEventPayload('380501234567', true), null);
+  assert.equal(buildSearchEventPayload('   ', true), null);
+  assert.equal(buildSearchEventPayload('', false), null);
+  assert.equal(buildSearchEventPayload(undefined, true), null);
+});
+
+test('STATIC: catalog page passes boolean hasResults derived from result total', () => {
+  const page = src('app/catalog/page.tsx');
+  assert.match(
+    page,
+    /<SearchViewTracker\s+query=\{filters\.search\}\s+hasResults=\{total\s*>\s*0\}\s*\/>/,
+    'catalog page must feed the tracker a boolean (total > 0), never a count'
+  );
 });
 
 test('STATIC: traffic_source captured in root layout via tracker component', () => {

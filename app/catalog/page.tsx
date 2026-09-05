@@ -303,8 +303,10 @@ export default async function CatalogPage({
           JSON-LD script sink (same serializeJsonLd escaping). */}
       <ProductJsonLd data={breadcrumbJsonLd} />
       {/* Anonymous search analytics: rendered only when a search term is
-          applied; the tracker sanitizes the term (PII guard) before firing. */}
-      <SearchViewTracker query={filters.search} />
+          applied; the tracker sanitizes the term (PII guard) before firing.
+          hasResults is a deliberate boolean (total > 0 — the rendered view
+          had products, typo-fallback hits included), never a count. */}
+      <SearchViewTracker query={filters.search} hasResults={total > 0} />
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
