@@ -6,9 +6,15 @@ import { SearchIcon } from './icons';
 
 /**
  * Shared storefront header. The search input is a plain GET form targeting
- * /catalog?q=... so it works without client-side JavaScript.
+ * /catalog?q=... so it works without client-side JavaScript. When the
+ * current view carries a search term, it is pre-filled (defaultValue) so
+ * the user can refine their query on the results page.
  */
-export default function SiteHeader() {
+export default function SiteHeader({
+  searchQuery,
+}: {
+  searchQuery?: string;
+}) {
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm">
       {/* Note: no backdrop-filter here on purpose — backdrop-filter makes the
@@ -39,6 +45,7 @@ export default function SiteHeader() {
                 name="q"
                 aria-label="Пошук"
                 placeholder="Пошук товарів..."
+                defaultValue={searchQuery}
                 className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <button

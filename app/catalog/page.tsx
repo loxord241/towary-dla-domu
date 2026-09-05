@@ -287,7 +287,7 @@ export default async function CatalogPage({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SiteHeader />
+      <SiteHeader searchQuery={filters.search} />
       <Announcements />
       {/* BreadcrumbList for category views — ProductJsonLd is the sanctioned
           JSON-LD script sink (same serializeJsonLd escaping). */}

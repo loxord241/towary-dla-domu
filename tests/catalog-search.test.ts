@@ -47,11 +47,12 @@ test('buildSearchConditions: every token becomes an AND-ed or() expression', () 
   const conds = buildSearchConditions('парова щітка') as string[];
   assert.equal(conds.length, 2);
   for (const cond of conds) {
-    // each token must match in name OR short_description OR sku OR
-    // yugcontract_id (P2-1: SKU / supplier-article search)
+    // each token must match in name OR short_description OR description OR
+    // sku OR yugcontract_id (P2-1: SKU / supplier-article search;
+    // 2026-09: description search)
     assert.match(
       cond,
-      /^name\.ilike\.%[^%]+%,short_description\.ilike\.%[^%]+%,sku\.ilike\.%[^%]+%,yugcontract_id\.ilike\.%[^%]+%$/
+      /^name\.ilike\.%[^%]+%,short_description\.ilike\.%[^%]+%,description\.ilike\.%[^%]+%,sku\.ilike\.%[^%]+%,yugcontract_id\.ilike\.%[^%]+%$/
     );
   }
   const tokens = conds.map((c) => {
@@ -64,7 +65,7 @@ test('buildSearchConditions: every token becomes an AND-ed or() expression', () 
 
 test('buildSearchConditions: single token keeps legacy shape', () => {
   assert.deepEqual(buildSearchConditions('щітка'), [
-    'name.ilike.%щітка%,short_description.ilike.%щітка%,sku.ilike.%щітка%,yugcontract_id.ilike.%щітка%',
+    'name.ilike.%щітка%,short_description.ilike.%щітка%,description.ilike.%щітка%,sku.ilike.%щітка%,yugcontract_id.ilike.%щітка%',
   ]);
 });
 
@@ -75,7 +76,7 @@ test('buildSearchConditions: single token keeps legacy shape', () => {
 
 test('buildSearchConditions: full SKU with YC- prefix matches sku column', () => {
   assert.deepEqual(buildSearchConditions('YC-7061899'), [
-    'name.ilike.%YC-7061899%,short_description.ilike.%YC-7061899%,sku.ilike.%YC-7061899%,yugcontract_id.ilike.%YC-7061899%',
+    'name.ilike.%YC-7061899%,short_description.ilike.%YC-7061899%,description.ilike.%YC-7061899%,sku.ilike.%YC-7061899%,yugcontract_id.ilike.%YC-7061899%',
   ]);
 });
 
@@ -92,7 +93,7 @@ test('buildSearchConditions: SKU search is case-insensitive by construction', ()
   // The sanitizer must NOT mutate the token either way (upper/lower pass
   // through verbatim); case-folding itself is ILIKE semantics at the DB.
   assert.deepEqual(buildSearchConditions('yc-7061899'), [
-    'name.ilike.%yc-7061899%,short_description.ilike.%yc-7061899%,sku.ilike.%yc-7061899%,yugcontract_id.ilike.%yc-7061899%',
+    'name.ilike.%yc-7061899%,short_description.ilike.%yc-7061899%,description.ilike.%yc-7061899%,sku.ilike.%yc-7061899%,yugcontract_id.ilike.%yc-7061899%',
   ]);
   // Both casings produce the same match SET against a real SKU column:
   // identical modulo case, which ILIKE ignores.
@@ -457,7 +458,8 @@ test('buildFuzzyFallbackPlan: short tokens stay exact inside a mixed query', () 
   assert.equal(plan?.conditions.length, 2);
   const shortCond = plan?.conditions[0];
   assert.ok(shortCond !== undefined);
-  // «чай» has no variants → degrades to the exact buildSearchConditions shape
+  // «чай» has no variants → degrades to the fuzzy probe's 4-field shape
+  // (description is excluded from the probe — see fuzzyOrCondition)
   assert.equal(
     shortCond,
     'name.ilike.%чай%,short_description.ilike.%чай%,sku.ilike.%чай%,yugcontract_id.ilike.%чай%'

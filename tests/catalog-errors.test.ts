@@ -42,3 +42,15 @@ test('CATALOG: no silent swallow pattern (log-then-return-empty/null)', () => {
     'log-then-return-empty hides incidents from the storefront'
   );
 });
+
+test('CATALOG: countError guard rethrows — a count failure must not render an empty catalog (2026-09 UX audit #4)', () => {
+  // The count guard names its variable `countError`, so the generic
+  // `if (error)` scan above does not see it; pin it explicitly.
+  const guard = catalog.match(/if \(countError\) \{(?:[^{}]|\{[^{}]*\})*\}/);
+  assert.ok(guard, 'expected the countError guard to exist in catalog.ts');
+  assert.match(
+    guard[0],
+    /throw/,
+    'count failure must reach app/error.tsx, not an empty grid'
+  );
+});

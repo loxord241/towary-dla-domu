@@ -386,6 +386,11 @@ export function sanitizeSearchTerm(term: string): string {
  * proven-safe literals (see sanitizeSearchTerm), so `YC-7061899` and the
  * bare `7061899` both find the product.
  *
+ * Description search (2026-09 UX audit): `description` joins the or-set so
+ * a keyword that only appears in the full supplier text finds the product.
+ * Description hits rank BELOW name/sku/short-description tiers in
+ * searchRelevanceScore, so exact-name matches never lose to a body-text hit.
+ *
  * «мультипіч TEFAL» and «TEFAL мультипіч» therefore yield the same
  * condition SET. A single token keeps the legacy single-`or` shape, and an
  * empty/specials-only query yields null (no search filter at all).
@@ -399,7 +404,7 @@ export function buildSearchConditions(search: string): string[] | null {
   if (tokens.length === 0) return null;
   return tokens.map(
     (token) =>
-      `name.ilike.%${token}%,short_description.ilike.%${token}%,sku.ilike.%${token}%,yugcontract_id.ilike.%${token}%`
+      `name.ilike.%${token}%,short_description.ilike.%${token}%,description.ilike.%${token}%,sku.ilike.%${token}%,yugcontract_id.ilike.%${token}%`
   );
 }
 
@@ -586,6 +591,15 @@ export interface FuzzyFallbackPlan {
   conditions: string[];
 }
 
+/**
+ * Fuzzy probe fields. Deliberately EXCLUDES `description` (2026-09): the
+ * probe or= value packs up to FALLBACK_FUZZY_MAX_ATTEMPTS candidates per
+ * token, and Cyrillic URL-encoding triples its length — at 5 fields the
+ * request URL (~12KB) overflows the 16KB response-header budget
+ * (UND_ERR_HEADERS_OVERFLOW on PostgREST's Content-Location echo) and the
+ * probe fails with an empty error. 4 fields keep the probe under the limit;
+ * description search stays available in the main buildSearchConditions path.
+ */
 function fuzzyOrCondition(variants: string[]): string {
   const preds: string[] = [];
   for (const field of ['name', 'short_description', 'sku', 'yugcontract_id']) {
@@ -635,7 +649,8 @@ export function buildFuzzyFallbackPlan(search: string): FuzzyFallbackPlan | null
   return { tokens, candidates, conditions };
 }
 
-/** JS-side ILIKE semantics for one candidate against one fetched row. */
+/** JS-side ILIKE semantics for one candidate against one fetched row.
+ *  Mirrors fuzzyOrCondition's field set (no description — see there). */
 function fuzzyVariantMatchesRow(variant: string, row: SearchRankable): boolean {
   const fields = [
     row.name,
@@ -709,6 +724,7 @@ export interface SearchRankable {
   id: string;
   name: string;
   short_description?: string | null;
+  description?: string | null;
   sku?: string | null;
   yugcontract_id?: string | null;
   created_at?: string | null;
@@ -721,7 +737,7 @@ export interface SearchRankable {
  *   exact name (800) > name prefix (600) > name contains the query (400)
  *   > per-token name hits (100 each, +50 when every token hits)
  *   > SKU / supplier-article match (60 full, 30 per token)
- *   > short-description hits (10 each).
+ *   > short-description hits (10 each) > description hits (5 each).
  * Matching semantics mirror the ILIKE conditions that matched the row:
  * case-folded substring containment. The raw URL term is re-sanitized here,
  * so special characters can never widen or corrupt the scoring.
@@ -737,6 +753,7 @@ export function searchRelevanceScore(
   const tokens = [...new Set(searchTokens(search).map((t) => t.toLowerCase()))];
   const name = (row.name ?? '').toLowerCase();
   const shortDescription = (row.short_description ?? '').toLowerCase();
+  const description = (row.description ?? '').toLowerCase();
   const sku = (row.sku ?? '').toLowerCase();
   const yugcontractId = (row.yugcontract_id ?? '').toLowerCase();
 
@@ -756,6 +773,8 @@ export function searchRelevanceScore(
 
   score +=
     tokens.filter((token) => shortDescription.includes(token)).length * 10;
+
+  score += tokens.filter((token) => description.includes(token)).length * 5;
   return score;
 }
 
@@ -969,8 +988,10 @@ export async function fetchCatalogProducts(
 
   const { count, error: countError } = await buildCountQuery(searchConditions);
   if (countError) {
-    console.error('Failed to count catalog products:', countError.message);
-    return { products: [], total: 0, page: 1, size };
+    // Same honesty contract as the data query below: a transient count
+    // failure must reach app/error.tsx, not render an empty catalog that
+    // reads as "the shop has no products".
+    throw new Error(`Failed to count catalog products: ${countError.message}`);
   }
 
   let total = count ?? 0;
@@ -1054,7 +1075,7 @@ export async function fetchCatalogProducts(
     .select(
       (rankedSearch
         ? CATALOG_CARD_SELECT +
-          ', short_description, sku, yugcontract_id, created_at'
+          ', short_description, description, sku, yugcontract_id, created_at'
         : CATALOG_CARD_SELECT) +
         (categoryId ? ', pc:product_categories!inner(category_id)' : '')
     )
@@ -1107,7 +1128,16 @@ export async function fetchCatalogProducts(
         query = query.order('name', { ascending: true }).order('id', { ascending: true });
         break;
       default:
-        query = query.order('created_at', { ascending: false }).order('id', { ascending: false });
+        // In-stock first (2026-09 UX audit): the storefront's default view
+        // must not open on a wall of out-of-stock novelties. The DB only
+        // holds 'in_stock'/'out_of_stock' (verified 2026-09), and
+        // 'in_stock' < 'out_of_stock' lexicographically, so ascending
+        // availability_status IS the in-stock-first contract; each tier
+        // keeps the recency ordering.
+        query = query
+          .order('availability_status', { ascending: true })
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false });
     }
 
     query = query.range((page - 1) * size, page * size - 1);
