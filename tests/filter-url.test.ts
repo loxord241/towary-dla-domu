@@ -6,7 +6,8 @@
  *    which the previous inline implementation silently dropped;
  *  - applying always resets to page 1 (the result set changed);
  *  - empty draft values are omitted, cleared filters are removed;
- *  - reset returns the bare /catalog.
+ *  - reset (since Audit 2026-09-05) clears the filters but keeps q —
+ *    it reuses buildFilterUrl with an empty draft.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -42,7 +43,8 @@ test('FILTER-URL: empty draft and no active params yields the bare /catalog', ()
 });
 
 test('FILTER-URL: apply keeps q even when every filter group is cleared', () => {
-  // Clearing filters is not clearing the search — «Скинути» does that.
+  // Clearing filters is not clearing the search — «Скинути» keeps q too
+  // since Audit 2026-09-05 (same builder, empty draft).
   assert.equal(
     buildFilterUrl(new URLSearchParams('q=x'), {
       categorySlug: '',

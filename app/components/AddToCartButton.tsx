@@ -139,7 +139,11 @@ export default function AddToCartButton({
           }}
           className="w-20 border border-gray-300 rounded-md p-2"
         />
-        <span className="text-xs text-gray-400">макс. {maxQty}</span>
+        {/* Unselected variant = unknown stock: «макс. 99» would be a lie
+            (Audit 2026-09-05, item 3). Simple products always have a number. */}
+        {effectiveStock !== null && (
+          <span className="text-xs text-gray-400">макс. {maxQty}</span>
+        )}
       </div>
 
       <button

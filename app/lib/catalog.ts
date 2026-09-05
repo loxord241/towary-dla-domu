@@ -425,45 +425,73 @@ function searchTokens(search: string): string[] {
 // ---- Typo-tolerance fallback (Task #40) -----------------------------------
 //
 // When a search returns zero results (e.g. «блендерр» instead of «блендер»),
-// we retry with progressively relaxed terms: drop the LAST character of ONE
-// token at a time (longest token first). Constraints:
+// we retry with progressively relaxed terms: each retry drops the LAST
+// character of the currently-longest trimmable token, CUMULATIVELY (the
+// same token keeps shrinking across retries until it hits the floor).
+// Constraints:
 //   - Only triggered when the original query matched zero rows.
 //   - Tokens are never shortened below FALLBACK_MIN_TOKEN_LEN — short stems
 //     like «чай» → «ча» would match far too broadly.
 //   - Retry budget is capped (FALLBACK_MAX_RETRIES) so a pathological query
 //     can't turn into a request storm.
-//   - Each variant changes exactly ONE token by exactly ONE character — the
-//     smallest change that could plausibly fix a typo (doubled letter,
-//     missed key). Injection safety is inherited from sanitizeSearchTerm
-//     because variants are re-fed through buildSearchConditions.
+//   - Each retry changes exactly ONE character. Progressive (cumulative)
+//     trimming matters because 1-edit fuzzy variants cannot bridge
+//     multi-edit typos in word FORM: verified on production data
+//     (2026-09-05), «сковоротка» has zero 1-edit neighbors among product
+//     names («сковорода» differs by 2 edits), but its stem «сковоро»
+//     matches 252 eligible products on the third retry.
+//   - Injection safety is inherited from sanitizeSearchTerm because
+//     variants are re-fed through buildSearchConditions.
 export const FALLBACK_MIN_TOKEN_LEN = 4;
 export const FALLBACK_MAX_RETRIES = 3;
 
 /**
- * PURE: given a raw search string, yield progressively relaxed variants by
- * trimming the LAST character of ONE token at a time (longest token first,
- * ties → earliest). Yields at most FALLBACK_MAX_RETRIES variants; a token is
- * only trimmed while it stays strictly longer than FALLBACK_MIN_TOKEN_LEN.
- * Output depends purely on the input; callers must re-run the output through
- * buildSearchConditions (which re-sanitizes) before using it.
+ * PURE: given a raw search string, yield progressively relaxed variants.
+ * Each retry trims the LAST character of ONE token; the token is picked by
+ * (fewest prior trims → longest → earliest), so the ladder is BREADTH-first
+ * across tokens (every token gets one trim before any gets a second —
+ * multi-typo queries keep testing their second token) and then DEEP-first
+ * on the same token (a single long token keeps shrinking across retries —
+ * «сковоротка» reaches the stem «сковоро», which is the only production
+ * bridge to the 252 «сковоро*» products; 1-edit fuzzy variants cannot get
+ * there, SQL-verified 2026-09-05). Yields at most FALLBACK_MAX_RETRIES
+ * variants; stops early when no token remains above FALLBACK_MIN_TOKEN_LEN.
+ * Output depends purely on the input; callers must re-run the output
+ * through buildSearchConditions (which re-sanitizes) before use.
  */
 export function relaxSearchTerm(search: string): string[] {
-  const tokens = [...new Set(sanitizeSearchTerm(search).split(' ').filter(Boolean))];
-  const candidates = tokens
-    .map((token, idx) => ({ idx, len: token.length }))
-    .filter((t) => t.len > FALLBACK_MIN_TOKEN_LEN)
-    .sort((a, b) => b.len - a.len)
-    .slice(0, FALLBACK_MAX_RETRIES);
-  return candidates.map(({ idx }) => {
-    const next = tokens.slice();
-    const token = next[idx];
-    if (token === undefined) return next.join(' ');
-    next[idx] = token.slice(0, -1);
-    return next.join(' ');
-  });
+  const work = [
+    ...new Set(sanitizeSearchTerm(search).split(' ').filter(Boolean)),
+  ];
+  const trims = new Array<number>(work.length).fill(0);
+  const out: string[] = [];
+  for (let retry = 0; retry < FALLBACK_MAX_RETRIES; retry += 1) {
+    let best = -1;
+    for (let i = 0; i < work.length; i += 1) {
+      const len = work[i]?.length ?? 0;
+      if (len <= FALLBACK_MIN_TOKEN_LEN) continue;
+      if (best === -1) {
+        best = i;
+        continue;
+      }
+      const bestTrims = trims[best] ?? 0;
+      const bestLen = work[best]?.length ?? 0;
+      const iTrims = trims[i] ?? 0;
+      if (iTrims < bestTrims || (iTrims === bestTrims && len > bestLen)) {
+        best = i;
+      }
+    }
+    if (best === -1) break;
+    const token = work[best];
+    if (token === undefined) break;
+    work[best] = token.slice(0, -1);
+    trims[best] = (trims[best] ?? 0) + 1;
+    out.push(work.join(' '));
+  }
+  return out;
 }
 
-// ---- Fuzzy typo fallback (Phase 1, 2026-09-04) -----------------------------
+// ---- Fuzzy typo fallback (Phase 1, 2026-09-04; Phase 2, 2026-09-05) --------
 //
 // Second tier of the zero-result fallback, AFTER the trim ladder above:
 // when the original query AND every trim variant matched zero rows, we probe
@@ -472,7 +500,11 @@ export function relaxSearchTerm(search: string): string[] {
 //   - single-char deletion at ANY position — «бленддер» → «блендер»;
 //   - adjacent-char transposition — «блендре» → «блендер»;
 //   - one-char ILIKE gap «_» — «блндер» → «бл_ндер» matches «блендер»
-//     (covers a MISSING letter, which deletion/transposition cannot).
+//     (covers a MISSING letter, which deletion/transposition cannot);
+//   - interior substitution «_» (Phase 2) — «сковоротка» → «сковоро_ка»
+//     matches «сковородка» (covers a WRONG letter of the same word length,
+//     which no other kind reaches: deletions/gaps change the pattern length
+//     and transpositions keep both original letters).
 //
 // Invariants:
 //   - tokens shorter than FALLBACK_MIN_TOKEN_LEN are never fuzzied;
@@ -483,9 +515,21 @@ export function relaxSearchTerm(search: string): string[] {
 //     consistent by construction (no per-variant retry storm);
 //   - `appliedSearch` is identified afterwards in JS from the actually
 //     returned rows (per token: first emitted candidate that matches);
-//   - deterministic emission: originals first, then round-robin over each
-//     token's variant list (layout → deletions → transpositions → gaps),
-//     globally capped at FALLBACK_FUZZY_MAX_ATTEMPTS;
+//   - deterministic emission: round 0 is every token's original, then
+//     round-robin over each token's kind-fair positional variant list
+//     (per position: deletion → transposition → gap → substitution), with
+//     the layout remap emitted first. Position-major interleaving is
+//     deliberate: with ANY cap, block-ordered kinds let early kinds
+//     displace later ones (under the old flat 32-candidate cap a ≥8-char
+//     token never emitted a single substitution);
+//   - the probe is bounded by an encoded-URL byte budget
+//     (FALLBACK_FUZZY_URL_BUDGET_BYTES), NOT a candidate count — the real
+//     constraint is the request URL / response-header limit, which scales
+//     with bytes, not with candidate count. Measured live (2026-09-05):
+//     an encoded or= of 8017 bytes succeeds, 10085 bytes already fails
+//     (undici "fetch failed", UND_ERR_HEADERS_OVERFLOW on PostgREST's
+//     Content-Location echo) — so the old 32-candidate × 4-field shape
+//     (~15.9 KB for a 17-char Cyrillic token) broke the probe entirely;
 //   - injection safety: candidates originate from sanitizeSearchTerm output
 //     (no , " ( ) % possible), mutations add only letters or a single `_`
 //     (an ILIKE single-char wildcard — deliberately scoped here; it is
@@ -493,9 +537,10 @@ export function relaxSearchTerm(search: string): string[] {
 //     intentionally at a known interior position), and every candidate is
 //     re-checked against the reserved-char class before use.
 // Worst case request budget on a zero-result query: 1 original count +
-// FALLBACK_MAX_RETRIES trim counts + 1 fuzzy probe + 1 data query = 6.
+// FALLBACK_MAX_RETRIES trim counts + 1 fuzzy probe + 1 data query = 6
+// (unchanged from Phase 1 — the probe is still ONE request).
 // ---------------------------------------------------------------------------
-export const FALLBACK_FUZZY_MAX_ATTEMPTS = 32;
+export const FALLBACK_FUZZY_URL_BUDGET_BYTES = 8000;
 
 /** ILIKE/or= grammar characters that must never appear inside a candidate. */
 const FUZZY_RESERVED = /[,"()%]/;
@@ -536,10 +581,25 @@ export function mapKeyboardLayout(token: string): string | null {
 
 /**
  * PURE: fuzzy 1-edit variants of ONE token (never the token itself, never
- * below FALLBACK_MIN_TOKEN_LEN). Deterministic kind order: layout,
- * deletions (any position), transpositions, interior gaps. Candidates that
- * would carry or=/ILIKE grammar characters (e.g. a layout remap of «б»,
- * whose key IS the comma) are dropped, not escaped.
+ * below FALLBACK_MIN_TOKEN_LEN). Emission is KIND-FAIR and position-major:
+ * the layout remap first, then one round per position — per position
+ * (deletion, transposition, gap, substitution, in that relative kind order),
+ * skipping the kinds invalid at that position. Under any prefix cap every
+ * kind is therefore represented after the first few positions; a
+ * block-ordered layout (all deletions, then all transpositions, …) would let
+ * earlier kinds displace later ones. Candidates that would carry or=/ILIKE
+ * grammar characters (e.g. a layout remap of «б», whose key IS the comma)
+ * are dropped, not escaped.
+ *
+ * Position rules (both wildcards are the single-char ILIKE `_`):
+ *   - gap inserts an extra `_` BEFORE position i, i ≥ 1 (leading/trailing
+ *     gaps would only re-test deletions);
+ *   - substitution REPLACES the char at position i with `_`, interior
+ *     positions only (1 ≤ i ≤ len-2): under ILIKE substring semantics the
+ *     position-0 substitution is subsumed by the position-0 deletion
+ *     (%Xrest% ⇒ contains rest) and the last-position substitution by the
+ *     last-position deletion (%prec% ⇒ contains pre) — interior ones are
+ *     the only genuinely new coverage («блендар» → «бленд_р» → «блендер»).
  */
 export function fuzzyTokenVariants(token: string): string[] {
   if (token.length < FALLBACK_MIN_TOKEN_LEN) return [];
@@ -557,19 +617,20 @@ export function fuzzyTokenVariants(token: string): string[] {
 
   for (let i = 0; i < token.length; i += 1) {
     push(token.slice(0, i) + token.slice(i + 1));
-  }
-  for (let i = 0; i + 1 < token.length; i += 1) {
-    push(
-      token.slice(0, i) +
-        token.charAt(i + 1) +
-        token.charAt(i) +
-        token.slice(i + 2)
-    );
-  }
-  // Missing-letter class: one ILIKE `_` (exactly one unknown char) at an
-  // INTERIOR position. Leading/trailing gaps would only re-test deletions.
-  for (let i = 1; i < token.length; i += 1) {
-    push(`${token.slice(0, i)}_${token.slice(i)}`);
+    if (i + 1 < token.length) {
+      push(
+        token.slice(0, i) +
+          token.charAt(i + 1) +
+          token.charAt(i) +
+          token.slice(i + 2)
+      );
+    }
+    if (i >= 1) {
+      push(`${token.slice(0, i)}_${token.slice(i)}`);
+    }
+    if (i >= 1 && i <= token.length - 2) {
+      push(`${token.slice(0, i)}_${token.slice(i + 1)}`);
+    }
   }
   return out;
 }
@@ -579,30 +640,54 @@ export interface FuzzyFallbackPlan {
   tokens: string[];
   /**
    * Emitted candidates in probe/identification order — round 0 is every
-   * token's original, then round-robin over the per-token variant lists,
-   * capped at FALLBACK_FUZZY_MAX_ATTEMPTS overall.
+   * token's original, then round-robin over the per-token kind-fair variant
+   * lists, bounded by the encoded-URL byte budget (not a candidate count).
    */
   candidates: { tokenIndex: number; variant: string }[];
   /**
    * One or= value per token: OR over that token's emitted candidates
-   * (a token with no variants degrades to the exact buildSearchConditions
-   * shape). Caller chains .or() once per entry — same AND semantics.
+   * (a token with no variants degrades to the exact 2-field probe shape).
+   * Caller chains .or() once per entry — same AND semantics.
    */
   conditions: string[];
 }
 
 /**
- * Fuzzy probe fields. Deliberately EXCLUDES `description` (2026-09): the
- * probe or= value packs up to FALLBACK_FUZZY_MAX_ATTEMPTS candidates per
- * token, and Cyrillic URL-encoding triples its length — at 5 fields the
- * request URL (~12KB) overflows the 16KB response-header budget
- * (UND_ERR_HEADERS_OVERFLOW on PostgREST's Content-Location echo) and the
- * probe fails with an empty error. 4 fields keep the probe under the limit;
- * description search stays available in the main buildSearchConditions path.
+ * Fuzzy probe fields. Deliberately limited to `name` + `short_description`
+ * (Phase 1 already dropped `description`; Phase 2 also drops
+ * `sku`/`yugcontract_id`). Two constraints trade off against each other:
+ *   - the encoded or= size must stay under FALLBACK_FUZZY_URL_BUDGET_BYTES
+ *     (measured live: ≥~10KB breaks the probe — see the section comment);
+ *   - CANDIDATE coverage must stay wide: a missing variant is a missed
+ *     correction, while SKU/supplier-article fuzzy matching has negligible
+ *     real-world yield (SKUs are `YC-<digits>`; the exact and trim-ladder
+ *     paths keep all five fields, and the probe only runs after BOTH
+ *     already returned zero — so the user's exact SKU spelling has failed).
+ * Two fields halve the per-candidate byte cost and double how many variants
+ * survive the budget. `fuzzyVariantMatchesRow` mirrors this field set.
  */
+const FUZZY_PROBE_FIELDS = ['name', 'short_description'] as const;
+
+/**
+ * Encoded-URL cost of adding ONE candidate to the probe: supabase-js
+ * URL-encodes each or= value with encodeURIComponent (commas become `%2C`,
+ * the ILIKE `%` becomes `%25`), and PostgREST echoes the request URL back
+ * in the Content-Location response header — so the encoded length is
+ * exactly what the response-header budget pays for.
+ */
+function fuzzyPredicateCost(variant: string): number {
+  // each predicate gets one encoded ',' separator before it (the very last
+  // one is unused, so the model is conservatively 3 bytes over per token)
+  let cost = encodeURIComponent(',').length * FUZZY_PROBE_FIELDS.length;
+  for (const field of FUZZY_PROBE_FIELDS) {
+    cost += encodeURIComponent(`${field}.ilike.%${variant}%`).length;
+  }
+  return cost;
+}
+
 function fuzzyOrCondition(variants: string[]): string {
   const preds: string[] = [];
-  for (const field of ['name', 'short_description', 'sku', 'yugcontract_id']) {
+  for (const field of FUZZY_PROBE_FIELDS) {
     for (const variant of variants) {
       preds.push(`${field}.ilike.%${variant}%`);
     }
@@ -613,8 +698,15 @@ function fuzzyOrCondition(variants: string[]): string {
 /**
  * PURE: build the batched fuzzy probe for a raw search string. Returns null
  * when NO token produced variants (nothing to fuzz — e.g. all tokens below
- * the floor). Originals are always part of each token's OR set so intact
- * tokens keep their exact match semantics inside the probe.
+ * the floor) or when even the originals cannot fit the URL budget (skip the
+ * probe rather than emit an oversized request). Round 0 — every token's
+ * original — is emitted UNCONDITIONALLY: it keeps intact tokens' exact match
+ * semantics inside the probe and guarantees each token's or= value is never
+ * empty. Variants are then added round-robin across tokens (one candidate
+ * per token per round) until the next candidate would overflow
+ * FALLBACK_FUZZY_URL_BUDGET_BYTES; emission stops there (later, cheaper
+ * candidates are not substituted back — keeps the emission deterministic
+ * and kind-fair).
  */
 export function buildFuzzyFallbackPlan(search: string): FuzzyFallbackPlan | null {
   const tokens = [
@@ -624,19 +716,25 @@ export function buildFuzzyFallbackPlan(search: string): FuzzyFallbackPlan | null
   if (perToken.every((list) => list.length === 1)) return null;
 
   const candidates: { tokenIndex: number; variant: string }[] = [];
+  let usedBytes = 0;
+  for (let i = 0; i < perToken.length; i += 1) {
+    const original = perToken[i]?.[0];
+    if (original === undefined) continue;
+    candidates.push({ tokenIndex: i, variant: original });
+    usedBytes += fuzzyPredicateCost(original);
+  }
+  if (usedBytes > FALLBACK_FUZZY_URL_BUDGET_BYTES) return null;
+
   const maxRounds = Math.max(...perToken.map((list) => list.length));
-  let round = 0;
-  while (round < maxRounds && candidates.length < FALLBACK_FUZZY_MAX_ATTEMPTS) {
-    for (
-      let i = 0;
-      i < perToken.length && candidates.length < FALLBACK_FUZZY_MAX_ATTEMPTS;
-      i += 1
-    ) {
+  outer: for (let round = 1; round < maxRounds; round += 1) {
+    for (let i = 0; i < perToken.length; i += 1) {
       const variant = perToken[i]?.[round];
       if (variant === undefined) continue;
+      const cost = fuzzyPredicateCost(variant);
+      if (usedBytes + cost > FALLBACK_FUZZY_URL_BUDGET_BYTES) break outer;
+      usedBytes += cost;
       candidates.push({ tokenIndex: i, variant });
     }
-    round += 1;
   }
 
   const conditions = perToken.map((_, i) =>
@@ -650,14 +748,9 @@ export function buildFuzzyFallbackPlan(search: string): FuzzyFallbackPlan | null
 }
 
 /** JS-side ILIKE semantics for one candidate against one fetched row.
- *  Mirrors fuzzyOrCondition's field set (no description — see there). */
+ *  Mirrors FUZZY_PROBE_FIELDS (no description/sku — see there). */
 function fuzzyVariantMatchesRow(variant: string, row: SearchRankable): boolean {
-  const fields = [
-    row.name,
-    row.short_description,
-    row.sku,
-    row.yugcontract_id,
-  ];
+  const fields = [row.name, row.short_description];
   if (variant.includes('_')) {
     const pattern = variant
       .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

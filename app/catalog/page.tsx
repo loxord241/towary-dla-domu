@@ -32,6 +32,7 @@ import SearchViewTracker from '@/app/components/SearchViewTracker'
 import CatalogFilters from './CatalogFilters'
 import SortSelect from './SortSelect'
 import { CATALOG_PAGE_SIZE } from '@/app/lib/catalog'
+import { buildPageWindow } from '@/app/lib/pagination'
 import ProductCard from '@/app/components/ProductCard'
 import EmptyState from '@/app/components/EmptyState'
 import { SearchIcon } from '@/app/components/icons'
@@ -57,6 +58,12 @@ interface ActiveChip {
 /** Shared geometry for prev/next; the disabled span only drops hover. */
 const paginationControlClass =
   'px-4 py-2 rounded-md border border-gray-300 text-sm text-gray-700 transition-colors aria-disabled:border-gray-200 aria-disabled:text-gray-400 aria-disabled:cursor-not-allowed';
+
+const pageNumberLinkClass =
+  'inline-flex min-w-[44px] items-center justify-center rounded-md border border-gray-300 px-2 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50';
+
+const pageNumberCurrentClass =
+  'inline-flex min-w-[44px] items-center justify-center rounded-md border border-blue-600 bg-blue-600 px-2 py-2 text-sm font-semibold text-white';
 
 function buildActiveChips(
   filters: CatalogFilterOptions,
@@ -263,6 +270,9 @@ export default async function CatalogPage({
     : undefined;
   const names = { categoryName, brandName };
   const chips = buildActiveChips(filters, names);
+  // The «Фільтри» badge counts filter chips only — the search term is its
+  // own axis with its own removable chip (Audit 2026-09-05, item 1).
+  const filterChipCount = chips.filter((chip) => chip.removeKey !== 'q').length;
 
   // Category-level SEO (category-seo.ts): intent copy + subcategory links
   // only for a pure category view (no search). Children are sliced from the
@@ -312,7 +322,7 @@ export default async function CatalogPage({
                   maxPrice: filters.maxPrice,
                   inStockOnly: filters.inStockOnly,
                 }}
-                activeCount={chips.length}
+                activeCount={filterChipCount}
               />
             </Suspense>
           </aside>
@@ -434,9 +444,11 @@ export default async function CatalogPage({
               {/* Pagination — both controls share one geometry; the inactive
                   side is a span with aria-disabled (not focusable, announced
                   as unavailable) so keyboard order and semantics stay correct
-                  without touching URL/clamp logic (P3-R2). */}
+                  without touching URL/clamp logic (P3-R2). Numbers come from
+                  the pure buildPageWindow (±2 around current + first/last);
+                  the current page is aria-current, not a link. */}
               {maxPage > 1 && (
-                <nav className="mt-6 flex items-center justify-center gap-3">
+                <nav className="mt-6 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                   {page > 1 ? (
                     <Link
                       href={catalogPageUrl(rawParams, page - 1)}
@@ -448,6 +460,34 @@ export default async function CatalogPage({
                     <span aria-disabled="true" className={paginationControlClass}>
                       ← Назад
                     </span>
+                  )}
+                  {buildPageWindow(page, maxPage).map((item, idx) =>
+                    item === 'ellipsis' ? (
+                      <span
+                        key={`gap-${idx}`}
+                        aria-hidden="true"
+                        className="px-1 text-sm text-gray-400"
+                      >
+                        …
+                      </span>
+                    ) : item === page ? (
+                      <span
+                        key={`page-${item}`}
+                        aria-current="page"
+                        className={pageNumberCurrentClass}
+                      >
+                        {item}
+                      </span>
+                    ) : (
+                      <Link
+                        key={`page-${item}`}
+                        href={catalogPageUrl(rawParams, item)}
+                        aria-label={`Сторінка ${item}`}
+                        className={pageNumberLinkClass}
+                      >
+                        {item}
+                      </Link>
+                    )
                   )}
                   <span className="text-sm text-gray-600">
                     Сторінка {page} із {maxPage}

@@ -243,8 +243,6 @@ test('FALLBACK: retry budget is capped — trim ladder + ONE fuzzy probe', async
   assert.ok(firstParam.includes('%abcdefgh%'), 'original stays in the probe OR set');
   assert.ok(firstParam.includes('%bcdefgh%'), 'deletion variant present');
   assert.ok(firstParam.includes('%фисвуапр%'), 'layout remap present');
-  // the TRAILING deletion («abcdefg») is deliberately NOT in the probe —
-  // the trim ladder above already tested it; rounds 8+ are cut by the cap
 });
 
 test('FALLBACK: multi-token relaxes only the broken token (AND preserved)', async () => {
@@ -274,7 +272,7 @@ test('FALLBACK: rotation identifies the problem token even when it is shorter', 
 
   assert.equal(counts.length, 1 + 2); // original + two variants, second hits
   assert.equal(page.total, 1);
-  assert.equal(page.appliedSearch, 'мультипіч TEFAL');
+  assert.equal(page.appliedSearch, 'мультипі TEFAL');
 });
 
 test('FALLBACK: pagination stays consistent with the adopted relaxed total', async () => {
@@ -314,27 +312,34 @@ test('FALLBACK: specials-only query keeps the no-filter contract', async () => {
 // the adopted probe conditions flow into BOTH the count and the data query;
 // appliedSearch is identified from the returned rows.
 
-test('FUZZY: transposition «блендре» finds «блендер» via one batched probe', async () => {
+test('FUZZY: leading transposition «лбендер» finds «блендер» via one batched probe', async () => {
   const before = reqLog.length;
-  const page = await fetchCatalogProducts({ search: 'блендре' });
+  const page = await fetchCatalogProducts({ search: 'лбендер' });
   const counts = countCalls(before);
 
-  // 1 original + 1 trim («блендр», miss) + 1 fuzzy probe — NO retry storm
-  assert.equal(counts.length, 3);
-  const probe = counts[2];
+  // 1 original + 3 progressive trim misses («лбенде», «лбенд», «лбен» —
+  // none is a stem of any dataset name) + 1 fuzzy probe — NO retry storm
+  assert.equal(counts.length, 5);
+  const probe = counts[4];
   assert.ok(probe !== undefined);
   assert.ok(
     probe.or.some((e) => e.includes('%блендер%')),
     'probe must OR the transposition candidate «блендер»'
   );
+  // the probe OR-set always keeps the token's ORIGINAL (trim-era tokens are
+  // indistinguishable from del@last variants, so absence cannot be asserted)
+  const probePreds = probe.or.flatMap((e) => e.split(','));
   assert.ok(
-    probe.or.every((e) => !e.includes('%блендерр%')),
-    'no trim-era typo token may survive the probe'
+    probePreds.some((p) => p.endsWith('.ilike.%лбендер%')),
+    'probe keeps the original token in the OR set'
   );
 
   assert.equal(page.total, 2);
   assert.equal(page.products.length, 2);
-  assert.equal(page.appliedSearch, 'бленде'); // first emitted matching candidate
+  // «блендер» (transposition) is emitted BEFORE the «бленде»-shaped
+  // deletion candidates? No — position-major puts del@0 first; «бендер»
+  // misses, so the first MATCHING candidate is the transposition.
+  assert.equal(page.appliedSearch, 'блендер');
 });
 
 test('FUZZY: missing letter «блндер» via ILIKE gap «_», count/data consistent', async () => {
@@ -342,8 +347,9 @@ test('FUZZY: missing letter «блндер» via ILIKE gap «_», count/data con
   const page = await fetchCatalogProducts({ search: 'блндер' });
   const counts = countCalls(before);
 
-  assert.equal(counts.length, 3); // original + trim miss + probe
-  const probe = counts[2];
+  // original + 2 trim misses («блнде», «блнд» — floor stops the ladder) + probe
+  assert.equal(counts.length, 4);
+  const probe = counts[3];
   assert.ok(probe !== undefined);
   assert.ok(
     probe.or.some((e) => e.includes('%бл_ндер%')),
@@ -363,18 +369,19 @@ test('FUZZY: missing letter «блндер» via ILIKE gap «_», count/data con
   assert.deepEqual(page.products.map((p) => p.id), ['100', '101']);
 });
 
-test('FUZZY: extra letter in the middle «бленддер» via deletion', async () => {
+test('FUZZY: extra letter at the start «бблендер» via deletion', async () => {
   const before = reqLog.length;
-  const page = await fetchCatalogProducts({ search: 'бленддер' });
+  const page = await fetchCatalogProducts({ search: 'бблендер' });
   const counts = countCalls(before);
 
-  assert.equal(counts.length, 3);
-  const probe = counts[2];
+  assert.equal(counts.length, 5); // original + 3 trim misses + probe
+  const probe = counts[4];
   assert.ok(probe !== undefined);
   assert.ok(probe.or.some((e) => e.includes('%блендер%')));
 
   assert.equal(page.total, 2);
   assert.equal(page.appliedSearch, 'блендер');
+
 });
 
 test('FUZZY: wrong keyboard layout «ktylth» → «лендер»', async () => {
@@ -382,8 +389,8 @@ test('FUZZY: wrong keyboard layout «ktylth» → «лендер»', async () =>
   const page = await fetchCatalogProducts({ search: 'ktylth' });
   const counts = countCalls(before);
 
-  assert.equal(counts.length, 3);
-  const probe = counts[2];
+  assert.equal(counts.length, 4); // original + 2 trim misses + probe
+  const probe = counts[3];
   assert.ok(probe !== undefined);
   assert.ok(
     probe.or.some((e) => e.includes('%лендер%')),
@@ -399,9 +406,9 @@ test('FUZZY: multi-token probes every token, intact tokens stay exact', async ()
   const page = await fetchCatalogProducts({ search: 'bosch блндер' });
   const counts = countCalls(before);
 
-  // 1 original + 2 trim variants (both tokens trimmable, both miss) + 1 probe
-  assert.equal(counts.length, 4);
-  const probe = counts[3];
+  // 1 original + 3 trim variants (breadth: блнде, bosch, then блнд) + 1 probe
+  assert.equal(counts.length, 5);
+  const probe = counts[4];
   assert.ok(probe !== undefined);
   assert.equal(probe.or.length, 2, 'one or= param per token');
   const boschParam = probe.or[0];

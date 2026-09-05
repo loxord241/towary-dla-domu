@@ -6,9 +6,10 @@
  * mechanics (portal, CSS transition, focus trap, scroll lock). Desktop
  * keeps the existing always-open sidebar. All close paths survive:
  * ✕ button, overlay click, Escape, and a successful apply. Applying
- * preserves q+sort and resets page (app/lib/filter-url.ts); reset goes
- * to bare /catalog. Browser Back/Forward keep working because navigation
- * stays plain router.push over URL state.
+ * preserves q+sort and resets page (app/lib/filter-url.ts); reset clears
+ * the filters but keeps the search term too (Audit 2026-09-05 — same
+ * buildFilterUrl contract, empty draft). Browser Back/Forward keep
+ * working because navigation stays plain router.push over URL state.
  *
  * JSX is not executable in node:test (established pattern) → source
  * invariants.
@@ -89,13 +90,15 @@ test('FILTERS: every existing filter survives in the shared form', () => {
   assert.match(f, /Скинути/);
 });
 
-test('FILTERS: apply preserves q+sort via buildFilterUrl; reset clears everything', () => {
+test('FILTERS: apply preserves q+sort via buildFilterUrl; reset keeps q too', () => {
   const f = filters();
   assert.match(f, /buildFilterUrl/, 'URL building extracted to the tested pure module');
   // useSearchParams so apply can see q/sort of the CURRENT view
   assert.match(f, /useSearchParams/);
-  assert.match(f, /router\.push\(['"`]\/catalog['"`]\)/,
-    'reset returns to bare /catalog');
+  // Audit 2026-09-05: reset clears the FILTERS but preserves the search
+  // term — the old bare /catalog push silently dropped q.
+  assert.match(f, /buildFilterUrl\(searchParams, \{\}\)/,
+    'reset routes through the shared contract with an empty draft');
 });
 
 test('FILTERS: desktop sidebar keeps its always-open md:block behaviour', () => {

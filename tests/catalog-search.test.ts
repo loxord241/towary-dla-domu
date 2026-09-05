@@ -26,7 +26,7 @@ const {
   buildSearchConditions,
   relaxSearchTerm,
   FALLBACK_MAX_RETRIES,
-  FALLBACK_FUZZY_MAX_ATTEMPTS,
+  FALLBACK_FUZZY_URL_BUDGET_BYTES,
   fuzzyTokenVariants,
   mapKeyboardLayout,
   buildFuzzyFallbackPlan,
@@ -274,14 +274,31 @@ test('sanitizeSearchTerm: real corrupted-name case now yields a usable keyword t
 
 // ---- Task #40: typo fallback candidate generation (relaxSearchTerm) --------
 //
-// Contract: each retry drops the LAST character of ONE token (longest token
-// first, ties → earliest), at most FALLBACK_MAX_RETRIES variants, tokens are
-// never shortened below FALLBACK_MIN_TOKEN_LEN. Output is pure and must be
-// re-fed through buildSearchConditions (which re-sanitizes) before use.
+// Contract: each retry trims the LAST character of the currently-longest
+// trimmable token, CUMULATIVELY (longest token first, ties → earliest), at
+// most FALLBACK_MAX_RETRIES variants, tokens are never shortened below
+// FALLBACK_MIN_TOKEN_LEN. Progressive trimming is deliberate: verified on
+// production data (2026-09-05), «сковоротка» has NO 1-edit neighbor among
+// product names («сковорода» differs by 2 edits; «сковородка» appears
+// nowhere at all), but the stem «сковоро» matches 252 eligible products —
+// so the third retry must be «сковоро», not a trim of another token.
+// Output is pure and must be re-fed through buildSearchConditions (which
+// re-sanitizes) before use.
 
 test('relaxSearchTerm: single token drops its last char first', () => {
   // «блендерр» → «блендер» — the flagship Task #40 case
-  assert.deepEqual(relaxSearchTerm('блендерр'), ['блендер']);
+  assert.ok(relaxSearchTerm('блендерр').includes('блендер'));
+});
+
+test('relaxSearchTerm: trims are cumulative across retries (same token shrinks)', () => {
+  // «сковородка» is nowhere in production data; the ONLY path to the 252
+  // «сковоро*» products is the third retry «сковоро» (SQL-verified 2026-09-05).
+  assert.deepEqual(relaxSearchTerm('сковоротка'), [
+    'сковоротк',
+    'сковорот',
+    'сковоро',
+  ]);
+  assert.deepEqual(relaxSearchTerm('блендерр'), ['блендер', 'бленде', 'бленд']);
 });
 
 test('relaxSearchTerm: short tokens never produce variants', () => {
@@ -297,22 +314,26 @@ test('relaxSearchTerm: 5-char token trims exactly once (floor = 4)', () => {
   assert.deepEqual(relaxSearchTerm('щітка'), ['щітк']);
 });
 
-test('relaxSearchTerm: multi-token trims the LONGEST token first', () => {
-  // 'блендерр' (8) before 'tefal' (5)
+test('relaxSearchTerm: multi-token breadth first, then depth (longest first)', () => {
+  // retry 1 trims the longest token; retry 2 switches to the never-trimmed
+  // «tefal» (breadth before depth — a second broken token must still get
+  // its trim); retry 3 returns to the (now longest, once-trimmed) «блендер».
   assert.deepEqual(relaxSearchTerm('tefal блендерр'), [
     'tefal блендер',
-    'tefa блендерр',
+    'tefa блендер',
+    'tefa бленде',
   ]);
 });
 
 test('relaxSearchTerm: retry budget caps the variant list', () => {
-  const many = 'abcdefgh ijklmnop qrstuvwx yzabcdef'; // 4 trimmable tokens
+  const many = 'abcdefgh ijklmnop qrstuvwx yzabcdef'; // 4 equal-length tokens
   const variants = relaxSearchTerm(many);
   assert.equal(variants.length, FALLBACK_MAX_RETRIES);
+  // all tokens tie at 8 chars → breadth-first: one trim per token, earliest
   assert.deepEqual(variants, [
     'abcdefg ijklmnop qrstuvwx yzabcdef',
-    'abcdefgh ijklmno qrstuvwx yzabcdef',
-    'abcdefgh ijklmnop qrstuvw yzabcdef',
+    'abcdefg ijklmno qrstuvwx yzabcdef',
+    'abcdefg ijklmno qrstuvw yzabcdef',
   ]);
 });
 
@@ -323,7 +344,7 @@ test('relaxSearchTerm: empty / whitespace-only input yields nothing', () => {
 
 test('relaxSearchTerm: variants inherit the or= grammar injection guard', () => {
   const variants = relaxSearchTerm('abcdefgh,ijklm"op');
-  assert.equal(variants.length, 2);
+  assert.equal(variants.length, 3);
   for (const variant of variants) {
     for (const ch of [',', '"', '(', ')', '%']) {
       assert.ok(
@@ -344,13 +365,14 @@ test('UI: catalog page renders a fallback notice wired to appliedSearch', () => 
   assert.match(page, /«\$\{filters\.search\}»`, removeKey: 'q'/);
 });
 
-// ---- Fuzzy fallback (Phase 1): pure candidate generation --------------------
+// ---- Fuzzy fallback (Phase 1 + Phase 2): pure candidate generation ----------
 //
 // Contract: tokens below FALLBACK_MIN_TOKEN_LEN never produce variants;
-// deterministic kind order (layout → deletions → transpositions → gaps);
-// deduped against the token itself; every candidate free of or=/ILIKE
-// grammar characters; the probe plan ORs [original, ...variants] per token
-// and caps global emission at FALLBACK_FUZZY_MAX_ATTEMPTS.
+// deterministic KIND-FAIR emission (layout first, then per position:
+// deletion → transposition → gap → substitution); deduped against the token
+// itself; every candidate free of or=/ILIKE grammar characters; the probe
+// plan ORs [original, ...variants] per token and bounds total emission by
+// the encoded-URL byte budget FALLBACK_FUZZY_URL_BUDGET_BYTES.
 
 test('fuzzyTokenVariants: transposition «блендре» yields «блендер»', () => {
   assert.ok(fuzzyTokenVariants('блендре').includes('блендер'));
@@ -359,8 +381,7 @@ test('fuzzyTokenVariants: transposition «блендре» yields «бленде
 test('fuzzyTokenVariants: deletion at any position «бленддер» yields «блендер»', () => {
   const variants = fuzzyTokenVariants('бленддер');
   assert.ok(variants.includes('блендер'));
-  // interior deletion covered too: «блндер» → delete idx2? no — deletion of
-  // the FIRST char proves position 0 is covered
+  // interior deletion covered too: deleting the FIRST char proves position 0
   assert.ok(fuzzyTokenVariants('блндер').includes('лндер'));
 });
 
@@ -369,6 +390,50 @@ test('fuzzyTokenVariants: missing letter «блндер» yields interior gap «
   // no leading/trailing gaps — they would only re-test deletions
   assert.ok(!fuzzyTokenVariants('блндер').some((v) => v.startsWith('_')));
   assert.ok(!fuzzyTokenVariants('блндер').some((v) => v.endsWith('_')));
+});
+
+test('fuzzyTokenVariants: substitution «сковоротка» yields «сковоро_ка»', () => {
+  // Phase 2 flagship case: wrong letter, same word length. Pattern matches
+  // «сковородка»-shaped text (note: production data has zero «сковородка» —
+  // the live «сковоротка» case is covered by the progressive trim ladder
+  // instead; this class covers mid-word wrong-letter typos like
+  // «блендар» → «бленд_р» → «блендер»).
+  const variants = fuzzyTokenVariants('сковоротка');
+  assert.ok(variants.includes('сковоро_ка'));
+  assert.ok(fuzzyTokenVariants('блендар').includes('бленд_р'));
+});
+
+test('fuzzyTokenVariants: substitutions are interior-only (subsumed at the edges)', () => {
+  // position-0 substitution is subsumed by the position-0 DELETION variant
+  // under ILIKE substring semantics (%Xrest% ⇒ contains rest), and the
+  // last-position one by the last-position deletion (%prec% ⇒ contains pre)
+  const variants = fuzzyTokenVariants('абвгде');
+  assert.ok(variants.includes('а_вгде'), 'interior substitution present');
+  assert.ok(!variants.includes('_бвгде'), 'leading substitution subsumed by deletion');
+  assert.ok(!variants.includes('абвг_'), 'trailing substitution subsumed by deletion');
+  // every emitted variant with _ replacing a char keeps the token length
+  for (const v of variants) {
+    if (v.includes('_') && v.length === 'абвгде'.length) {
+      assert.equal(v.length, 6);
+    }
+  }
+});
+
+test('fuzzyTokenVariants: kind-fair positional emission order is pinned', () => {
+  // layout first, then per position: deletion → transposition → gap →
+  // substitution. «abcdefgh» layout-remaps to «фисвуапр»; position 0 has
+  // no gap/substitution (leading), position 1 has all four kinds.
+  const variants = fuzzyTokenVariants('abcdefgh');
+  assert.deepEqual(variants.slice(0, 8), [
+    'фисвуапр', // layout remap
+    'bcdefgh', // pos 0: deletion
+    'bacdefgh', // pos 0: transposition
+    'acdefgh', // pos 1: deletion
+    'acbdefgh', // pos 1: transposition
+    'a_bcdefgh', // pos 1: gap (inserts before position 1)
+    'a_cdefgh', // pos 1: substitution
+    'abdefgh', // pos 2: deletion
+  ]);
 });
 
 test('mapKeyboardLayout: QWERTY → ЙЦУКЕН «ktylth» → «лендер»', () => {
@@ -448,8 +513,56 @@ test('buildFuzzyFallbackPlan: one or= per token, original first in the OR set', 
   assert.ok(cond.startsWith('name.ilike.%блндер%'), 'original token first');
   assert.ok(cond.includes('name.ilike.%бл_ндер%'));
   assert.ok(cond.includes('short_description.ilike.%бл_ндер%'));
-  assert.ok(cond.includes('sku.ilike.%бл_ндер%'));
-  assert.ok(cond.includes('yugcontract_id.ilike.%бл_ндер%'));
+  // probe fields are name + short_description only (URL budget — see
+  // FUZZY_PROBE_FIELDS); sku/yugcontract_id stay on the exact paths
+  assert.ok(!cond.includes('sku.'));
+  assert.ok(!cond.includes('yugcontract_id.'));
+});
+
+test('buildFuzzyFallbackPlan: substitution candidate reaches the probe conditions', () => {
+  const plan = buildFuzzyFallbackPlan('сковоротка');
+  assert.notEqual(plan, null);
+  const cond = plan?.conditions[0];
+  assert.ok(cond !== undefined);
+  assert.ok(cond.includes('name.ilike.%сковоро_ка%'));
+});
+
+test('buildFuzzyFallbackPlan: long token plan stays inside the URL budget', () => {
+  // «электросковородка» (17 chars) is the live reproducer of the Phase-1
+  // overflow: the old 32×4-field shape produced a ~15.9KB or= value and the
+  // probe died with UND_ERR_HEADERS_OVERFLOW (verified live 2026-09-05).
+  // The plan must now exist, keep every token's condition non-empty, and
+  // the TOTAL encoded or= payload must stay under the budget.
+  const plan = buildFuzzyFallbackPlan('электросковородка');
+  assert.notEqual(plan, null);
+  assert.equal(plan?.conditions.length, 1);
+  assert.ok((plan?.conditions[0]?.length ?? 0) > 0);
+  assert.ok(
+    plan?.candidates.some((c) => c.variant === 'лектросковородка'),
+    'position-0 deletion (the only 1-edit bridge to «електросковородка»-shaped names) must be emitted'
+  );
+  const encoded = (plan?.conditions ?? [])
+    .map((c) => encodeURIComponent(c).length)
+    .reduce((a, b) => a + b, 0);
+  assert.ok(
+    encoded <= FALLBACK_FUZZY_URL_BUDGET_BYTES,
+    `encoded conditions ${encoded} must fit the ${FALLBACK_FUZZY_URL_BUDGET_BYTES}-byte budget`
+  );
+});
+
+test('buildFuzzyFallbackPlan: multi-token plan keeps every token condition non-empty and inside budget', () => {
+  const plan = buildFuzzyFallbackPlan('abcdefgh ijklmnop qrstuvwx yzabcdef');
+  assert.notEqual(plan, null);
+  const conditions = plan?.conditions ?? [];
+  assert.equal(conditions.length, 4);
+  for (const cond of conditions) {
+    assert.ok(cond.length > 0, 'every token keeps at least its original');
+    assert.ok(cond.startsWith('name.ilike.%'), 'original first');
+  }
+  const encoded = conditions
+    .map((c) => encodeURIComponent(c).length)
+    .reduce((a, b) => a + b, 0);
+  assert.ok(encoded <= FALLBACK_FUZZY_URL_BUDGET_BYTES);
 });
 
 test('buildFuzzyFallbackPlan: short tokens stay exact inside a mixed query', () => {
@@ -458,11 +571,11 @@ test('buildFuzzyFallbackPlan: short tokens stay exact inside a mixed query', () 
   assert.equal(plan?.conditions.length, 2);
   const shortCond = plan?.conditions[0];
   assert.ok(shortCond !== undefined);
-  // «чай» has no variants → degrades to the fuzzy probe's 4-field shape
-  // (description is excluded from the probe — see fuzzyOrCondition)
+  // «чай» has no variants → degrades to the probe's 2-field exact shape
+  // (see FUZZY_PROBE_FIELDS)
   assert.equal(
     shortCond,
-    'name.ilike.%чай%,short_description.ilike.%чай%,sku.ilike.%чай%,yugcontract_id.ilike.%чай%'
+    'name.ilike.%чай%,short_description.ilike.%чай%'
   );
 });
 
@@ -473,12 +586,11 @@ test('buildFuzzyFallbackPlan: round-robin emission starts with every original', 
   assert.deepEqual(candidates[0], { tokenIndex: 0, variant: 'bosch' });
   assert.equal(candidates[1]?.tokenIndex, 1);
   assert.equal(candidates[1]?.variant, 'блндер');
-  // deterministic and capped
+  // deterministic
   assert.deepEqual(
     buildFuzzyFallbackPlan('bosch блндер')?.candidates ?? [],
     candidates
   );
-  assert.ok(candidates.length <= FALLBACK_FUZZY_MAX_ATTEMPTS);
   for (const c of candidates) {
     for (const ch of [',', '"', '(', ')', '%']) {
       assert.ok(!c.variant.includes(ch));
@@ -486,13 +598,38 @@ test('buildFuzzyFallbackPlan: round-robin emission starts with every original', 
   }
 });
 
-test('buildFuzzyFallbackPlan: fan-out cap bounds the global emission', () => {
-  // four 8-char junk tokens each generate ~23 candidates; the global cap
-  // must keep the emitted list bounded
+test('buildFuzzyFallbackPlan: byte budget bounds the global emission', () => {
+  // four 8-char junk tokens each generate ~29 candidates; the URL byte
+  // budget must keep the emitted list (and the encoded or= payload) bounded
   const plan = buildFuzzyFallbackPlan('abcdefgh ijklmnop qrstuvwx yzabcdef');
   assert.notEqual(plan, null);
+  const candidates = plan?.candidates ?? [];
+  assert.ok(candidates.length > 0, 'some variants must be emitted');
+  const encoded = (plan?.conditions ?? [])
+    .map((c) => encodeURIComponent(c).length)
+    .reduce((a, b) => a + b, 0);
   assert.ok(
-    (plan?.candidates.length ?? 0) <= FALLBACK_FUZZY_MAX_ATTEMPTS,
-    'emission must respect FALLBACK_FUZZY_MAX_ATTEMPTS'
+    encoded <= FALLBACK_FUZZY_URL_BUDGET_BYTES,
+    'emission must respect FALLBACK_FUZZY_URL_BUDGET_BYTES'
   );
+});
+
+test('buildFuzzyFallbackPlan: substitutions are not displaced by earlier kinds', () => {
+  // regression for the Phase-2 displacement problem: the old flat
+  // 32-candidate cap with block-ordered kinds emitted ZERO substitutions
+  // for ≥8-char tokens. Kind-fair positional emission guarantees every
+  // kind survives any budget cut.
+  for (const token of ['abcdefgh', 'сковоротка', 'abcdefghijklmnopqrst']) {
+    const plan = buildFuzzyFallbackPlan(token);
+    assert.notEqual(plan, null);
+    const variants = plan?.candidates.map((c) => c.variant) ?? [];
+    const tokenLen = [...token].length;
+    const hasSubstitution = variants.some(
+      (v) => [...v].length === tokenLen && v.includes('_')
+    );
+    assert.ok(
+      hasSubstitution,
+      `substitution variant must survive the budget for ${token}`
+    );
+  }
 });

@@ -23,6 +23,13 @@ import { ChevronDownIcon, FilterIcon, XIcon } from '../components/icons';
  * Escape, and a successful apply. Browser Back/Forward are untouched:
  * navigation stays plain router.push over URL state.
  * Desktop (md+): unchanged always-open sidebar card.
+ *
+ * Audit 2026-09-05 (low UX batch): «Скинути» clears the FILTERS but keeps
+ * the search term — reset routes through buildFilterUrl with an empty
+ * draft, so only the preserved keys (q, sort) survive. Full reset incl.
+ * search stays the page-level «Скинути всі» chip (href="/catalog").
+ * A min>max price range is a guaranteed empty result: it shows an inline
+ * hint and apply skips the navigation (the mobile sheet stays open).
  */
 
 /** Must cover the longest element transition (panel: 280ms). */
@@ -106,7 +113,19 @@ export default function CatalogFilters({
 
   const onClose = () => setOpen(false);
 
+  // Audit 2026-09-05: min > max can never match — surface it inline and
+  // skip the navigation instead of pushing a dead /catalog?min=..&max=..
+  const minNum = minPrice.trim() === '' ? null : Number(minPrice);
+  const maxNum = maxPrice.trim() === '' ? null : Number(maxPrice);
+  const priceRangeInvalid =
+    minNum !== null &&
+    maxNum !== null &&
+    Number.isFinite(minNum) &&
+    Number.isFinite(maxNum) &&
+    minNum > maxNum;
+
   const applyFilters = () => {
+    if (priceRangeInvalid) return;
     router.push(
       buildFilterUrl(searchParams, {
         categorySlug: category,
@@ -120,6 +139,9 @@ export default function CatalogFilters({
 
   /** Apply from inside the sheet also closes it (success closes). */
   const applyAndClose = () => {
+    // Navigation is skipped for an invalid range, so the sheet must stay
+    // open — the inline hint next to the fields explains why.
+    if (priceRangeInvalid) return;
     applyFilters();
     setOpen(false);
   };
@@ -130,10 +152,13 @@ export default function CatalogFilters({
     setMinPrice('');
     setMaxPrice('');
     setInStockOnly(false);
-    router.push('/catalog');
+    // Reset clears the FILTERS, not the search: q (and sort) survive via
+    // the shared buildFilterUrl contract with an empty draft (Audit
+    // 2026-09-05). Full reset incl. search is the «Скинути всі» chip.
+    router.push(buildFilterUrl(searchParams, {}));
   };
 
-  /** Reset from inside the sheet navigates bare /catalog and closes. */
+  /** Reset from inside the sheet applies the filter-only reset and closes. */
   const resetAndClose = () => {
     resetFilters();
     setOpen(false);
@@ -189,6 +214,7 @@ export default function CatalogFilters({
           value={minPrice}
           onChange={(e) => setMinPrice(e.target.value)}
           aria-label="Ціна від"
+          aria-invalid={priceRangeInvalid || undefined}
           className="input"
         />
         <span className="text-gray-400">—</span>
@@ -200,9 +226,15 @@ export default function CatalogFilters({
           value={maxPrice}
           onChange={(e) => setMaxPrice(e.target.value)}
           aria-label="Ціна до"
+          aria-invalid={priceRangeInvalid || undefined}
           className="input"
         />
       </div>
+      {priceRangeInvalid && (
+        <p role="alert" className="mt-2 text-sm text-red-600">
+          Ціна «від» не може бути більшою за ціну «до».
+        </p>
+      )}
     </div>
   );
 
