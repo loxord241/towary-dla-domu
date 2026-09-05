@@ -13,7 +13,7 @@ proxy.ts                       # Auth-guard для /admin/* (async cookies API),
 next.config.ts                 # allowedDevOrigins (*.loca.lt для LocalTunnel-dev), security headers
 app/
 ├── layout.tsx                 # RootLayout: CartProvider > FavoritesProvider; metadataBase из NEXT_PUBLIC_SITE_URL
-├── robots.ts / sitemap.ts     # Индексация: публичные страницы; admin/api/checkout/orders закрыты
+├── robots.ts / sitemap.ts     # Индексация: static + НЕпустые категории/бренды + ВСЕ eligible-товары (ISR 86400); admin/api/checkout/orders закрыты
 ├── page.tsx                   # Главная (featured + категории, ISR 60с)
 ├── catalog/                   # Каталог: фильтры/поиск/сортировка через searchParams (серверные)
 ├── product/[slug]/page.tsx    # Страница товара (notFound() для отсутствующих slug)
@@ -79,11 +79,16 @@ product_stock_history
 - Загрузка изображений: MIME allow-list + магические байты + лимит 5 МБ + санитизация имени файла
 - Гостевые страницы заказов: HMAC token от service key (order-token.ts), verify constant-time
 - Ошибки БД наружу: dbErrorResponse маппит коды; сырой error.message клиенту не возвращается
-- Security headers в next.config.ts: nosniff, Referrer-Policy, X-Frame-Options, Permissions-Policy
+- Security headers в next.config.ts (headers(), ~:112-155): nosniff, Referrer-Policy,
+  X-Frame-Options, Permissions-Policy + CSP ENFORCING (buildCsp), HSTS
+  (max-age=31536000; includeSubDomains), COOP same-origin, CORP cross-origin
 
 ## Текущий функционал
-- Storefront: главная, каталог (фильтры: категория, бренд, цена, наличие, поиск, сортировка),
-  страница товара, корзина, избранное, checkout, success, guest order lookup/view
+- Storefront: главная, каталог (фильтры: категория, бренд, цена, наличие, поиск, сортировка;
+  СЕРВЕРНАЯ пагинация: CATALOG_PAGE_SIZE=12 / cap size 50 в app/lib/catalog.ts:928-929,
+  clamp out-of-range → последняя страница; UI prev/next + оконная нумерация в
+  app/catalog/page.tsx), страница товара, корзина, избранное, checkout, success,
+  guest order lookup/view
 - Корзина/избранное: localStorage хранит ТОЛЬКО productId+variantId+quantity (корзина);
   все цены/наличие — с сервера (/api/cart-preview). Финальный авторитет цен — place_order().
 - Admin: логин/логаут, товары (+изображения с загрузкой в Storage, варианты),
@@ -100,14 +105,75 @@ product_stock_history
 - Оплата РЕАЛИЗОВАНА: 100% онлайн через LiqPay (payment_status='paid'; колбэки LiqPay
   обновляют заказ автоматически). После успешной оплаты заказ обрабатывается менеджером.
 - Rate-limit in-process: сбрасывается при рестарте, не работает на multi-instance (нужен Redis/DB)
-- Пагинация каталога отсутствует
-- Sitemap без отдельных страниц товаров (каталог/категории покрывают перелинковку)
-- CSP-заголовок не настроен (требует подбора nonce/hash под Next.js) — см. deployment checklist
+- Полный e2e-цикл доставки Nova Post на реальном заказе НЕ проводился (реальных
+  заказов в магазине ещё не было) — детали в разделе Nova Post ниже
 
-## Nova Post — состояние модуля (2026-09)
-- Nova Post — БУДУЩИЙ модуль доставки, ЕЩЁ НЕ реализован как живая доставка
-  (TTN live не создаётся). Инфраструктура shipments/parcels (миграции 019–026)
-  готова как data layer.
+## Sitemap (актуально: Task #14, 2026-09) — app/sitemap.ts
+- ISR revalidate=86400 (URL-набор детерминирован по slug, staleness до суток
+  приемлем; до этого был force-dynamic — полный скан на каждый hit краулера).
+- Состав: static (8 страниц) + категории + бренды + ВСЕ eligible-товары
+  (is_active + ≥1 фото через product_images!inner — тот же eligibility-контракт
+  что и витрина). Товары/факты non-empty категорий/брендов собираются одним
+  paged-чтением (brand_id + product_categories embed добавлены к images!inner,
+  qualifying-набор товаров НЕ изменён).
+- НЕпустые вью: категория попадает в sitemap только если в её поддереве есть
+  ≥1 eligible-назначение (collectNonEmptyCategoryIds), бренд — если ≥1 eligible
+  товар несёт его brand_id (collectNonEmptyBrandIds) — пустые вью noindex'ятся
+  seo.ts, инвариант «indexable set = sitemap set».
+- _du-редиректы (DU_REDIRECT_SLUGS, app/lib/du-redirects) исключены из product
+  URL (301 на base); price-diff _du и сироты остаются.
+- Контракт сбоя: ошибка чтения товаров → fetchEligibleProducts возвращает null →
+  категории/бренды шипятся ВСЕГДА (не режутся из-за транзиентного сбоя чтения).
+- Пагинация чтений: app/lib/seo-sitemap.ts collectPaged — окна ≤1000 c
+  .order('id'), maxRows cap 100k.
+
+## Nova Post — состояние модуля доставки (2026-09)
+- Nova Post РЕАЛИЗОВАН как модуль доставки: data layer + admin API + расчёт
+  стоимости + ТТН (складские отправления) + курьерская доставка. НО полный
+  e2e-цикл на РЕАЛЬНОМ заказе НЕ проводился — реальных заказов в магазине
+  ещё не было. Неверифицированное в production: живой заказ → планирование →
+  расчёт → ТТН → передача/трекинг.
+- Data layer (миграции применены вручную): 019 order_shipments +
+  order_shipment_items (+ COD/allocation триггеры assert_shipments_cod_sum,
+  assert_shipment_items_allocation), 020 order_shipment_parcels + integrity,
+  021 RPC admin_replace_shipment_plan (атомарный replace-all план, одна
+  транзакция, DEFERRABLE триггеры оценивают финальное состояние), 022 fix
+  composite FK, 023 shipment_plan_parcel_cap, 026 courier-адрес
+  (order_shipments.street_name/building/flat + обновлённый RPC).
+- Клиент: app/lib/delivery/novapost/ (server-only): client.ts (auth GET
+  /clients/authorization?apiKey → JWT ~1ч), config.ts (ключ NOVA_POST_API_KEY,
+  sender division/name/phone — server-side env, fail-closed),
+  settlements/divisions/streets/delivery-cost/shipments/errors/map-failure.
+  Парсинг ответов — strict whitelist (провайдеру НЕ доверяем). Runtime
+  baseUrl — production api.novapost.com/v.1.0/ (константа без env-
+  переключателя); контракт POST/GET /shipments + DELETE /shipments/{ref}
+  верифицирован live в sandbox api-stage.novapost.com (2026-08-27,
+  см. шапку app/lib/delivery/novapost/shipments.ts).
+- API под /api/admin/orders/[id]/shipments/ (всё через requireAdminApi()):
+  - GET/PUT route.ts — планирование отгрузок (Stage 2D): PUT = полный
+    replace-all план через admin_replace_shipment_plan; редактирование
+    запрещено, когда любая отгрузка ушла из 'planned' или имеет ТТН.
+  - POST calculate/route.ts — расчёт стоимости (Stage 2E+2G): read-only
+    POST /shipments/calculations, персистится ТОЛЬКО delivery_cost_estimated;
+    fail-closed (курьер без street/building пропускается; цитата обязана
+    содержать ровно одну валидную service-строку).
+  - POST/DELETE ttn/route.ts — создание/откат ТТН (Stage 2F).
+- ТТН для складских отправлений (Stage 2F, .../shipments/ttn/route.ts) —
+  защита от дублей ТТН (sandbox-verified контракт): (1) pre-check GET
+  /shipments?clientOrder — активная ТТН от прошлой попытки ADOPTится, не
+  пересоздаётся; (2) POST /shipments ровно один раз, неизвестные исходы
+  (timeout/503) НЕ ретраятся слепо — reconcile через clientOrder; (3) после
+  201 planned→created атомарно (conditional UPDATE … WHERE status='planned'
+  AND ttn_ref IS NULL; проигравший гонку удаляет только что созданный
+  дубликат документа); (4) 422-отказы провайдера персистятся в
+  np_last_error_code/np_last_error для админ-ретраев. DELETE = rollback:
+  удаление документа по Ref у провайдера, затем сброс строки в 'planned'.
+- Курьерская доставка (Stage 2G): получатель строится ТОЛЬКО из
+  settlementId (city_ref) + структурированных адресных частей (миграция
+  026), локатор live-verified (app/lib/admin-shipments-ttn.ts:163).
+  ВАЖНО: POST /shipments в courier-ветке НЕ live-тестировался — первая
+  курьерская ТТН должна пройти через sandbox (201 → DB → clientOrder
+  reconcile → rollback DELETE по ttn_ref) до production-использования.
 - Текущая оплата остаётся 100% онлайн через LiqPay → обработка менеджером.
 - COD / 20% prepayment + 80% наложенный платёж НЕ является текущим
   бизнес-требованием и НЕ реализуется — не планировать на основании старого
@@ -115,6 +181,71 @@ product_stock_history
 - orders.prepayment_amount — историческое/заготовленное поле (nullable,
   никогда не записывается кодом); его наличие в схеме НЕ означает
   использование 20% предоплаты.
+
+## Telegram-уведомления о заказах (работают)
+- Точка подключения: app/api/orders/route.ts (~:278) — строго ПОСЛЕ commit
+  place_order() через next/server after():
+  after(() => sendTelegramOrderNotification(orderNumber)); только для
+  реально созданных заказов — идемпотентный replay (created=false)
+  повторно НЕ шлёт.
+- app/lib/notifications/telegram.ts — server-only: читает заказ из БД,
+  шлёт plain-text (без parse_mode) в Telegram. Env: TELEGRAM_BOT_TOKEN +
+  TELEGRAM_ORDER_CHAT_ID (comma-separated список получателей). Никогда не
+  бросает — сбой Telegram не влияет на заказ/checkout/платёж; at-most-once
+  на заказ на получателя (без retry-loop).
+- Владелец подтверждает: уведомления о новых заказах приходят.
+
+## Состояние 2026-09-05: инцидент поставщика Yugcontract
+- Фид Yugcontract схлопнулся: ~326 товаров, 9 категорий (дерево
+  get-categories схлопнулось до 9 узлов), id сменились
+  (scripts/yugcontract-mark-missing-oos.ts,
+  scripts/yugcontract-exposure-report.ts).
+- 4773 фантомных товара (активные YC-товары, отсутствующие в свежем фиде и
+  in_stock) переведены в out_of_stock (stock_quantity=0) скриптом
+  scripts/yugcontract-mark-missing-oos.ts --apply (scope: только is_active +
+  yugcontract_id NOT NULL + нет в фиде; manual-товары не тронуты; qty=0
+  строки фида — территория обычного синка). Снимок отката:
+  logs/oos-batch-2026-09-05.json — единственный артефакт отката
+  (--revert --snapshot logs/oos-batch-2026-09-05.json).
+- Восстановление — штатный синк по команде владельца
+  (scripts/wsl/yugcontract-sync.sh, при необходимости --force против 48h
+  gate). Авто-синк ВЫКЛЮЧЕН: systemd timer yugcontract-sync.timer disabled
+  (проверено systemctl is-enabled; вкл/выкл — docs/wsl-sync.md раздел 3).
+- Новые id категорий Юга потребуют разового ремапа categories.yugcontract_id.
+- scripts/catalog-health-check.ts сейчас ожидаемо FAIL (exit 2): метрика
+  «перекос новинки = out_of_stock» — 99% из топ-100 новейших активных
+  товаров OOS (порог FAIL ≥50%; замер 2026-09-05). Это следствие инцидента,
+  НЕ регрессия.
+
+## Наблюдаемость (2026-09-05)
+- Аналитика поиска: событие `search` несёт boolean hasResults
+  (app/lib/analytics.ts buildSearchEventPayload; query проходит
+  sanitizeSearchQuery — PII-фильтр, cap 100; количества результатов наружу
+  не уходят). Эмитится из каталога через app/components/SearchViewTracker.tsx
+  (app/catalog/page.tsx: hasResults = total > 0). Исторические события флага
+  НЕ имеют (в OData — eventData/hasResults eq null).
+- scripts/catalog-health-check.ts — read-only health (PASS/WARN/FAIL,
+  exit 0/1/2); секция «новинки» (2026-09-05): доля OOS среди топ-100
+  активных по created_at desc — WARN ≥20%, FAIL ≥50% (<20 товаров —
+  advisory). Ловит перекос «первый экран витрины из отсутствующих товаров».
+- scripts/zero-result-report.ts — read-only отчёт «что искали и не нашли»
+  (сигнал для закупок): Vercel Web Analytics API (GET
+  /v1/query/web-analytics/events/aggregate, filter=eventName eq 'search');
+  для событий без hasResults — faithful replay против prod DB (service-role,
+  только SELECT, PURE-хелперы app/lib/catalog.ts в порядке
+  fetchCatalogProducts). ВАЖНО: голые boolean-литералы в OData-фильтре
+  (`eq false`) дают HTTP 500 от API — использовать только кавыченные
+  (`eq 'false'`) (проверено 2026-09-05).
+- scripts/yugcontract-exposure-report.ts — read-only диагностика экспозиции
+  каталога: один get-price с cats:[] как ground truth «что поставщик ещё
+  листит» + selection-scoped view (approved категории из
+  app/lib/yugcontract/selection.ts, развёрнутые по живому дереву) с теми же
+  skip-правилами mapFeedProducts. Ничего не пишет.
+- Fuzzy display fix: identifyAppliedSearch (app/lib/catalog.ts:784) —
+  правило выбора отображаемого термина после fuzzy-поиска: (1) оригинальный
+  токен показывается verbatim, если он совпал хоть с одной строкой; (2) иначе
+  длиннейший совпавший кандидат (читаемость); (3) при равенстве длины —
+  первый по эмиссии. null → notice «показаны результаты по …» не рендерится.
 
 ## Важные правила для будущих изменений
 - Данные storefront получать только через функции app/lib/catalog.ts
