@@ -25,6 +25,8 @@ const {
   buildCheckoutPayload,
   createPaymentInit,
   processLiqPayCallback,
+  isPendingAttemptStale,
+  PENDING_STALE_MS,
 } = await import('../app/lib/payment/order-payment-update.ts');
 const { encodeLiqPayData, createLiqPaySignature } = await import(
   '../app/lib/payment/liqpay-signature.ts'
@@ -49,7 +51,12 @@ interface Row {
   currency: string;
   expires_at: string | null;
   liqpay_order_id: string | null;
+  updated_at: string;
 }
+
+type ProviderStatus = (
+  liqpayOrderId: string
+) => Promise<Record<string, unknown> | null>;
 
 function makeGateway(row: Row | null) {
   const calls: string[] = [];
@@ -111,7 +118,7 @@ function makeGateway(row: Row | null) {
   return api;
 }
 
-function makeDeps(row: Row | null) {
+function makeDeps(row: Row | null, providerStatus?: ProviderStatus) {
   const gateway = makeGateway(row);
   return {
     gateway,
@@ -121,6 +128,7 @@ function makeDeps(row: Row | null) {
     accessToken: () => 'goodtok',
     resultUrl: (n: string, t: string) => `https://shop.example.ua/checkout/success?order=${n}&t=${t}`,
     callbackUrl: () => 'https://shop.example.ua/api/payment/liqpay/callback',
+    ...(providerStatus ? { providerStatus } : {}),
   };
 }
 
@@ -134,6 +142,18 @@ function baseRow(): Row {
     currency: 'UAH',
     expires_at: new Date(Date.now() + 3_600_000).toISOString(),
     liqpay_order_id: null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/** A pending order whose provider session went quiet PENDING_STALE_MS ago. */
+function stalePendingRow(overrides: Partial<Row> = {}): Row {
+  return {
+    ...baseRow(),
+    payment_status: 'pending',
+    liqpay_order_id: ORDER,
+    updated_at: new Date(Date.now() - PENDING_STALE_MS - 1000).toISOString(),
+    ...overrides,
   };
 }
 
@@ -324,6 +344,172 @@ test('INIT-RETRY: failed → retry reserves :2; failed again → :3', async () =
   assert.equal(r3.kind, 'started');
   const p3 = JSON.parse(Buffer.from((r3 as { data: string }).data, 'base64').toString());
   assert.equal(p3.order_id, `${ORDER}:3`);
+});
+
+// ---------- stale-pending recovery (time-box + read-only provider re-check) ----------
+
+test('STALE: helper flips exactly at the time-box; missing/garbage timestamps are never stale', () => {
+  const now = 1_800_000_000_000;
+  assert.equal(PENDING_STALE_MS, 60 * 60 * 1000, 'time-box is 60 minutes');
+  assert.equal(
+    isPendingAttemptStale(new Date(now - PENDING_STALE_MS + 60_000).toISOString(), now),
+    false,
+    'just under the time-box → not stale'
+  );
+  assert.equal(
+    isPendingAttemptStale(new Date(now - PENDING_STALE_MS).toISOString(), now),
+    true,
+    'exactly at the time-box → stale'
+  );
+  assert.equal(
+    isPendingAttemptStale(new Date(now - PENDING_STALE_MS - 1).toISOString(), now),
+    true,
+    'past the time-box → stale'
+  );
+  for (const bad of [null, undefined, '', 'not-a-date']) {
+    assert.equal(isPendingAttemptStale(bad as string | null | undefined, now), false,
+      'fail-safe: unparsable updated_at must keep the conflict');
+  }
+});
+
+test('STALE: FRESH pending → conflict, provider is never consulted, session preserved', async () => {
+  const row = baseRow();
+  row.payment_status = 'pending';
+  row.liqpay_order_id = ORDER;
+  let probed = 0;
+  const deps = makeDeps(row, async () => {
+    probed++;
+    return { status: 'failure', amount: '1050.50', currency: 'UAH' };
+  });
+  const res = await createPaymentInit(deps, { orderNumber: ORDER, token: 'goodtok' });
+  assert.equal(res.kind, 'conflict');
+  assert.equal(probed, 0, 'a live session must not be probed on a fresh pending order');
+  assert.equal(deps.gateway.row.liqpay_order_id, ORDER,
+    'live liqpay_order_id must never be overwritten');
+  assert.ok(!deps.gateway.calls.some((c) => c.startsWith('saveAttempt')),
+    'no reservation attempt may reach the DB');
+});
+
+test('STALE: pending past the time-box WITHOUT providerStatus dep → conflict (fail-safe)', async () => {
+  // Without a provider probe the timer alone must never evict a session.
+  const deps = makeDeps(stalePendingRow());
+  const res = await createPaymentInit(deps, { orderNumber: ORDER, token: 'goodtok' });
+  assert.equal(res.kind, 'conflict');
+  assert.equal(deps.gateway.row.payment_status, 'pending');
+  assert.ok(!deps.gateway.calls.some((c) => c.startsWith('saveAttempt')));
+});
+
+test('STALE: provider unreachable (null) → conflict, no eviction', async () => {
+  const deps = makeDeps(stalePendingRow(), async () => null);
+  const res = await createPaymentInit(deps, { orderNumber: ORDER, token: 'goodtok' });
+  assert.equal(res.kind, 'conflict');
+  assert.equal(deps.gateway.row.liqpay_order_id, ORDER);
+  assert.equal(deps.gateway.row.payment_status, 'pending');
+});
+
+test('STALE: provider SUCCESS → lost-callback repair via applyPaid, no new attempt', async () => {
+  const deps = makeDeps(stalePendingRow(), async () => ({
+    status: 'success',
+    amount: '1050.50',
+    currency: 'UAH',
+    transaction_id: '777555333',
+    method: 'card',
+    paytype: 'privat24',
+  }));
+  const res = await createPaymentInit(deps, { orderNumber: ORDER, token: 'goodtok' });
+  assert.equal(res.kind, 'already-paid');
+  assert.equal(deps.gateway.row.payment_status, 'paid',
+    'the paid state must be restored, not re-charged');
+  assert.deepEqual(
+    deps.gateway.calls.filter((c) => c.startsWith('applyPaid')),
+    ['applyPaid:pending:777555333:card:privat24'],
+    'repair must go through the same B1-guarded applyPaid path as callbacks'
+  );
+  assert.ok(!deps.gateway.calls.some((c) => c.startsWith('saveAttempt')),
+    'no new payment attempt may start after a successful repair');
+});
+
+test('STALE: provider SUCCESS with a mismatched amount → conflict, nothing applied', async () => {
+  for (const amount of ['99.99', 'garbage', undefined]) {
+    const deps = makeDeps(stalePendingRow(), async () => ({
+      status: 'success',
+      amount,
+      currency: 'UAH',
+    }));
+    const res = await createPaymentInit(deps, { orderNumber: ORDER, token: 'goodtok' });
+    assert.equal(res.kind, 'conflict', `amount ${String(amount)}`);
+    assert.equal(deps.gateway.row.payment_status, 'pending');
+    assert.ok(!deps.gateway.calls.some((c) => c.startsWith('apply')),
+      'fail-closed: bad money never applies and never releases a new attempt');
+  }
+});
+
+test('STALE: provider SUCCESS with a mismatched currency → conflict', async () => {
+  const deps = makeDeps(stalePendingRow(), async () => ({
+    status: 'success',
+    amount: '1050.50',
+    currency: 'USD',
+  }));
+  const res = await createPaymentInit(deps, { orderNumber: ORDER, token: 'goodtok' });
+  assert.equal(res.kind, 'conflict');
+  assert.equal(deps.gateway.row.payment_status, 'pending');
+});
+
+test('STALE: provider FAILURE → applyFailed, then a fresh :2 attempt starts', async () => {
+  const deps = makeDeps(stalePendingRow(), async () => ({
+    status: 'error',
+    amount: '1050.50',
+    currency: 'UAH',
+    err_code: 'err_refused',
+    err_description: 'refused by issuer',
+  }));
+  const res = await createPaymentInit(deps, { orderNumber: ORDER, token: 'goodtok' });
+  assert.equal(res.kind, 'started');
+  if (res.kind !== 'started') return;
+  const payload = JSON.parse(Buffer.from(res.data, 'base64').toString('utf8'));
+  assert.equal(payload.order_id, `${ORDER}:2`, 'the new attempt must get a fresh id');
+  assert.equal(deps.gateway.row.liqpay_order_id, `${ORDER}:2`);
+  assert.equal(deps.gateway.row.payment_status, 'pending');
+  assert.ok(deps.gateway.calls.some((c) => c.startsWith('applyFailed:')),
+    'the dead attempt must be recorded as failed');
+  assert.ok(deps.gateway.calls.includes(`saveAttempt:${ORDER}:2`));
+});
+
+test('STALE: provider still pending (processing) → conflict, session preserved', async () => {
+  const deps = makeDeps(stalePendingRow(), async () => ({
+    status: 'processing',
+    amount: '1050.50',
+    currency: 'UAH',
+  }));
+  const res = await createPaymentInit(deps, { orderNumber: ORDER, token: 'goodtok' });
+  assert.equal(res.kind, 'conflict');
+  assert.equal(deps.gateway.row.liqpay_order_id, ORDER);
+});
+
+test('STALE: provider FAILURE on an expired order → expired, no new attempt', async () => {
+  const deps = makeDeps(
+    stalePendingRow({ expires_at: new Date(Date.now() - 1000).toISOString() }),
+    async () => ({ status: 'failure', amount: '1050.50', currency: 'UAH' })
+  );
+  const res = await createPaymentInit(deps, { orderNumber: ORDER, token: 'goodtok' });
+  assert.equal(res.kind, 'expired');
+  assert.ok(!deps.gateway.calls.some((c) => c.startsWith('saveAttempt')),
+    'expired orders must not get a new attempt even after a failed stale one');
+});
+
+test('STALE-B1: provider SUCCESS for an admin-cancelled stale order is a safe no-op', async () => {
+  // B1 interlock must hold on the recovery path too: cancelled can never
+  // become paid, and no new attempt may be released for it.
+  const deps = makeDeps(
+    stalePendingRow({ status: 'cancelled' }),
+    async () => ({ status: 'success', amount: '1050.50', currency: 'UAH', transaction_id: '1' })
+  );
+  const res = await createPaymentInit(deps, { orderNumber: ORDER, token: 'goodtok' });
+  assert.equal(res.kind, 'already-paid');
+  assert.equal(deps.gateway.row.status, 'cancelled', 'status untouched');
+  assert.notEqual(deps.gateway.row.payment_status, 'paid',
+    'B1: cancelled can never become paid');
+  assert.ok(!deps.gateway.calls.some((c) => c.startsWith('saveAttempt')));
 });
 
 // ---------- callback orchestration ----------

@@ -1,10 +1,13 @@
 /**
  * Order security model — static invariant tests (READ-ONLY audit lock-in).
  *
- * Expected security architecture (migrations 006–008 + code audit 2026-08):
+ * Expected security architecture (migrations 006–008 + code audit 2026-08,
+ * updated 2026-09: place_order EXECUTE revoked from anon/authenticated):
  *  - orders/order_items/customers: RLS enabled, NO public SELECT policy
  *    → anon sees an empty set (invisible-table semantics), writes revoked;
- *  - the ONLY write path is place_order() SECURITY DEFINER (anon-executable);
+ *  - the ONLY write path is place_order() SECURITY DEFINER, invoked
+ *    server-side with the service-role key; anon/authenticated EXECUTE is
+ *    revoked by migration 036 (closes the direct-RPC rate-limit bypass);
  *  - guest viewing requires an HMAC capability token bound to the order
  *    number, derived from the service-role key, verified constant-time,
  *    BEFORE any database read on the view pages;
@@ -83,15 +86,13 @@ test('ORDER-SEC: lookup API is POST-only, rate-limited, generic-404, minimal pro
 
 // ---- checkout creation API ----
 
-test('ORDER-SEC: order creation uses anon client, place_order RPC, strict output shape', () => {
+test('ORDER-SEC: order creation uses service-role client, place_order RPC, strict output shape', () => {
   const r = src('app/api/orders/route.ts');
-  assert.match(r, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/,
-    'creation runs as anon through RLS-guarded RPC');
-  assert.doesNotMatch(r, /SUPABASE_SERVICE_ROLE_KEY/,
-    'creation endpoint must not need the service key');
-  assert.match(r, /enforceRateLimit\(request, ['"]orders['"]\)/);
+  assert.match(r, /SUPABASE_SERVICE_ROLE_KEY/,
+    'the RPC is called with the service-role key (server-side only)');
   assert.match(r, /rpc\('place_order'/,
     'writes must go exclusively through the SECURITY DEFINER RPC');
+  assert.match(r, /enforceRateLimit\(request, ['"]orders['"]\)/);
   // the item payload is a hardcoded whitelist of identifiers only
   assert.match(
     r,
@@ -99,6 +100,33 @@ test('ORDER-SEC: order creation uses anon client, place_order RPC, strict output
     'client contract may carry identifiers/quantities only — never money values'
   );
 });
+
+test('ORDER-SEC: no anon/publishable client may call the place_order RPC', () => {
+  // The rate limit lives only in the route; a publishable-key RPC call is
+  // an unbounded stock-holding DoS vector. Migration 036 revokes anon/
+  // authenticated EXECUTE — pin that no app code reaches for it directly.
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      const p = path.join(dir, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (/\.tsx?$/.test(name)) files.push(p);
+    }
+  };
+  walk(path.join(root, 'app'));
+  for (const f of files) {
+    const content = readFileSync(f, 'utf8');
+    if (!content.includes("rpc('place_order'")) continue;
+    assert.ok(
+      !content.includes('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
+      `place_order RPC caller must not use the publishable key: ${path.relative(root, f)}`
+    );
+  }
+});
+
+// Migration 036's content invariants live in
+// tests/place-order-execute-revoke-migration.test.ts (035 pattern).
+
 
 test('ORDER-SEC: creation response exposes only number/total/currency/token', () => {
   const r = src('app/api/orders/route.ts');

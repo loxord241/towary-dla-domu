@@ -14,6 +14,7 @@ import {
   createPaymentInit,
   createSupabaseOrdersGateway,
 } from '@/app/lib/payment/order-payment-update';
+import { fetchLiqPayProviderStatus } from '@/app/lib/payment/liqpay-status-api';
 
 /**
  * POST /api/orders/[orderNumber]/payment — LiqPay init.
@@ -32,6 +33,12 @@ import {
  * attempt is live (pending) further inits return 409 so the single
  * liqpay_order_id always maps to the one possible provider session, and a
  * paid/expired/closed order can never be revived.
+ *
+ * Exception (stale-pending recovery): a pending attempt older than 60
+ * minutes is re-checked against the provider (read-only action=status).
+ * Provider "success" repairs the lost-callback deadlock through the same
+ * B1-guarded applyPaid path callbacks use; provider "failure" releases the
+ * order for a fresh attempt; any untrusted/unclear answer keeps the 409.
  */
 
 const supabase = createClient(
@@ -94,6 +101,10 @@ export async function POST(
       accessToken: (n: string) => orderAccessToken(n),
       resultUrl: buildResultUrl,
       callbackUrl: buildCallbackUrl,
+      // Read-only provider probe (action=status) used ONLY for the
+      // stale-pending recovery path; shared, production-verified client.
+      providerStatus: (liqpayOrderId) =>
+        fetchLiqPayProviderStatus(liqpayOrderId, config.publicKey, config.privateKey),
     },
     { orderNumber, token: typeof token === 'string' ? token : '' }
   );

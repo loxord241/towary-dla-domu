@@ -8,6 +8,7 @@ import OrderStatusBadge, {
 import PayWithLiqPayButton from '@/app/components/PayWithLiqPayButton';
 import ShippingPeriodNotice from '@/app/components/ShippingPeriodNotice';
 import PaymentSuccessTracker from '@/app/components/PaymentSuccessTracker';
+import { isPendingAttemptStale } from '@/app/lib/payment/order-payment-update';
 
 /**
  * Order confirmation page. The total/currency/items shown here are ALWAYS
@@ -35,6 +36,7 @@ interface OrderRow {
   currency: string;
   email: string;
   created_at: string;
+  updated_at: string;
 }
 
 interface ItemRow {
@@ -75,7 +77,7 @@ export default async function CheckoutSuccessPage({
   const orderRes = await supabase
     .from('orders')
     .select(
-      'id, order_number, status, payment_status, subtotal, shipping_total, total_amount, currency, email, created_at'
+      'id, order_number, status, payment_status, subtotal, shipping_total, total_amount, currency, email, created_at, updated_at'
     )
     .eq('order_number', orderNumber)
     .maybeSingle();
@@ -102,9 +104,16 @@ export default async function CheckoutSuccessPage({
     currency: orderData.currency,
     email: orderData.email,
     created_at: orderData.created_at,
+    updated_at: orderData.updated_at,
   };
 
   const payment = orderRow.payment_status;
+
+  // Stale pending (>60 min with no terminal callback): expose the payment
+  // retry — the init endpoint re-checks the provider read-only and either
+  // repairs a lost success callback or releases a fresh attempt.
+  const pendingStale =
+    payment === 'pending' && isPendingAttemptStale(orderData.updated_at);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -162,19 +171,33 @@ export default async function CheckoutSuccessPage({
 
         <div className="px-6 pb-4">
           {payment === 'paid' ? null : payment === 'pending' ? (
-            <div className="rounded-lg bg-amber-50 p-4 text-sm">
-              <p className="font-semibold text-amber-900">Оплату обробляється</p>
-              <p className="mt-1 text-amber-800/90">
-                Ми чекаємо підтвердження від платіжної системи. Якщо оплата вже
-                здійснена, статус оновиться найближчим часом.
-              </p>
-              <Link
-                href={`/checkout/success?order=${encodeURIComponent(orderRow.order_number)}&t=${encodeURIComponent(typeof t === 'string' ? t : '')}`}
-                className="mt-2 inline-block text-sm font-medium underline text-amber-900"
-              >
-                Оновити статус
-              </Link>
-            </div>
+            <>
+              {pendingStale && (
+                <PayWithLiqPayButton
+                  orderNumber={orderRow.order_number}
+                  accessToken={typeof t === 'string' ? t : ''}
+                />
+              )}
+              <div className={`rounded-lg bg-amber-50 p-4 text-sm ${pendingStale ? 'mt-3' : ''}`}>
+                <p className="font-semibold text-amber-900">Оплату обробляється</p>
+                <p className="mt-1 text-amber-800/90">
+                  Ми чекаємо підтвердження від платіжної системи. Якщо оплата вже
+                  здійснена, статус оновиться найближчим часом.
+                </p>
+                {pendingStale && (
+                  <p className="mt-1 text-amber-800/90">
+                    Якщо оплата не була завершена, ви можете спробувати ще раз
+                    кнопкою вище.
+                  </p>
+                )}
+                <Link
+                  href={`/checkout/success?order=${encodeURIComponent(orderRow.order_number)}&t=${encodeURIComponent(typeof t === 'string' ? t : '')}`}
+                  className="mt-2 inline-block text-sm font-medium underline text-amber-900"
+                >
+                  Оновити статус
+                </Link>
+              </div>
+            </>
           ) : payment === 'unpaid' || payment === 'failed' ? (
             <PayWithLiqPayButton
               orderNumber={orderRow.order_number}

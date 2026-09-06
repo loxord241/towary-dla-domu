@@ -13,6 +13,16 @@ import {
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
+ * A `pending` attempt older than this is considered STALE: its provider
+ * session is almost certainly abandoned (or its terminal callback was
+ * lost). Stale attempts may be re-checked against the provider (read-only
+ * action=status) and — only on a verified terminal answer — either applied
+ * (success) or superseded by a new attempt (failure). Fresh attempts are
+ * NEVER evicted: the comment below the pending guard still holds.
+ */
+export const PENDING_STALE_MS = 60 * 60 * 1000;
+
+/**
  * Payment-state transitions for LiqPay against the existing order model.
  *
  * Design notes:
@@ -39,6 +49,8 @@ export interface OrderRow {
   currency: string;
   expires_at: string | null;
   liqpay_order_id: string | null;
+  /** NOT NULL in the schema; null here only for defensive/fake rows. */
+  updated_at?: string | null;
 }
 
 export interface CallbackOrderRow {
@@ -101,6 +113,25 @@ export function formatDbAmount(amount: number | string): string {
     : (toCents(amount)! / 100).toFixed(2);
 }
 
+/**
+ * True when the current pending attempt started at least PENDING_STALE_MS
+ * ago. The anchor is orders.updated_at: it is NOT NULL, refreshed by a
+ * trigger on EVERY row UPDATE, and saveAttempt() (which flips the order to
+ * `pending`) is the last write a lost-callback order ever receives — any
+ * other writer (admin edit, cancel) only makes the attempt look YOUNGER,
+ * i.e. the check degrades conservatively. A missing/garbage timestamp is
+ * never stale (fail-safe: keep the conflict).
+ */
+export function isPendingAttemptStale(
+  updatedAt: string | null | undefined,
+  now: number = Date.now()
+): boolean {
+  if (typeof updatedAt !== 'string' || updatedAt === '') return false;
+  const t = Date.parse(updatedAt);
+  if (!Number.isFinite(t)) return false;
+  return now - t >= PENDING_STALE_MS;
+}
+
 export interface CheckoutPayloadInput {
   config: Pick<LiqPayConfig, 'publicKey' | 'sandbox'>;
   orderIdWithAttempt: string;
@@ -141,6 +172,15 @@ export interface InitDeps {
   accessToken(orderNumber: string): string;
   resultUrl(orderNumber: string, token: string): string;
   callbackUrl(): string;
+  /**
+   * READ-ONLY provider status probe (action=status) for the CURRENT
+   * attempt's liqpay_order_id. Required for the stale-pending recovery
+   * path: without it a stale pending order always stays in conflict
+   * (fail-safe — a live session must never be evicted on a timer alone).
+   * Returns the parsed provider JSON, or null when the exchange cannot be
+   * trusted (network failure, non-200, unparsable body).
+   */
+  providerStatus?(liqpayOrderId: string): Promise<Record<string, unknown> | null>;
 }
 
 export type InitOutcome =
@@ -178,7 +218,61 @@ export async function createPaymentInit(
   // Creating another attempt now would evict it and orphan in-flight
   // payments (late success callback for the evicted id could never map).
   // Retries are allowed ONLY after a terminal failure.
-  if (order.payment_status === 'pending') return { kind: 'conflict' };
+  //
+  // STALE-PENDING RECOVERY: when the pending attempt is older than
+  // PENDING_STALE_MS, the session is almost certainly abandoned or its
+  // terminal callback was lost (the "Оплату обробляється" deadlock). We then
+  // ask the provider (read-only action=status) what actually happened:
+  //   success → the lost-callback case: apply the payment through the same
+  //             B1-guarded applyPaid path callbacks use (amount/currency
+  //             verified against the DB row, fail-closed) — the user gets
+  //             their paid order back instead of a re-charge;
+  //   failure → record it via applyFailed, then fall through to the normal
+  //             retry path (a fresh :N+1 attempt);
+  //   anything else (still pending at the provider) or an untrusted answer
+  //   (null) → keep the conflict: never evict a session we cannot vouch for.
+  if (order.payment_status === 'pending') {
+    const stale = isPendingAttemptStale(order.updated_at);
+    if (!stale || !deps.providerStatus) return { kind: 'conflict' };
+    if (!order.liqpay_order_id) return { kind: 'conflict' };
+    const provider = await deps.providerStatus(order.liqpay_order_id);
+    if (!provider) return { kind: 'conflict' };
+    const mapped = mapLiqPayStatus(provider.status);
+    if (mapped === 'paid') {
+      // Same fail-closed money verification as the callback path (steps 6–7):
+      // a terminal claim with missing/garbage/mismatched money must never
+      // apply — it stays a reconciliation finding, not an auto-fix.
+      if (
+        toCents(provider.amount) === null ||
+        !sameMoneyCents(provider.amount ?? null, order.total_amount)
+      ) {
+        return { kind: 'conflict' };
+      }
+      if (
+        typeof provider.currency !== 'string' ||
+        provider.currency.toUpperCase() !== String(order.currency).toUpperCase()
+      ) {
+        return { kind: 'conflict' };
+      }
+      await deps.gateway.applyPaid({
+        id: order.id,
+        paymentId: paymentIdOf(provider),
+        method: methodOf(provider),
+      });
+      // 'already-paid' is correct whether applyPaid applied (lost callback)
+      // or no-op'd (B1: the order was cancelled while pending — the money
+      // question stays with reconciliation; a new attempt must NOT start).
+      return { kind: 'already-paid' };
+    }
+    if (mapped === 'failed') {
+      await deps.gateway.applyFailed({ id: order.id, error: errorOf(provider) });
+      // fall through: the order is now 'failed', the retry path below runs.
+    } else {
+      // Still pending at the provider (or refunded — impossible from
+      // pending, but never revive on it): the session may still complete.
+      return { kind: 'conflict' };
+    }
+  }
   if (order.status !== 'pending') return { kind: 'closed' };
   if (order.expires_at && new Date(order.expires_at).getTime() < Date.now()) {
     return { kind: 'expired' };
@@ -367,7 +461,7 @@ export function createSupabaseOrdersGateway(db: SupabaseClient): OrdersGateway {
     async findOrderForInit(orderNumber) {
       const res = await from()
         .select(
-          'id, order_number, status, payment_status, total_amount, currency, expires_at, liqpay_order_id'
+          'id, order_number, status, payment_status, total_amount, currency, expires_at, liqpay_order_id, updated_at'
         )
         .eq('order_number', orderNumber)
         .maybeSingle();

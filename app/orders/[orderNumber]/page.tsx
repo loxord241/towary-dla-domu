@@ -6,6 +6,7 @@ import OrderStatusBadge, {
   PaymentStatusBadge,
 } from '@/app/components/OrderStatusBadge';
 import PayWithLiqPayButton from '@/app/components/PayWithLiqPayButton';
+import { isPendingAttemptStale } from '@/app/lib/payment/order-payment-update';
 
 /**
  * Guest order view: /orders/<order_number>?t=<hmac token>.
@@ -31,6 +32,7 @@ interface OrderRow {
   total_amount: number;
   currency: string;
   created_at: string;
+  updated_at: string;
 }
 
 interface ItemRow {
@@ -91,7 +93,7 @@ export default async function GuestOrderViewPage({
   const orderRes = await supabase
     .from('orders')
     .select(
-      'id, order_number, status, payment_status, subtotal, shipping_total, total_amount, currency, created_at'
+      'id, order_number, status, payment_status, subtotal, shipping_total, total_amount, currency, created_at, updated_at'
     )
     .eq('order_number', orderNumber)
     .maybeSingle();
@@ -117,7 +119,15 @@ export default async function GuestOrderViewPage({
     total_amount: orderData.total_amount,
     currency: orderData.currency,
     created_at: orderData.created_at,
+    updated_at: orderData.updated_at,
   };
+
+  // Stale pending (>60 min with no terminal callback): the payment init
+  // endpoint can safely re-check the provider now (lost-callback repair or
+  // fresh attempt), so the retry button becomes available. A FRESH pending
+  // attempt keeps only the status block — its provider session may be live.
+  const pendingStale =
+    order.payment_status === 'pending' && isPendingAttemptStale(orderData.updated_at);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -139,15 +149,23 @@ export default async function GuestOrderViewPage({
 
         <div className="px-6 pb-4">
           {(order.payment_status === 'unpaid' ||
-            order.payment_status === 'failed') && (
+            order.payment_status === 'failed' ||
+            pendingStale) && (
             <PayWithLiqPayButton
               orderNumber={order.order_number}
               accessToken={typeof t === 'string' ? t : ''}
             />
           )}
           {order.payment_status === 'pending' && (
-            <div className="rounded-lg bg-amber-50 p-4 text-sm">
+            <div className={`rounded-lg bg-amber-50 p-4 text-sm ${pendingStale ? 'mt-3' : ''}`}>
               <p className="font-semibold text-amber-900">Оплату обробляється</p>
+              {pendingStale && (
+                <p className="mt-1 text-amber-800/90">
+                  Якщо оплата не була завершена, ви можете спробувати ще раз
+                  кнопкою вище — спосіб оплати буде перевірено у платіжної
+                  системи.
+                </p>
+              )}
               <Link
                 href={`/orders/${encodeURIComponent(order.order_number)}?t=${encodeURIComponent(typeof t === 'string' ? t : '')}`}
                 className="mt-2 inline-block text-sm font-medium underline text-amber-900"

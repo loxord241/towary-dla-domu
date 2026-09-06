@@ -1,0 +1,47 @@
+-- 036: revoke EXECUTE on place_order from anon, authenticated (2026-09
+-- checkout audit, P2 "bypass rate-limit via direct RPC").
+--
+-- WHY:
+--   The in-process rate limit (3/min + 10/h per IP) lives ONLY in
+--   app/api/orders/route.ts. place_order carried EXECUTE for
+--   anon/authenticated (migration 030) and the anon key is publishable by
+--   definition, so anyone could call the RPC directly (PostgREST
+--   /rest/v1/rpc/place_order) with no rate limit at all. Worst case: unbounded
+--   fake orders each decrementing product stock (stock-holding DoS) + customer
+--   row spam.
+--
+--   Fix (two parts, ORDER MATTERS):
+--     1. app/api/orders/route.ts now calls the RPC with the SERVICE-ROLE key
+--        (deployed with this change). place_order is SECURITY DEFINER and
+--        validates the whole payload itself (shapes, UUIDs, quantities,
+--        email/name/phone, prices from DB, stock, idempotency) and never
+--        references auth.uid()/current_user — the calling role contributes
+--        nothing, so switching the route to service-role is behavior-neutral.
+--     2. THIS migration revokes anon/authenticated EXECUTE, closing the
+--        direct-RPC bypass completely.
+--
+--   !!! NOT APPLIED AUTOMATICALLY !!!
+--   This migration must be applied MANUALLY by the owner via the Supabase
+--   SQL Editor (or psql with the service credentials): the application has
+--   no DATABASE_URL / DDL access by design, and no deploy step runs
+--   database/migrations/*.sql.
+--
+--   !!! DEPLOY ORDER !!!
+--   Deploy the service-role route change FIRST, apply this migration SECOND.
+--   If 036 lands while the route still calls as anon, guest checkout breaks
+--   (permission denied on the RPC → 500 from the route). Applied in the right
+--   order, there is no window where checkout is broken; before the deploy,
+--   the bypass simply continues to exist as it does today.
+--
+-- SAFETY:
+--   * service_role keeps EXECUTE (explicitly re-granted here so the file is
+--     self-contained; 030 already granted it) — the route is the only caller;
+--   * no other code path invokes place_order with an anon client (verified by
+--     grep over app/ + scripts/: scripts/yugcontract-verify.ts exercises
+--     checkout over HTTP /api/orders, not via direct RPC);
+--   * authenticated is revoked as well: checkout is guest-only, no logged-in
+--     flow places orders directly;
+--   * idempotent: safe to re-run.
+
+revoke execute on function public.place_order(jsonb, text) from anon, authenticated;
+grant execute on function public.place_order(jsonb, text) to service_role;

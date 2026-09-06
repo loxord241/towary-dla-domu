@@ -14,15 +14,24 @@ import { sendTelegramOrderNotification } from '@/app/lib/notifications/telegram'
  * place_order() (SECURITY DEFINER) from live database rows — client-sent
  * money values cannot exist in the contract.
  *
+ * The RPC is called with the SERVICE-ROLE key (server-side only): the
+ * function is SECURITY DEFINER and validates the whole payload itself, so
+ * the caller role adds nothing — while an anon-executable place_order
+ * (public anon key is by definition public) allowed direct-RPC spam that
+ * bypasses this route's rate limit (stock-holding DoS). Migration 036
+ * revokes EXECUTE from anon/authenticated accordingly — this client and
+ * that REVOKE must ship together (deploy this code BEFORE applying 036).
+ *
  * Error mapping:
  *   400 invalid payload            409 duplicate items
  *   422 unavailable/insufficient   500 unexpected (no internals leaked)
  */
 
-// Server-side anonymous client: RLS + SECURITY DEFINER enforce everything.
+// Server-side service-role client: place_order SECURITY DEFINER enforces
+// everything; EXECUTE for anon/authenticated is revoked by migration 036.
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { persistSession: false } }
 );
 
