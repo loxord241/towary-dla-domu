@@ -31,7 +31,9 @@ interface FavoritesState {
 // sanitize) so hydration is guaranteed to terminate with hydrated=true:
 // blocked storage, broken JSON and corrupted shapes all degrade to an
 // empty list instead of leaving the UI waiting forever.
-async function loadStoredFavorites(onIds: (ids: string[]) => void) {
+// Exported so behavioral tests can exercise it directly (node:test does not
+// render React).
+export async function loadStoredFavorites(onIds: (ids: string[]) => void) {
   let sanitized: string[] = [];
   try {
     const stored = window.localStorage.getItem(FAVORITES_STORAGE_KEY);
@@ -56,6 +58,23 @@ interface FavoritesContextValue {
 }
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
+
+/**
+ * Pure core of toggleFavorite, extracted (behavior unchanged) so node:test
+ * can cover the cap/remove/add transitions without rendering React.
+ * Returns the next ids list, or null when the toggle is a no-op (id absent
+ * and the list is already at the MAX_FAVORITES cap). Input is never mutated.
+ */
+export function toggleFavoriteList(
+  ids: string[],
+  productId: string
+): string[] | null {
+  if (ids.includes(productId)) {
+    return ids.filter((id) => id !== productId);
+  }
+  if (ids.length >= MAX_FAVORITES) return null;
+  return [...ids, productId];
+}
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<FavoritesState>({
@@ -90,18 +109,13 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       hydrated,
       isFavorite: (productId) => set.has(productId),
       toggleFavorite: (productId) => {
-        // Mirror the drop condition before dispatching so callers can tell
-        // a real toggle from a silent no-op at the MAX_FAVORITES cap.
-        if (!set.has(productId) && ids.length >= MAX_FAVORITES) return false;
+        // toggleFavoriteList returns null exactly when the id is absent and
+        // the list is already at MAX_FAVORITES — mirror that drop condition
+        // so callers can tell a real toggle from a silent no-op at the cap.
+        if (toggleFavoriteList(ids, productId) === null) return false;
         setState((prev) => {
-          if (prev.ids.includes(productId)) {
-            return { ...prev, ids: prev.ids.filter((id) => id !== productId) };
-          }
-          // Same cap the localStorage sanitizer applies on read — without it
-          // the list grew unbounded here and was silently cut to MAX_FAVORITES
-          // on the next load.
-          if (prev.ids.length >= MAX_FAVORITES) return prev;
-          return { ...prev, ids: [...prev.ids, productId] };
+          const next = toggleFavoriteList(prev.ids, productId);
+          return next === null ? prev : { ...prev, ids: next };
         });
         return true;
       },

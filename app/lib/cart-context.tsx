@@ -38,13 +38,18 @@ type CartAction =
   | { type: 'UPDATE_QUANTITY'; key: string; quantity: number }
   | { type: 'CLEAR' };
 
+// Types exported for the behavioral tests of the (exported, pure) reducer.
+export type { CartState, CartAction };
+
 // Module-scope loader keeps all state updates inside async callbacks so no
 // setState happens synchronously within the hydration effect body.
 // EVERYTHING runs inside the try/catch (localStorage access, JSON.parse,
 // sanitize) so hydration is guaranteed to terminate with hydrated=true:
 // blocked storage, broken JSON and corrupted shapes all degrade to an
 // empty cart instead of leaving the UI waiting forever.
-async function loadStoredCart(onItems: (items: CartItem[]) => void) {
+// Exported so behavioral tests can exercise it directly (node:test does not
+// render React).
+export async function loadStoredCart(onItems: (items: CartItem[]) => void) {
   let sanitized: CartItem[] = [];
   try {
     const stored = window.localStorage.getItem(CART_STORAGE_KEY);
@@ -56,7 +61,9 @@ async function loadStoredCart(onItems: (items: CartItem[]) => void) {
   onItems(sanitized);
 }
 
-function reducer(state: CartState, action: CartAction): CartState {
+// Pure reducer — exported unchanged so behavioral tests can drive the exact
+// state machine the provider dispatches into.
+export function reducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case 'HYDRATE':
       return { items: action.items, hydrated: true };
