@@ -20,6 +20,19 @@
  *    skew (seen with Yugcontract data: top-100 = 86% OOS while the whole
  *    active catalog was ~6%); samples < 20 products are advisory (WARN at
  *    most), 0 active products ⇒ skip.
+ *  - content/images phases (2026-09-06): yc_content_batches is read like
+ *    yc_import_batches (same columns) — failed/stuck batches FAIL, and the
+ *    newest done batch of any phase (products, description, images) joins
+ *    the sync-freshness metric (max over phases);
+ *  - feed-liveness (2026-09-06): share of in_stock among active products
+ *    with a base (non-_du) yugcontract_id — WARN < 50%, FAIL < 20%. A known
+ *    supplier incident is acknowledged via logs/feed-liveness-baseline.json
+ *    ({"acknowledgedAt": "<ISO>", "acknowledgedShare": <0..1>}): while the
+ *    file is valid the absolute floors are suspended and only a drop below
+ *    the acknowledged baseline WARNs (format in catalog-health.ts docstring);
+ *  - category drift (2026-09-06): inserted_count > 0 in the newest
+ *    categories batch of yc_import_batches ⇒ WARN (supplier changed/extended
+ *    the tree — review remap/selection).
  *
  * Usage: node scripts/catalog-health-check.ts
  * Exit:  0 = PASS, 1 = WARN, 2 = FAIL (see catalog-health.ts).
@@ -31,8 +44,12 @@ import {
   buildCatalogChecks,
   overallResult,
   analyzeDuDrift,
+  analyzeCategoriesBatch,
+  analyzeFeedLiveness,
   DU_EXPECTED_ORPHANS,
+  FEED_LIVENESS_BASELINE_PATH,
   NEWEST_SAMPLE_SIZE,
+  type FeedLivenessAck,
   type ImportBatchInfo,
   type DuProductRow,
   type NewestProductRow,
@@ -90,10 +107,12 @@ async function main(): Promise<void> {
   const now = new Date();
 
   // ---- 1. active products (single paged read, minimal columns) -----------
+  // availability_status feeds the feed-liveness check (in_stock share among
+  // base Yugcontract products).
   const products = await fetchAll((from, limit) =>
     db
       .from('products')
-      .select('id, yugcontract_id, sku, slug, name, price')
+      .select('id, yugcontract_id, sku, slug, name, price, availability_status')
       .eq('is_active', true)
       .order('id')
       .range(from, from + limit - 1)
@@ -136,6 +155,17 @@ async function main(): Promise<void> {
     await fetchAll((from, limit) =>
       db
         .from('yc_import_batches')
+        .select('run_id, phase, batch_no, status, started_at, finished_at, last_error, inserted_count')
+        .order('id')
+        .range(from, from + limit - 1)
+    )
+  ) as unknown as ImportBatchInfo[];
+
+  // ---- 3b. content/images batches (same shape, tighter stuck window) ------
+  const contentBatches = (
+    await fetchAll((from, limit) =>
+      db
+        .from('yc_content_batches')
         .select('run_id, phase, batch_no, status, started_at, finished_at, last_error')
         .order('id')
         .range(from, from + limit - 1)
@@ -212,6 +242,58 @@ async function main(): Promise<void> {
   }
   const newestProducts = (newestRes.data ?? []) as unknown as NewestProductRow[];
 
+  // ---- 6b. feed-liveness: in_stock share among base Yugcontract products --
+  // Base = yugcontract_id present and NOT a _du duplicate. Pure counting
+  // here; thresholds and ack semantics live in the lib.
+  const feedProducts = products.filter(
+    (p) =>
+      typeof p.yugcontract_id === 'string' &&
+      p.yugcontract_id !== '' &&
+      !p.yugcontract_id.endsWith('_du')
+  );
+  const feedInStock = feedProducts.filter(
+    (p) => p.availability_status === 'in_stock'
+  ).length;
+
+  // Ack for a known supplier incident (see catalog-health.ts docstring for
+  // the format). Missing/corrupt file ⇒ no ack ⇒ absolute thresholds apply.
+  function readFeedLivenessAck(): FeedLivenessAck | null {
+    try {
+      const raw: unknown = JSON.parse(
+        readFileSync(path.join(root, FEED_LIVENESS_BASELINE_PATH), 'utf8')
+      );
+      if (
+        raw !== null &&
+        typeof raw === 'object' &&
+        (raw as Record<string, unknown>).acknowledged !== false
+      ) {
+        const o = raw as Record<string, unknown>;
+        if (
+          typeof o.acknowledgedAt === 'string' &&
+          o.acknowledgedAt !== '' &&
+          typeof o.acknowledgedShare === 'number' &&
+          o.acknowledgedShare >= 0 &&
+          o.acknowledgedShare <= 1
+        ) {
+          return {
+            acknowledgedAt: o.acknowledgedAt,
+            acknowledgedShare: o.acknowledgedShare,
+          };
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+  const feedLivenessAck = readFeedLivenessAck();
+  const feedLiveness = analyzeFeedLiveness({
+    total: feedProducts.length,
+    inStock: feedInStock,
+    ack: feedLivenessAck,
+  });
+  const categoriesDrift = analyzeCategoriesBatch(batches);
+
   // ---- 7. classify + report ----------------------------------------------
   const checks = buildCatalogChecks({
     now,
@@ -227,6 +309,12 @@ async function main(): Promise<void> {
     batches,
     pendingOrdersOlderThan24h: pending24h,
     newestProducts,
+    contentBatches,
+    feedLiveness: {
+      total: feedProducts.length,
+      inStock: feedInStock,
+      ack: feedLivenessAck,
+    },
     du: {
       duRows,
       baseRows,
@@ -259,6 +347,30 @@ async function main(): Promise<void> {
     for (const b of failed) {
       console.log(`  run=${b.run_id} phase=${b.phase} batch=${b.batch_no} err=${b.last_error ?? '—'}`);
     }
+  }
+
+  const failedContent = contentBatches.filter((b) => b.status === 'failed');
+  if (failedContent.length > 0) {
+    console.log('\n# Failed content/images batches:');
+    for (const b of failedContent) {
+      console.log(`  run=${b.run_id} phase=${b.phase} batch=${b.batch_no} err=${b.last_error ?? '—'}`);
+    }
+  }
+
+  if (feedLiveness.share !== null) {
+    const pct = Math.round(feedLiveness.share * 1000) / 10;
+    const ackInfo = feedLivenessAck
+      ? `ack: ${FEED_LIVENESS_BASELINE_PATH} (${feedLivenessAck.acknowledgedAt}, baseline ${Math.round(feedLivenessAck.acknowledgedShare * 1000) / 10}%)`
+      : `без ack (${FEED_LIVENESS_BASELINE_PATH} відсутній/некоректний)`;
+    console.log(
+      `\n# Feed-liveness: ${feedInStock}/${feedProducts.length} in_stock = ${pct}% — ${ackInfo}`
+    );
+  }
+
+  if (categoriesDrift.lastInsertedCount !== null && categoriesDrift.lastInsertedCount > 0) {
+    console.log(
+      `\n# Категорійний дрейф: останній categories-батч вставив ${categoriesDrift.lastInsertedCount} категорій — перевірити ремап/selection.`
+    );
   }
 
   if (

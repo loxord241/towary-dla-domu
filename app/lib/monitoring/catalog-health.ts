@@ -23,6 +23,37 @@
  *   smaller than 20 products is advisory (warn at most, never escalates);
  *   0 active products ⇒ skip.
  *
+ * Content/images phases (2026-09-06): yc_content_batches (phases
+ *   'description' and 'images') joins the monitoring surface: failed batches
+ *   ⇒ FAIL, running older than CONTENT_STUCK_RUNNING_MS (10 min, mirrors the
+ *   importer's own reclaim window) ⇒ FAIL, and the newest 'done' batch of
+ *   ANY phase (products, description, images) feeds the "sync freshness"
+ *   metric — freshness = max over all last-done timestamps, so a successful
+ *   content run right after a skipped products cycle does not page falsely.
+ *
+ * Feed-liveness (2026-09-06): share of availability_status='in_stock' among
+ *   active products with a base (non-_du) yugcontract_id. WARN < 50%,
+ *   FAIL < 20% (strictly below; exactly 50% / 20% is the healthier level).
+ *   A known supplier incident (~3.3% in_stock at measurement time) can be
+ *   acknowledged with a baseline file logs/feed-liveness-baseline.json:
+ *
+ *     {
+ *       "acknowledgedAt": "2026-09-08T09:00:00.000Z",
+ *       "acknowledgedShare": 0.033
+ *     }
+ *
+ *   acknowledgedShare = the in_stock share at ack time (0..1). While the
+ *   file exists (and "acknowledged" is not explicitly false), the absolute
+ *   floors do NOT apply; the check only WARNs when the share drops BELOW
+ *   the acknowledged baseline (further degradation of the acknowledged
+ *   incident). Remove the file or set "acknowledged": false to return to
+ *   the absolute thresholds. Without the file the usual thresholds apply.
+ *
+ * Category drift (2026-09-06): if the newest categories batch of
+ *   yc_import_batches has inserted_count > 0, the supplier changed/extended
+ *   the category tree (new ids ⇒ remap risk, new branches ⇒ assortment
+ *   growth) — WARN to review the remap/selection. informational-only when 0.
+ *
  * Exit codes (systemd-friendly): PASS=0, WARN=1, FAIL=2.
  */
 
@@ -49,6 +80,8 @@ export interface ImportBatchInfo {
   started_at: string | null;
   finished_at: string | null;
   last_error: string | null;
+  /** rows inserted by the batch; only read for the categories-drift check */
+  inserted_count?: number | null;
 }
 
 export interface ImportAnalysis {
@@ -83,12 +116,125 @@ export interface CatalogHealthInput {
    * check — measured when the script provides it.
    */
   newestProducts?: NewestProductRow[];
+  /**
+   * Optional yc_content_batches rows (phases 'description' | 'images') —
+   * measured when the script provides them. Adds failed/stuck checks and
+   * joins the last-done content/images batch into the sync-freshness metric
+   * (max over products + content phases).
+   */
+  contentBatches?: ImportBatchInfo[];
+  /**
+   * Optional feed-liveness measurement (active base Yugcontract products) —
+   * computed when the script provides it.
+   */
+  feedLiveness?: FeedLivenessInput;
+}
+
+// ---- feed-liveness (2026-09-06) -------------------------------------------
+
+/**
+ * Acknowledged supplier-incident baseline, parsed from
+ * logs/feed-liveness-baseline.json by the script:
+ *   { acknowledgedAt: ISO string, acknowledgedShare: 0..1 }
+ * Presence of a valid file means the incident is acknowledged; the absolute
+ * WARN/FAIL floors then do not apply (see analyzeFeedLiveness).
+ */
+export interface FeedLivenessAck {
+  acknowledgedAt: string;
+  acknowledgedShare: number;
+}
+
+export interface FeedLivenessInput {
+  /** active products with a base (non-_du) yugcontract_id */
+  total: number;
+  /** of those, availability_status = 'in_stock' */
+  inStock: number;
+  /** parsed baseline file; null/absent ⇒ absolute thresholds apply */
+  ack?: FeedLivenessAck | null;
+}
+
+export interface FeedLivenessAnalysis {
+  total: number;
+  inStock: number;
+  /** inStock / total, null when there is nothing to measure */
+  share: number | null;
+  /** baseline file present and valid */
+  acked: boolean;
+  /** acked AND the share dropped below the acknowledged baseline */
+  degradedFromAck: boolean;
+  /** nothing to measure (0 base products) — skip, always pass */
+  skip: boolean;
+  level: HealthLevel;
+}
+
+/**
+ * Classify the in_stock share among active base Yugcontract products.
+ * Without an ack: WARN < 50%, FAIL < 20% (strictly below — exactly 50% /
+ * exactly 20% stay at the healthier level). With an ack: the absolute floors
+ * are suspended; only a drop BELOW the acknowledged baseline WARNs (further
+ * degradation of the known incident), otherwise PASS. Pure — no I/O.
+ */
+export function analyzeFeedLiveness(input: FeedLivenessInput): FeedLivenessAnalysis {
+  const { total, inStock, ack } = input;
+  const acked = ack !== null && ack !== undefined;
+  const share = total === 0 ? null : inStock / total;
+  const skip = total === 0;
+  let level: HealthLevel = 'pass';
+  let degradedFromAck = false;
+  if (!skip && share !== null) {
+    if (acked) {
+      if (share < ack!.acknowledgedShare) {
+        degradedFromAck = true;
+        level = 'warn';
+      }
+    } else if (share < FEED_LIVENESS_FAIL_SHARE) {
+      level = 'fail';
+    } else if (share < FEED_LIVENESS_WARN_SHARE) {
+      level = 'warn';
+    }
+  }
+  return { total, inStock, share, acked, degradedFromAck, skip, level };
+}
+
+// ---- category drift (2026-09-06) -------------------------------------------
+
+export interface CategoriesDriftAnalysis {
+  /** inserted_count of the newest categories batch, null when none exists */
+  lastInsertedCount: number | null;
+}
+
+/**
+ * Find the newest categories batch and report its inserted_count.
+ * inserted_count > 0 in the latest run means the supplier changed or
+ * extended the category tree (id remap / assortment growth risk).
+ * Pure — no I/O.
+ */
+export function analyzeCategoriesBatch(
+  batches: ReadonlyArray<ImportBatchInfo>
+): CategoriesDriftAnalysis {
+  let newest: ImportBatchInfo | null = null;
+  let newestStamp = '';
+  for (const b of batches) {
+    if (b.phase !== 'categories') continue;
+    const stamp = b.finished_at ?? b.started_at ?? '';
+    if (newest === null || stamp > newestStamp) {
+      newest = b;
+      newestStamp = stamp;
+    }
+  }
+  return {
+    lastInsertedCount: newest === null ? null : (newest.inserted_count ?? 0),
+  };
 }
 
 // A running batch older than the importer's own STALE_RUNNING_MS (10 min)
 // is retryable but suspicious; monitoring uses a generous 60 min window so
 // normal in-flight chunks never alert.
 export const STUCK_RUNNING_MS = 60 * 60 * 1000;
+// Content/images batches are reclaimed by the importer itself after
+// CONTENT_STALE_RUNNING_MS (10 min, content-import.ts) — monitoring mirrors
+// that tighter window instead of the 60 min products window.
+export const CONTENT_STUCK_RUNNING_MS = 10 * 60 * 1000;
 // Sync schedule is 48h (launcher success stamp). The daily 18:00 trigger
 // with the 47h guard means a healthy last success is never older than ~48h
 // when the health check runs; >56h ⇒ the latest attempt failed or was
@@ -116,6 +262,17 @@ export const OOS_FAIL_SHARE = 0.5;
 // A slice below this size is too small to trust the share: the check is
 // reported as advisory WARN at most and never escalates the overall status.
 export const NEWEST_MIN_SAMPLE = 20;
+
+// ---- feed-liveness (2026-09-06) ------------------------------------------
+// Share of in_stock among active base Yugcontract products. Thresholds are
+// strict "below": exactly 50% is not WARN, exactly 20% is not FAIL.
+export const FEED_LIVENESS_WARN_SHARE = 0.5;
+export const FEED_LIVENESS_FAIL_SHARE = 0.2;
+/** Ack file for a known supplier incident (see header docstring for format). */
+export const FEED_LIVENESS_BASELINE_PATH = 'logs/feed-liveness-baseline.json';
+
+/** Minimal plain shape of a yc_content_batches row (read-only select). */
+export type ContentBatchInfo = ImportBatchInfo;
 
 /** Minimal plain shape of a newest-products sample row (read-only select). */
 export interface NewestProductRow {
@@ -239,7 +396,8 @@ export function analyzeDuDrift(drift: DuDriftInput): DuDriftAnalysis {
 /** Detect failed / stuck import batches and the last successful run. */
 export function analyzeImportBatches(
   batches: ImportBatchInfo[],
-  now: Date
+  now: Date,
+  stuckWindowMs: number = STUCK_RUNNING_MS
 ): ImportAnalysis {
   let failedCount = 0;
   let stuckCount = 0;
@@ -250,7 +408,7 @@ export function analyzeImportBatches(
     if (
       b.status === 'running' &&
       b.started_at !== null &&
-      now.getTime() - new Date(b.started_at).getTime() > STUCK_RUNNING_MS
+      now.getTime() - new Date(b.started_at).getTime() > stuckWindowMs
     ) {
       stuckCount += 1;
     }
@@ -285,7 +443,21 @@ export function buildCatalogChecks(
 ): HealthCheck[] {
   const { now, counts, batches, pendingOrdersOlderThan24h } = input;
   const imports = analyzeImportBatches(batches, now);
-  const lastSuccessLevelValue = lastSuccessLevel(imports.lastSuccessAt, now);
+  // Content/images phases: same classification, tighter stuck window; their
+  // last done batch joins the freshness metric (max over all phases) so a
+  // successful content run counts as a live sync signal too.
+  const content = input.contentBatches
+    ? analyzeImportBatches(input.contentBatches, now, CONTENT_STUCK_RUNNING_MS)
+    : null;
+  const lastSuccessCandidates = [imports.lastSuccessAt, content?.lastSuccessAt ?? null].filter(
+    (v): v is string => v !== null
+  );
+  const combinedLastSuccess =
+    lastSuccessCandidates.length > 0
+      ? lastSuccessCandidates.reduce((a, b) => (b > a ? b : a))
+      : null;
+  const lastSuccessLevelValue = lastSuccessLevel(combinedLastSuccess, now);
+  const categories = analyzeCategoriesBatch(batches);
 
   const checks: HealthCheck[] = [
     {
@@ -371,7 +543,18 @@ export function buildCatalogChecks(
       label: 'Останній успішний Yugcontract run',
       level: lastSuccessLevelValue,
       count: 1,
-      description: `${ageHours(imports.lastSuccessAt, now)} (розклад: sync кожні 48 год; WARN > ${SYNC_WARN_AGE_MS / 3600000} год, FAIL > ${SYNC_FAIL_AGE_MS / 3600000} год).`,
+      description: `${ageHours(combinedLastSuccess, now)} (розклад: sync кожні 48 год; WARN > ${SYNC_WARN_AGE_MS / 3600000} год, FAIL > ${SYNC_FAIL_AGE_MS / 3600000} год; враховуються products + content/images фази).`,
+      affectsStatus: true,
+    },
+    {
+      id: 'categories-drift',
+      label: 'Категорійний дрейф (останній categories-батч)',
+      level: categories.lastInsertedCount !== null && categories.lastInsertedCount > 0 ? 'warn' : 'pass',
+      count: categories.lastInsertedCount ?? 0,
+      description:
+        categories.lastInsertedCount !== null && categories.lastInsertedCount > 0
+          ? `Останній categories-батч вставив ${categories.lastInsertedCount} категорій — постачальник змінив/розширив дерево категорій (зміна id = ризик ремапу, нові гілки = розширення асортименту). Перевірити ремап/selection.`
+          : 'Останній categories-батч не вставляв нових категорій — дерево стабільне.',
       affectsStatus: true,
     },
     {
@@ -491,6 +674,85 @@ export function buildCatalogChecks(
       count: a.oosCount,
       description,
       affectsStatus: !advisory,
+    });
+  }
+
+  // ---- content/images phases (yc_content_batches, 2026-09-06) -------------
+  // Same FAIL semantics as the products phase: a failed batch ⇒ sync really
+  // broken (resume per docs/wsl-sync.md §7); a running batch older than the
+  // importer's own 10-min reclaim window ⇒ the runner died mid-batch.
+  if (input.contentBatches && content) {
+    checks.push(
+      {
+        id: 'content-failed-batches',
+        label: 'Failed content/images batches (Yugcontract)',
+        level: content.failedCount > 0 ? 'fail' : 'pass',
+        count: content.failedCount,
+        description:
+          content.failedCount > 0
+            ? 'Є failed-батчі у content/images фазах — синк контенту/зображень зламався. Відновлення: docs/wsl-sync.md, розділ 7 (resume content-images).'
+            : 'Failed батчів у content/images фазах немає.',
+        affectsStatus: true,
+      },
+      {
+        id: 'content-stuck-batches',
+        label: `Stuck running content/images batches (> ${CONTENT_STUCK_RUNNING_MS / 60000} хв)`,
+        level: content.stuckCount > 0 ? 'fail' : 'pass',
+        count: content.stuckCount,
+        description:
+          content.stuckCount > 0
+            ? `Батчі content/images у статусі running довше ${CONTENT_STUCK_RUNNING_MS / 60000} хв (вікно reclaim імпортера) — process зупинився, не прибравши статус.`
+            : 'Завислих running-батчів у content/images фазах немає.',
+        affectsStatus: true,
+      },
+    );
+  }
+
+  // ---- feed-liveness (2026-09-06) -----------------------------------------
+  // Share of in_stock among active base Yugcontract products: WARN < 50%,
+  // FAIL < 20%. A known supplier incident can be acknowledged with
+  // logs/feed-liveness-baseline.json ({ acknowledgedAt, acknowledgedShare });
+  // while the ack is valid only a drop BELOW the acknowledged baseline warns.
+  if (input.feedLiveness) {
+    const f = analyzeFeedLiveness(input.feedLiveness);
+    const pct = f.share === null ? null : Math.round(f.share * 1000) / 10;
+    const ack = input.feedLiveness.ack ?? null;
+    const ackSharePct =
+      ack === null ? null : Math.round(ack.acknowledgedShare * 1000) / 10;
+    const ackNote =
+      ack === null
+        ? ''
+        : ` (ack ${ack.acknowledgedAt}, baseline ${ackSharePct}%)`;
+    let description: string;
+    if (f.skip) {
+      description =
+        'Пропущено: немає активних товарів з yugcontract_id (base) — міряти feed-liveness нема чого.';
+    } else if (f.acked && !f.degradedFromAck) {
+      description =
+        `${pct}% in_stock (${f.inStock} з ${f.total})${ackNote} — інцидент визнано, абсолютні пороги призупинено; нижче визнаного baseline не просіло.`;
+    } else if (f.degradedFromAck) {
+      description =
+        `${pct}% in_stock (${f.inStock} з ${f.total}) — нижче визнаного baseline ${ackSharePct}%${ackNote}: ситуація з фідом погіршилася далі.`;
+    } else if (f.level === 'fail') {
+      description =
+        `Лише ${pct}% in_stock (${f.inStock} з ${f.total}) серед активних товарів Yugcontract (< ${FEED_LIVENESS_FAIL_SHARE * 100}%) — масова відсутність товару у постачальника. ` +
+        `Якщо це відома подія — створіть ${FEED_LIVENESS_BASELINE_PATH}: {"acknowledgedAt":"<ISO>","acknowledgedShare":<частка 0..1>}.`;
+    } else if (f.level === 'warn') {
+      description =
+        `${pct}% in_stock (${f.inStock} з ${f.total}) серед активних товарів Yugcontract (< ${FEED_LIVENESS_WARN_SHARE * 100}%) — більше половини асортименту відсутнє. ` +
+        `Якщо це відома подія — створіть ${FEED_LIVENESS_BASELINE_PATH}: {"acknowledgedAt":"<ISO>","acknowledgedShare":<частка 0..1>}.`;
+    } else {
+      description = `${pct}% in_stock (${f.inStock} з ${f.total}) — фід постачальника здоровий.`;
+    }
+    checks.push({
+      id: 'feed-liveness',
+      label: 'Feed-liveness: частка in_stock (активні товари Yugcontract, base)',
+      level: f.level,
+      count: f.inStock,
+      description,
+      // The acknowledged-baseline state itself never escalates (PASS);
+      // degradation below the acknowledged baseline is a real WARN.
+      affectsStatus: true,
     });
   }
 

@@ -13,9 +13,15 @@ import {
   analyzeDuDrift,
   analyzeImportBatches,
   analyzeNewestOos,
+  analyzeCategoriesBatch,
+  analyzeFeedLiveness,
   buildCatalogChecks,
   overallResult,
+  CONTENT_STUCK_RUNNING_MS,
   DU_EXPECTED_ORPHANS,
+  FEED_LIVENESS_BASELINE_PATH,
+  FEED_LIVENESS_FAIL_SHARE,
+  FEED_LIVENESS_WARN_SHARE,
   NEWEST_MIN_SAMPLE,
   NEWEST_SAMPLE_SIZE,
   OOS_FAIL_SHARE,
@@ -23,6 +29,7 @@ import {
   type CatalogHealthInput,
   type DuAllowlistSnapshot,
   type DuProductRow,
+  type FeedLivenessAck,
   type ImportBatchInfo,
   type NewestProductRow,
 } from '../app/lib/monitoring/catalog-health.ts';
@@ -532,4 +539,264 @@ test('NEWEST-OOS: production script reads the newest slice with a single range q
   assert.ok(!segment.includes('fetchAll'), 'single range read must not use fetchAll');
   // The slice is fed into the classifier.
   assert.match(s, /newestProducts,/);
+});
+
+// ---- content/images phases (2026-09-06, yc_content_batches) ----
+
+function contentBatch(partial: Partial<ImportBatchInfo>): ImportBatchInfo {
+  return batch({ phase: 'description', ...partial });
+}
+
+test('CONTENT: running content batch older than the 10-min window is stuck, fresh one is not', () => {
+  const stuck = analyzeImportBatches(
+    [contentBatch({ status: 'running', started_at: new Date(NOW.getTime() - 15 * 60 * 1000).toISOString(), finished_at: null })],
+    NOW,
+    CONTENT_STUCK_RUNNING_MS
+  );
+  assert.equal(stuck.stuckCount, 1);
+  assert.equal(stuck.failedCount, 0);
+  const fresh = analyzeImportBatches(
+    [contentBatch({ status: 'running', started_at: new Date(NOW.getTime() - 5 * 60 * 1000).toISOString(), finished_at: null })],
+    NOW,
+    CONTENT_STUCK_RUNNING_MS
+  );
+  assert.equal(fresh.stuckCount, 0);
+  assert.equal(CONTENT_STUCK_RUNNING_MS, 10 * 60 * 1000);
+});
+
+test('CONTENT: healthy content/images batches pass (overall PASS)', () => {
+  const checks = buildCatalogChecks(
+    input({
+      contentBatches: [
+        contentBatch({ phase: 'description', finished_at: new Date(NOW.getTime() - 5 * HOUR).toISOString() }),
+        contentBatch({ phase: 'images', finished_at: new Date(NOW.getTime() - 4 * HOUR).toISOString() }),
+      ],
+    })
+  );
+  assert.equal(byId(checks, 'content-failed-batches').level, 'pass');
+  assert.equal(byId(checks, 'content-stuck-batches').level, 'pass');
+  assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
+});
+
+test('CONTENT: a failed content batch is FAIL (exit 2)', () => {
+  const checks = buildCatalogChecks(
+    input({
+      contentBatches: [
+        contentBatch({ phase: 'images', status: 'failed', last_error: 'hotlink boom' }),
+      ],
+    })
+  );
+  const failed = byId(checks, 'content-failed-batches');
+  assert.equal(failed.level, 'fail');
+  assert.equal(failed.count, 1);
+  assert.deepEqual(overallResult(checks), { status: 'FAIL', exitCode: 2 });
+});
+
+test('CONTENT: a stuck running content batch is FAIL (exit 2)', () => {
+  const checks = buildCatalogChecks(
+    input({
+      contentBatches: [
+        contentBatch({ status: 'running', started_at: new Date(NOW.getTime() - 2 * HOUR).toISOString(), finished_at: null }),
+      ],
+    })
+  );
+  const stuck = byId(checks, 'content-stuck-batches');
+  assert.equal(stuck.level, 'fail');
+  assert.equal(stuck.count, 1);
+  assert.deepEqual(overallResult(checks), { status: 'FAIL', exitCode: 2 });
+});
+
+test('CONTENT: freshness is max(products, content, images) last done', () => {
+  // Products phase stale (90h) but images done 5h ago ⇒ freshness is fresh.
+  const fresh = buildCatalogChecks(
+    input({
+      batches: [batch({ finished_at: new Date(NOW.getTime() - 90 * HOUR).toISOString() })],
+      contentBatches: [
+        contentBatch({ phase: 'images', finished_at: new Date(NOW.getTime() - 5 * HOUR).toISOString() }),
+      ],
+    })
+  );
+  assert.equal(byId(fresh, 'import-last-success').level, 'pass');
+  assert.deepEqual(overallResult(fresh), { status: 'PASS', exitCode: 0 });
+  // max() semantics: a stale content phase does NOT fail freshness while a
+  // products run succeeded recently (the sync itself is alive).
+  const staleContent = buildCatalogChecks(
+    input({
+      batches: [batch({ finished_at: new Date(NOW.getTime() - 10 * HOUR).toISOString() })],
+      contentBatches: [
+        contentBatch({ phase: 'images', finished_at: new Date(NOW.getTime() - 100 * HOUR).toISOString() }),
+      ],
+    })
+  );
+  assert.equal(byId(staleContent, 'import-last-success').level, 'pass');
+  // Freshness FAILs only when EVERY phase's last done is stale/missing.
+  const allStale = buildCatalogChecks(
+    input({
+      batches: [batch({ finished_at: new Date(NOW.getTime() - 100 * HOUR).toISOString() })],
+      contentBatches: [
+        contentBatch({ phase: 'images', finished_at: new Date(NOW.getTime() - 100 * HOUR).toISOString() }),
+      ],
+    })
+  );
+  assert.equal(byId(allStale, 'import-last-success').level, 'fail');
+  assert.deepEqual(overallResult(allStale), { status: 'FAIL', exitCode: 2 });
+});
+
+test('CONTENT: content checks are omitted when no contentBatches input (backward compatible)', () => {
+  const checks = buildCatalogChecks(input());
+  assert.ok(!checks.some((c) => c.id.startsWith('content-')));
+});
+
+test('CONTENT: production script reads yc_content_batches with the same columns and paging', () => {
+  const s = src('scripts/catalog-health-check.ts');
+  const start = s.indexOf("from('yc_content_batches')");
+  assert.ok(start !== -1, 'content batches query must exist');
+  const end = s.indexOf('as unknown as ImportBatchInfo', start);
+  assert.ok(end !== -1);
+  const segment = s.slice(start, end);
+  assert.match(segment, /run_id, phase, batch_no, status, started_at, finished_at, last_error/);
+  assert.match(segment, /\.range\(from, from \+ limit - 1\)/);
+  // Wired into the classifier.
+  assert.match(s, /contentBatches,/);
+});
+
+// ---- feed-liveness (2026-09-06) ----
+
+test('FEED: 3.3% in_stock without ack is FAIL (live incident shape, exit 2)', () => {
+  const a = analyzeFeedLiveness({ total: 3000, inStock: 100 });
+  assert.equal(a.share, 100 / 3000);
+  assert.equal(a.acked, false);
+  assert.equal(a.level, 'fail');
+  const checks = buildCatalogChecks(input({ feedLiveness: { total: 3000, inStock: 100 } }));
+  const check = byId(checks, 'feed-liveness');
+  assert.equal(check.level, 'fail');
+  assert.equal(check.count, 100);
+  // The unacked FAIL tells the owner how to ack.
+  assert.match(check.description, new RegExp(FEED_LIVENESS_BASELINE_PATH));
+  assert.deepEqual(overallResult(checks), { status: 'FAIL', exitCode: 2 });
+});
+
+test('FEED: thresholds are strict "below" — exactly 50% passes, exactly 20% only warns', () => {
+  assert.equal(analyzeFeedLiveness({ total: 100, inStock: 50 }).level, 'pass');
+  assert.equal(analyzeFeedLiveness({ total: 100, inStock: 49 }).level, 'warn');
+  assert.equal(analyzeFeedLiveness({ total: 100, inStock: 20 }).level, 'warn');
+  assert.equal(analyzeFeedLiveness({ total: 100, inStock: 19 }).level, 'fail');
+  assert.equal(analyzeFeedLiveness({ total: 100, inStock: 100 }).level, 'pass');
+});
+
+test('FEED: 45% without ack is WARN (exit 1)', () => {
+  const checks = buildCatalogChecks(input({ feedLiveness: { total: 100, inStock: 45 } }));
+  assert.equal(byId(checks, 'feed-liveness').level, 'warn');
+  assert.deepEqual(overallResult(checks), { status: 'WARN', exitCode: 1 });
+});
+
+test('FEED: 0 base products is a skip (pass)', () => {
+  const a = analyzeFeedLiveness({ total: 0, inStock: 0 });
+  assert.equal(a.skip, true);
+  assert.equal(a.share, null);
+  assert.equal(a.level, 'pass');
+  const checks = buildCatalogChecks(input({ feedLiveness: { total: 0, inStock: 0 } }));
+  assert.equal(byId(checks, 'feed-liveness').level, 'pass');
+  assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
+});
+
+test('FEED: ack with share >= acknowledged baseline suspends the absolute floors', () => {
+  const ack: FeedLivenessAck = { acknowledgedAt: '2026-09-08T09:00:00.000Z', acknowledgedShare: 0.033 };
+  // Even 1% in_stock would FAIL unacked — acked, at the baseline share
+  // (99/3000 = 0.033), it is a known incident and passes.
+  const a = analyzeFeedLiveness({ total: 3000, inStock: 99, ack });
+  assert.equal(a.acked, true);
+  assert.equal(a.degradedFromAck, false);
+  assert.equal(a.level, 'pass');
+  const checks = buildCatalogChecks(input({ feedLiveness: { total: 3000, inStock: 99, ack } }));
+  const check = byId(checks, 'feed-liveness');
+  assert.equal(check.level, 'pass');
+  assert.match(check.description, /інцидент визнано/);
+  assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
+});
+
+test('FEED: acked share dropping below the baseline is WARN (further degradation)', () => {
+  const ack: FeedLivenessAck = { acknowledgedAt: '2026-09-08T09:00:00.000Z', acknowledgedShare: 0.033 };
+  // 50/3000 ≈ 1.7% < 3.3% baseline.
+  const a = analyzeFeedLiveness({ total: 3000, inStock: 50, ack });
+  assert.equal(a.degradedFromAck, true);
+  assert.equal(a.level, 'warn');
+  const checks = buildCatalogChecks(input({ feedLiveness: { total: 3000, inStock: 50, ack } }));
+  const check = byId(checks, 'feed-liveness');
+  assert.equal(check.level, 'warn');
+  assert.equal(check.affectsStatus, true);
+  assert.deepEqual(overallResult(checks), { status: 'WARN', exitCode: 1 });
+});
+
+test('FEED: high share with an ack still passes (ack never worsens the result)', () => {
+  const ack: FeedLivenessAck = { acknowledgedAt: '2026-09-08T09:00:00.000Z', acknowledgedShare: 0.033 };
+  assert.equal(analyzeFeedLiveness({ total: 100, inStock: 90, ack }).level, 'pass');
+});
+
+test('FEED: constants match the contract', () => {
+  assert.equal(FEED_LIVENESS_WARN_SHARE, 0.5);
+  assert.equal(FEED_LIVENESS_FAIL_SHARE, 0.2);
+  assert.equal(FEED_LIVENESS_BASELINE_PATH, 'logs/feed-liveness-baseline.json');
+});
+
+test('FEED: production script computes the base (non-_du) share and reads the ack file', () => {
+  const s = src('scripts/catalog-health-check.ts');
+  // availability_status is selected for the feed share.
+  assert.match(s, /select\('id, yugcontract_id, sku, slug, name, price, availability_status'\)/);
+  // Base products only: non-empty yugcontract_id that does not end with _du.
+  assert.match(s, /endsWith\('_du'\)/);
+  // The ack file is read (never written) and wired into the classifier.
+  assert.match(s, new RegExp(FEED_LIVENESS_BASELINE_PATH.replace('/', '\\/')));
+  assert.match(s, /feedLiveness: \{/);
+  assert.ok(!s.includes('writeFile'), 'health-check must never write the baseline file');
+});
+
+// ---- category drift (2026-09-06) ----
+
+test('CATEGORIES: inserted_count > 0 in the newest categories batch is WARN', () => {
+  const a = analyzeCategoriesBatch([
+    batch({ phase: 'categories', batch_no: 0, inserted_count: 4, finished_at: new Date(NOW.getTime() - 5 * HOUR).toISOString() }),
+  ]);
+  assert.equal(a.lastInsertedCount, 4);
+  const checks = buildCatalogChecks(
+    input({ batches: [batch({ phase: 'categories', batch_no: 0, inserted_count: 4 })] })
+  );
+  const check = byId(checks, 'categories-drift');
+  assert.equal(check.level, 'warn');
+  assert.equal(check.count, 4);
+  assert.deepEqual(overallResult(checks), { status: 'WARN', exitCode: 1 });
+});
+
+test('CATEGORIES: inserted_count 0 in the newest categories batch is PASS', () => {
+  const checks = buildCatalogChecks(
+    input({ batches: [batch({ phase: 'categories', batch_no: 0, inserted_count: 0 })] })
+  );
+  assert.equal(byId(checks, 'categories-drift').level, 'pass');
+  assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
+});
+
+test('CATEGORIES: the NEWEST categories batch decides (older inserts do not warn)', () => {
+  const checks = buildCatalogChecks(
+    input({
+      batches: [
+        batch({ run_id: 'old', phase: 'categories', batch_no: 0, inserted_count: 7, finished_at: new Date(NOW.getTime() - 96 * HOUR).toISOString() }),
+        batch({ run_id: 'new', phase: 'categories', batch_no: 0, inserted_count: 0, finished_at: new Date(NOW.getTime() - 5 * HOUR).toISOString() }),
+      ],
+    })
+  );
+  assert.equal(byId(checks, 'categories-drift').level, 'pass');
+  assert.equal(byId(checks, 'categories-drift').count, 0);
+});
+
+test('CATEGORIES: no categories batch at all is PASS (skip)', () => {
+  const a = analyzeCategoriesBatch([batch({})]);
+  assert.equal(a.lastInsertedCount, null);
+  const checks = buildCatalogChecks(input());
+  assert.equal(byId(checks, 'categories-drift').level, 'pass');
+});
+
+test('CATEGORIES: production script reads inserted_count from yc_import_batches', () => {
+  const s = src('scripts/catalog-health-check.ts');
+  assert.match(s, /finished_at, last_error, inserted_count/);
+  assert.match(s, /categoriesDrift|categories-drift|analyzeCategoriesBatch/);
 });
