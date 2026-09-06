@@ -266,6 +266,49 @@ export async function sendTelegramOrderMessage(
   };
 }
 
+/**
+ * Generic plain-text broadcast over the SAME recipients/token pipeline as
+ * order notifications (feature: cron reconciliation alert — the admin chat
+ * already receives order notifications, so the same chat is the alert
+ * target; no new env vars, no second Telegram implementation).
+ *
+ * Contract mirrors sendTelegramOrderMessage: never throws, one HTTP call
+ * per configured chat id, no retry loop, per-recipient failures are logged
+ * (recipient index only — never the chat id, token or message text). The
+ * text is fully server-generated (no user-controlled content).
+ */
+export async function sendTelegramText(
+  text: string,
+  config: TelegramOrderConfig = resolveTelegramOrderConfig()
+): Promise<TelegramSendResult> {
+  if (!config.enabled) return { sent: false, reason: 'disabled' };
+
+  const total = config.chatIds.length;
+  let okCount = 0;
+  let firstFailure: TelegramSendResult | undefined;
+  for (let index = 0; index < total; index++) {
+    const result = await postTelegramMessage(
+      config.token!,
+      config.chatIds[index]!,
+      text
+    );
+    if (result.sent) {
+      okCount++;
+    } else {
+      firstFailure ??= result;
+      console.error(
+        `telegram text notification failed (recipient ${index + 1}/${total}): ${result.reason}${result.detail ? ` (${result.detail})` : ''}`
+      );
+    }
+  }
+  if (okCount === total) return { sent: true };
+  return {
+    sent: false,
+    reason: firstFailure?.reason,
+    detail: `recipients:${okCount}/${total}`,
+  };
+}
+
 function asNumber(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
