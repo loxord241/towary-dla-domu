@@ -16,8 +16,10 @@ import {
   buildMerchantItems,
   buildMerchantFeedXml,
   pickCategoryPath,
+  truncateDescription,
   GOOGLE_FEED_MAX_ITEMS,
   GOOGLE_TITLE_MAX_LENGTH,
+  GOOGLE_DESCRIPTION_MAX_LENGTH,
   type MerchantFeedProductRow,
 } from '../app/lib/merchant-feed.ts';
 import { DU_REDIRECT_SLUGS } from '../app/lib/du-redirects.ts';
@@ -163,6 +165,52 @@ test('FEED: title is trimmed and capped at 150 characters', () => {
 
 test('FEED: hard cap of 50000 items is applied deterministically', () => {
   assert.equal(GOOGLE_FEED_MAX_ITEMS, 50_000);
+});
+
+// ---- truncateDescription (g:description compaction) ----
+
+test('FEED: description at or under the limit is returned unchanged', () => {
+  const text = 'Короткое описание товара';
+  assert.equal(truncateDescription(text), text);
+  assert.equal(truncateDescription('a'.repeat(1000)), 'a'.repeat(1000));
+  assert.equal(GOOGLE_DESCRIPTION_MAX_LENGTH, 1000);
+});
+
+test('FEED: long description is truncated at a word boundary with ellipsis, total <= limit', () => {
+  const text = `${'слово '.repeat(300)}конец`; // 1806 chars
+  const out = truncateDescription(text);
+  assert.ok(out.length <= GOOGLE_DESCRIPTION_MAX_LENGTH);
+  assert.ok(out.length > GOOGLE_DESCRIPTION_MAX_LENGTH - 20, 'cut near the budget, not early');
+  assert.ok(out.endsWith('…'));
+  assert.ok(out.startsWith('слово'));
+  // Cut lands at a word boundary — no partial word before the ellipsis.
+  assert.match(out, /(?<=\S)…$/);
+});
+
+test('FEED: truncation handles newlines as word boundaries and huge single words', () => {
+  // Newline-separated text cuts at the last newline boundary.
+  const multiline = Array.from({ length: 200 }, (_, i) => `рядок-${i}`).join('\n');
+  const out = truncateDescription(multiline);
+  assert.ok(out.length <= GOOGLE_DESCRIPTION_MAX_LENGTH);
+  assert.ok(out.endsWith('…'));
+  assert.equal(out.includes('рядок-'), true);
+
+  // A single word longer than the budget is hard-cut (no boundary found).
+  const giantWord = 'Ж'.repeat(5000);
+  const hardCut = truncateDescription(giantWord);
+  assert.equal(hardCut.length, GOOGLE_DESCRIPTION_MAX_LENGTH);
+  assert.ok(hardCut.endsWith('…'));
+});
+
+test('FEED: buildMerchantItems truncates over-long descriptions in the item', () => {
+  const longDescription = `<p>${'Опис '.repeat(400)}</p>`; // strips to 2000 chars
+  const [item] = buildMerchantItems(
+    [{ ...baseRow(), description: longDescription }],
+    'https://x.test'
+  );
+  assert.ok(item);
+  assert.ok(item.description.length <= GOOGLE_DESCRIPTION_MAX_LENGTH);
+  assert.ok(item.description.endsWith('…'));
 });
 
 // ---- pickCategoryPath ----

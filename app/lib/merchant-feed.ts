@@ -39,7 +39,10 @@
  * landing page, buildProductJsonLd in app/lib/schema-org.ts):
  *   g:id            → products.id (same id the storefront uses)
  *   g:title         → products.name (trimmed, ≤150 chars per Google spec)
- *   g:description   → stripHtmlToText(description || short_description)
+ *   g:description   → stripHtmlToText(description || short_description),
+ *                     truncated to GOOGLE_DESCRIPTION_MAX_LENGTH chars at a
+ *                     word boundary + "…" (full supplier descriptions blow the
+ *                     feed up to ~11.7 MB; Google's own limit is 5000)
  *   g:link          → {SITE_URL}/product/{slug} (same URL as the page)
  *   g:image_link    → absolute public URL (getPublicImageUrl, hotlinks pass
  *                     through) — the SAME main image the card renders
@@ -60,6 +63,32 @@ export const GOOGLE_FEED_MAX_ITEMS = 50_000;
 
 /** Google g:title limit, characters. */
 export const GOOGLE_TITLE_MAX_LENGTH = 150;
+
+/**
+ * Soft cap for g:description, characters (including the trailing "…").
+ * Google accepts up to 5000, but full supplier HTML-stripped descriptions
+ * inflate the XML to ~11.7 MB; 1000 chars keeps the feed compact while
+ * staying well inside the hard limit.
+ */
+export const GOOGLE_DESCRIPTION_MAX_LENGTH = 1000;
+
+/**
+ * Truncates a description to maxLength characters total (the ellipsis
+ * counts toward the cap), cutting at the LAST word boundary inside the
+ * budget and appending "…". Text at or under the limit is returned
+ * unchanged; a single word longer than the budget is hard-cut.
+ */
+export function truncateDescription(
+  text: string,
+  maxLength: number = GOOGLE_DESCRIPTION_MAX_LENGTH
+): string {
+  if (text.length <= maxLength) return text;
+  const head = text.slice(0, maxLength - 1);
+  // Last whitespace that still separates two words within the budget.
+  const boundary = /\s(?=\S*$)/.exec(head);
+  const cut = boundary ? head.slice(0, boundary.index).trimEnd() : head;
+  return `${cut}…`;
+}
 
 /** One fetched product row, already projected by the route (checked shape). */
 export interface MerchantFeedProductRow {
@@ -144,7 +173,7 @@ export function buildMerchantItems(
     items.push({
       id: row.id,
       title: name.slice(0, GOOGLE_TITLE_MAX_LENGTH),
-      description,
+      description: truncateDescription(description),
       link: `${base}/product/${encodeURIComponent(row.slug)}`,
       imageLink: imageUrl,
       availability: mapAvailability(row.availability_status),
