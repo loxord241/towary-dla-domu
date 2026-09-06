@@ -33,8 +33,11 @@ export const CONTACT_EMAIL = 'magazinujut@gmail.com';
  * merch-categories.ts). The previous «first 5 rows» slice linked an
  * arbitrary id-ordered subset and left all other hub pages without a
  * single crawlable internal link (the drawer and the filter <select> are
- * client-only). Mid/leaf levels stay linked via parent hubs and PDP
- * breadcrumbs — no link farm.
+ * client-only). Mid/leaf levels stay reachable by links through their
+ * parent hubs: every pure, indexable category view lists its direct
+ * non-empty children as crawlable anchors (app/lib/category-seo.ts +
+ * app/catalog/page.tsx), and PDP breadcrumbs add the parent chain — no
+ * link farm.
  */
 export default function SiteFooter({ categories }: SiteFooterProps) {
   const footerCategories = categories

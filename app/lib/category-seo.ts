@@ -16,6 +16,9 @@ import { compareCategories } from './category-tree.ts';
 /** The category pinned to the commercial intent «товари для дому». */
 export const TDD_CATEGORY_SLUG = 'hospodarchi-tovary-1451';
 
+/** Heading above the direct-children link list on NON-pinned categories. */
+export const SUBCATEGORIES_HEADING = 'Підкатегорії';
+
 export interface CategorySeoOverride {
   /** Page H1 for the category view (single h1 per page is preserved). */
   h1: string;
@@ -78,4 +81,68 @@ export function listDirectChildren(
   return categories
     .filter((category) => category.parent_id === parentId)
     .sort(compareCategories);
+}
+
+// ---------------------------------------------------------------------------
+// Crawlable path to mid/leaf categories (storefront audit 2026-09, P1).
+// The SEO contract (lib/seo.ts + sitemap) says: a category view with 0
+// eligible products is noindex,follow and must never be linked. These two
+// helpers gate the subcategory-chip block so every pure, indexable
+// category view lists ONLY its non-empty direct children. Both stay pure
+// and runtime-dependency-free so node:test loads them without Supabase.
+// ---------------------------------------------------------------------------
+
+/** Minimal filter shape needed for the pure-view decision (structural). */
+export interface CatalogViewFiltersLike {
+  categorySlug?: string;
+  brandSlug?: string;
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  inStockOnly?: boolean;
+  sort?: string;
+  page?: number;
+}
+
+/**
+ * True for the pure, indexable category view a link block may render on:
+ * a single category, page 1, default sort, no other filters. Mirrors the
+ * multiFilter branch of decideCatalogIndexing (lib/seo.ts) — anything else
+ * (search, brand, price/stock filters, pagination depth, non-default sort)
+ * is noindex,follow and stays link-free («noindex pages are not linked»).
+ */
+export function isPureCategoryView(
+  filters: CatalogViewFiltersLike
+): boolean {
+  return (
+    Boolean(filters.categorySlug) &&
+    !filters.brandSlug &&
+    !filters.search &&
+    filters.minPrice === undefined &&
+    filters.maxPrice === undefined &&
+    !filters.inStockOnly &&
+    (filters.sort ?? 'newest') === 'newest' &&
+    (filters.page ?? 1) === 1
+  );
+}
+
+/**
+ * Direct children whose view is NON-empty (≥1 eligible product). `countOf`
+ * resolves the eligible-product count for a child slug — on the page this
+ * is fetchCategoryProductCount (same junction + subtree eligibility shapes
+ * as the grid, so a linked child view can never render the empty state).
+ * A null/failed count degrades to non-empty — the SAME direction
+ * generateMetadata uses, so a transient read error can never silently
+ * unlink a whole branch. Children with count === 0 are dropped: their
+ * views are noindex and must not be linked.
+ */
+export async function filterNonEmptyChildren(
+  children: Category[],
+  countOf: (slug: string) => Promise<number | null>
+): Promise<Category[]> {
+  if (children.length === 0) return [];
+  const counts = await Promise.all(
+    children.map((child) => countOf(child.slug))
+  );
+  return children.filter((_, index) => counts[index] !== 0);
 }

@@ -20,6 +20,9 @@ import {
   getCategorySeo,
   applyCategorySeoMetadata,
   listDirectChildren,
+  isPureCategoryView,
+  filterNonEmptyChildren,
+  SUBCATEGORIES_HEADING,
 } from '@/app/lib/category-seo'
 import {
   buildCatalogBreadcrumbJsonLd,
@@ -274,9 +277,8 @@ export default async function CatalogPage({
   // own axis with its own removable chip (Audit 2026-09-05, item 1).
   const filterChipCount = chips.filter((chip) => chip.removeKey !== 'q').length;
 
-  // Category-level SEO (category-seo.ts): intent copy + subcategory links
-  // only for a pure category view (no search). Children are sliced from the
-  // already-fetched active list — no extra DB reads.
+  // Category-level SEO (category-seo.ts): intent copy for the pinned
+  // category only (no search).
   const seo =
     !filters.search && filters.categorySlug
       ? getCategorySeo(filters.categorySlug)
@@ -284,8 +286,22 @@ export default async function CatalogPage({
   const activeCategory = filters.categorySlug
     ? categories.find((c) => c.slug === filters.categorySlug)
     : undefined;
-  const childCategories =
-    seo && activeCategory ? listDirectChildren(categories, activeCategory.id) : [];
+  // Crawlable path to mid/leaf categories (storefront audit 2026-09, P1):
+  // EVERY pure, indexable category view (not just the pinned one) lists its
+  // direct non-empty children as crawlable anchors. Children are sliced
+  // from the already-fetched active list; the eligible-product counts come
+  // from fetchCategoryProductCount (React cache()d per request + 60s Data
+  // Cache, head-only) so a linked child view can never be the empty,
+  // noindex state. On leaf views and on filtered/noindex views the list is
+  // empty — zero extra reads there.
+  const directChildren =
+    activeCategory && isPureCategoryView(filters)
+      ? listDirectChildren(categories, activeCategory.id)
+      : [];
+  const childCategories = await filterNonEmptyChildren(
+    directChildren,
+    (slug) => fetchCategoryProductCount(slug).catch(() => null)
+  );
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
   const breadcrumbJsonLd = activeCategory
     ? buildCatalogBreadcrumbJsonLd(
@@ -353,8 +369,8 @@ export default async function CatalogPage({
                 </p>
               )}
 
-              {/* Unique category intro + crawlable subcategory links
-                  (pinned category only — see app/lib/category-seo.ts). */}
+              {/* Unique category intro (pinned category only — see
+                  app/lib/category-seo.ts). */}
               {seo && (
                 <div className="mb-6 text-sm leading-relaxed text-gray-600">
                   {seo.intro.map((paragraph) => (
@@ -362,25 +378,32 @@ export default async function CatalogPage({
                       {paragraph}
                     </p>
                   ))}
-                  {childCategories.length > 0 && (
-                    <>
-                      <h2 className="mb-2 mt-4 text-lg font-bold text-gray-900">
-                        {seo.introHeading}
-                      </h2>
-                      <ul className="flex flex-wrap gap-2">
-                        {childCategories.map((child) => (
-                          <li key={child.id}>
-                            <Link
-                              href={`/catalog?category=${encodeURIComponent(child.slug)}`}
-                              className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-blue-700 transition hover:bg-blue-50"
-                            >
-                              {child.name}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
+                </div>
+              )}
+
+              {/* Crawlable subcategory links — rendered on every pure,
+                  indexable category view (page 1, default sort, no filters),
+                  not just the pinned one, so mid/leaf levels are reachable
+                  by following links. childCategories is already filtered to
+                  non-empty children (their views carry ≥1 eligible product;
+                  empty views are noindex and are never linked). */}
+              {childCategories.length > 0 && (
+                <div className="mb-6 text-sm leading-relaxed text-gray-600">
+                  <h2 className="mb-2 mt-4 text-lg font-bold text-gray-900">
+                    {seo?.introHeading ?? SUBCATEGORIES_HEADING}
+                  </h2>
+                  <ul className="flex flex-wrap gap-2">
+                    {childCategories.map((child) => (
+                      <li key={child.id}>
+                        <Link
+                          href={`/catalog?category=${encodeURIComponent(child.slug)}`}
+                          className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-blue-700 transition hover:bg-blue-50"
+                        >
+                          {child.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 

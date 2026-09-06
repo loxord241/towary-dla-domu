@@ -15,6 +15,9 @@ import {
   getCategorySeo,
   applyCategorySeoMetadata,
   listDirectChildren,
+  isPureCategoryView,
+  filterNonEmptyChildren,
+  SUBCATEGORIES_HEADING,
 } from '../app/lib/category-seo.ts';
 import { compareCategories } from '../app/lib/category-tree.ts';
 import type { Category } from '../app/lib/catalog.ts';
@@ -138,4 +141,98 @@ test('SEO-CAT: catalog page renders subcategory links and unique intro for the p
 test('SEO-CAT: catalog page keeps exactly one h1 literal (h1 invariant preserved)', () => {
   const page = src('app/catalog/page.tsx');
   assert.equal((page.match(/<h1/g) ?? []).length, 1);
+});
+
+// ---- crawlable path to mid/leaf categories (storefront audit 2026-09, P1)
+
+test('SEO-CAT: isPureCategoryView mirrors the indexable category-view contract (lib/seo.ts)', () => {
+  const pure = { categorySlug: 'velyka-pobutova-tekhnika-739', sort: 'newest', page: 1 };
+  assert.equal(isPureCategoryView(pure), true, 'single category, page 1, default sort');
+  assert.equal(isPureCategoryView({ ...pure, search: 'посуд' }), false, 'search view is noindex');
+  assert.equal(isPureCategoryView({ ...pure, brandSlug: 'b' }), false, 'category+brand is multiFilter');
+  assert.equal(isPureCategoryView({ ...pure, minPrice: 10 }), false, 'price filter is noindex');
+  assert.equal(isPureCategoryView({ ...pure, maxPrice: 100 }), false, 'price filter is noindex');
+  assert.equal(isPureCategoryView({ ...pure, inStockOnly: true }), false, 'stock filter is noindex');
+  assert.equal(isPureCategoryView({ ...pure, sort: 'price_asc' }), false, 'non-default sort is noindex');
+  assert.equal(isPureCategoryView({ ...pure, page: 2 }), false, 'pagination depth is noindex');
+  assert.equal(
+    isPureCategoryView({ sort: 'newest', page: 1 }),
+    false,
+    'bare /catalog is not a category view'
+  );
+});
+
+test('SEO-CAT: SUBCATEGORIES_HEADING matches the pinned intro heading text', () => {
+  // The generic block must visually equal the pinned block («та же разметка»).
+  assert.equal(getCategorySeo(TDD_CATEGORY_SLUG)!.introHeading, SUBCATEGORIES_HEADING);
+});
+
+test('SEO-CAT: filterNonEmptyChildren keeps ≥1-eligible children, drops empty, degrades errors to non-empty', async () => {
+  const kids = [cat('with', 'p'), cat('empty', 'p'), cat('errored', 'p')];
+  const counts = new Map<string, number | null>([['with', 3], ['empty', 0]]);
+  const kept = await filterNonEmptyChildren(kids, (slug) =>
+    Promise.resolve(counts.get(slug) ?? null)
+  );
+  assert.deepEqual(
+    kept.map((c) => c.id),
+    ['with', 'errored'],
+    'count 0 (noindex view) is unlinked; a failed count degrades to non-empty (same direction as generateMetadata)'
+  );
+});
+
+test('SEO-CAT: filterNonEmptyChildren short-circuits on leaf views — zero count reads', async () => {
+  let queried = 0;
+  const kept = await filterNonEmptyChildren([], () => {
+    queried += 1;
+    return Promise.resolve(1);
+  });
+  assert.deepEqual(kept, []);
+  assert.equal(queried, 0, 'leaf/filtered views must not fire count queries');
+});
+
+test('SEO-CAT: catalog page wires the subcategory block to pure views + non-empty children', () => {
+  const page = src('app/catalog/page.tsx');
+  assert.match(
+    page,
+    /isPureCategoryView\(filters\)/,
+    'block must render only on pure, indexable category views'
+  );
+  assert.match(
+    page,
+    /listDirectChildren\(categories, activeCategory\.id\)/,
+    'children must be sliced from the already-fetched active list'
+  );
+  assert.match(
+    page,
+    /filterNonEmptyChildren\(/,
+    'children must be filtered to non-empty views (noindex pages are never linked)'
+  );
+  assert.match(
+    page,
+    /fetchCategoryProductCount\(slug\)\.catch\(\(\) => null\)/,
+    'counts must reuse the grid eligibility shapes and degrade on read errors'
+  );
+  assert.match(
+    page,
+    /childCategories\.length > 0/,
+    'the chip list must render only when non-empty children exist'
+  );
+  assert.match(
+    page,
+    /href=\{`\/catalog\?category=\$\{encodeURIComponent\(child\.slug\)\}`\}/,
+    'children must be server-rendered <a> anchors (next/link), not a client select'
+  );
+});
+
+test('SEO-CAT: SiteFooter comment states the real mid/leaf linking mechanism', () => {
+  const footer = src('app/components/SiteFooter.tsx');
+  assert.match(
+    footer,
+    /category-seo\.ts \+\s*\n \* app\/catalog\/page\.tsx/,
+    'the comment must point to the module that renders the child links'
+  );
+  assert.ok(
+    !footer.includes('Mid/leaf levels stay linked via parent hubs and'),
+    'the outdated «parent hubs only» claim must be gone'
+  );
 });
