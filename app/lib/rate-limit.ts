@@ -90,10 +90,19 @@ export function checkRateLimit(key: string, rules: RateRule[]): RateDecision {
   return { ok: true, retryAfterSec: 0 };
 }
 
-export function clientIpOf(request: Request): string {
-  const fwd = request.headers.get('x-forwarded-for');
+/**
+ * Extracts the rate-limit key (client IP) from request headers. The header
+ * selection and its Vercel trust assumption are documented at the top of
+ * this file and pinned by tests/rate-limit-xff.test.ts.
+ */
+export function ipFromHeaders(headers: Headers): string {
+  const fwd = headers.get('x-forwarded-for');
   if (fwd) return fwd.split(',')[0]!.trim();
-  return request.headers.get('x-real-ip') ?? 'unknown';
+  return headers.get('x-real-ip') ?? 'unknown';
+}
+
+export function clientIpOf(request: Request): string {
+  return ipFromHeaders(request.headers);
 }
 
 /** Named rule sets for public sensitive endpoints. */
@@ -142,7 +151,31 @@ export const RATE_RULES = {
   novaPoshtaDivisions: [{ max: 90, windowMs: 60_000 }],
   novaPoshtaStreets: [{ max: 90, windowMs: 60_000 }],
   novaPoshtaDeliveryCost: [{ max: 12, windowMs: 60_000 }],
+  // admin login (server action): brute-force protection. Same shape as the
+  // `lookup` pair-guessing ceiling: a per-IP burst plus an hourly ceiling.
+  // IP comes from headers() in the server action (same proxy-set XFF the
+  // edge overwrites — see the trust note at the top of this file).
+  adminLogin: [
+    { max: 5, windowMs: 60_000 },
+    { max: 20, windowMs: 60 * 60_000 },
+  ],
 } as const;
+
+/**
+ * Applies named rules keyed by the caller (server actions and other
+ * non-Request contexts where the key is built from headers() instead of a
+ * Request object). Returns the raw decision; the caller decides how to
+ * surface a rejection (429 JSON, redirect, ...).
+ */
+export function enforceRateLimitByKey(
+  key: string,
+  routeName: keyof typeof RATE_RULES,
+): RateDecision {
+  return checkRateLimit(
+    `${routeName}:${key}`,
+    RATE_RULES[routeName] as unknown as RateRule[]
+  );
+}
 
 /**
  * Applies named rules; returns a ready-to-send 429 when limited,
@@ -152,10 +185,7 @@ export function enforceRateLimit(
   request: Request,
   routeName: keyof typeof RATE_RULES,
 ): NextResponse | null {
-  const decision = checkRateLimit(
-    `${routeName}:${clientIpOf(request)}`,
-    RATE_RULES[routeName] as unknown as RateRule[]
-  );
+  const decision = enforceRateLimitByKey(clientIpOf(request), routeName);
   if (decision.ok) return null;
   return NextResponse.json(
     { error: 'Забагато запитів. Спробуйте пізніше' },

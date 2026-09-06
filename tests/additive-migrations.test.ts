@@ -37,6 +37,15 @@ const ADDITIVE_MIGRATIONS: {
       /drop index concurrently if exists/i,
     ],
   },
+  {
+    // 035: REVOKE statements are idempotent by nature — pin that only
+    // revokes exist (the per-table coverage is pinned in
+    // anon-dml-revoke-migration.test.ts).
+    file: 'database/migrations/035_revoke_anon_dml_defense_in_depth.sql',
+    idempotentMarkers: [
+      /revoke\s+insert,\s*update,\s*delete,\s*trigger,\s*references\s+on\s+table\s+public\./i,
+    ],
+  },
 ];
 
 test('ADDITIVE: migrations 033+ exist', () => {
@@ -45,7 +54,7 @@ test('ADDITIVE: migrations 033+ exist', () => {
   }
 });
 
-test('ADDITIVE: 033+/034+ never reference or edit final_* migrations', () => {
+test('ADDITIVE: 033+ never reference or edit final_* migrations', () => {
   for (const m of ADDITIVE_MIGRATIONS) {
     const body = stripComments(src(m.file));
     assert.doesNotMatch(
@@ -56,7 +65,7 @@ test('ADDITIVE: 033+/034+ never reference or edit final_* migrations', () => {
   }
 });
 
-test('ADDITIVE: 033+/034+ carry their idempotency markers', () => {
+test('ADDITIVE: 033+ carry their idempotency markers', () => {
   for (const m of ADDITIVE_MIGRATIONS) {
     const body = stripComments(src(m.file));
     for (const marker of m.idempotentMarkers) {
@@ -69,7 +78,7 @@ test('ADDITIVE: 033+/034+ carry their idempotency markers', () => {
   }
 });
 
-test('ADDITIVE: 033+/034+ contain no destructive schema changes', () => {
+test('ADDITIVE: 033+ contain no destructive schema changes', () => {
   for (const m of ADDITIVE_MIGRATIONS) {
     const body = stripComments(src(m.file));
     assert.doesNotMatch(

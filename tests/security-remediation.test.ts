@@ -101,7 +101,7 @@ test('migrations are sequentially numbered with no gaps above 030', () => {
     assert.ok(prev !== undefined && curr !== undefined);
     assert.equal(curr, prev + 1, `gap between ${prev} and ${curr}`);
   }
-  assert.equal(nums[nums.length - 1], 34);
+  assert.equal(nums[nums.length - 1], 35);
 });
 
 const m032 = readFileSync(

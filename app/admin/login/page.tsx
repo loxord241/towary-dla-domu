@@ -1,9 +1,18 @@
 import type { Metadata } from 'next';
 import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { escapeIlikePattern } from '@/app/lib/ilike';
+import { enforceRateLimitByKey, ipFromHeaders } from '@/app/lib/rate-limit';
+
+// Generic, non-revealing sign-in failures (2026-09 security audit):
+// the Supabase error text is NEVER forwarded to the client — auth error
+// messages would let an attacker distinguish "unknown email" from "wrong
+// password" and enumerate admin addresses. The real cause is logged
+// server-side only.
+const GENERIC_AUTH_ERROR = 'Невірний email або пароль';
+const GENERIC_RATE_LIMIT_ERROR = 'Забагато спроб входу. Спробуйте пізніше';
 
 // Admin entry point is a private surface: never index it
 // (SEO package 2026-08-26, spec E).
@@ -13,6 +22,22 @@ export const metadata: Metadata = {
 
 async function handleLogin(formData: FormData) {
   'use server';
+
+  // Layer 1: per-IP brute-force protection. A server action has no Request
+  // object, so the key is built from headers() — the same proxy-overwritten
+  // x-forwarded-for the route handlers rely on (see the trust note in
+  // app/lib/rate-limit.ts). Without a header (local dev) the bucket falls
+  // back to the shared 'unknown' key.
+  const requestHeaders = await headers();
+  const rateLimit = enforceRateLimitByKey(
+    ipFromHeaders(requestHeaders),
+    'adminLogin'
+  );
+  if (!rateLimit.ok) {
+    redirect(
+      '/admin/login?error=' + encodeURIComponent(GENERIC_RATE_LIMIT_ERROR)
+    );
+  }
 
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
@@ -50,8 +75,10 @@ async function handleLogin(formData: FormData) {
   });
 
   if (error) {
-    // Stay on the login page and show the error — no redirect loop.
-    redirect('/admin/login?error=' + encodeURIComponent(error.message));
+    // Stay on the login page and show a GENERIC error — the raw Supabase
+    // message never reaches the client (email enumeration). Log only.
+    console.error('[admin-login] signInWithPassword failed:', error.message);
+    redirect('/admin/login?error=' + encodeURIComponent(GENERIC_AUTH_ERROR));
   }
 
   redirect('/admin');
