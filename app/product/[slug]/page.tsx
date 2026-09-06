@@ -242,7 +242,10 @@ export default async function ProductPage({
               }`}>
                 {availabilityLabel(product.availability_status)}
               </span>
-              {product.stock_quantity > 0 && (
+              {/* Product-level stock lies for variant products: orders
+                  decrement the VARIANT row, so show the counter only for
+                  variant-less products (variant stock is per-option). */}
+              {product.variants.length === 0 && product.stock_quantity > 0 && (
                 <span className="text-sm text-gray-500 ml-2">
                   на складі: {product.stock_quantity} шт
                 </span>

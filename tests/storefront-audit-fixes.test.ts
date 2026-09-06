@@ -117,3 +117,18 @@ test('FAVICON: app/favicon.ico exists (a real multi-size ICO file)', () => {
   assert.equal(buf[3], 0x00);
   assert.ok(buf.length > 1000, 'ICO should carry real image data');
 });
+
+// Variant-stock honesty: the PDP «на складі: N шт» counter must render only
+// for variant-less products — orders decrement the VARIANT row for products
+// with variants, so the product-level quantity would be a lie there.
+test('PDP stock counter renders only when the product has no variants', () => {
+  const src = readFileSync(
+    new URL('../app/product/[slug]/page.tsx', import.meta.url),
+    'utf8'
+  );
+  assert.match(
+    src,
+    /variants\.length === 0 && product\.stock_quantity > 0/,
+    'stock counter must be gated on the absence of variants'
+  );
+});
