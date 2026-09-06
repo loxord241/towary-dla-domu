@@ -72,6 +72,13 @@ export async function generateMetadata({
       description,
       url: canonical,
       locale: 'uk_UA',
+      // NOTE (audit 2026-09-06): og:type must stay 'website' — the og:type
+      // 'product' from the OG spec is NOT in Next's OpenGraphType union and
+      // its tag emitter throws E237 "Invalid OpenGraph type: product" for
+      // any value outside {website, article, book, profile, music.*, video.*}
+      // (verified in node_modules/next/dist/lib/metadata/metadata.js, default
+      // branch of the og:type switch). Product semantics on the PDP are
+      // already expressed by the Product JSON-LD below.
       type: 'website',
       siteName: 'Товари для дому',
       images: mainImage ? [mainImage] : [],

@@ -1564,11 +1564,21 @@ export async function fetchSelectedProducts(): Promise<Product[]> {
   // 4-column rows, so admin flagging beyond 8 must not unbound the home
   // read. Deterministic order (created_at desc, id desc) — same priority
   // semantics as the popular shelf.
+  //
+  // In-stock first (2026-09 audit, mirrors the catalog default sort at
+  // fetchCatalogProducts): with most of the catalog out of stock, the
+  // recency-only order opened the home shelf on a wall of «Немає в
+  // наявності». The DB only holds 'in_stock'/'out_of_stock' and
+  // 'in_stock' < 'out_of_stock' lexicographically, so ascending
+  // availability_status IS the in-stock-first contract; the set of shown
+  // products (the admin-curated is_selected flag) is untouched — only the
+  // display order changes. Recency stays the tiebreaker within each tier.
   const { data, error } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
     .eq('is_active', true)
     .eq('is_selected', true)
+    .order('availability_status', { ascending: true })
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .range(0, SELECTED_LIMIT - 1)

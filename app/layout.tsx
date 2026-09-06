@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
@@ -19,6 +19,15 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["cyrillic", "latin"],
 });
+
+// themeColor (2026-09 audit): blue-600 (#2563eb) — the brand accent the
+// header renders (logo, active nav, focus rings) and the global
+// .btn-primary color in globals.css. Next 16 convention: a static
+// `viewport` export in the root layout (Next 9→14 moved themeColor out of
+// metadata; docs: 01-app/03-api-reference/04-functions/generate-viewport).
+export const viewport: Viewport = {
+  themeColor: '#2563eb',
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(

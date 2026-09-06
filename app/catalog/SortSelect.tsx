@@ -5,7 +5,9 @@ import { Suspense } from 'react';
 import { buildSortSearchParams } from '@/app/lib/filter-url';
 
 const SORT_OPTIONS = [
-  { value: 'newest', label: 'Спочатку нові' },
+  // Default ('newest') is honest about what it does: the SQL default branch
+  // puts in-stock rows first, then newest (see fetchCatalogProducts).
+  { value: 'newest', label: 'Спочатку в наявності' },
   { value: 'price_asc', label: 'Ціна ▲' },
   { value: 'price_desc', label: 'Ціна ▼' },
   { value: 'name_asc', label: 'Назва А–Я' },
