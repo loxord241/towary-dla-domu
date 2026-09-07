@@ -417,16 +417,16 @@ test('DU-DRIFT: du checks are omitted when no du input is provided (backward com
   assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
 });
 
-test('DU-DRIFT: real allowlist snapshot has 123 ids, 17 price-diff, expectedOrphans=25', () => {
-  assert.equal(DU_EXPECTED_ORPHANS, 25);
+test('DU-DRIFT: real allowlist snapshot has 288 ids, 21 price-diff, expectedOrphans=39', () => {
+  assert.equal(DU_EXPECTED_ORPHANS, 39);
   const all = new Set([...DU_REDIRECT_PAIRS.map((p) => p.duYc), ...DU_PRICE_DIFF_PAIRS.map((p) => p.duYc)]);
-  assert.equal(all.size, 123);
+  assert.equal(all.size, 288);
   // 2026-09-02 regeneration: 7290720_du drifted to equal prices and moved
   // from the price-diff list to the redirect list (105/17).
   // 2026-09-05 regeneration: net-new _du row 6381053_du found its base
   // 6381053 (same-price pair) and joined the redirect list (106/17).
-  assert.equal(DU_PRICE_DIFF_PAIRS.length, 17);
-  assert.equal(DU_REDIRECT_PAIRS.length, 106);
+  assert.equal(DU_PRICE_DIFF_PAIRS.length, 21);
+  assert.equal(DU_REDIRECT_PAIRS.length, 267);
 });
 
 test('DU-DRIFT: production script wires the generated allowlist with read-only selects', () => {

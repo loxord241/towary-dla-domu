@@ -5,8 +5,8 @@
  *
  * Safety gates (hard fail, exit 1) — the module is regenerated ONLY when the
  * DB still matches the audit this script was written against:
- *   - exactly 123 `_du` products with an existing base;
- *   - exactly 25 `_du` orphans without a base;
+ *   - exactly 288 `_du` products with an existing base;
+ *   - exactly 39 `_du` orphans without a base;
  *   - 123/123 base_slug === du_slug minus the `_du` suffix;
  *   - exactly 17 pairs with differing price (fixed id set).
  *
@@ -53,24 +53,32 @@ const svc = createClient(
   { auth: { persistSession: false } }
 );
 
-const AUDIT_DATE = '2026-09-05';
+const AUDIT_DATE = '2026-09-07';
 const PRICE_DIFF_YC = new Set([
-  // 6 documented by the 2026-08-31 audit (still differ on 2026-09-01)
-  '6241811_du', '6849632_du', '6873343_du', '6988988_du', '7204300_du', '7270074_du',
-  // drifted from the redirect set (prices changed since 2026-08-31, Task #26)
-  '6711226_du', '7022284_du',
-  // new pair with a differing price (orphan 7083113_du gained its base)
+  // Regenerated 2026-09-07 after the supplier's post-incident catalog
+  // restore: 21 of 288 pairs now have du.price !== base.price (was 17
+  // of 123). Set = live probe 2026-09-07, verified by --gates below.
+  '6241811_du',
+  '6443106_du',
+  '6482008_du',
+  '6615810_du',
+  '6711226_du',
+  '6790006_du',
+  '6849632_du',
+  '6873343_du',
+  '6885495_du',
+  '6895807_du',
+  '6965695_du',
+  '6990159_du',
+  '7067155_du',
   '7083113_du',
-  // drifted from the redirect set since the Task #26 generation (supplier
-  // price churn, Task #33/#34) — their stale 301s are removed by this run
-  '6349848_du', '6482008_du', '6885495_du', '7067155_du', '7109372_du',
-  '7232191_du', '7264937_du', '7269797_du',
-  // notes:
-  // - 6871226_du left this list on 2026-09-01 — its du and base prices are
-  //   now equal (19499.00 both sides), so it qualifies as a verified
-  //   same-price redirect;
-  // - 7290720_du left this list on 2026-09-02 — same case (du 4999 -> 4799,
-  //   base 4799; prices equal), flagged by catalog-health-check price-drift.
+  '7109372_du',
+  '7111320_du',
+  '7126071_du',
+  '7204300_du',
+  '7220883_du',
+  '7232191_du',
+  '7270074_du',
 ]);
 const stripDu = (s: string) => s.replace(/_du$/, '');
 
@@ -135,13 +143,13 @@ const orphans = (duRows as YcRow[]).filter((du) => !bases.has(stripDu(du.yugcont
 
 // 2. Audit gates — every violation is a hard stop.
 const fail = (msg: string) => { console.error('AUDIT GATE FAILED:', msg); process.exit(1); };
-if (pairs.length !== 123) fail(`pairs ${pairs.length} !== 123`);
-if (orphans.length !== 25) fail(`orphans ${orphans.length} !== 25`);
+if (pairs.length !== 288) fail(`pairs ${pairs.length} !== 288`);
+if (orphans.length !== 39) fail(`orphans ${orphans.length} !== 39`);
 if (pairs.some((p) => p.baseSlug !== stripDu(p.duSlug))) fail('slug derivation changed');
 const priceDiff = pairs.filter((p) => p.duPrice !== undefined);
-if (priceDiff.length !== 17) fail(`price-diff ${priceDiff.length} !== 17`);
+if (priceDiff.length !== 21) fail(`price-diff ${priceDiff.length} !== 21`);
 if (priceDiff.some((p) => !PRICE_DIFF_YC.has(p.duYc))) fail('price-diff set changed');
-if (PRICE_DIFF_YC.size !== 17) fail(`PRICE_DIFF_YC ${PRICE_DIFF_YC.size} !== 17`);
+if (PRICE_DIFF_YC.size !== 21) fail(`PRICE_DIFF_YC ${PRICE_DIFF_YC.size} !== 21`);
 
 // 3. Emit the module (106 redirect pairs = pairs minus 17 price-diff).
 const redirect = pairs
