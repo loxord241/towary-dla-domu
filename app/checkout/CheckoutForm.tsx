@@ -926,30 +926,43 @@ export default function CheckoutForm() {
                         </span>
                       </span>
                     </button>
-                    {/* Service buttons render ONLY under the expanded
-                        carrier, a step below its block. */}
-                    {selected && (
-                      <div
-                        id={`carrier-services-${c.value}`}
-                        className="mt-2 flex flex-wrap gap-2"
-                      >
-                        {CARRIER_SERVICE_TYPES[c.value].map((t) => (
-                          <button
-                            key={t.value}
-                            type="button"
-                            onClick={() => applyServiceType(t.value)}
-                            aria-pressed={deliveryType === t.value}
-                            className={`rounded-md border px-3 py-2 text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                              deliveryType === t.value
-                                ? 'border-blue-600 bg-blue-50 font-medium text-blue-700'
-                                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                            }`}
-                          >
-                            {t.label}
-                          </button>
-                        ))}
+                    {/* Service buttons render under the expanded carrier,
+                        a step below its block. The disclosure animates with
+                        the CSS grid-rows trick: the wrapper is always
+                        mounted and its single row interpolates 0fr <-> 1fr.
+                        `visibility` is transitioned too — per CSS
+                        transitions it stays visible for the whole collapse
+                        (flips to hidden at the end) and is visible from the
+                        start on expand — so collapsed buttons leave the tab
+                        order / a11y tree without JS measurement. */}
+                    <div
+                      id={`carrier-services-${c.value}`}
+                      className={`grid transition-[grid-template-rows,visibility] duration-200 ease-out motion-reduce:transition-none ${
+                        selected
+                          ? 'grid-rows-[1fr] visible'
+                          : 'grid-rows-[0fr] invisible'
+                      }`}
+                    >
+                      <div className="min-h-0 overflow-hidden">
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {CARRIER_SERVICE_TYPES[c.value].map((t) => (
+                            <button
+                              key={t.value}
+                              type="button"
+                              onClick={() => applyServiceType(t.value)}
+                              aria-pressed={deliveryType === t.value}
+                              className={`rounded-md border px-3 py-2 text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                                deliveryType === t.value
+                                  ? 'border-blue-600 bg-blue-50 font-medium text-blue-700'
+                                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                              }`}
+                            >
+                              {t.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 );
               })}

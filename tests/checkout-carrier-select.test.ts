@@ -12,6 +12,9 @@
  *     nova_poshta_{warehouse,locker,courier}, Ukrposhta — to
  *     ukrposhta_warehouse (sanitizeDelivery contract untouched);
  *   - sub-buttons render ONLY under the expanded carrier;
+ *   - the sub-row disclosure animates via the CSS grid-rows trick
+ *     (always-mounted wrapper, 0fr/1fr + visibility transition,
+ *     motion-reduce safe, collapsed buttons unfocusable);
  *   - a carrier switch/collapse resets the previous carrier's dependent
  *     state (deliveryType + city/office/street/address) — carriers can
  *     never mix in one delivery object.
@@ -80,12 +83,51 @@ test('CARRIER: Nova Post sub-buttons map exactly to warehouse/locker/courier', (
 
 test('CARRIER: service buttons render ONLY under the selected carrier, below it', () => {
   const btn = FORM.indexOf('aria-pressed={selected}'); // carrier button
-  const open = FORM.indexOf('{selected && (');
+  // 2026-09 animation rework: the sub-row wrapper is always mounted (CSS
+  // grid-rows disclosure). "Only under the selected carrier" is now the
+  // expanded/collapsed class pair on `#carrier-services-*`, not a
+  // conditional `{selected && (…)` render.
+  const wrapper = FORM.indexOf('grid-rows-[0fr] invisible');
+  const expanded = FORM.indexOf('grid-rows-[1fr] visible');
   const row = FORM.indexOf('CARRIER_SERVICE_TYPES[c.value].map');
-  assert.ok(btn !== -1 && open !== -1 && row !== -1);
-  assert.ok(btn < open && open < row, 'sub-row must be gated on the selected carrier');
+  assert.ok(
+    btn !== -1 && wrapper !== -1 && expanded !== -1 && row !== -1
+  );
+  // ternary order in the className: expanded branch is written first
+  assert.ok(
+    btn < expanded && expanded < wrapper && wrapper < row,
+    'sub-row must be gated on the selected carrier'
+  );
   // "немного ниже" the block: margin-top on the sub-row
   assert.match(FORM, /className="mt-2 flex flex-wrap gap-2"/);
+});
+
+// ------------------------------------------------------------------
+// Disclosure animation (grid-rows trick, no JS measurement)
+// ------------------------------------------------------------------
+
+test('CARRIER: sub-row disclosure animates via grid-rows, keyboard-safe when collapsed', () => {
+  // wrapper animates grid-template-rows AND visibility
+  assert.match(
+    FORM,
+    /transition-\[grid-template-rows,visibility\] duration-200 ease-out/,
+    'smooth open/close transition classes on the wrapper'
+  );
+  // project pattern: animations disabled for prefers-reduced-motion
+  const wrapperStart = FORM.indexOf(
+    'grid transition-[grid-template-rows,visibility]'
+  );
+  assert.notEqual(wrapperStart, -1, 'always-mounted wrapper must exist');
+  const wrapper = FORM.slice(
+    wrapperStart,
+    FORM.indexOf('<div className="min-h-0 overflow-hidden">')
+  );
+  assert.match(wrapper, /motion-reduce:transition-none/);
+  // collapsed: 0fr + visibility:hidden (out of tab order / a11y tree)
+  assert.match(wrapper, /selected\s*\?\s*'grid-rows-\[1fr\] visible'/);
+  assert.match(wrapper, /:\s*'grid-rows-\[0fr\] invisible'/);
+  // inner row clips content and may shrink to zero
+  assert.match(FORM, /<div className="min-h-0 overflow-hidden">/);
 });
 
 // ------------------------------------------------------------------
