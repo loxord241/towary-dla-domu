@@ -145,9 +145,13 @@ test('RATE-LIMIT: ukrposhta routes have their own 12/min rules', async () => {
 // Static CheckoutForm invariants (additive branch)
 // ------------------------------------------------------------------
 
-test('CHECKOUT: ukrposhta_warehouse is a delivery type with its own card', () => {
-  assert.match(FORM, /'ukrposhta_warehouse'/);
-  assert.match(FORM, /Укрпошта — Відділення/);
+test('CHECKOUT: ukrposhta_warehouse is reachable via its carrier block + service button', () => {
+  // 2026-09-08: the flat 4-card grid became 2 carrier blocks with
+  // per-carrier service-type buttons, so the combined «Укрпошта —
+  // Відділення» card label no longer exists as such — the carrier label
+  // and the service-type mapping now live in CARRIERS/CARRIER_SERVICE_TYPES.
+  assert.match(FORM, /value: 'ukrposhta', label: 'Укрпошта'/);
+  assert.match(FORM, /value: 'ukrposhta_warehouse', label: 'Відділення'/);
 });
 
 test('CHECKOUT: no ukrposhta courier mode anywhere in the form', () => {
@@ -178,8 +182,10 @@ test('CHECKOUT: UP delivery object mirrors the NP warehouse shape (ids only)', (
 });
 
 test('CHECKOUT: switching delivery type never lets carriers share dictionary state', () => {
+  // 2026-09-08: service types are now chosen inside an expanded carrier
+  // block (applyServiceType(t)), but the reset contract is unchanged.
   // NP divisions are fetched only for the two NP warehouse-ish types…
-  assert.match(FORM, /if \(settlement && isNpWarehouseType\(t\.value\)\) \{/);
+  assert.match(FORM, /if \(settlement && isNpWarehouseType\(t\)\) \{/);
   // …and the UP choice is reset on every type switch
   assert.match(FORM, /resetUkrposhtaState\(\)/);
   // the NP settlement click handler is guarded too

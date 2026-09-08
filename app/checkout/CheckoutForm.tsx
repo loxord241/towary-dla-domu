@@ -70,12 +70,32 @@ type DeliveryType =
   | 'nova_poshta_courier'
   | 'ukrposhta_warehouse';
 
-const DELIVERY_TYPES: { value: DeliveryType; label: string }[] = [
-  { value: 'nova_poshta_warehouse', label: 'Нова Пошта — Відділення' },
-  { value: 'nova_poshta_locker', label: 'Нова Пошта — Поштомат' },
-  { value: 'nova_poshta_courier', label: 'Нова Пошта — Кур’єр' },
-  { value: 'ukrposhta_warehouse', label: 'Укрпошта — Відділення' },
+// Two-step delivery choice (2026-09 redesign of the flat 4-card grid):
+// first a carrier block («Нова Пошта» / «Укрпошта»), then — revealed under
+// the chosen block — a row of that carrier's service types. The final
+// submitted value is still one of the 4 DeliveryType service_types
+// (sanitizeDelivery contract unchanged).
+type Carrier = 'nova_poshta' | 'ukrposhta';
+
+const CARRIERS: { value: Carrier; label: string }[] = [
+  { value: 'nova_poshta', label: 'Нова Пошта' },
+  { value: 'ukrposhta', label: 'Укрпошта' },
 ];
+
+// The ONLY place the carrier → service_type mapping lives. Keep in sync
+// with SERVICE_TYPES in app/lib/checkout-delivery.ts (Ukrposhta exposes
+// office delivery only — deliberately no courier branch).
+const CARRIER_SERVICE_TYPES: Record<
+  Carrier,
+  { value: DeliveryType; label: string }[]
+> = {
+  nova_poshta: [
+    { value: 'nova_poshta_warehouse', label: 'Відділення' },
+    { value: 'nova_poshta_locker', label: 'Поштомат' },
+    { value: 'nova_poshta_courier', label: 'Кур’єр' },
+  ],
+  ukrposhta: [{ value: 'ukrposhta_warehouse', label: 'Відділення' }],
+};
 
 // Only these two Nova Post types load NP divisions; the Ukrposhta branch
 // uses its own settlement/office state against the /ukrposhta/* routes.
@@ -204,6 +224,9 @@ export default function CheckoutForm() {
   const [notes, setNotes] = useState('');
 
   // --- Nova Post delivery choice (stage 2G) ---
+  // Step 1: the expanded carrier block ('' = none expanded). Step 2:
+  // deliveryType — the final service_type sent in shipping.delivery.
+  const [carrier, setCarrier] = useState<Carrier | ''>('');
   const [deliveryType, setDeliveryType] = useState<DeliveryType | ''>('');
   const [settlement, setSettlement] = useState<NpSettlement | null>(null);
   const [settlementQuery, setSettlementQuery] = useState('');
@@ -418,6 +441,82 @@ export default function CheckoutForm() {
     );
   };
 
+  /**
+   * Drops the service type plus every division/street/address choice of
+   * BOTH carriers (dictionaries never mix). The NP settlement survives:
+   * it belongs to the carrier, and switching service types inside Nova
+   * Post (Відділення → Кур’єр) should keep the picked city — exactly the
+   * behavior the old flat radio grid had.
+   */
+  const resetServiceChoice = () => {
+    setDeliveryType('');
+    setDivision(null);
+    setStreet(null);
+    setStreetQuery('');
+    setStreetResults([]);
+    setStreetOpen(false);
+    setBuilding('');
+    setFlat('');
+    setDivisions([]);
+    setDivisionsLoading(false);
+    // Drop in-flight divisions/streets responses for the discarded type.
+    divisionsRequestSeq.current += 1;
+    streetRequestSeq.current += 1;
+    // The carriers never share dictionary state: an NP settlement/division
+    // must never ride along in an UP order (and vice versa).
+    resetUkrposhtaState();
+    setDeliveryError(null);
+  };
+
+  /**
+   * Carrier-level reset: on top of resetServiceChoice() it also drops the
+   * NP city search state, so switching (or collapsing) a carrier can never
+   * leak the previous carrier's settlement/office/address into a new one.
+   */
+  const resetCarrierChoice = () => {
+    resetServiceChoice();
+    settlementRequestSeq.current += 1;
+    if (settlementDebounceRef.current) clearTimeout(settlementDebounceRef.current);
+    setSettlement(null);
+    setSettlementQuery('');
+    setSettlementResults([]);
+    setSettlementOpen(false);
+    setSettlementLoading(false);
+  };
+
+  /** Expands a carrier block; a second click on it collapses the row. */
+  const toggleCarrier = (next: Carrier) => {
+    // A carrier switch (and a collapse too) must discard the previous
+    // carrier's city/office/address state — never mix NP + UP choices.
+    resetCarrierChoice();
+    setCarrier(carrier === next ? '' : next);
+  };
+
+  /** Picks the final service type under the expanded carrier. */
+  const applyServiceType = (t: DeliveryType) => {
+    resetServiceChoice();
+    setDeliveryType(t);
+    // Warehouse-ish NP types need the division list for the picked city
+    // (the courier branch uses streets instead; UP has its own loaders).
+    if (settlement && isNpWarehouseType(t)) {
+      const seq = divisionsRequestSeq.current;
+      setDivisionsLoading(true);
+      fetchDivisionsApi(
+        settlement.id,
+        (items) => {
+          if (seq !== divisionsRequestSeq.current) return; // stale response
+          setDivisions(items);
+          setDivisionsLoading(false);
+        },
+        () => {
+          if (seq !== divisionsRequestSeq.current) return;
+          setDivisions([]);
+          setDivisionsLoading(false);
+        }
+      );
+    }
+  };
+
   /** Strict delivery object for shipping_info.delivery; null when incomplete. */
   const deliveryObject = (): Record<string, unknown> | null => {
     // Ukrposhta branch first: the NP gate below must not consume UP types.
@@ -525,11 +624,13 @@ export default function CheckoutForm() {
     const delivery = deliveryObject();
     if (!delivery) {
       setDeliveryError(
-        deliveryType === 'nova_poshta_courier'
-          ? 'Оберіть місто та вулицю і вкажіть будинок'
-          : deliveryType
-            ? 'Оберіть відділення/поштомат'
+        !deliveryType
+          ? carrier
+            ? 'Оберіть тип доставки'
             : 'Оберіть спосіб доставки'
+          : deliveryType === 'nova_poshta_courier'
+            ? 'Оберіть місто та вулицю і вкажіть будинок'
+            : 'Оберіть відділення/поштомат'
       );
       return;
     }
@@ -788,71 +889,76 @@ export default function CheckoutForm() {
               2. Доставка
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-              {DELIVERY_TYPES.map((t) => (
-                <label
-                  key={t.value}
-                  className={`cursor-pointer rounded-md border p-3 text-sm transition ${
-                    deliveryType === t.value
-                      ? 'border-blue-600 bg-blue-50 font-medium'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="deliveryType"
-                    value={t.value}
-                    checked={deliveryType === t.value}
-                    onChange={() => {
-                      setDeliveryType(t.value);
-                      setDivision(null);
-                      setStreet(null);
-                      setStreetQuery('');
-                      setStreetResults([]);
-                      setBuilding('');
-                      setFlat('');
-                      setDivisions([]);
-                      setDivisionsLoading(false);
-                      setDeliveryError(null);
-                      // The carriers never share dictionary state: an NP
-                      // settlement/division must never ride along in an
-                      // UP order (and vice versa).
-                      resetUkrposhtaState();
-                      // Drop in-flight divisions/streets responses for the
-                      // previous delivery type / list state.
-                      divisionsRequestSeq.current += 1;
-                      streetRequestSeq.current += 1;
-                      if (settlement && isNpWarehouseType(t.value)) {
-                        const seq = divisionsRequestSeq.current;
-                        setDivisionsLoading(true);
-                        fetchDivisionsApi(
-                          settlement.id,
-                          (items) => {
-                            if (seq !== divisionsRequestSeq.current) return; // stale response
-                            setDivisions(items);
-                            setDivisionsLoading(false);
-                          },
-                          () => {
-                            if (seq !== divisionsRequestSeq.current) return;
-                            setDivisions([]);
-                            setDivisionsLoading(false);
-                          }
-                        );
+            {/* Two carrier blocks; the chosen one reveals its service-type
+                buttons directly underneath. aria-pressed marks the visible
+                selection, aria-expanded the disclosure. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 items-start gap-2 mb-4">
+              {CARRIERS.map((c) => {
+                const selected = carrier === c.value;
+                return (
+                  <div
+                    key={c.value}
+                    className={`rounded-lg border p-3 transition-colors motion-reduce:transition-none ${
+                      selected
+                        ? 'border-blue-600 ring-1 ring-blue-600'
+                        : 'border-gray-300'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleCarrier(c.value)}
+                      aria-pressed={selected}
+                      aria-expanded={selected}
+                      aria-controls={
+                        selected ? `carrier-services-${c.value}` : undefined
                       }
-                      if (t.value === 'ukrposhta_warehouse' && upSettlement) {
-                        loadUkrposhtaOffices(upSettlement.id);
-                      }
-                    }}
-                    className="sr-only"
-                  />
-                  {t.label}
-                </label>
-              ))}
+                      className={`w-full rounded-md px-1 py-1 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                        selected ? 'text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      <span className="flex items-center justify-between">
+                        {c.label}
+                        <span
+                          aria-hidden="true"
+                          className="text-xs text-gray-400"
+                        >
+                          {selected ? '▴' : '▾'}
+                        </span>
+                      </span>
+                    </button>
+                    {/* Service buttons render ONLY under the expanded
+                        carrier, a step below its block. */}
+                    {selected && (
+                      <div
+                        id={`carrier-services-${c.value}`}
+                        className="mt-2 flex flex-wrap gap-2"
+                      >
+                        {CARRIER_SERVICE_TYPES[c.value].map((t) => (
+                          <button
+                            key={t.value}
+                            type="button"
+                            onClick={() => applyServiceType(t.value)}
+                            aria-pressed={deliveryType === t.value}
+                            className={`rounded-md border px-3 py-2 text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                              deliveryType === t.value
+                                ? 'border-blue-600 bg-blue-50 font-medium text-blue-700'
+                                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                            }`}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Settlement — NP dictionary id is the identifier; the text is display only.
-                Rendered only for Nova Post types; the Ukrposhta branch has its own city field. */}
-            {deliveryType !== 'ukrposhta_warehouse' && (
+                Rendered only once a Nova Post service type is chosen; the Ukrposhta
+                branch has its own city field. */}
+            {deliveryType !== '' && deliveryType !== 'ukrposhta_warehouse' && (
             <div className="relative mb-4">
               <label htmlFor="co-settlement" className="label">
                 Населений пункт *
