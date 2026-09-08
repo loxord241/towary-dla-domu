@@ -74,11 +74,15 @@ export default function AddToCartButton({
   }
 
   if (added) {
+    // added-in (globals.css): fade + 4px rise entry, ~200ms. No CLS: the
+    // wrapper's intrinsic height matches the replaced button (both the
+    // Link and the button are py-3 + font-semibold → 48px, the «Ще»
+    // button stretches inside the flex row).
     return (
-      <div className="flex gap-3">
+      <div className="added-in motion-reduce:animate-none flex gap-3">
         <Link
           href="/cart"
-          className="flex-1 text-center bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+          className="flex-1 text-center bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors motion-reduce:transition-none"
         >
           У кошику — перейти
         </Link>
@@ -165,7 +169,7 @@ export default function AddToCartButton({
           setAdded(true);
         }}
         title={productName}
-        className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Додати в кошик
       </button>

@@ -21,7 +21,12 @@ export default function FavoritesBadge() {
     >
       <HeartIcon filled className="h-5 w-5" />
       {count > 0 && (
-        <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+        /* key={count} remounts the bubble on every count change → restarts
+           the badge-pop keyframe (globals.css). Transform-only → CLS=0. */
+        <span
+          key={count}
+          className="badge-pop motion-reduce:animate-none absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
+        >
           {count}
         </span>
       )}
