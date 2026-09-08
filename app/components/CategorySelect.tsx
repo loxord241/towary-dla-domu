@@ -190,7 +190,7 @@ export default function CategorySelect({
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div className="dropdown-in motion-reduce:animate-none absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
           <div className="relative border-b border-gray-100 p-2">
             <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input

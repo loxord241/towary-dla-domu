@@ -149,3 +149,48 @@ test('CATEGORY-TREE: URL contract untouched — selection still emits slug only'
   const s = select();
   assert.match(s, /onChange\(option\.slug\)/);
 });
+
+// ---- dropdown entry animation (2026-09-08) ----
+// Audit candidate #5: the panel opened instantly while the chevron was
+// already animated. Entry is now a short opacity+translateY settle driven
+// by a globals.css keyframe class; EXIT stays instant (unmount).
+
+test('CATEGORY-SELECT: dropdown entry class + motion-reduce opt-out are pinned on the panel (2026-09-08)', () => {
+  const s = select();
+  assert.match(
+    s,
+    /className="dropdown-in[^"]*motion-reduce:animate-none[^"]*"/,
+    'dropdown panel must carry the globals.css entry class with a reduced-motion fallback'
+  );
+  // The class lives on the absolutely positioned panel (CLS=0 context),
+  // not on some inner wrapper.
+  assert.match(
+    s,
+    /<div className="dropdown-in[^"]*absolute z-20/,
+    'entry animation belongs to the absolute-positioned listbox panel'
+  );
+});
+
+test('CATEGORY-SELECT: dropdown-in keyframes are opacity/transform-only in globals.css (2026-09-08)', () => {
+  const css = src('app/globals.css');
+  const kf = css.match(/@keyframes dropdown-in \{[\s\S]*?\n  \}/);
+  assert.ok(kf, 'dropdown-in keyframes must exist in globals.css');
+  const body = kf[0];
+  assert.match(body, /opacity:\s*0/, 'entry starts transparent');
+  assert.match(body, /opacity:\s*1/, 'entry ends opaque');
+  assert.match(body, /translateY\(-4px\)/, 'entry settles downward from the trigger');
+  assert.match(body, /translateY\(0\)/);
+  // Layout-affecting properties are forbidden inside the keyframes: the
+  // panel is absolute (CLS=0) and the animation must not change that.
+  assert.doesNotMatch(
+    body,
+    /\b(?:width|height|max-height|min-height|margin|padding|top|left|right|bottom|inset|position|display|font-size|border)\s*:/,
+    'keyframes must stay opacity/transform-only (no layout properties)'
+  );
+  // The component class wires the keyframes with a short (~150-200ms) ease.
+  assert.match(
+    css,
+    /\.dropdown-in \{\s*animation:\s*dropdown-in\s+\d+ms\s+ease-out;\s*\}/,
+    '.dropdown-in must apply the keyframes with a short ease-out duration'
+  );
+});
