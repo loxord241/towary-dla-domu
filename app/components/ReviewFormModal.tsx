@@ -13,6 +13,14 @@ import {
  * and an optional display name (plus the hidden honeypot field). The server
  * puts the review into the pending queue; the success state promises
  * moderation explicitly — we never imply instant publication.
+ *
+ * Animation contract (parity with NavDrawer / CatalogFilters): on OPEN the
+ * overlay fades in (`opacity`, 200ms) while the panel fades + scales in
+ * (`opacity` + `scale`, 95%→100%, ~200ms) — pure CSS transitions, no layout
+ * impact, CLS 0. Exit stays instant (immediate unmount, same convention as
+ * the SiteHeader items). `prefers-reduced-motion` gets an instant show
+ * (`motion-reduce:transition-none`). Focus trap, scroll lock, dialog
+ * semantics and the honeypot are unaffected.
  */
 
 type Status = 'idle' | 'sending' | 'success' | 'error';
@@ -26,6 +34,9 @@ export default function ReviewFormModal({
   productId: string;
 }) {
   const [open, setOpen] = useState(false);
+  // `shown` drives the entry transition: the modal mounts hidden, then the
+  // double-rAF flip below starts the overlay fade + panel scale-in.
+  const [shown, setShown] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [text, setText] = useState('');
@@ -44,6 +55,9 @@ export default function ReviewFormModal({
 
   const onClose = useCallback(() => {
     setOpen(false);
+    // Reset so the NEXT open animates again; the current modal unmounts
+    // instantly (no exit choreography — see the animation contract above).
+    setShown(false);
     setStatus('idle');
     setErrorKind('generic');
     setRating(0);
@@ -84,6 +98,23 @@ export default function ReviewFormModal({
       previouslyFocused?.focus();
     };
   }, [open, onClose]);
+
+  // Entry flip: commit the hidden initial styles (overlay opacity-0, panel
+  // opacity-0 scale-95) first, then flip `shown` on the next frames so the
+  // CSS transition actually animates. State flips stay inside rAF (never
+  // synchronously in the effect body) per the project-wide react-hooks rule
+  // — same pattern as NavDrawer.
+  useEffect(() => {
+    if (!open) return;
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setShown(true));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [open]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,13 +159,21 @@ export default function ReviewFormModal({
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-          <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
+          <div
+            className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ease-out motion-reduce:transition-none ${
+              shown ? 'opacity-100' : 'pointer-events-none opacity-0'
+            }`}
+            onClick={onClose}
+            aria-hidden
+          />
           <div
             ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-label={label}
-            className="relative w-full max-w-md rounded-t-xl bg-white p-5 shadow-xl sm:rounded-xl"
+            className={`relative w-full max-w-md rounded-t-xl bg-white p-5 shadow-xl transition-[opacity,scale] duration-200 ease-out motion-reduce:transition-none sm:rounded-xl ${
+              shown ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+            }`}
           >
             <div className="mb-3 flex items-start justify-between gap-3">
               <h2 className="text-lg font-semibold text-gray-900">{label}</h2>

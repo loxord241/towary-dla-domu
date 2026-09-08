@@ -65,7 +65,7 @@ export default function ProductCard({
               sizes="(max-width: 640px) 92vw, (max-width: 768px) 45vw, 33vw"
               // object-contain: the WHOLE supplier photo must fit inside the
               // card (object-cover was cropping product photos).
-              className="h-48 w-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.03]"
+              className="h-48 w-full object-contain p-2 transition-transform duration-300 motion-reduce:transition-none group-hover:scale-[1.03]"
             />
           ) : (
             <div className="flex h-48 w-full items-center justify-center border-b border-gray-100">
@@ -80,7 +80,7 @@ export default function ProductCard({
         </div>
 
         <div className="flex flex-1 flex-col p-4">
-          <h3 className="mb-1 line-clamp-2 font-semibold text-gray-900 group-hover:text-blue-700">
+          <h3 className="mb-1 line-clamp-2 font-semibold text-gray-900 transition-colors motion-reduce:transition-none group-hover:text-blue-700">
             {product.name}
           </h3>
           {product.brand && (

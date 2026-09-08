@@ -192,7 +192,7 @@ export default async function Home() {
                     idx === 4 ? 'col-span-2 sm:col-span-1' : ''
                   }`}
                 >
-                  <h3 className="font-semibold text-gray-900 group-hover:text-blue-700">
+                  <h3 className="font-semibold text-gray-900 transition-colors motion-reduce:transition-none group-hover:text-blue-700">
                     {category.name}
                   </h3>
                   {/* Always visible: touch devices have no hover — the
