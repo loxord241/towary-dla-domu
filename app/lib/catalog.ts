@@ -50,7 +50,16 @@ const { unstable_cache } = (await import('next/cache').then(
 //    personalized or rate-limited surfaces.
 // ---------------------------------------------------------------------------
 
-export const CATALOG_DICTIONARY_TTL_SECONDS = 120;
+/**
+ * Dictionaries (categories/brands) change only via manual supplier syncs,
+ * never organically — a 1h Data Cache TTL is safe and cuts the #2 egress
+ * stream ~50x vs the original 120s (egress audit №2, 2026-09-08, owner GO).
+ * Staleness contract: a category/brand created or renamed by a sync (or in
+ * the admin) appears in storefront filters within at most one hour;
+ * deployments reset the data cache, so a sync followed by a deploy is
+ * always immediate.
+ */
+export const CATALOG_DICTIONARY_TTL_SECONDS = 3600;
 export const CATALOG_PUBLIC_READ_TTL_SECONDS = 60;
 
 /** Shared tag so a future importer hook can revalidateTag() targeted. */
