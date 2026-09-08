@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Brand, Category } from '@/app/lib/catalog';
 import { buildFilterUrl } from '@/app/lib/filter-url';
 import CategorySelect from '@/app/components/CategorySelect';
+import FilterCombobox, {
+  type ComboboxOption,
+} from '@/app/components/FilterCombobox';
 import { ChevronDownIcon, FilterIcon, XIcon } from '../components/icons';
 
 /**
@@ -30,6 +33,12 @@ import { ChevronDownIcon, FilterIcon, XIcon } from '../components/icons';
  * search stays the page-level «Скинути всі» chip (href="/catalog").
  * A min>max price range is a guaranteed empty result: it shows an inline
  * hint and apply skips the navigation (the mobile sheet stays open).
+ *
+ * Audit 2026-09-08: the brand filter is the shared FilterCombobox — the
+ * same searchable combobox panel as the categories. The old native select
+ * element rendered a huge unsearchable list and a full-screen system
+ * picker on phones. Draft/URL contract unchanged (brand slug → ?brand=);
+ * no new data reads (brands/categories stay server-fetched props).
  */
 
 /** Must cover the longest element transition (panel: 280ms). */
@@ -124,6 +133,17 @@ export default function CatalogFilters({
     Number.isFinite(maxNum) &&
     minNum > maxNum;
 
+  // Flat alphabetical brand list for the combobox. The DB already returns
+  // name asc, but its collation is not uk-aware — re-sort client-side
+  // (props in memory, zero extra reads) so the order is deterministic.
+  const brandOptions = useMemo<ComboboxOption[]>(
+    () =>
+      [...brands]
+        .sort((a, b) => a.name.localeCompare(b.name, 'uk'))
+        .map((b) => ({ value: b.slug, label: b.name })),
+    [brands]
+  );
+
   const applyFilters = () => {
     if (priceRangeInvalid) return;
     router.push(
@@ -185,19 +205,16 @@ export default function CatalogFilters({
       {brands.length === 0 ? (
         <p className="text-sm text-gray-500">Бренди відсутні</p>
       ) : (
-        <select
+        <FilterCombobox
+          idPrefix="brand"
+          label="Бренд"
+          listLabel="Бренди"
+          allLabel="Всі бренди"
+          searchPlaceholder="Пошук брендів..."
+          options={brandOptions}
           value={brand}
-          onChange={(e) => setBrand(e.target.value)}
-          aria-label="Бренд"
-          className="input"
-        >
-          <option value="">Всі бренди</option>
-          {brands.map((b) => (
-            <option key={b.id} value={b.slug}>
-              {b.name}
-            </option>
-          ))}
-        </select>
+          onChange={setBrand}
+        />
       )}
     </div>
   );

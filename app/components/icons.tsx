@@ -121,6 +121,15 @@ export function MenuIcon({ className }: IconProps) {
   );
 }
 
+/** Selection check mark (FilterCombobox selected row). */
+export function CheckIcon({ className }: IconProps) {
+  return (
+    <svg {...base(className)}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
 export function XIcon({ className }: IconProps) {
   return (
     <svg {...base(className)}>
