@@ -6,10 +6,12 @@
  *
  *   {
  *     serviceType:    'nova_poshta_warehouse' | 'nova_poshta_locker'
- *                   | 'nova_poshta_courier',
- *     settlementId:   integer >= 1   (GET /settlements id — NP locator),
+ *                   | 'nova_poshta_courier' | 'ukrposhta_warehouse',
+ *     settlementId:   integer >= 1   (GET /settlements id — NP locator;
+ *                                    Ukrposhta Address Classifier CITY_ID),
  *     settlementName: display string,
- *     divisionId?:    integer >= 1   (warehouse / locker only),
+ *     divisionId?:    integer >= 1   (warehouse / locker only; NP divisionId
+ *                                    or UP post office ID),
  *     divisionName?:  display string,
  *     streetId?:      integer >= 1   (courier, optional street id),
  *     streetName?:    courier, required,
@@ -34,7 +36,8 @@
 export type CheckoutDeliveryServiceType =
   | 'nova_poshta_warehouse'
   | 'nova_poshta_locker'
-  | 'nova_poshta_courier';
+  | 'nova_poshta_courier'
+  | 'ukrposhta_warehouse';
 
 export interface CheckoutDelivery {
   serviceType: CheckoutDeliveryServiceType;
@@ -57,6 +60,9 @@ const SERVICE_TYPES: readonly string[] = [
   'nova_poshta_warehouse',
   'nova_poshta_locker',
   'nova_poshta_courier',
+  // Ukrposhta office delivery: same object shape as an NP warehouse row
+  // (settlement + division). Deliberately NO ukrposhta_courier.
+  'ukrposhta_warehouse',
 ];
 
 const ALLOWED_KEYS: readonly string[] = [

@@ -10,6 +10,7 @@ import {
   type CartPreviewLine,
 } from '@/app/lib/cart-preview';
 import { normalizeUaPhoneDigits, toE164Ua } from '@/app/lib/phone';
+import { formatPrice } from '@/app/lib/format';
 import { ANALYTICS_EVENTS } from '@/app/lib/analytics';
 import { track } from '@vercel/analytics';
 
@@ -42,16 +43,44 @@ interface NpStreet {
   settlementId: number;
 }
 
+// --- Ukrposhta Address Classifier shapes (/api/delivery/ukrposhta/*) ---
+interface UpUaSettlement {
+  id: number;
+  name: string;
+  shortType: string | null;
+  districtName: string | null;
+  regionName: string | null;
+  katottg: string | null;
+  koatuu: string | null;
+}
+
+interface UpUaOffice {
+  id: number;
+  shortName: string | null;
+  longName: string | null;
+  postIndex: string | null;
+  address: string | null;
+  phone: string | null;
+  typeAcronym: string | null;
+}
+
 type DeliveryType =
   | 'nova_poshta_warehouse'
   | 'nova_poshta_locker'
-  | 'nova_poshta_courier';
+  | 'nova_poshta_courier'
+  | 'ukrposhta_warehouse';
 
 const DELIVERY_TYPES: { value: DeliveryType; label: string }[] = [
   { value: 'nova_poshta_warehouse', label: 'Нова Пошта — Відділення' },
   { value: 'nova_poshta_locker', label: 'Нова Пошта — Поштомат' },
   { value: 'nova_poshta_courier', label: 'Нова Пошта — Кур’єр' },
+  { value: 'ukrposhta_warehouse', label: 'Укрпошта — Відділення' },
 ];
+
+// Only these two Nova Post types load NP divisions; the Ukrposhta branch
+// uses its own settlement/office state against the /ukrposhta/* routes.
+const isNpWarehouseType = (t: DeliveryType): boolean =>
+  t === 'nova_poshta_warehouse' || t === 'nova_poshta_locker';
 
 // The live /divisions divisionCategory value for parcel lockers is
 // "Postomat" (live-verified 2026-08-28); branches are PostBranch /
@@ -120,6 +149,45 @@ async function searchStreetsApi(
   }
 }
 
+// Same loader pattern for the Ukrposhta branch: server-side proxy against
+// the open Address Classifier; integer CITY_ID / office ID from a list
+// click are the only valid choices (free text is never a chosen value).
+async function searchUkrposhtaSettlementsApi(
+  q: string,
+  onData: (items: UpUaSettlement[]) => void,
+  onError: () => void
+) {
+  try {
+    const res = await fetch(
+      `/api/delivery/ukrposhta/settlements?q=${encodeURIComponent(q)}`,
+      { signal: AbortSignal.timeout(12_000) }
+    );
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error('search failed');
+    onData((data?.items as UpUaSettlement[]) ?? []);
+  } catch {
+    onError();
+  }
+}
+
+async function fetchUkrposhtaOfficesApi(
+  cityId: number,
+  onData: (items: UpUaOffice[]) => void,
+  onError: () => void
+) {
+  try {
+    const res = await fetch(
+      `/api/delivery/ukrposhta/offices?cityId=${cityId}`,
+      { signal: AbortSignal.timeout(12_000) }
+    );
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error('offices failed');
+    onData((data?.items as UpUaOffice[]) ?? []);
+  } catch {
+    onError();
+  }
+}
+
 export default function CheckoutForm() {
   const router = useRouter();
   const { items, hydrated, clearCart, removeItem } = useCart();
@@ -170,11 +238,31 @@ export default function CheckoutForm() {
   const divisionsRequestSeq = useRef(0);
   const streetRequestSeq = useRef(0);
 
+  // --- Ukrposhta delivery choice — mirrors the NP state machinery ---
+  // Separate state (not shared with NP): the providers have different
+  // dictionary shapes and endpoints, and a switch of delivery type must
+  // never let an NP settlement/division ride along in an UP order (or
+  // vice versa).
+  const [upSettlement, setUpSettlement] = useState<UpUaSettlement | null>(null);
+  const [upSettlementQuery, setUpSettlementQuery] = useState('');
+  const [upSettlementResults, setUpSettlementResults] = useState<UpUaSettlement[]>([]);
+  const [upSettlementOpen, setUpSettlementOpen] = useState(false);
+  const [upSettlementLoading, setUpSettlementLoading] = useState(false);
+  const [upOffices, setUpOffices] = useState<UpUaOffice[]>([]);
+  // "Loaded and empty" is distinct from "loading" — the honest «Немає
+  // доступних варіантів» branch renders only after a finished fetch.
+  const [upOfficesLoading, setUpOfficesLoading] = useState(false);
+  const [upOffice, setUpOffice] = useState<UpUaOffice | null>(null);
+  const upSettlementDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const upSettlementRequestSeq = useRef(0);
+  const upOfficesRequestSeq = useRef(0);
+
   // Drop pending debounce timers when the form unmounts.
   useEffect(() => {
     return () => {
       if (settlementDebounceRef.current) clearTimeout(settlementDebounceRef.current);
       if (streetDebounceRef.current) clearTimeout(streetDebounceRef.current);
+      if (upSettlementDebounceRef.current) clearTimeout(upSettlementDebounceRef.current);
     };
   }, []);
 
@@ -295,8 +383,60 @@ export default function CheckoutForm() {
         ? divisions.filter((d) => !isLockerCategory(d.category))
         : [];
 
+  /** Drops every pending/selected Ukrposhta choice (stale guards bumped). */
+  const resetUkrposhtaState = () => {
+    setUpSettlement(null);
+    setUpSettlementQuery('');
+    setUpSettlementResults([]);
+    setUpSettlementOpen(false);
+    setUpSettlementLoading(false);
+    setUpOffices([]);
+    setUpOfficesLoading(false);
+    setUpOffice(null);
+    upSettlementRequestSeq.current += 1;
+    upOfficesRequestSeq.current += 1;
+    if (upSettlementDebounceRef.current) clearTimeout(upSettlementDebounceRef.current);
+  };
+
+  /** Loads Ukrposhta offices for the chosen city (stale-response guarded). */
+  const loadUkrposhtaOffices = (cityId: number) => {
+    upOfficesRequestSeq.current += 1;
+    const seq = upOfficesRequestSeq.current;
+    setUpOfficesLoading(true);
+    fetchUkrposhtaOfficesApi(
+      cityId,
+      (items) => {
+        if (seq !== upOfficesRequestSeq.current) return; // stale response
+        setUpOffices(items);
+        setUpOfficesLoading(false);
+      },
+      () => {
+        if (seq !== upOfficesRequestSeq.current) return;
+        setUpOffices([]);
+        setUpOfficesLoading(false);
+      }
+    );
+  };
+
   /** Strict delivery object for shipping_info.delivery; null when incomplete. */
   const deliveryObject = (): Record<string, unknown> | null => {
+    // Ukrposhta branch first: the NP gate below must not consume UP types.
+    if (deliveryType === 'ukrposhta_warehouse') {
+      if (!upSettlement || !upOffice) return null;
+      const tail = [upOffice.postIndex, upOffice.address]
+        .filter(Boolean)
+        .join(', ');
+      return {
+        serviceType: deliveryType,
+        settlementId: upSettlement.id,
+        settlementName: upSettlement.name,
+        divisionId: upOffice.id,
+        divisionName:
+          [upOffice.shortName ?? upOffice.longName, tail]
+            .filter(Boolean)
+            .join(', ') || upOffice.shortName || upOffice.longName || '',
+      };
+    }
     if (!deliveryType || !settlement) return null;
     if (deliveryType === 'nova_poshta_courier') {
       if (!street || building.trim().length === 0) return null;
@@ -323,6 +463,14 @@ export default function CheckoutForm() {
   };
 
   const displayAddress = (): string => {
+    if (deliveryType === 'ukrposhta_warehouse') {
+      if (!upSettlement || !upOffice) return '';
+      const tail = [upOffice.postIndex, upOffice.address].filter(Boolean).join(', ');
+      return (
+        [upOffice.shortName ?? upOffice.longName, tail].filter(Boolean).join(', ') ||
+        upSettlement.name
+      );
+    }
     if (!deliveryType || !settlement) return '';
     if (deliveryType === 'nova_poshta_courier') {
       if (!street || !building.trim()) return '';
@@ -637,10 +785,10 @@ export default function CheckoutForm() {
 
           <div className="pt-2 border-t border-gray-100 mt-2">
             <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-400">
-              2. Доставка (Нова Пошта)
+              2. Доставка
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
               {DELIVERY_TYPES.map((t) => (
                 <label
                   key={t.value}
@@ -666,11 +814,15 @@ export default function CheckoutForm() {
                       setDivisions([]);
                       setDivisionsLoading(false);
                       setDeliveryError(null);
+                      // The carriers never share dictionary state: an NP
+                      // settlement/division must never ride along in an
+                      // UP order (and vice versa).
+                      resetUkrposhtaState();
                       // Drop in-flight divisions/streets responses for the
                       // previous delivery type / list state.
                       divisionsRequestSeq.current += 1;
                       streetRequestSeq.current += 1;
-                      if (settlement && t.value !== 'nova_poshta_courier') {
+                      if (settlement && isNpWarehouseType(t.value)) {
                         const seq = divisionsRequestSeq.current;
                         setDivisionsLoading(true);
                         fetchDivisionsApi(
@@ -687,6 +839,9 @@ export default function CheckoutForm() {
                           }
                         );
                       }
+                      if (t.value === 'ukrposhta_warehouse' && upSettlement) {
+                        loadUkrposhtaOffices(upSettlement.id);
+                      }
                     }}
                     className="sr-only"
                   />
@@ -695,7 +850,9 @@ export default function CheckoutForm() {
               ))}
             </div>
 
-            {/* Settlement — NP dictionary id is the identifier; the text is display only */}
+            {/* Settlement — NP dictionary id is the identifier; the text is display only.
+                Rendered only for Nova Post types; the Ukrposhta branch has its own city field. */}
+            {deliveryType !== 'ukrposhta_warehouse' && (
             <div className="relative mb-4">
               <label htmlFor="co-settlement" className="label">
                 Населений пункт *
@@ -789,7 +946,7 @@ export default function CheckoutForm() {
                             setFlat('');
                             divisionsRequestSeq.current += 1;
                             streetRequestSeq.current += 1;
-                             if (deliveryType && deliveryType !== 'nova_poshta_courier') {
+                             if (deliveryType && isNpWarehouseType(deliveryType)) {
                                const seq = divisionsRequestSeq.current;
                                setDivisionsLoading(true);
                                fetchDivisionsApi(
@@ -825,6 +982,7 @@ export default function CheckoutForm() {
                 )
               )}
             </div>
+            )}
 
             {/* Branch / parcel locker */}
             {(deliveryType === 'nova_poshta_warehouse' ||
@@ -974,6 +1132,155 @@ export default function CheckoutForm() {
               </div>
             )}
 
+            {/* Ukrposhta — Відділення: city autocomplete + office select
+                against the open Address Classifier proxy routes. */}
+            {deliveryType === 'ukrposhta_warehouse' && (
+              <>
+                <div className="relative mb-4">
+                  <label htmlFor="co-up-settlement" className="label">
+                    Населений пункт *
+                  </label>
+                  <input
+                    id="co-up-settlement"
+                    type="text"
+                    autoComplete="off"
+                    maxLength={100}
+                    placeholder="Почніть вводити назву міста…"
+                    value={
+                      upSettlement && upSettlementQuery === upSettlement.name
+                        ? upSettlement.name
+                        : upSettlementQuery
+                    }
+                    onChange={(e) => {
+                      const q = e.target.value;
+                      setUpSettlementQuery(q);
+                      setUpSettlement(null);
+                      setUpOffice(null);
+                      setUpOffices([]);
+                      setUpOfficesLoading(false);
+                      setUpSettlementOpen(true);
+                      if (upSettlementDebounceRef.current) clearTimeout(upSettlementDebounceRef.current);
+                      if (q.trim().length >= 2) {
+                        setUpSettlementLoading(true);
+                        const seq = ++upSettlementRequestSeq.current;
+                        upSettlementDebounceRef.current = setTimeout(() => {
+                          searchUkrposhtaSettlementsApi(
+                            q.trim(),
+                            (found) => {
+                              if (seq !== upSettlementRequestSeq.current) return; // stale response
+                              setUpSettlementResults(found);
+                              setUpSettlementOpen(true);
+                              setUpSettlementLoading(false);
+                            },
+                            () => {
+                              if (seq !== upSettlementRequestSeq.current) return; // stale response
+                              setUpSettlementResults([]);
+                              setUpSettlementLoading(false);
+                            }
+                          );
+                        }, 300);
+                      } else {
+                        // Query invalidated (too short): bump the sequence so
+                        // any in-flight response is dropped, reset the list.
+                        upSettlementRequestSeq.current += 1;
+                        setUpSettlementLoading(false);
+                        setUpSettlementResults([]);
+                      }
+                    }}
+                    className={inputClass}
+                  />
+                  {upSettlementOpen && !upSettlement && upSettlementQuery.trim().length >= 2 && (
+                    upSettlementLoading ? (
+                      <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-400 shadow-lg" role="status">
+                        Шукаємо…
+                      </p>
+                    ) : upSettlementResults.length > 0 ? (
+                      <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                        {upSettlementResults.map((s) => (
+                          <li key={s.id}>
+                            <button
+                              type="button"
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
+                              onClick={() => {
+                                // Selection is final: drop any in-flight
+                                // search response so it can't re-open the
+                                // dropdown, and drop any in-flight office
+                                // list for the previous city.
+                                upSettlementRequestSeq.current += 1;
+                                if (upSettlementDebounceRef.current) clearTimeout(upSettlementDebounceRef.current);
+                                setUpSettlement(s);
+                                setUpSettlementQuery(s.name);
+                                setUpSettlementOpen(false);
+                                setUpSettlementResults([]);
+                                setUpSettlementLoading(false);
+                                // The office belongs to the chosen city:
+                                // keep a previously picked office of the old
+                                // city from riding along in the order.
+                                setUpOffice(null);
+                                loadUkrposhtaOffices(s.id);
+                              }}
+                            >
+                              <span className="block">{s.name}</span>
+                              {(s.regionName || s.districtName) && (
+                                <span className="block text-xs text-gray-400">
+                                  {[s.regionName, s.districtName].filter(Boolean).join(', ')}
+                                </span>
+                              )}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-400 shadow-lg">
+                        Нічого не знайдено — спробуйте іншу назву
+                      </p>
+                    )
+                  )}
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="co-up-office" className="label">
+                    Відділення *
+                  </label>
+                  {upSettlement ? (
+                    upOfficesLoading ? (
+                      <p className="text-sm text-gray-400" role="status">
+                        Завантажуємо варіанти…
+                      </p>
+                    ) : upOffices.length > 0 ? (
+                      <select
+                        id="co-up-office"
+                        value={upOffice ? String(upOffice.id) : ''}
+                        onChange={(e) => {
+                          const o = upOffices.find(
+                            (x) => String(x.id) === e.target.value
+                          );
+                          setUpOffice(o ?? null);
+                          setDeliveryError(null);
+                        }}
+                        className={inputClass}
+                      >
+                        <option value="">— оберіть відділення —</option>
+                        {upOffices.map((o) => (
+                          <option key={o.id} value={String(o.id)}>
+                            {[o.shortName ?? o.longName, [o.postIndex, o.address].filter(Boolean).join(', ')]
+                              .filter(Boolean)
+                              .join(', ')}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="text-sm text-gray-400">
+                        Немає доступних відділень у цьому місті
+                      </p>
+                    )
+                  ) : (
+                    <p className="text-sm text-gray-400">спочатку оберіть населений пункт</p>
+                  )}
+                </div>
+              </>
+            )}
+
             {deliveryError && <p className="field-error">{deliveryError}</p>}
           </div>
 
@@ -992,7 +1299,8 @@ export default function CheckoutForm() {
           </div>
 
           <p className="text-xs text-gray-400">
-            Після відправки з вами зв’яжеться менеджер для підтвердження та оплати.
+            Після оформлення замовлення ви зможете одразу сплатити його онлайн
+            через LiqPay.
           </p>
 
           <button
@@ -1080,7 +1388,10 @@ export default function CheckoutForm() {
                       <span className="text-xs text-gray-400">{item.quantity} шт</span>
                     </span>
                      <span className="whitespace-nowrap font-medium">
-                       {((preview?.unitPrice ?? 0) * item.quantity).toFixed(2)} {preview?.currency ?? currency}
+                       {formatPrice(
+                         (preview?.unitPrice ?? 0) * item.quantity,
+                         preview?.currency ?? currency
+                       )}
                      </span>
                   </li>
                 ))}
@@ -1090,9 +1401,12 @@ export default function CheckoutForm() {
                    <dt>Товари</dt>
                    <dd>
                      {subtotalByCurrency.size <= 1
-                       ? `${[...subtotalByCurrency.values()][0]?.toFixed(2) ?? '0.00'} ${currency}`
+                       ? formatPrice(
+                           [...subtotalByCurrency.values()][0] ?? 0,
+                           currency
+                         )
                        : [...subtotalByCurrency.entries()]
-                           .map(([cur, sum]) => `${sum.toFixed(2)} ${cur}`)
+                           .map(([cur, sum]) => formatPrice(sum, cur))
                            .join(' + ')}
                    </dd>
                  </div>
@@ -1104,9 +1418,12 @@ export default function CheckoutForm() {
                    <dt>До сплати</dt>
                    <dd>
                      {subtotalByCurrency.size <= 1
-                       ? `${[...subtotalByCurrency.values()][0]?.toFixed(2) ?? '0.00'} ${currency}`
+                       ? formatPrice(
+                           [...subtotalByCurrency.values()][0] ?? 0,
+                           currency
+                         )
                        : [...subtotalByCurrency.entries()]
-                           .map(([cur, sum]) => `${sum.toFixed(2)} ${cur}`)
+                           .map(([cur, sum]) => formatPrice(sum, cur))
                            .join(' + ')}
                    </dd>
                  </div>

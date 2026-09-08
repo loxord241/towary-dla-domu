@@ -132,6 +132,9 @@ export const RATE_RULES = {
     { max: 3, windowMs: 60_000 },
     { max: 10, windowMs: 60 * 60_000 },
   ],
+  // review READS (GET /api/reviews pagination): generous, abuse-only
+  // ceiling — a real user pages through a handful of pages per PDP visit.
+  reviewsGet: [{ max: 60, windowMs: 60_000 }],
   // read-only catalog preview: generous, abuse-only ceiling
   cartPreview: [{ max: 120, windowMs: 60_000 }],
   // Yugcontract preview is admin-only, but every run downloads the FULL
@@ -151,6 +154,12 @@ export const RATE_RULES = {
   novaPoshtaDivisions: [{ max: 90, windowMs: 60_000 }],
   novaPoshtaStreets: [{ max: 90, windowMs: 60_000 }],
   novaPoshtaDeliveryCost: [{ max: 12, windowMs: 60_000 }],
+  // Ukrposhta proxies: the provider publishes NO rate limits and the
+  // classifier is slower/heavier than Nova Post (a per-city office list
+  // is ~250-580KB) — conservative ceilings well below the Nova Post ones.
+  ukrposhtaSettlements: [{ max: 12, windowMs: 60_000 }],
+  ukrposhtaOffices: [{ max: 12, windowMs: 60_000 }],
+  ukrposhtaDeliveryCost: [{ max: 12, windowMs: 60_000 }],
   // admin login (server action): brute-force protection. Same shape as the
   // `lookup` pair-guessing ceiling: a per-IP burst plus an hourly ceiling.
   // IP comes from headers() in the server action (same proxy-set XFF the

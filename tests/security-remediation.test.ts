@@ -101,7 +101,10 @@ test('migrations are sequentially numbered with no gaps above 030', () => {
     assert.ok(prev !== undefined && curr !== undefined);
     assert.equal(curr, prev + 1, `gap between ${prev} and ${curr}`);
   }
-  assert.equal(nums[nums.length - 1], 36);
+  // Pinned to the latest migration: 037 (brand cleanup), 038 (ukrposhta
+  // shipments) and 039 (store_announcements grant revoke) ship together
+  // in the same commit batch.
+  assert.equal(nums[nums.length - 1], 39);
 });
 
 const m032 = readFileSync(
