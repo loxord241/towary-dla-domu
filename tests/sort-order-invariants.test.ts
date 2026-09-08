@@ -15,7 +15,10 @@ test('SORT-ORDER: fetchActiveCategories does not use created_at as competing ord
     'export async function fetchActiveBrands'
   );
   assert.match(fn, /\.order\('sort_order', \{ ascending: true \}\)/);
-  assert.doesNotMatch(fn, /created_at/);
+  // Intent: no created_at as a competing ORDER. The egress projection
+  // (2026-09-08) legitimately lists created_at as a plain SELECT column,
+  // so only an .order('created_at'…) usage is a violation.
+  assert.doesNotMatch(fn, /\.order\('created_at'/);
 });
 
 test('SORT-ORDER: admin CATEGORY_SORTS default has no created_at tiebreak', () => {

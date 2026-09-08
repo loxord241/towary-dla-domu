@@ -459,7 +459,12 @@ test('RANK: match set wider than the scan cap keeps plain recency order', async 
   assert.equal(dataCall.offset, 0);
   assert.equal(dataCall.limit, 12);
   // newest bulk row first — the exact-match row (oldest ts) must NOT lead
-  assert.equal(page.products[0]?.id, 'bulk-0999');
+  // (index derived from the cap constant: the last generated row is
+  // replaced by the exact-match row, so the newest survivor is cap-1)
+  assert.equal(
+    page.products[0]?.id,
+    `bulk-${String(SEARCH_RANK_SCAN_LIMIT - 1).padStart(4, '0')}`
+  );
   assert.notEqual(page.products[0]?.id, 'bulk-exact');
 });
 

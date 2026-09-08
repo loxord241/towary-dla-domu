@@ -949,13 +949,19 @@ export function identifyAppliedSearch(
 
 /**
  * Hard cap on rows scanned for relevance ranking. The ranked data query
- * fetches up to this many matched rows in ONE request (PostgREST caps a
- * single response at 1000 rows anyway), ranks them and slices the page in
- * JS. Searches matching more rows than the cap keep the plain SQL ordering
- * (deterministic created_at desc, id desc) instead of ranking a truncated
- * set — at that width the match quality is nearly uniform anyway.
+ * fetches up to this many matched rows in ONE request, ranks them and
+ * slices the page in JS. Searches matching more rows than the cap keep the
+ * plain SQL ordering (in-stock first, then created_at desc, id desc)
+ * instead of ranking a truncated set — at that width the match quality is
+ * nearly uniform anyway.
+ *
+ * 300, not 1000 (2026-09-08, owner decision «б»): the ranked scan is the
+ * only storefront read that fetches `description` (~1.3 KB/row live) —
+ * purely to score the description-hit tier. 300 rows cap that scan at
+ * ~390 KB per search instead of ~1.3 MB (egress audit item №3); wider
+ * match sets keep full server-side pagination with no ranked window.
  */
-export const SEARCH_RANK_SCAN_LIMIT = 1000;
+export const SEARCH_RANK_SCAN_LIMIT = 300;
 
 /** Fields the ranking reads; a superset of the catalog card projection. */
 export interface SearchRankable {
@@ -1704,7 +1710,16 @@ const fetchActiveCategoriesStore = cachePublicRead(
   async (): Promise<Category[]> => {
     const { data, error } = await supabase
       .from('categories')
-      .select('*')
+      // Explicit projection (egress audit №2, 2026-09-08, owner GO): the
+      // dictionary is read on every catalog/PDP/drawer render, and `*`
+      // dragged along `description`/`image` (~2-3 GB/ Month at live traffic)
+      // that no storefront consumer reads — admin's categories API keeps its
+      // own full SELECT. `updated_at` stays: app/sitemap.ts uses it as
+      // lastModified. Field list mirrors the Category type minus
+      // description/image, so the type stays truthful.
+      .select(
+        'id, parent_id, name, slug, sort_order, is_active, created_at, updated_at'
+      )
       .eq('is_active', true)
       // Commercial order is sort_order alone; the deterministic id fallback
       // keeps ties stable. No row-timestamp tiebreak here: the uk-name
