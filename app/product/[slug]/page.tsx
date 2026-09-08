@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { cache } from 'react'
 import type { Metadata } from 'next'
-import { fetchProductBySlug, fetchPublishedReviews, fetchReviewSummary, fetchRelatedProducts, type ReviewsPageData, type ReviewSummary, type Product } from '@/app/lib/catalog'
+import { fetchProductBySlug, fetchPublishedReviews, fetchReviewSummary, fetchRelatedProducts, fetchActiveCategories, type ReviewsPageData, type ReviewSummary, type CatalogCardProduct } from '@/app/lib/catalog'
 import { getPublicImageUrls, getMainPublicImageUrl } from '@/app/lib/supabase-storage'
 import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
@@ -113,12 +113,18 @@ export default async function ProductPage({
   // parallel wave instead of reviews-first-then-related waterfall. Each part
   // keeps its own degradation contract: a reviews failure degrades to an
   // empty state, a related failure hides the block — neither breaks the page.
-  const [reviewsSettled, relatedSettled] = await Promise.allSettled([
+  const [reviewsSettled, relatedSettled, categoriesSettled] = await Promise.allSettled([
     Promise.all([
       fetchReviewSummary(product.id),
       fetchPublishedReviews(product.id, 1),
     ]),
     fetchRelatedProducts(product),
+    // Footer category links (2026-09 audit): the PDP footer used to fall
+    // back to a single «Каталог» link because no categories were passed.
+    // The page is a server component and the dictionary read is React
+    // cache()d + unstable_cache(120s), so this is a pure pass-through; a
+    // read failure degrades to the old fallback footer (empty array).
+    fetchActiveCategories(),
   ]);
 
   // Reviews are supplementary content: until migration 015 is applied (or
@@ -136,12 +142,17 @@ export default async function ProductPage({
 
   // Related products are supplementary content: a failed read degrades to a
   // hidden block instead of failing the whole page (same contract as reviews).
-  let relatedProducts: Product[] = []
+  let relatedProducts: CatalogCardProduct[] = []
   if (relatedSettled.status === 'fulfilled') {
     relatedProducts = relatedSettled.value
   } else {
     console.error('related products unavailable:', relatedSettled.reason)
   }
+
+  // Footer categories: a failed read degrades to the single-link fallback
+  // (SiteFooter renders the fallback for an empty array).
+  const footerCategories =
+    categoriesSettled.status === 'fulfilled' ? categoriesSettled.value : []
 
   const galleryUrls = getPublicImageUrls(product.images)
 
@@ -171,6 +182,12 @@ export default async function ProductPage({
 
       <main className="container mx-auto flex-1 px-4 py-8">
         <nav aria-label="Навігація" className="mb-5 text-sm text-gray-500">
+          {/* Головна → Каталог → [Категорія] → Товар — the visible trail now
+              mirrors the BreadcrumbList JSON-LD emitted below. */}
+          <Link href="/" className="hover:text-blue-600 hover:underline">
+            Головна
+          </Link>
+          <span className="mx-1.5 text-gray-300">/</span>
           <Link href="/catalog" className="hover:text-blue-600 hover:underline">Каталог</Link>
           {product.category && (
             <>
@@ -192,8 +209,11 @@ export default async function ProductPage({
         <ProductJsonLd data={breadcrumbJsonLd} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-          {/* Product Images */}
-          <div className="bg-white rounded-lg shadow p-4">
+          {/* Product Images — md:self-start stops the card from stretching to
+              the (taller) details column's height, which left an empty tail
+              under the fixed h-96 gallery on desktop; the single-column
+              mobile layout is unaffected (2026-09 audit). */}
+          <div className="bg-white rounded-lg shadow p-4 md:self-start">
             <ProductGallery
               images={product.images.flatMap((image, idx) => {
                 // galleryUrls is index-preserving (null for unresolvable
@@ -387,7 +407,7 @@ export default async function ProductPage({
       {/* Invisible recorder: client-only effect, renders nothing. */}
       <RecentlyViewedTracker productId={product.id} />
 
-      <SiteFooter />
+      <SiteFooter categories={footerCategories} />
     </div>
   )
 }

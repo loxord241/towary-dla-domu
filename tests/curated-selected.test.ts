@@ -93,7 +93,9 @@ test('HOME: «Обрані товари» section is fed by fetchSelectedProduct
 test('HOME: «Популярні товари» section still reads fetchPopularProducts (is_featured)', () => {
   const page = src(HOME);
   assert.match(page, /Популярні товари/);
-  assert.match(page, /fetchPopularProducts\(\)/);
+  // Extended 2026-09: the call passes the shown selected ids as excludeIds —
+  // «Обрані» products no longer duplicate into «Популярні».
+  assert.match(page, /fetchPopularProducts\(/);
 });
 
 test('ADMIN API: POST and PUT persist is_selected independent of featured logic', () => {

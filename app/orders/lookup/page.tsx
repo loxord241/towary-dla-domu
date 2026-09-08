@@ -40,7 +40,7 @@ export default function OrderLookupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
         <h1 className="text-2xl font-bold mb-2 text-center">Статус замовлення</h1>
         <p className="text-gray-600 mb-6 text-sm text-center">
@@ -106,6 +106,6 @@ export default function OrderLookupPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

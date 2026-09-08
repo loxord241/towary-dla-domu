@@ -272,6 +272,42 @@ test('sanitizeSearchTerm: real corrupted-name case now yields a usable keyword t
   assert.ok(out.includes('TRAMONTINA'));
 });
 
+// ---- Typographic apostrophes (2026-09 audit) ------------------------------
+// Ukrainian product names mix the typographic apostrophes ’ (U+2019) / ‘
+// (U+2018) with the ASCII apostrophe ' (U+0027). ILIKE treats them as
+// different characters, so `м’ясорубка` (U+2019 in the query) found nothing
+// when the DB name used U+0027. Both are normalized to U+0027 BEFORE the
+// special-char replacement, and the ASCII apostrophe stays a safe literal.
+
+test('sanitizeSearchTerm: U+2019 (’) normalizes to ASCII apostrophe', () => {
+  assert.equal(sanitizeSearchTerm('м\u2019ясорубка'), "м'ясорубка");
+});
+
+test('sanitizeSearchTerm: U+2018 (‘) normalizes to ASCII apostrophe', () => {
+  assert.equal(sanitizeSearchTerm('м\u2018ясорубка'), "м'ясорубка");
+});
+
+test('sanitizeSearchTerm: typographic and ASCII apostrophe queries converge', () => {
+  // The whole point: whichever apostrophe the user types, the sanitized
+  // token (and therefore the ILIKE pattern) is identical.
+  const ascii = sanitizeSearchTerm("м'ясорубка");
+  assert.equal(sanitizeSearchTerm('м\u2019ясорубка'), ascii);
+  assert.equal(sanitizeSearchTerm('м\u2018ясорубка'), ascii);
+});
+
+test('sanitizeSearchTerm: apostrophe normalization reaches buildSearchConditions', () => {
+  const typographic = buildSearchConditions('м\u2019ясорубка') as string[];
+  const ascii = buildSearchConditions("м'ясорубка") as string[];
+  assert.deepEqual(typographic, ascii);
+  assert.match(typographic[0] ?? '', /name\.ilike\.%м'ясорубка%/);
+});
+
+test('sanitizeSearchTerm: apostrophe normalization fires next to reserved chars', () => {
+  // U+2019 must be normalized BEFORE the special-char replacement so a
+  // mixed query still collapses to one clean token, not a split pattern.
+  assert.equal(sanitizeSearchTerm('м\u2019ясорубка, TEFAL'), "м'ясорубка TEFAL");
+});
+
 // ---- Task #40: typo fallback candidate generation (relaxSearchTerm) --------
 //
 // Contract: each retry trims the LAST character of the currently-longest

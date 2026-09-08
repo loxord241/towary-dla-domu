@@ -4,6 +4,7 @@ import {
   fetchSelectedProducts,
   fetchPopularProducts,
   fetchActiveCategories,
+  POPULAR_LIMIT,
 } from '@/app/lib/catalog'
 import { getMainPublicImageUrl } from '@/app/lib/supabase-storage'
 import SiteHeader from '@/app/components/SiteHeader'
@@ -35,17 +36,25 @@ export const metadata: Metadata = {
 export const revalidate = 60
 
 export default async function Home() {
-  const [selectedProducts, popularProducts, categories] = await Promise.all([
+  const [selectedProducts, categories] = await Promise.all([
     fetchSelectedProducts(),
-    fetchPopularProducts(),
     fetchActiveCategories(),
   ])
+  // Popular runs AFTER the selected read: the already-shown «Обрані» ids
+  // are excluded so a product flagged both is_selected and is_featured no
+  // longer renders on both home shelves (2026-09 audit). The popular read
+  // backfills to the limit from the next featured candidates in SQL.
+  const popularProducts = await fetchPopularProducts(
+    POPULAR_LIMIT,
+    selectedProducts.map((product) => product.id)
+  )
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <SiteHeader />
       <Announcements />
 
+      <main className="flex-1">
       {/* Hero */}
       <section className="bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-600 text-white">
         <div className="container mx-auto px-4 py-16 text-center md:py-20">
@@ -110,7 +119,7 @@ export default async function Home() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
             {selectedProducts.map((product, idx) => (
               <ProductCard
                 key={product.id}
@@ -205,6 +214,7 @@ export default async function Home() {
           Ріг, вул. Гетьмана Івана Мазепи, 87А.
         </p>
       </section>
+      </main>
 
       <div className="mt-auto">
         <SiteFooter categories={categories} />

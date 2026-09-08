@@ -25,7 +25,8 @@ export default function InfoPage({
   return (
     <div className="min-h-screen bg-gray-50">
       <SiteHeader />
-      <div className="container mx-auto px-4 py-10">
+      {/* Exactly-one-main landmark (2026-09 audit): shared by every info page. */}
+      <main className="container mx-auto px-4 py-10">
         <div className="card max-w-2xl mx-auto p-8">
           <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 mb-2">
             {title}
@@ -51,7 +52,7 @@ export default function InfoPage({
             </div>
           )}
         </div>
-      </div>
+      </main>
       <SiteFooter />
     </div>
   );

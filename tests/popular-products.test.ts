@@ -67,6 +67,33 @@ test('POPULAR: limit is clamped to a safe constant (bounded DB read)', () => {
   assert.match(fn, /POPULAR_(MAX_|)LIMIT|Math\.min\(/, 'needs an explicit cap');
 });
 
+test('POPULAR: excludeIds filters IN SQL, before the bounded window (dedupe + backfill)', () => {
+  // 2026-09 audit: a product flagged both is_selected and is_featured used
+  // to render on BOTH home shelves. The exclusion must happen via a PostgREST
+  // not-in filter applied BEFORE .range(), so the window still yields `take`
+  // rows (backfilled from the next featured candidates) — and it must stay a
+  // SINGLE bounded read.
+  const lib = src('app/lib/catalog.ts');
+  const fn = lib.slice(
+    lib.indexOf('async function fetchPopularProducts'),
+    lib.indexOf('export async function fetchActiveCategories')
+  );
+  assert.match(fn, /excludeIds:\s*string\[\]\s*=\s*\[\]/, 'excludeIds parameter exists');
+  assert.match(fn, /if \(excludeIds\.length > 0\)/, 'no-op when nothing to exclude');
+  assert.match(fn, /\.not\('id', 'in', `\(\$\{excludeIds\.join\(','\)\}\)`\)/,
+    'PostgREST not-in list over the ids');
+  // exclusion must be chained BEFORE the terminal range window
+  const notIdx = fn.indexOf(".not('id', 'in'");
+  const rangeIdx = fn.indexOf('.range(');
+  assert.ok(notIdx !== -1 && rangeIdx !== -1 && notIdx < rangeIdx,
+    'not-in filter precedes the window');
+  assert.equal((fn.match(/\.range\(/g) ?? []).length, 1,
+    'still exactly one bounded window');
+  // featured-first contract untouched
+  assert.match(fn, /\.eq\('is_featured', true\)/);
+  assert.doesNotMatch(fn, /\.neq\('is_featured'|\bremaining\b/);
+});
+
 test('POPULAR: errors propagate honestly (no silent empty shelf)', () => {
   const lib = src('app/lib/catalog.ts');
   const fn = lib.slice(
@@ -81,7 +108,10 @@ test('POPULAR: errors propagate honestly (no silent empty shelf)', () => {
 test('POPULAR: home renders «Популярні товари» using ProductCard grid', () => {
   const page = src('app/(home)/page.tsx');
   assert.match(page, /Популярні товари/);
-  assert.match(page, /fetchPopularProducts\(\)/);
+  // Extended 2026-09: the call now passes (limit, excludeIds) so products
+  // already shown on the «Обрані» shelf are deduped out of «Популярні» —
+  // the featured-first contract itself is unchanged.
+  assert.match(page, /fetchPopularProducts\(/);
   assert.match(page, /<ProductCard\b/, 'must use the existing ProductCard');
   assert.match(page, /grid grid-cols-2|grid-cols-1 sm:grid-cols-2 lg:grid-cols-4/,
     'grid must be responsive mobile→desktop');

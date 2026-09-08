@@ -1,3 +1,5 @@
+import { formatPrice } from '@/app/lib/format';
+
 interface OrderDetails {
   order_number: string;
   status: string;
@@ -41,11 +43,12 @@ export default function OrderDetailsCard({
                   <span className="text-gray-500"> · {item.variant_name}</span>
                 )}
                 <span className="block break-words text-xs text-gray-400 [overflow-wrap:anywhere]">
-                  SKU: {item.sku} · {item.quantity} шт × {item.price}
+                  SKU: {item.sku} · {item.quantity} шт ×{' '}
+                  {formatPrice(item.price, order.currency)}
                 </span>
               </td>
               <td className="py-2 text-right whitespace-nowrap">
-                {item.total} {order.currency}
+                {formatPrice(item.total, order.currency)}
               </td>
             </tr>
           ))}
@@ -55,15 +58,15 @@ export default function OrderDetailsCard({
       <dl className="space-y-1 text-sm border-t border-gray-200 pt-3">
         <div className="flex justify-between text-gray-600">
           <dt>Товари</dt>
-          <dd>{order.subtotal} {order.currency}</dd>
+          <dd>{formatPrice(order.subtotal, order.currency)}</dd>
         </div>
         <div className="flex justify-between text-gray-600">
           <dt>Доставка</dt>
-          <dd>{order.shipping_total} {order.currency}</dd>
+          <dd>{formatPrice(order.shipping_total, order.currency)}</dd>
         </div>
         <div className="flex justify-between font-bold text-base pt-1">
           <dt>Разом до сплати</dt>
-          <dd>{order.total_amount} {order.currency}</dd>
+          <dd>{formatPrice(order.total_amount, order.currency)}</dd>
         </div>
       </dl>
 

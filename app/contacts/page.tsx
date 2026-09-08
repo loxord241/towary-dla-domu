@@ -17,17 +17,18 @@ export default function Page() {
           {`Магазин Товари для дому ФОП  Денисенко Світлана Юріївна ІПН: 3161712967`}
         </p>
         <p>
-          {`Адреса магазину: м. Кривий Ріг, вул.Гетьмана Івана Мазепи,буд. 87А`}
+          {`Адреса магазину: м. Кривий Ріг, вул. Гетьмана Івана Мазепи, буд. 87А`}
         </p>
         <p>{`Час роботи: 7:30–16:00`}</p>
         <p>
           {`Телефон: `}
-          {/* Displayed number stays verbatim; tel: makes it one-tap callable. */}
+          {/* Displayed number matches the header format; tel: makes it
+              one-tap callable. */}
           <a
             href="tel:+380973144221"
             className="font-medium text-blue-600 hover:text-blue-800 hover:underline underline-offset-2"
           >
-            {`+38 (097)314 42 21`}
+            {`+380 (97) 314 42 21`}
           </a>
         </p>
         <p>

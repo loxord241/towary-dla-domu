@@ -28,10 +28,46 @@ test('SPEC helper: normal array passes through in supplier order', () => {
     { name: 'Тип', value: 'Відпарювач' },
     { name: 'Потужність, Вт', value: '1300.00' },
   ]);
+  // Extended 2026-09: purely numeric values lose their trailing zeros for
+  // display («1300.00» → «1300») — the stored JSONB is never mutated.
   assert.deepEqual(rows, [
     { name: 'Тип', value: 'Відпарювач' },
-    { name: 'Потужність, Вт', value: '1300.00' },
+    { name: 'Потужність, Вт', value: '1300' },
   ]);
+});
+
+test('SPEC helper: trailing zeros trimmed on purely numeric values only', () => {
+  const rows = sanitizeSpecRows([
+    { name: 'A', value: '1000.00' }, // whole-number fraction → drop the dot too
+    { name: 'B', value: '0.80' }, // fraction zeros → «0.8», separator KEPT
+    { name: 'C', value: '10.50' }, // → «10.5»
+    { name: 'D', value: '0.00' }, // → «0»
+    { name: 'E', value: '1000' }, // integer: already clean, untouched
+    { name: 'F', value: '1,7' }, // comma separator is NOT our business
+    { name: 'G', value: '20 м²' }, // units → verbatim
+    { name: 'H', value: '10x15' }, // non-numeric → verbatim
+    { name: 'I', value: '-1.50' }, // sign → verbatim (not purely numeric)
+    { name: 'J', value: '100.00.00' }, // not a number → verbatim
+    { name: 'K', value: '.50' }, // no leading digits → verbatim
+    { name: 'L', value: '0' }, // single digit integer → verbatim
+  ]);
+  assert.deepEqual(
+    rows.map((r) => r.value),
+    [
+      '1000',
+      '0.8',
+      '10.5',
+      '0',
+      '1000',
+      '1,7',
+      '20 м²',
+      '10x15',
+      '-1.50',
+      '100.00.00',
+      '.50',
+      '0',
+    ]
+  );
 });
 
 test('SPEC helper: absent/empty/invalid → empty array (block hidden)', () => {

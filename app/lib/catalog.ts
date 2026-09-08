@@ -358,12 +358,20 @@ async function fetchProducts(options: {
   *   '*'  PostgREST treats it as a %-synonym in ilike patterns (`q=***`
   *        matched everything);
   *   '_'  ILIKE single-char wildcard — same silent broadening class.
-  * Dots, hyphens, apostrophes, colons and any letters/digits are proven
-  * safe literals and deliberately preserved. Interior whitespace runs are
-  * collapsed so adjacent specials don't leave unmatched gaps.
-  */
+ * Dots, hyphens, apostrophes, colons and any letters/digits are proven
+ * safe literals and deliberately preserved. Interior whitespace runs are
+ * collapsed so adjacent specials don't leave unmatched gaps.
+ *
+ * Typographic apostrophes (2026-09 audit): ’ (U+2019) and ‘ (U+2018) are
+ * normalized to the ASCII apostrophe BEFORE the special-char replacement —
+ * Ukrainian names commonly mix both spellings («м’ясорубка» vs «м'ясорубка»),
+ * and ILIKE treats them as different characters, so a U+2019 query could not
+ * find products stored with U+0027 (and vice versa). The apostrophe itself
+ * stays a safe literal in the pattern.
+ */
 export function sanitizeSearchTerm(term: string): string {
   return term
+    .replace(/[\u2018\u2019]/g, "'")
     .replace(/[%,()"*_]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -941,6 +949,9 @@ export interface SearchRankable {
   sku?: string | null;
   yugcontract_id?: string | null;
   created_at?: string | null;
+  /** Secondary sort tier (2026-09 audit): CATALOG_CARD_SELECT already
+      projects this column; optional so pure scoring callers can omit it. */
+  availability_status?: string | null;
 }
 
 /**
@@ -992,10 +1003,17 @@ export function searchRelevanceScore(
 }
 
 /**
- * PURE: order matched rows by relevance (best first). Ties keep the SQL base
- * order — created_at desc, then id desc, the exact deterministic order the
- * un-ranked view used — so pagination never overlaps. Returns a new array;
- * the input is not mutated.
+ * PURE: order matched rows by relevance (best first). Ties resolve with a
+ * deterministic secondary key — availability (in-stock first, the 2026-09
+ * default-sort contract the «Спочатку в наявності» label promises), then
+ * created_at desc, then id desc — so page windows of the ranked path stay
+ * reproducible (the ranked scan reads the COMPLETE match set whenever it
+ * runs: total ≤ cap, so determinism, not SQL-order congruence, is what keeps
+ * pagination stable). The availability tier is deliberately SECONDARY:
+ * relevance is never overridden (an exact out-of-stock match still beats a
+ * weak in-stock one); only equally-relevant rows are reordered so in-stock
+ * matches surface first. Rows without the field count as available
+ * (backward compatible). Returns a new array; the input is not mutated.
  */
 export function rankSearchResults<T extends SearchRankable>(
   rows: T[],
@@ -1007,6 +1025,12 @@ export function rankSearchResults<T extends SearchRankable>(
   }));
   scored.sort((a, b) => {
     if (a.score !== b.score) return b.score - a.score;
+    // 'in_stock' < 'out_of_stock' lexicographically, but the tier must be
+    // explicit: ONLY 'out_of_stock' demotes, anything else (in_stock,
+    // limited, unknown, absent) stays in the available tier.
+    const aOut = a.row.availability_status === 'out_of_stock' ? 1 : 0;
+    const bOut = b.row.availability_status === 'out_of_stock' ? 1 : 0;
+    if (aOut !== bOut) return aOut - bOut; // available first
     const aAt = a.row.created_at ?? '';
     const bAt = b.row.created_at ?? '';
     if (aAt !== bAt) return aAt < bAt ? 1 : -1; // newer first
@@ -1592,7 +1616,7 @@ export async function fetchSelectedProducts(): Promise<Product[]> {
 }
 
 /** Hard cap for the home «Популярні товари» shelf — bounded by design. */
-const POPULAR_LIMIT = 8;
+export const POPULAR_LIMIT = 8;
 
 /**
  * Products for the home «Популярні товари» section — PURELY admin-curated.
@@ -1605,20 +1629,36 @@ const POPULAR_LIMIT = 8;
  * deterministic order win and DATA IS NEVER CHANGED AUTOMATICALLY (the
  * max-8 business rule lives in the admin API/UI, see featured-limit.ts).
  * Zero featured ⇒ the home page skips the section entirely.
+ *
+ * `excludeIds` (2026-09 audit): ids ALREADY shown on the «Обрані» shelf —
+ * a product flagged both is_selected and is_featured used to render on BOTH
+ * home sections. The exclusion happens IN SQL: PostgREST applies the range
+ * window AFTER the not-in filter, so the bounded read still returns exactly
+ * `take` rows (backfilled from the next featured candidates in the same
+ * deterministic order). UUIDs contain no commas, so the parenthesised
+ * in-list is safe; the featured-first contract is untouched.
  */
 export async function fetchPopularProducts(
-  limit: number = POPULAR_LIMIT
+  limit: number = POPULAR_LIMIT,
+  excludeIds: string[] = []
 ): Promise<Product[]> {
   const take = Math.min(Math.max(limit, 1), POPULAR_LIMIT);
 
-  // Single bounded window (rows 0..take-1, at most 8) — never a paged scan.
-  const { data, error } = await supabase
+  let query = supabase
     .from('products')
     .select(PRODUCT_SELECT)
     .eq('is_active', true)
     .eq('is_featured', true)
     .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
+    .order('id', { ascending: false });
+
+  if (excludeIds.length > 0) {
+    query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+  }
+
+  // Single bounded window (rows 0..take-1 of the excluded set) — never a
+  // paged scan.
+  const { data, error } = await query
     .range(0, take - 1)
     .returns<ProductJoinedRow[]>();
 
@@ -1803,9 +1843,12 @@ const fetchProductBySlugStore = cachePublicRead(
 // «Схожі товари» (related products) — read-only discovery shelf for the
 // product page. Up to THREE bounded reads (one window ≤limit each), merged
 // by the PURE collectRelated: same category first, then same brand, then
-// newest. Eligibility mirrors the storefront exactly (PRODUCT_SELECT ⇒
-// is_active + ≥1 photo); the current product is excluded in SQL. No RPC,
-// no new tables (spec A 2026-08-26).
+// newest. Eligibility mirrors the storefront exactly (the product_images!inner
+// join ⇒ is_active + ≥1 photo — identical in PRODUCT_SELECT and the card
+// projection); the current product is excluded in SQL. No RPC, no new tables
+// (spec A 2026-08-26). Egress fix (2026-09-08): the stages select
+// CATALOG_CARD_SELECT (~2.3 KB/product) instead of PRODUCT_SELECT
+// (~9.8 KB/product) — ProductCard reads only card fields.
 // ---------------------------------------------------------------------------
 
 /** Hard cap for «Схожі товари» — bounded by design. */
@@ -1817,12 +1860,12 @@ export const RELATED_LIMIT = 8;
  * created_at desc → id desc. Dedupes by id, skips currentId, caps at `cap`.
  */
 export function collectRelated(
-  groups: Product[][],
+  groups: CatalogCardProduct[][],
   currentId: string,
   cap: number = RELATED_LIMIT
-): Product[] {
+): CatalogCardProduct[] {
   const seen = new Set<string>([currentId]);
-  const collected: Product[] = [];
+  const collected: CatalogCardProduct[] = [];
   for (const group of groups) {
     for (const row of group) {
       if (collected.length >= cap) return collected;
@@ -1843,18 +1886,29 @@ async function fetchRelatedStage(
   filter: RelatedStageFilter,
   currentId: string,
   limit: number
-): Promise<Product[]> {
+): Promise<CatalogCardProduct[]> {
+  // Card projection only (egress fix 2026-09-08): the shelf renders
+  // ProductCard, which reads nothing beyond CATALOG_CARD_SELECT, and the
+  // product_images!inner eligibility join is identical to the one on the
+  // full-row projection (~2.3 KB vs ~9.8 KB per product). The select string
+  // is computed up front and .select() is called exactly once (same
+  // single-select shape as fetchCatalogProducts — a second .select()
+  // replaces the param at runtime but no longer type-checks against the
+  // typed card projection).
   let query = supabase
     .from('products')
-    .select(PRODUCT_SELECT)
+    .select(
+      CATALOG_CARD_SELECT +
+        (filter?.kind === 'category'
+          ? ', pc:product_categories!inner(category_id)'
+          : '')
+    )
     .eq('is_active', true)
     .neq('id', currentId);
   if (filter?.kind === 'category') {
     // Same junction + subtree semantics as fetchCatalogProducts. The count
     // embed uses product_id (see JUNCTION_COUNT_SELECT note).
-    query = query
-      .select(PRODUCT_SELECT + ', pc:product_categories!inner(category_id)')
-      .in('pc.category_id', filter.subtreeIds);
+    query = query.in('pc.category_id', filter.subtreeIds);
   } else if (filter?.kind === 'brand') {
     query = query.eq('brand_id', filter.id);
   }
@@ -1862,17 +1916,17 @@ async function fetchRelatedStage(
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .range(0, limit - 1)
-    .returns<ProductJoinedRow[]>();
+    .returns<CatalogCardRow[]>();
   if (error) {
     throw new Error(`Failed to load related products: ${error.message}`);
   }
-  return (data ?? []).map(normalizeProduct);
+  return (data ?? []).map(normalizeCatalogCard);
 }
 
 export async function fetchRelatedProducts(
   product: Pick<Product, 'id' | 'category_id' | 'brand_id'>,
   limit: number = RELATED_LIMIT
-): Promise<Product[]> {
+): Promise<CatalogCardProduct[]> {
   return fetchRelatedProductsStore(
     // Key-shaping: only the fields that determine the result go into the
     // unstable_cache invocation key (JSON.stringify(args)) — a full Product
@@ -1892,7 +1946,7 @@ const fetchRelatedProductsStore = cachePublicRead(
   async (
     identity: Pick<Product, 'id' | 'category_id' | 'brand_id'>,
     limit: number
-  ): Promise<Product[]> => {
+  ): Promise<CatalogCardProduct[]> => {
     const sameCategoryStage = identity.category_id
       ? fetchActiveCategories().then((activeCategories) =>
           fetchRelatedStage(
@@ -1904,12 +1958,12 @@ const fetchRelatedProductsStore = cachePublicRead(
             limit
           )
         )
-      : Promise.resolve<Product[]>([]);
+      : Promise.resolve<CatalogCardProduct[]>([]);
     const [sameCategory, sameBrand, newest] = await Promise.all([
       sameCategoryStage,
       identity.brand_id
         ? fetchRelatedStage({ kind: 'brand', id: identity.brand_id }, identity.id, limit)
-        : Promise.resolve<Product[]>([]),
+        : Promise.resolve<CatalogCardProduct[]>([]),
       fetchRelatedStage(null, identity.id, limit),
     ]);
     return collectRelated([sameCategory, sameBrand, newest], identity.id, limit);

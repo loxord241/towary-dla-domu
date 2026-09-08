@@ -119,6 +119,13 @@ export async function POST(request: Request) {
  * never serve reads; page clamping (maxPage) happens inside the read.
  */
 export async function GET(request: Request) {
+  // The read path is public and used by PDP pagination, so it gets its own
+  // (much more generous) ceiling — without it, the endpoint had NO limiter
+  // at all and could be hammered independently of the POST budget
+  // (security audit 2026-09).
+  const limited = enforceRateLimit(request, 'reviewsGet');
+  if (limited) return limited;
+
   const url = new URL(request.url);
   const productId = url.searchParams.get('product_id') ?? '';
   if (!isUuid(productId)) {

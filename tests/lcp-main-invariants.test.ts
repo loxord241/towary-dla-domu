@@ -36,6 +36,29 @@ test('LANDMARK: product page renders exactly one <main>', () => {
   assert.equal((page.match(/<main/g) ?? []).length, 1);
 });
 
+// Extended 2026-09 (landmark audit): every primary storefront page now wraps
+// its content in exactly one <main>. cart/favorites each have TWO return
+// branches (loading skeleton + loaded view) — every branch renders exactly
+// one <main>, so the rendered page always has exactly one; the source counts
+// below pin that contract per branch.
+test('LANDMARK: home, checkout, lookup, info pages render exactly one <main>', () => {
+  for (const file of [
+    'app/(home)/page.tsx',
+    'app/checkout/page.tsx',
+    'app/orders/lookup/page.tsx',
+    'app/components/InfoPage.tsx',
+  ]) {
+    assert.equal((readFileSync(file, 'utf8').match(/<main/g) ?? []).length, 1, file);
+  }
+});
+
+test('LANDMARK: cart/favorites pin one <main> per return branch', () => {
+  for (const file of ['app/cart/page.tsx', 'app/favorites/page.tsx']) {
+    // exactly two branches (skeleton + loaded), each opening exactly one main
+    assert.equal((readFileSync(file, 'utf8').match(/<main/g) ?? []).length, 2, file);
+  }
+});
+
 test('LANDMARK: SiteHeader/SiteFooter render no <main>', () => {
   for (const file of ['app/components/SiteHeader.tsx', 'app/components/SiteFooter.tsx']) {
     assert.equal((readFileSync(file, 'utf8').match(/<main/g) ?? []).length, 0, file);

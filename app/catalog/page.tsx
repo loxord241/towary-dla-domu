@@ -36,6 +36,7 @@ import CatalogFilters from './CatalogFilters'
 import SortSelect from './SortSelect'
 import { CATALOG_PAGE_SIZE } from '@/app/lib/catalog'
 import { buildPageWindow } from '@/app/lib/pagination'
+import { formatPrice } from '@/app/lib/format'
 import ProductCard from '@/app/components/ProductCard'
 import EmptyState from '@/app/components/EmptyState'
 import { SearchIcon } from '@/app/components/icons'
@@ -86,8 +87,12 @@ function buildActiveChips(
       removeKey: 'brand',
     });
   }
-  if (filters.minPrice !== undefined) chips.push({ label: `від ${filters.minPrice} ₴`, removeKey: 'min' });
-  if (filters.maxPrice !== undefined) chips.push({ label: `до ${filters.maxPrice} ₴`, removeKey: 'max' });
+  // Price chips speak the same UAH dialect as the «Ціна (UAH)» filter label
+  // and formatPrice everywhere else — the raw ₴ symbol is gone from the UI.
+  if (filters.minPrice !== undefined)
+    chips.push({ label: `від ${formatPrice(filters.minPrice, 'UAH')}`, removeKey: 'min' });
+  if (filters.maxPrice !== undefined)
+    chips.push({ label: `до ${formatPrice(filters.maxPrice, 'UAH')}`, removeKey: 'max' });
   if (filters.inStockOnly) chips.push({ label: 'Тільки в наявності', removeKey: 'stock' });
   return chips;
 }
@@ -349,7 +354,7 @@ export default async function CatalogPage({
           <main className="md:w-3/4">
             <div className="bg-white rounded-lg shadow p-6 mb-6">
               <div className="mb-2 flex items-baseline justify-between gap-4 flex-wrap">
-                <h1 className="text-xl font-bold">{heading}</h1>
+                <h1 className="text-2xl font-bold">{heading}</h1>
                 <span className="text-sm text-gray-500">
                   Знайдено: {total}
                 </span>

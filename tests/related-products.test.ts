@@ -56,7 +56,15 @@ test('RELATED: fetch layer is bounded and mirrors eligibility (source-level)', (
   const end = src.indexOf('export async function fetchRelatedProducts');
   assert.ok(start !== -1 && end > start, 'stage helper must exist');
   const stage = src.slice(start, end);
-  assert.match(stage, /\.select\(PRODUCT_SELECT\)/, 'eligibility join reused');
+  // Egress fix (2026-09-08): the stage selects the slim card projection —
+  // eligibility join (product_images!inner) is identical to PRODUCT_SELECT.
+  assert.match(stage, /CATALOG_CARD_SELECT \+/, 'card projection selected');
+  assert.match(
+    stage,
+    /', pc:product_categories!inner\(category_id\)'/,
+    'junction embed kept on the category stage'
+  );
+  assert.doesNotMatch(stage, /PRODUCT_SELECT/, 'heavy projection banned here');
   assert.match(stage, /\.eq\('is_active',\s*true\)/);
   assert.match(stage, /\.neq\('id',\s*currentId\)/, 'current product excluded in SQL');
   assert.match(stage, /\.range\(0,\s*limit - 1\)/, 'single bounded window');
@@ -79,7 +87,7 @@ test('RELATED: component uses h2 (H1-invariant safe), hides when empty, reuses P
 
 test('RELATED: page degrades on read failure and renders before reviews', () => {
   const page = readFileSync('app/product/[slug]/page.tsx', 'utf8');
-  assert.match(page, /let relatedProducts: Product\[\] = \[\]/);
+  assert.match(page, /let relatedProducts: CatalogCardProduct\[\] = \[\]/);
   // Perf audit Step 2: related runs in the SAME parallel wave as reviews
   // (Promise.allSettled) instead of a sequential post-reviews waterfall.
   assert.match(page, /await Promise\.allSettled\(/);

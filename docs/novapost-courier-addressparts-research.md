@@ -95,9 +95,10 @@ from `GET /settlements`. Verified with `POST /shipments/calculations` → 200:
   (5694732). Match on the exact canonical name / id.
 - Street text (and even garbage street) is accepted at calculation time —
   resolution is keyed by `settlementId` alone, street/building are stored.
-- Sender division 11654 sits in the same settlement (its echo was
-  `sender.settlementId: 119638`); address-based sender location returns
-  `sender.divisionId: null` instead of the division id.
+- Sender division <SEE-ENV> (the live value of the server-side
+  `NOVA_POST_SENDER_DIVISION_ID` env — never commit the value) sits in the
+  same settlement (its echo was `sender.settlementId: 119638`); address-based
+  sender location returns `sender.divisionId: null` instead of the division id.
 
 ## Rules for Stage 2G (courier TTN creation)
 

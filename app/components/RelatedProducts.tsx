@@ -1,4 +1,4 @@
-import type { Product } from '@/app/lib/catalog';
+import type { CatalogCardProduct } from '@/app/lib/catalog';
 import { getMainPublicImageUrl } from '@/app/lib/supabase-storage';
 import ProductCard from './ProductCard';
 
@@ -12,7 +12,7 @@ import ProductCard from './ProductCard';
 export default function RelatedProducts({
   products,
 }: {
-  products: Product[];
+  products: CatalogCardProduct[];
 }) {
   if (products.length === 0) return null;
 

@@ -6,6 +6,7 @@ import {
   FEEDBACK_MAX_LENGTH,
   FEEDBACK_MIN_LENGTH,
 } from '@/app/lib/feedback';
+import { CONTACT_EMAIL } from '@/app/lib/site';
 
 /**
  * Anonymous feedback modal, opened from the footer. Collects ONLY the
@@ -178,8 +179,8 @@ export default function FeedbackModal({ label }: { label: string }) {
                     {errorKind === 'rate'
                       ? 'Сьогодні вже багато відгуків — спробуйте, будь ласка, завтра.'
                       : errorKind === 'unconfigured'
-                        ? 'Помилка: прийом відгуків ще не підключено. Напишіть нам на info@eshop.ua.'
-                        : 'Помилка надсилання. Спробуйте ще раз або напишіть на info@eshop.ua.'}
+                        ? `Помилка: прийом відгуків ще не підключено. Напишіть нам на ${CONTACT_EMAIL}.`
+                        : `Помилка надсилання. Спробуйте ще раз або напишіть на ${CONTACT_EMAIL}.`}
                   </p>
                 )}
 

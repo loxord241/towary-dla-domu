@@ -143,7 +143,7 @@ export default function CartPage() {
   // content settles instead of "blank page → sudden pop-in".
   if (!hydrated || (loading && items.length > 0)) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold mb-6">Кошик</h1>
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="lg:w-2/3 space-y-3" aria-hidden>
@@ -160,12 +160,12 @@ export default function CartPage() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <main className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Кошик</h1>
 
         {error && (
@@ -217,8 +217,12 @@ export default function CartPage() {
                         className="w-20 h-20 object-cover rounded"
                       />
                     ) : (
-                      <div className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center text-[10px] text-gray-400">
-                        фото?
+                      <div className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center">
+                        {/* Neutral placeholder in the ProductCard style — not
+                            a dev prompt (UX audit 2026-09). */}
+                        <span className="text-[10px] text-gray-400">
+                          Фото відсутнє
+                        </span>
                       </div>
                     )}
 
@@ -356,6 +360,6 @@ export default function CartPage() {
             </div>
           </div>
         )}
-    </div>
+    </main>
   );
 }

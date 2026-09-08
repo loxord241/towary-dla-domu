@@ -34,6 +34,7 @@ function cardRow(
     sku?: string;
     yugcontract_id?: string;
     price?: number;
+    availability_status?: string;
   } = {}
 ): Row {
   return {
@@ -43,7 +44,7 @@ function cardRow(
     price: extras.price ?? 100,
     old_price: null,
     currency: 'UAH',
-    availability_status: 'in_stock',
+    availability_status: extras.availability_status ?? 'in_stock',
     short_description: extras.short_description ?? null,
     sku: extras.sku ?? `YC-${id}`,
     yugcontract_id: extras.yugcontract_id ?? id,
@@ -81,6 +82,12 @@ const ROWS: Row[] = [
   // identical twins: equal scores → created_at desc, then id desc
   cardRow('t1', 'Дублёр блендер', '2026-01-12T00:00:00Z'),
   cardRow('t2', 'Дублёр блендер', '2026-01-12T00:00:00Z'),
+  // availability-tier set for «аерогриль»: equal (exact) scores, the
+  // in-stock row is the OLDER one — the tier must invert recency.
+  cardRow('a1', 'Аерогриль', '2026-01-01T00:00:00Z'), // in stock, older
+  cardRow('a2', 'Аерогриль', '2026-01-02T00:00:00Z', {
+    availability_status: 'out_of_stock',
+  }), // OOS, newer
 ];
 
 // --- fake PostgREST ---------------------------------------------------------
@@ -294,6 +301,56 @@ test('RANK: input array is never mutated', () => {
   assert.deepEqual(rows, copy);
 });
 
+// ---- Availability tier (2026-09 audit) — SECONDARY after relevance ---------
+// The sort control promises «Спочатку в наявності», but the ranked search
+// path ignored availability. Now equal-relevance ties put in-stock rows
+// first; relevance itself is never overridden.
+
+test('RANK: equal scores → in-stock first, even when it is the older row', () => {
+  const ranked = rankSearchResults(
+    [
+      { id: 'oos', name: 'Аерогриль', created_at: '2026-01-02T00:00:00Z', availability_status: 'out_of_stock' },
+      { id: 'stk', name: 'Аерогриль', created_at: '2026-01-01T00:00:00Z', availability_status: 'in_stock' },
+    ],
+    'аерогриль'
+  ).map((r) => r.id);
+  assert.deepEqual(ranked, ['stk', 'oos']);
+});
+
+test('RANK: availability tier never overrides relevance', () => {
+  const ranked = rankSearchResults(
+    [
+      { id: 'stk-weak', name: 'Чаша для блендера', created_at: '2026-01-09T00:00:00Z', availability_status: 'in_stock' },
+      { id: 'oos-exact', name: 'Блендер', created_at: '2026-01-01T00:00:00Z', availability_status: 'out_of_stock' },
+    ],
+    'блендер'
+  ).map((r) => r.id);
+  // the exact out-of-stock match must keep beating the weak in-stock one
+  assert.deepEqual(ranked, ['oos-exact', 'stk-weak']);
+});
+
+test('RANK: rows without availability_status count as available (backward compat)', () => {
+  const ranked = rankSearchResults(
+    [
+      { id: 'oos', name: 'Аерогриль XL', created_at: '2026-01-02T00:00:00Z', availability_status: 'out_of_stock' },
+      { id: 'bare', name: 'Аерогриль Pro', created_at: '2026-01-01T00:00:00Z' },
+    ],
+    'аерогриль'
+  ).map((r) => r.id);
+  assert.deepEqual(ranked, ['bare', 'oos']);
+});
+
+test('RANK: only out_of_stock demotes; unknown/limited statuses stay available', () => {
+  const ranked = rankSearchResults(
+    [
+      { id: 'limited', name: 'Аерогриль L', created_at: '2026-01-01T00:00:00Z', availability_status: 'limited' },
+      { id: 'oos', name: 'Аерогриль O', created_at: '2026-01-02T00:00:00Z', availability_status: 'out_of_stock' },
+    ],
+    'аерогриль'
+  ).map((r) => r.id);
+  assert.deepEqual(ranked, ['limited', 'oos']);
+});
+
 // ---- RUNTIME: ranking through fetchCatalogProducts --------------------------
 
 test('RANK: «блендер» orders by relevance, not by recency', async () => {
@@ -346,6 +403,17 @@ test('RANK: equal scores tiebreak by created_at desc then id desc', async () => 
   assert.deepEqual(
     page.products.map((p) => p.id),
     ['t2', 't1']
+  );
+});
+
+test('RANK: equal scores also tier by availability (in stock first, runtime)', async () => {
+  // a1 in-stock (older) must lead a2 out-of-stock (newer): the tier inverts
+  // recency for equally-relevant rows (2026-09 audit, «Спочатку в наявності»).
+  const page = await fetchCatalogProducts({ search: 'аерогриль' });
+  assert.equal(page.total, 2);
+  assert.deepEqual(
+    page.products.map((p) => p.id),
+    ['a1', 'a2']
   );
 });
 

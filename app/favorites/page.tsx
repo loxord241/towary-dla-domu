@@ -19,6 +19,9 @@ export default function FavoritesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Skeleton placeholder lines for the first load (cart-page pattern): the
+  // layout settles in place instead of "blank page → spinner → pop-in".
+  const skeletonCount = Math.min(Math.max(ids.length, 2), 8);
 
   useEffect(() => {
     if (!hydrated || ids.length === 0) return;
@@ -53,13 +56,30 @@ export default function FavoritesPage() {
     setAttempt((n) => n + 1);
   };
 
+  // First load: skeleton card grid instead of a full-page spinner (perf
+  // audit Step 4 pattern, mirrors the cart page) — the header, title and
+  // grid layout stay in place, so the content settles instead of popping in.
   if (!hydrated || (loading && ids.length > 0)) {
     return (
       <div className="min-h-screen bg-gray-50">
         <SiteHeader />
-        <div className="container mx-auto flex justify-center px-4 py-16">
-          <div className="h-12 w-12 animate-spin rounded-full border-t-2 border-b-2 border-pink-500" />
-        </div>
+        <main className="container mx-auto px-4 py-8">
+          <h1 className="text-2xl font-bold mb-6">Обране</h1>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4" aria-hidden>
+            {Array.from({ length: skeletonCount }).map((_, i) => (
+              <div
+                key={i}
+                className="flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm"
+              >
+                <div className="skeleton h-48 w-full rounded-t-xl" />
+                <div className="flex-1 space-y-2 p-4">
+                  <div className="skeleton h-4 w-3/4" />
+                  <div className="skeleton h-5 w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
@@ -67,7 +87,7 @@ export default function FavoritesPage() {
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <SiteHeader />
-      <div className="container mx-auto flex-1 px-4 py-8">
+      <main className="container mx-auto flex-1 px-4 py-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">
             Обране
@@ -109,7 +129,7 @@ export default function FavoritesPage() {
             ctaLabel="До каталогу"
           />
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {lines.map((line) =>
               line.found ? (
                 <ProductCard
@@ -143,7 +163,7 @@ export default function FavoritesPage() {
             )}
           </div>
         )}
-      </div>
+      </main>
       <SiteFooter />
     </div>
   );

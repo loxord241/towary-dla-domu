@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import FeedbackModal from './FeedbackModal';
+import { CONTACT_EMAIL } from '@/app/lib/site';
 import {
   selectFooterCategories,
   footerCategoryLabel,
@@ -20,8 +21,9 @@ const INFO_LINKS = [
   { href: '/terms', label: 'Умови використання' },
 ];
 
-/** Public support e-mail shown in the footer (single source for mailto). */
-export const CONTACT_EMAIL = 'magazinujut@gmail.com';
+// Re-exported for backward compatibility: the constant itself lives in
+// app/lib/site.ts (single source, importable from client components too).
+export { CONTACT_EMAIL };
 
 /**
  * Shared storefront footer. When `categories` is provided the footer lists
