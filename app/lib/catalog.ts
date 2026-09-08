@@ -410,10 +410,27 @@ export function sanitizeSearchTerm(term: string): string {
 export function buildSearchConditions(search: string): string[] | null {
   const tokens = searchTokens(search);
   if (tokens.length === 0) return null;
-  return tokens.map(
-    (token) =>
-      `name.ilike.%${token}%,short_description.ilike.%${token}%,description.ilike.%${token}%,sku.ilike.%${token}%,yugcontract_id.ilike.%${token}%`
-  );
+  return tokens.map((token) => {
+    // Apostrophe dual-spelling recall (2026-09-08): the supplier data mixes
+    // «М'ясорубка» (U+0027) and «М’ясорубка» (U+2019), and a mid-word
+    // apostrophe breaks substring contiguity — %м'ясорубка% can never match
+    // a plain-spelling mention and vice versa. A token containing an
+    // apostrophe is therefore searched in BOTH spellings (the sanitizer has
+    // already canonicalized ’→', so the second variant re-introduces ’).
+    // Tokens without an apostrophe keep the single-pattern shape exactly.
+    const variants =
+      token.includes("'") ? [token, token.replace(/'/g, '’')] : [token];
+    const fields = [
+      'name',
+      'short_description',
+      'description',
+      'sku',
+      'yugcontract_id',
+    ];
+    return fields
+      .flatMap((field) => variants.map((v) => `${field}.ilike.%${v}%`))
+      .join(',');
+  });
 }
 
 /**

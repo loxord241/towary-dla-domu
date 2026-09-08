@@ -308,6 +308,28 @@ test('sanitizeSearchTerm: apostrophe normalization fires next to reserved chars'
   assert.equal(sanitizeSearchTerm('м\u2019ясорубка, TEFAL'), "м'ясорубка TEFAL");
 });
 
+test('buildSearchConditions: apostrophe token searches BOTH spellings', () => {
+  // Mid-word apostrophe breaks substring contiguity: %м'ясорубка% cannot
+  // match «М’ясорубка» data and vice versa (live-verified 2026-09-08 —
+  // the two spellings yield disjoint result tails). A token containing an
+  // apostrophe must therefore emit both spellings across every field.
+  const conditions = buildSearchConditions("м'ясорубка") as string[];
+  assert.match(conditions[0] ?? '', /name\.ilike\.%м'ясорубка%/);
+  assert.match(conditions[0] ?? '', /name\.ilike\.%м\u2019ясорубка%/);
+  // 5 searched fields × 2 spellings
+  assert.equal((conditions[0] ?? '').split(',').length, 10);
+});
+
+test('buildSearchConditions: apostrophe-free token keeps the legacy single-pattern shape', () => {
+  const conditions = buildSearchConditions('мясорубка') as string[];
+  assert.equal(
+    conditions[0],
+    'name.ilike.%мясорубка%,short_description.ilike.%мясорубка%,' +
+      'description.ilike.%мясорубка%,sku.ilike.%мясорубка%,' +
+      'yugcontract_id.ilike.%мясорубка%'
+  );
+});
+
 // ---- Task #40: typo fallback candidate generation (relaxSearchTerm) --------
 //
 // Contract: each retry trims the LAST character of the currently-longest
