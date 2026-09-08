@@ -196,7 +196,26 @@ test('INVARIANT: collapsible long description UI is present', () => {
   assert.match(src, /Показати більше/);
   assert.match(src, /Згорнути/);
   assert.match(src, /aria-expanded=\{expanded\}/);
-  // collapsed preview must clamp height without breaking the HTML block,
-  // and squeeze wide tables instead of clipping them horizontally
-  assert.match(src, /max-h-24 overflow-hidden \[&_table\]:max-w-full \[&_table\]:w-full/);
+
+  // 2026-09-08 (аудит анимаций, кандидат №6): кламп max-h-24 → эталонный
+  // аккордеон-паттерн проекта (grid-rows 0fr<->1fr, см. CheckoutForm).
+  // Обёртка: transition-классы + motion-reduce (мгновенно без анимаций).
+  assert.match(
+    src,
+    /transition-\[grid-template-rows,visibility\] duration-250 ease-out motion-reduce:transition-none/
+  );
+  // Свёрнутое состояние — превью 96px + невидимый остаток (96px_0fr);
+  // раскрытое — полная высота (0fr_1fr). Превью и градиент остаются
+  // видимыми в свёрнутом виде (контракт «Показати більше»), поэтому
+  // вместо эталонного `invisible` Tab-безопасность свёрнутого блока
+  // даёт `inert` на внутреннем контейнере (visibility не может спрятать
+  // «остаток» одного DOM-узла, не спрятав превью).
+  assert.match(src, /grid-rows-\[96px_0fr\] visible/);
+  assert.match(src, /grid-rows-\[0fr_1fr\] visible/);
+  assert.match(src, /inert=\{!open\}/);
+  // Замер переполнения — на ВНУТРЕННЕМ контейнере аккордеона
+  // (row-span-2 min-h-0 overflow-hidden): scrollHeight (полный контент)
+  // против clientHeight (превью 96px в свёрнутом виде).
+  assert.match(src, /row-span-2 min-h-0 overflow-hidden/);
+  assert.match(src, /scrollHeight - el\.clientHeight > COLLAPSE_EXTRA_PX/);
 });
