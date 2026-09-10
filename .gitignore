@@ -49,3 +49,6 @@ next-env.d.ts
 
 # runtime logs written by scripts/wsl/yugcontract-sync.sh etc.
 /logs/
+
+# wallpaper import data drops (инвентаризация, чеклисты, кэши фото)
+/data/
