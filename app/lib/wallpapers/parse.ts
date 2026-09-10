@@ -19,7 +19,8 @@
  *      (`Тінь3829-10` -> `3829-10`). Size fragments (`53см`, `10м`, `1,06`)
  *      never become tokens. Output is lowercased and deduplicated.
  *  - parseRollSize — `53см*10м`, `0,53*10м`, `1,06*10м`, `53см×15м`,
- *    `106х10`, `1,06х10,05м` (fractional length truncates to the nominal);
+ *    `106х10`, `1,06х10,05м` (fractional length truncates to the nominal),
+ *    `1,06 на 10м` («на» separator with surrounding spaces);
  *    separators `*` `×` `x` `х` normalized; only widthCm 53|106 and
  *    lengthM 10|15 are valid, anything else -> null.
  *
@@ -151,7 +152,7 @@ export function parseWallpaperCsv(text: string): { rows: WallpaperRow[]; errors:
  * Fractional lengths (10,05) floor to the nominal size.
  */
 const ROLL_SIZE_RE =
-  /(\d{1,3}(?:[.,]\d{1,3})?)\s*(?:см|м)?\s*[*×xх]\s*(\d{1,3}(?:[.,]\d{1,3})?)\s*м?(?![a-zа-яіїєґ0-9])/g;
+  /(\d{1,3}(?:[.,]\d{1,3})?)\s*(?:см|м)?\s*(?:[*×xх]+|\s+на\s+)\s*(\d{1,3}(?:[.,]\d{1,3})?)\s*м?(?![a-zа-яіїєґ0-9])/g;
 
 const ROLL_WIDTHS = [53, 106] as const;
 const ROLL_LENGTHS = [10, 15] as const;

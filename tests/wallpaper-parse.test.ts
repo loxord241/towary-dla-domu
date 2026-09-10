@@ -259,3 +259,13 @@ test('wallpaper-parse: csv rollSize and article column land in the row', () => {
   assert.equal(rows[0]?.article, 'СП-9');
   assert.deepEqual(rows[0]?.rollSize, { widthCm: 53, lengthM: 15 });
 });
+
+test('parseRollSize: разделитель «на» («рулон 1,06 на 10м» — реальное имя wc-x40346)', () => {
+  assert.deepEqual(parseRollSize('Атлантида В118 8779-02,шпалери,рулон 1,06 на 10м'), {
+    widthCm: 106,
+    lengthM: 10,
+  });
+  assert.deepEqual(parseRollSize('шпалери 0,53 на 15м беж'), { widthCm: 53, lengthM: 15 });
+  // «на» без пробелов словом не является
+  assert.equal(parseRollSize('шпалери 1,06на10м'), null);
+});
