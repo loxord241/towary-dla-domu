@@ -85,6 +85,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = [
     '',
     '/catalog',
+    // Wallpapers storefront (owner task 2026-09-10): a static indexable
+    // route — seo.ts's buildWallpapersMetadata emits the matching canonical,
+    // so the «indexable set = sitemap set» invariant holds.
+    '/oboi',
     '/delivery',
     '/contacts',
     '/about',
@@ -94,8 +98,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ].map((path) => ({
     url: `${base}${path}`,
     lastModified: new Date(),
-    changeFrequency: path === '' || path === '/catalog' ? 'daily' : 'monthly',
-    priority: path === '' ? 1 : path === '/catalog' ? 0.9 : 0.3,
+    changeFrequency:
+      path === '' || path === '/catalog' || path === '/oboi'
+        ? 'daily'
+        : 'monthly',
+    priority: path === '' ? 1 : path === '/catalog' || path === '/oboi' ? 0.9 : 0.3,
   }));
 
   const [categories, brands, products] = await Promise.all([

@@ -13,6 +13,8 @@ import ProductGallery from '@/app/components/ProductGallery'
 import ProductDescription from '@/app/components/ProductDescription'
 import ProductSpecifications from '@/app/components/ProductSpecifications'
 import ProductReviews from '@/app/components/ProductReviews'
+import RollCalculator from '@/app/components/RollCalculator'
+import { parseRollSize } from '@/app/lib/wallpapers/parse'
 import RecentProducts from '@/app/components/RecentProducts'
 import RecentlyViewedTracker from '@/app/components/RecentlyViewedTracker'
 import RelatedProducts from '@/app/components/RelatedProducts'
@@ -163,6 +165,14 @@ export default async function ProductPage({
     product.description,
     product.short_description
   )
+
+  // Roll calculator (wallpapers, 2026-09): mounted ONLY for wc-* SKUs.
+  // Roll size is parsed on the SERVER from the product name (parseRollSize).
+  // Decision (documented): when the size cannot be parsed → NO calculator
+  // rather than a 0.53×10 default — a guessed roll width/length would give
+  // the customer a wrong purchase quantity (e.g. for metre-wide rolls).
+  const isWallpaper = product.sku.startsWith('wc-')
+  const rollSize = isWallpaper ? parseRollSize(product.name) : null
 
   // Structured data from REAL fields only; review summary is the try/catch
   // fallback (total=0) when reviews are unavailable → aggregateRating drops.
@@ -336,6 +346,12 @@ export default async function ProductPage({
                 availabilityStatus: v.availability_status,
               }))}
             />
+
+            {/* Калькулятор рулонів — лише для шпалер (wc-*) з розпізнаним
+                розміром рулона; інакше просто не рендериться. */}
+            {isWallpaper && rollSize !== null && (
+              <RollCalculator productId={product.id} rollSize={rollSize} />
+            )}
 
             {/* Компактний вказівник на повну політику: деталі живуть на
                 /delivery — тут нічого не дублюємо і не вигадуємо. */}

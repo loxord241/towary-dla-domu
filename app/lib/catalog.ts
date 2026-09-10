@@ -3,6 +3,7 @@ import { cache } from 'react';
 // Explicit .ts extension: required by node:test ESM resolution and allowed
 // by allowImportingTsExtensions for the Next bundler.
 import { collectSubtreeIds } from './category-tree.ts';
+import { WALLPAPER_CATEGORY_MAP, WALLPAPER_ROOT } from './wallpapers/categories.ts';
 
 // unstable_cache is resolved dynamically: the bare 'next/cache' specifier
 // does not resolve under plain-node ESM (no ./cache subpath in next's
@@ -217,6 +218,34 @@ const CATALOG_CARD_SELECT =
 const ELIGIBLE_COUNT_SELECT = 'id, images:product_images!inner(id)';
 const JUNCTION_COUNT_SELECT = 'id, images:product_images!inner(id), pc:product_categories!inner(product_id)';
 
+/**
+ * Wallpaper domain separation (owner task 2026-09-10): the daily 1C wallpaper
+ * feed imports products whose `sku` carries the `wc-` prefix, and the owner
+ * wants wallpapers OFF the general storefront surfaces (bare /catalog, search,
+ * home shelves, related of non-wallpaper products) — they live on /oboi.
+ *
+ * EXCEPTION (documented owner-task reading): /oboi's subcategory chips link
+ * to `/catalog?category=shpaleri-*`, so a category view scoped to the
+ * wallpaper subtree must KEEP rendering its products — otherwise every chip
+ * would land on an empty, noindex page. Assignment domains are disjoint
+ * (wallpapers are assigned only to shpaleri-* categories), so "no exclusion"
+ * on those views ≡ "wallpapers only". The non-empty category counts mirror
+ * this decision (countCategoryProductsUncached), which keeps the
+ * «indexable set = sitemap set» invariant intact: the sitemap derives
+ * shpaleri-* non-emptiness from the SAME wc-* assignments.
+ *
+ * Single source of truth for the slug list is the importer's category map —
+ * no duplicated literals here.
+ */
+export const WALLPAPER_SKU_PREFIX = 'wc-';
+const WALLPAPER_SKU_LIKE = `${WALLPAPER_SKU_PREFIX}%`;
+
+/** «Шпалери» root + every imported subgroup slug (canonical importer list). */
+const WALLPAPER_CATEGORY_SLUGS: ReadonlySet<string> = new Set([
+  WALLPAPER_ROOT.slug,
+  ...Object.values(WALLPAPER_CATEGORY_MAP).map((target) => target.slug),
+]);
+
 // PostgREST embeds a many-to-one relation as an object (or null when the
 // FK is unset) and one-to-many relations as arrays — verified against the
 // live database. This row type mirrors that raw shape exactly.
@@ -323,7 +352,10 @@ async function fetchProducts(options: {
     let query = supabase
       .from('products')
       .select(PRODUCT_SELECT)
-      .eq('is_active', true);
+      .eq('is_active', true)
+      // Home shelves never surface the wallpaper domain (owner task
+      // 2026-09-10): wc-* products render on /oboi only.
+      .not('sku', 'like', WALLPAPER_SKU_LIKE);
     if (options.featuredOnly) {
       query = query.eq('is_featured', true);
     }
@@ -1210,10 +1242,24 @@ export async function fetchCatalogProducts(
   // The legacy products.category_id holds only the default assignment, so
   // filtering by it would miss multi-assigned products.
   let subtreeIds: string[] = [];
+  let activeCategories: Category[] = [];
   if (categoryId) {
-    const activeCategories = await fetchActiveCategories();
+    activeCategories = await fetchActiveCategories();
     subtreeIds = Array.from(collectSubtreeIds(activeCategories, categoryId));
   }
+
+  // Wallpaper separation (owner task 2026-09-10, see WALLPAPER_SKU_PREFIX):
+  // a category view scoped to the wallpaper subtree (shpaleri-*) keeps its
+  // wc-* products — /oboi's subcategory chips link to these views — while
+  // every GENERAL listing (bare catalog, search, brand views, filters)
+  // excludes them.
+  const isWallpaperView =
+    categoryId !== null &&
+    activeCategories.some(
+      (category) =>
+        WALLPAPER_CATEGORY_SLUGS.has(category.slug) &&
+        subtreeIds.includes(category.id)
+    );
 
   // ---- total count with identical filters (no pagination) ----
   // The eligibility join MUST mirror PRODUCT_SELECT, otherwise totals
@@ -1229,6 +1275,12 @@ export async function fetchCatalogProducts(
         head: true,
       })
       .eq('is_active', true);
+
+    // General listings hide the wallpaper domain (owner task 2026-09-10);
+    // wallpaper-scoped category views keep it (see isWallpaperView).
+    if (!isWallpaperView) {
+      q = q.not('sku', 'like', WALLPAPER_SKU_LIKE);
+    }
 
     if (categoryId) {
       q = q.in('pc.category_id', subtreeIds);
@@ -1350,6 +1402,12 @@ export async function fetchCatalogProducts(
     )
     .eq('is_active', true);
 
+  // Same wallpaper decision as the count query — total and the grid must
+  // never disagree (owner task 2026-09-10).
+  if (!isWallpaperView) {
+    query = query.not('sku', 'like', WALLPAPER_SKU_LIKE);
+  }
+
   if (categoryId) {
     // PostgREST dedups the top-level entities of this one-to-many inner
     // join (same verified behavior as the images!inner eligibility join).
@@ -1448,6 +1506,92 @@ export async function fetchCatalogProducts(
     page,
     size,
     appliedSearch,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// /oboi — wallpapers storefront (owner task 2026-09-10).
+//
+// The mirror listing of fetchCatalogProducts restricted to the wc-* domain:
+// same eligibility join (ELIGIBLE_COUNT_SELECT head-count + CATALOG_CARD_SELECT
+// data projection with product_images!inner), same sort contracts (explicit
+// sorts + id tiebreaker, in-stock-first default), same page clamp. v1 has no
+// search and no category filter on /oboi (subcategory navigation lives in the
+// page chips that link to /catalog?category=shpaleri-*), so the ranked-search
+// path has no counterpart here and the wallpaper view needs no junction
+// filter — the sku prefix alone IS the domain filter.
+// Deliberately NOT wrapped in unstable_cache: user-controlled `page` would
+// multiply cache entries; the /oboi route bounds the read like the catalog.
+// ---------------------------------------------------------------------------
+
+export interface WallpaperPage {
+  products: CatalogCardProduct[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export async function fetchWallpaperProducts(
+  filters: Pick<CatalogFilters, 'sort' | 'page' | 'size'> = {}
+): Promise<WallpaperPage> {
+  const size = Math.min(
+    Math.max(filters.size ?? CATALOG_PAGE_SIZE, 1),
+    CATALOG_MAX_PAGE_SIZE
+  );
+
+  // ---- total count (identical filters, no pagination) ----
+  const { count, error: countError } = await supabase
+    .from('products')
+    .select(ELIGIBLE_COUNT_SELECT, { count: 'exact', head: true })
+    .eq('is_active', true)
+    .like('sku', WALLPAPER_SKU_LIKE);
+  if (countError) {
+    throw new Error(`Failed to count wallpaper products: ${countError.message}`);
+  }
+
+  const total = count ?? 0;
+  const maxPage = Math.max(1, Math.ceil(total / size));
+  const page = Math.min(Math.max(filters.page ?? 1, 1), maxPage);
+
+  // ---- paged data query ----
+  let query = supabase
+    .from('products')
+    .select(CATALOG_CARD_SELECT)
+    .eq('is_active', true)
+    .like('sku', WALLPAPER_SKU_LIKE);
+
+  // Same sort switch as fetchCatalogProducts: every branch keeps the `id`
+  // tiebreaker (bulk-imported wc-* rows share created_at), and the default
+  // branch is the in-stock-first contract.
+  switch (filters.sort) {
+    case 'price_asc':
+      query = query.order('price', { ascending: true }).order('id', { ascending: true });
+      break;
+    case 'price_desc':
+      query = query.order('price', { ascending: false }).order('id', { ascending: false });
+      break;
+    case 'name_asc':
+      query = query.order('name', { ascending: true }).order('id', { ascending: true });
+      break;
+    default:
+      query = query
+        .order('availability_status', { ascending: true })
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
+  }
+
+  query = query.range((page - 1) * size, page * size - 1);
+
+  const { data, error } = await query.returns<SearchCardRow[]>();
+  if (error) {
+    throw new Error(`Failed to load wallpaper products: ${error.message}`);
+  }
+
+  return {
+    products: (data ?? []).map(normalizeCatalogCard),
+    total,
+    page,
+    size,
   };
 }
 
@@ -1634,6 +1778,9 @@ export async function fetchSelectedProducts(): Promise<Product[]> {
     .select(PRODUCT_SELECT)
     .eq('is_active', true)
     .eq('is_selected', true)
+    // Home shelves never surface the wallpaper domain (owner task
+    // 2026-09-10): wc-* products render on /oboi only.
+    .not('sku', 'like', WALLPAPER_SKU_LIKE)
     .order('availability_status', { ascending: true })
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
@@ -1681,6 +1828,10 @@ export async function fetchPopularProducts(
     .select(PRODUCT_SELECT)
     .eq('is_active', true)
     .eq('is_featured', true)
+    // Home shelves never surface the wallpaper domain (owner task
+    // 2026-09-10): wc-* products render on /oboi only. Chained BEFORE the
+    // not-in/range tail so the bounded window still yields `take` rows.
+    .not('sku', 'like', WALLPAPER_SKU_LIKE)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false });
 
@@ -1797,11 +1948,24 @@ async function countCategoryProductsUncached(
   const subtreeIds = Array.from(
     collectSubtreeIds(activeCategories, category.id)
   );
-  const { count, error } = await supabase
+  // Mirror fetchCatalogProducts' wallpaper decision exactly (owner task
+  // 2026-09-10): wallpaper-scoped views count their wc-* rows, every other
+  // category view excludes them — the empty-view verdict can never disagree
+  // with the grid's own total (noindex contract, Task #14).
+  const isWallpaperView = activeCategories.some(
+    (activeCategory) =>
+      WALLPAPER_CATEGORY_SLUGS.has(activeCategory.slug) &&
+      subtreeIds.includes(activeCategory.id)
+  );
+  let countQuery = supabase
     .from('products')
     .select(JUNCTION_COUNT_SELECT, { count: 'exact', head: true })
     .eq('is_active', true)
     .in('pc.category_id', subtreeIds);
+  if (!isWallpaperView) {
+    countQuery = countQuery.not('sku', 'like', WALLPAPER_SKU_LIKE);
+  }
+  const { count, error } = await countQuery;
   if (error) {
     throw new Error(
       `Failed to count eligible products for category "${slug}": ${error.message}`
@@ -1828,6 +1992,9 @@ async function countBrandProductsUncached(
     .from('products')
     .select(ELIGIBLE_COUNT_SELECT, { count: 'exact', head: true })
     .eq('is_active', true)
+    // Brand views are general listings: wallpapers (wc-*) excluded, same as
+    // the grid (owner task 2026-09-10).
+    .not('sku', 'like', WALLPAPER_SKU_LIKE)
     .eq('brand_id', brand.id);
   if (error) {
     throw new Error(
@@ -1923,10 +2090,15 @@ type RelatedStageFilter =
   | { kind: 'category'; subtreeIds: string[] }
   | null;
 
+/** Related-products sku domain (owner task 2026-09-10): a wc-* PDP gets its
+    related from the wallpaper domain only, any other PDP gets none of it. */
+type RelatedSkuDomain = 'wallpaper' | 'general';
+
 async function fetchRelatedStage(
   filter: RelatedStageFilter,
   currentId: string,
-  limit: number
+  limit: number,
+  skuDomain: RelatedSkuDomain
 ): Promise<CatalogCardProduct[]> {
   // Card projection only (egress fix 2026-09-08): the shelf renders
   // ProductCard, which reads nothing beyond CATALOG_CARD_SELECT, and the
@@ -1946,6 +2118,12 @@ async function fetchRelatedStage(
     )
     .eq('is_active', true)
     .neq('id', currentId);
+  // Wallpaper separation: every stage stays inside the current product's
+  // sku domain (wallpaper PDPs see wc-* candidates, the rest never do).
+  query =
+    skuDomain === 'wallpaper'
+      ? query.like('sku', WALLPAPER_SKU_LIKE)
+      : query.not('sku', 'like', WALLPAPER_SKU_LIKE);
   if (filter?.kind === 'category') {
     // Same junction + subtree semantics as fetchCatalogProducts. The count
     // embed uses product_id (see JUNCTION_COUNT_SELECT note).
@@ -1965,14 +2143,20 @@ async function fetchRelatedStage(
 }
 
 export async function fetchRelatedProducts(
-  product: Pick<Product, 'id' | 'category_id' | 'brand_id'>,
+  product: Pick<Product, 'id' | 'category_id' | 'brand_id' | 'sku'>,
   limit: number = RELATED_LIMIT
 ): Promise<CatalogCardProduct[]> {
   return fetchRelatedProductsStore(
     // Key-shaping: only the fields that determine the result go into the
     // unstable_cache invocation key (JSON.stringify(args)) — a full Product
-    // (with description HTML) would bloat every key.
-    { id: product.id, category_id: product.category_id, brand_id: product.brand_id },
+    // (with description HTML) would bloat every key. sku decides the related
+    // domain (wc-* vs the rest) — see fetchRelatedStage.
+    {
+      id: product.id,
+      category_id: product.category_id,
+      brand_id: product.brand_id,
+      sku: product.sku,
+    },
     limit
   );
 }
@@ -1985,9 +2169,16 @@ const fetchRelatedProductsStore = cachePublicRead(
   'catalog:related',
   CATALOG_PUBLIC_READ_TTL_SECONDS,
   async (
-    identity: Pick<Product, 'id' | 'category_id' | 'brand_id'>,
+    identity: Pick<Product, 'id' | 'category_id' | 'brand_id' | 'sku'>,
     limit: number
   ): Promise<CatalogCardProduct[]> => {
+    // Wallpapers relate to wallpapers, the rest to the rest (owner task
+    // 2026-09-10): one sku-domain guard shared by all three stages.
+    const skuDomain: RelatedSkuDomain = (identity.sku ?? '')
+      .toLowerCase()
+      .startsWith(WALLPAPER_SKU_PREFIX)
+      ? 'wallpaper'
+      : 'general';
     const sameCategoryStage = identity.category_id
       ? fetchActiveCategories().then((activeCategories) =>
           fetchRelatedStage(
@@ -1996,16 +2187,17 @@ const fetchRelatedProductsStore = cachePublicRead(
               subtreeIds: Array.from(collectSubtreeIds(activeCategories, identity.category_id!)),
             },
             identity.id,
-            limit
+            limit,
+            skuDomain
           )
         )
       : Promise.resolve<CatalogCardProduct[]>([]);
     const [sameCategory, sameBrand, newest] = await Promise.all([
       sameCategoryStage,
       identity.brand_id
-        ? fetchRelatedStage({ kind: 'brand', id: identity.brand_id }, identity.id, limit)
+        ? fetchRelatedStage({ kind: 'brand', id: identity.brand_id }, identity.id, limit, skuDomain)
         : Promise.resolve<CatalogCardProduct[]>([]),
-      fetchRelatedStage(null, identity.id, limit),
+      fetchRelatedStage(null, identity.id, limit, skuDomain),
     ]);
     return collectRelated([sameCategory, sameBrand, newest], identity.id, limit);
   }

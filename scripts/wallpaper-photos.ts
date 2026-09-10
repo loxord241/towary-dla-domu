@@ -282,6 +282,8 @@ export interface CliArgs {
   cacheDir: string;
   /** --run only: full simulation, ZERO DB/Storage writes. */
   dry: boolean;
+  /** --run only: research-agent maps {1C code -> page/image URL}. */
+  urlMapFiles?: string[];
 }
 
 /**
@@ -317,6 +319,7 @@ export function parseArgs(argv: string[]): CliArgs {
   let sourceFlag: string | null = null;
   let sourcesRaw: string | null = null;
   let items: string | null = null;
+  const urlMapFiles: string[] = [];
   let cacheDir: string | null = null;
   let dry = false;
 
@@ -364,6 +367,15 @@ export function parseArgs(argv: string[]): CliArgs {
           throw new Error('--items requires a file path\n' + USAGE);
         }
         items = value;
+        i += 1;
+        break;
+      }
+      case '--url-map': {
+        const value = argv[i + 1];
+        if (value === undefined || value === '') {
+          throw new Error('--url-map requires a file path\n' + USAGE);
+        }
+        urlMapFiles.push(value);
         i += 1;
         break;
       }
@@ -434,6 +446,7 @@ export function parseArgs(argv: string[]): CliArgs {
     items,
     cacheDir: cacheDir ?? DEFAULT_CACHE_DIR,
     dry,
+    urlMapFiles: urlMapFiles.length > 0 ? urlMapFiles : undefined,
   };
 }
 
@@ -638,6 +651,8 @@ export interface RunOptions {
   cacheDir: string;
   /** Everything except DB/Storage writes (orchestrator pre-flight). */
   dry: boolean;
+  /** Research-agent maps {1C code -> page/image URL}; overrides token matching. */
+  urlMapFiles?: string[];
 }
 
 export interface SourceRunStats {
@@ -675,6 +690,16 @@ export interface RunTotals {
  * duplicate pairs (23505) degrade to logged no-ops — a full re-run inserts
  * nothing. Download/upload failures are per-position and non-fatal.
  */
+/** Research-agent URL maps: origin decides which pipeline branch handles them. */
+function sourceFromUrl(url: string): PhotoSource | null {
+  if (url.includes('oboi-slav-oboi.com')) return 'slav';
+  if (url.includes('epicentrk.ua') || url.includes('cdn.27.ua')) return 'epicentr';
+  if (url.includes('shpalery-ua.com')) return 'shpalery-ua';
+  if (url.includes('shpaleru.com.ua') || url.includes('images.prom.ua')) return 'shpaleru';
+  if (url.includes('styleo.com.ua')) return 'styleo';
+  return null;
+}
+
 export async function run(options: RunOptions, deps: CliDeps = {}): Promise<RunTotals> {
   const log = deps.log ?? ((line: string) => console.log(line));
   const fetchText = deps.fetchText ?? fetchSitemapText;
@@ -686,6 +711,19 @@ export async function run(options: RunOptions, deps: CliDeps = {}): Promise<RunT
 
   // ---- items (same loader/validation as --plan) ----
   const items = loadItems(options.itemsPath);
+
+  // ---- explicit URL maps (research agents): code -> page/image URL ----
+  const explicitBySource: Partial<Record<PhotoSource, Map<string, string>>> = {};
+  for (const mapFile of options.urlMapFiles ?? []) {
+    const map = JSON.parse(readFileSync(mapFile, 'utf8')) as Record<string, string>;
+    for (const [code, url] of Object.entries(map)) {
+      const src = sourceFromUrl(url);
+      if (src === null) {
+        throw new Error(`[run] ${mapFile}: неопознанный источник у ${code}: ${url}`);
+      }
+      (explicitBySource[src] ??= new Map()).set(code, url);
+    }
+  }
 
   // ---- pre-flight: EVERY requested source must have an index cache ----
   // Fail before any read/write so a missing later source cannot strand
@@ -771,7 +809,8 @@ export async function run(options: RunOptions, deps: CliDeps = {}): Promise<RunT
     const urls = indexBySource[source] ?? [];
     for (const pos of positions) {
       if (!pos.open) continue;
-      const url = matchSourceByUrl(urls, articleTokensForItem(pos.item));
+      const explicit = explicitBySource[source]?.get(pos.item.code);
+      const url = explicit ?? matchSourceByUrl(urls, articleTokensForItem(pos.item));
       if (url === null) continue;
       sStats.matched += 1;
 
@@ -1067,6 +1106,7 @@ export async function runPhotosCli(argv: string[], deps: CliDeps = {}): Promise<
           sources: args.sources ?? [...SOURCE_PRIORITY],
           cacheDir,
           dry: args.dry,
+          urlMapFiles: args.urlMapFiles,
         },
         deps,
       );

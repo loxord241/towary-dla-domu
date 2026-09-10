@@ -85,6 +85,45 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Дві вітрини: техніка (/catalog) та шпалери (/oboi) — обои
+          виведені із загального каталогу на окрему сторінку. */}
+      <section className="container mx-auto px-4 pt-10">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Link
+            href="/catalog"
+            className="card group flex flex-col justify-between p-6 transition-shadow hover:shadow-md"
+          >
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 transition-colors motion-reduce:transition-none group-hover:text-blue-700">
+                Каталог техніки
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Побутова техніка, посуд та товари для дому
+              </p>
+            </div>
+            <span className="mt-4 text-sm font-medium text-blue-600">
+              Перейти до каталогу →
+            </span>
+          </Link>
+          <Link
+            href="/oboi"
+            className="card group flex flex-col justify-between p-6 transition-shadow hover:shadow-md"
+          >
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 transition-colors motion-reduce:transition-none group-hover:text-blue-700">
+                Каталог шпалер
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Шпалери — окрема вітрина з власним каталогом
+              </p>
+            </div>
+            <span className="mt-4 text-sm font-medium text-blue-600">
+              Переглянути шпалери →
+            </span>
+          </Link>
+        </div>
+      </section>
+
       {/* Обрані товари — purely admin-curated via the SEPARATE is_selected
           flag (migration 028); is_featured stays on the popular shelf. */}
       <section className="container mx-auto px-4 py-12">

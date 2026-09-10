@@ -161,6 +161,38 @@ export function buildCatalogViewMetadata(
 }
 
 // ---------------------------------------------------------------------------
+// /oboi — wallpapers storefront (owner task 2026-09-10). A STATIC indexable
+// route on the same footing as /catalog: it is part of the
+// «indexable set = sitemap set» invariant, and app/sitemap.ts lists it in
+// its static entries. Deep pagination (?page=N>1) follows the catalog
+// policy: a noindex,follow duplicate view WITHOUT a canonical tag
+// (canonicals on noindex pages send contradictory signals).
+// ---------------------------------------------------------------------------
+
+export const OBOI_CANONICAL_PATH = '/oboi';
+
+export function buildWallpapersMetadata(page = 1): ViewMetadata {
+  const title = `Шпалери — купити в ${SITE_NAME}`;
+  // Copy stays factual: the type list mirrors the wallpaper subcategory
+  // names the importer creates (app/lib/wallpapers/categories.ts).
+  const description = `Каталог шпалер інтернет-магазину ${SITE_NAME}: вініл, флізелін, дуплекс, метрові, шовкографія та інші типи — з доставкою по Україні.`;
+
+  if (page > 1) {
+    return {
+      title,
+      description,
+      robots: { index: false, follow: true },
+    };
+  }
+
+  return {
+    title,
+    description,
+    alternates: { canonical: OBOI_CANONICAL_PATH },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // PDP meta-description policy (audit 2026-08-31)
 //
 // Two classes of supplier descriptions must NOT leak into meta descriptions:
