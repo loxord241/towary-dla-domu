@@ -1,14 +1,16 @@
 /**
- * Task 8 (wallpapers import): фото-пайплайн — pure-матчеры источников
+ * Task 8 (wallpapers import): фото-пайплайн — pure-матчеры и хелперы
  * (app/lib/wallpapers/photo-sources.ts) + CLI-контракт
- * (scripts/wallpaper-photos.ts: --index / --plan / --run-stub).
+ * (scripts/wallpaper-photos.ts: --index / --plan / --run).
  *
  * Фикстуры-URL — реальные примеры из research плана
  * (docs/superpowers/plans/2026-09-10-wallpapers-import.md, Task 8):
  * v277-6647-04 (slav), bravo-86000br90 (epicentr), хеш-суффиксы -01f4bd.
  *
- * Сетевых вызовов НЕТ: fetch инжектируется (CLI deps), кэш — во временных
- * папках os.tmpdir(). БД/Storage не трогаются.
+ * Сетевых вызовов и обращений к БД/Storage НЕТ: fetch и supabase-клиент
+ * инжектируются (CLI deps DI-паттерн), кэш — во временных папках os.tmpdir(),
+ * supabase — in-memory fake (runtime-тесты run()-логики: slav-хотлинки,
+ * epicentr-копии в Storage, 23505 → no-op, идемпотентный повтор, пагинация).
  *
  * Run: npm test
  */
@@ -29,23 +31,30 @@ import { fileURLToPath } from 'node:url';
 import {
   SOURCE_PRIORITY,
   SOURCE_SITEMAPS,
+  detectImageMime,
   matchSourceUrl,
   matchSourceByUrl,
   normalizeArticleToken,
+  extractPageImages,
   extractSitemapUrls,
   MAX_TEXTURES,
   pickMainAndTextures,
   planPhotoCoverage,
   unionCoveredCodes,
+  wallpaperSkuForItem,
   type PhotoItem,
+  type PhotoSource,
 } from '../app/lib/wallpapers/photo-sources.ts';
 import {
   HttpFetchError,
   articleTokensForItem,
+  MAX_IMAGE_BYTES,
   parseArgs,
   run,
   runPhotosCli,
+  type RunTotals,
 } from '../scripts/wallpaper-photos.ts';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // ---------------------------------------------------------------------------
 // matchSourceUrl — строгий токен-матч на реальных URL
@@ -252,6 +261,108 @@ test('photo-sources: all-duplicate list gives main with zero textures', () => {
 });
 
 // ---------------------------------------------------------------------------
+// extractPageImages — <img src> страницы товара slav
+// ---------------------------------------------------------------------------
+
+const SLAV_PAGE_HTML = `<!doctype html>
+<html><body>
+  <div class="product-gallery">
+    <img src="https://oboi-slav-oboi.com/assets/products/2746/main.jpg" alt="шпалери">
+    <img class="thumb" src='/assets/products/2746/tex-1.jpg'>
+    <img src="//oboi-slav-oboi.com/assets/products/2746/tex-2.jpg">
+    <img src="/assets/products/2746/tex-1.jpg">
+    <img src="/assets/products/2746/tex-3.jpg?w=200&amp;h=400">
+    <img src="/images/logo.png">
+    <img data-src="/assets/products/2746/lazy.jpg">
+    <img src="data:image/gif;base64,R0lGOD">
+  </div>
+</body></html>`;
+
+test('photo-sources: extractPageImages — main + текстуры, абсолютизация, дедуп, &amp;', () => {
+  assert.deepEqual(extractPageImages(SLAV_PAGE_HTML), [
+    'https://oboi-slav-oboi.com/assets/products/2746/main.jpg',
+    'https://oboi-slav-oboi.com/assets/products/2746/tex-1.jpg',
+    'https://oboi-slav-oboi.com/assets/products/2746/tex-2.jpg',
+    'https://oboi-slav-oboi.com/assets/products/2746/tex-3.jpg?w=200&h=400',
+  ]);
+});
+
+test('photo-sources: extractPageImages — только <img src> (data-src игнор), без паттерна -> []', () => {
+  assert.deepEqual(extractPageImages('<div><img data-src="/assets/products/1/a.jpg"></div>'), []);
+  assert.deepEqual(extractPageImages('<div><img src="/images/logo.png"></div>'), []);
+  assert.deepEqual(extractPageImages(''), []);
+});
+
+test('photo-sources: extractPageImages — fancybox <a href> + bare-relative (реальная структура slav, 2026-09-10)', () => {
+  const html = '<a href="assets/products/8693/0150066001711094792.jpg" data-fancybox="gallery"></a>' +
+    '<a href="/assets/products/8689/0526847001711094738.jpg"></a>' +
+    '<img src="assets/products/8690/0913507001711094750.jpg">';
+  assert.deepEqual(extractPageImages(html), [
+    'https://oboi-slav-oboi.com/assets/products/8693/0150066001711094792.jpg',
+    'https://oboi-slav-oboi.com/assets/products/8689/0526847001711094738.jpg',
+    'https://oboi-slav-oboi.com/assets/products/8690/0913507001711094750.jpg',
+  ]);
+  // data-src по-прежнему игнорируется (guard lookbehind)
+  assert.deepEqual(extractPageImages('<div><img data-src="/assets/products/1/a.jpg"></div>'), []);
+});
+
+test('photo-sources: extractPageImages + pickMainAndTextures — дедуп и лимит 12 текстур', () => {
+  const imgs = Array.from(
+    { length: 20 },
+    (_, i) => `<img src="/assets/products/9/t${i + 1}.jpg">`,
+  ).join('\n');
+  const picked = pickMainAndTextures(extractPageImages(`<html>${imgs}</html>`));
+  assert.ok(picked !== null);
+  assert.equal(picked.main, 'https://oboi-slav-oboi.com/assets/products/9/t1.jpg');
+  assert.equal(picked.textures.length, MAX_TEXTURES);
+  assert.equal(
+    picked.textures[MAX_TEXTURES - 1],
+    'https://oboi-slav-oboi.com/assets/products/9/t13.jpg',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// detectImageMime — magic bytes (jpeg/png/webp)
+// ---------------------------------------------------------------------------
+
+test('photo-sources: detectImageMime — jpeg/png/webp по magic bytes, мусор/HTML -> null', () => {
+  assert.equal(detectImageMime(Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])), 'image/jpeg');
+  assert.equal(
+    detectImageMime(Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00])),
+    'image/png',
+  );
+  assert.equal(
+    detectImageMime(
+      Uint8Array.from([0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50]),
+    ),
+    'image/webp',
+  );
+  assert.equal(detectImageMime(Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])), null);
+  assert.equal(detectImageMime(Uint8Array.from([0xff])), null);
+  assert.equal(
+    detectImageMime(new Uint8Array(new TextEncoder().encode('<!doctype html><html>'))),
+    null,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// wallpaperSkuForItem — точная копия sku-правила импортера (import-plan)
+// ---------------------------------------------------------------------------
+
+test('photo-sources: wallpaperSkuForItem зеркалит sku-правило import-plan', () => {
+  assert.equal(wallpaperSkuForItem({ code: '1', name: 'x', article: 'SP 531-34' }), 'wc-sp531-34');
+  assert.equal(
+    wallpaperSkuForItem({ code: '1', name: 'x', article: ' 86000BR90 ' }),
+    'wc-86000br90',
+  );
+  assert.equal(wallpaperSkuForItem({ code: 'ABC', name: 'x', article: null }), 'wc-xABC');
+  assert.equal(wallpaperSkuForItem({ code: 'ABC', name: 'x' }), 'wc-xABC');
+  // пробельный артикул = отсутствие артикула (fallback на код), как в import-plan
+  assert.equal(wallpaperSkuForItem({ code: '7', name: 'x', article: '   ' }), 'wc-x7');
+  assert.equal(wallpaperSkuForItem({ code: ' 7 ', name: 'x', article: null }), 'wc-x7');
+});
+
+// ---------------------------------------------------------------------------
 // planPhotoCoverage / unionCoveredCodes
 // ---------------------------------------------------------------------------
 
@@ -368,8 +479,8 @@ test('wallpaper-photos CLI: parseArgs --plan with --items and optional --source'
   assert.equal(args.source, 'styleo');
 });
 
-test('wallpaper-photos CLI: parseArgs --run with optional --source', () => {
-  const args = parseArgs(['--run', '--source', 'epicentr']);
+test('wallpaper-photos CLI: parseArgs --run with --items and optional --source', () => {
+  const args = parseArgs(['--run', '--items', '/tmp/items.json', '--source', 'epicentr']);
   assert.equal(args.action, 'run');
   assert.equal(args.source, 'epicentr');
 });
@@ -407,15 +518,532 @@ test('wallpaper-photos CLI: parseArgs rejects unknown --source for --plan/--run'
 });
 
 // ---------------------------------------------------------------------------
-// CLI: --run is an explicit stub until the orchestrator GO
+// CLI: parseArgs --run (--items обязателен, --sources, --dry)
 // ---------------------------------------------------------------------------
 
-test('wallpaper-photos CLI: run() rejects with NOT_IMPLEMENTED_WAITING_ORCHESTRATOR', async () => {
-  await assert.rejects(run(), /NOT_IMPLEMENTED_WAITING_ORCHESTRATOR/);
-  await assert.rejects(
-    runPhotosCli(['--run'], { cacheDir: mkdtempSync(path.join(tmpdir(), 'wc-run-')) }),
-    /NOT_IMPLEMENTED_WAITING_ORCHESTRATOR/,
+test('wallpaper-photos CLI: parseArgs --run requires --items', () => {
+  assert.throws(() => parseArgs(['--run']), /--items/i);
+});
+
+test('wallpaper-photos CLI: parseArgs --run --sources dedupes and reorders to priority', () => {
+  const args = parseArgs(['--run', '--items', '/tmp/i.json', '--sources', 'styleo,slav,styleo']);
+  assert.equal(args.action, 'run');
+  assert.deepEqual(args.sources, ['slav', 'styleo']);
+  assert.equal(args.dry, false);
+});
+
+test('wallpaper-photos CLI: parseArgs --run --dry', () => {
+  const args = parseArgs(['--run', '--items', '/tmp/i.json', '--dry']);
+  assert.equal(args.dry, true);
+});
+
+test('wallpaper-photos CLI: parseArgs --run --source resolves a single-source list', () => {
+  const args = parseArgs(['--run', '--items', '/tmp/i.json', '--source', 'epicentr']);
+  assert.equal(args.source, 'epicentr');
+  assert.deepEqual(args.sources, ['epicentr']);
+});
+
+test('wallpaper-photos CLI: parseArgs rejects --sources/--dry outside --run', () => {
+  assert.throws(
+    () => parseArgs(['--plan', '--items', 'x.json', '--dry']),
+    /only valid with --run/i,
   );
+  assert.throws(
+    () => parseArgs(['--index', 'slav', '--sources', 'slav']),
+    /only valid with --run/i,
+  );
+});
+
+test('wallpaper-photos CLI: parseArgs rejects --source together with --sources', () => {
+  assert.throws(
+    () => parseArgs(['--run', '--items', 'x.json', '--source', 'slav', '--sources', 'slav']),
+    /not both/i,
+  );
+});
+
+test('wallpaper-photos CLI: parseArgs rejects unknown source in --sources', () => {
+  assert.throws(
+    () => parseArgs(['--run', '--items', 'x.json', '--sources', 'slav,bogus']),
+    /unknown source/i,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// CLI: --run — runtime-тесты на стабах (fake fetch + fake supabase-клиент)
+// ---------------------------------------------------------------------------
+
+interface FakeImageRow {
+  product_id: string;
+  image_url: string;
+  is_main: boolean;
+  sort_order: number;
+}
+
+interface FakeDb {
+  client: SupabaseClient;
+  inserted: FakeImageRow[];
+  uploads: { path: string; contentType: string; byteLength: number }[];
+  inChunkSizes: number[];
+  windows: string[];
+  pairs: { product_id: string; image_url: string }[];
+  key: (productId: string, imageUrl: string) => string;
+}
+
+/** In-memory supabase-клиент: paged-чтения с реальным range-поведением,
+ * INSERT с симуляцией 23505, Storage upload. */
+function makeFakeDb(opts: {
+  products?: { id: string; sku: string }[];
+  pairs?: { product_id: string; image_url: string }[];
+  /** Эти пары INSERT возвращает как 23505. */
+  duplicatePairs?: string[];
+  /** path -> сообщение об ошибке upload. */
+  uploadErrors?: Record<string, string>;
+}): FakeDb {
+  const products = (opts.products ?? []).map((p) => ({ ...p }));
+  const pairs = (opts.pairs ?? []).map((p) => ({ ...p }));
+  const inserted: FakeImageRow[] = [];
+  const uploads: FakeDb['uploads'] = [];
+  const inChunkSizes: number[] = [];
+  const windows: string[] = [];
+  const key = (productId: string, imageUrl: string): string => `${productId}\u0000${imageUrl}`;
+
+  const client = {
+    from(table: string) {
+      if (table === 'products') {
+        const state = { from: 0, to: -1 };
+        const b = {
+          select: () => b,
+          is: () => b,
+          like: () => b,
+          order: (column: string) => {
+            windows.push(`products order=${column}`);
+            return b;
+          },
+          range: (from: number, to: number) => {
+            state.from = from;
+            state.to = to;
+            windows.push(`products range=${from}-${to}`);
+            return b;
+          },
+          returns: () => b,
+          then: (resolve: (value: unknown) => void) => {
+            resolve({ data: products.slice(state.from, state.to + 1), error: null });
+          },
+        };
+        return b;
+      }
+      if (table === 'product_images') {
+        const state = { inGroup: null as string[] | null, from: 0, to: -1 };
+        const b = {
+          select: () => b,
+          in: (_column: string, group: string[]) => {
+            state.inGroup = group;
+            inChunkSizes.push(group.length);
+            return b;
+          },
+          order: (column: string) => {
+            windows.push(`product_images order=${column}`);
+            return b;
+          },
+          range: (from: number, to: number) => {
+            state.from = from;
+            state.to = to;
+            windows.push(`product_images range=${from}-${to}`);
+            return b;
+          },
+          returns: () => b,
+          then: (resolve: (value: unknown) => void) => {
+            const group = state.inGroup;
+            const scoped =
+              group === null ? pairs : pairs.filter((r) => group.includes(r.product_id));
+            resolve({ data: scoped.slice(state.from, state.to + 1), error: null });
+          },
+          insert: (row: FakeImageRow) => ({
+            then: (resolve: (value: unknown) => void) => {
+              if (opts.duplicatePairs?.includes(key(row.product_id, row.image_url)) === true) {
+                resolve({
+                  data: null,
+                  error: {
+                    code: '23505',
+                    message:
+                      'duplicate key value violates unique constraint "idx_product_images_product_url"',
+                  },
+                });
+                return;
+              }
+              pairs.push({ product_id: row.product_id, image_url: row.image_url });
+              inserted.push({ ...row });
+              resolve({ data: null, error: null });
+            },
+          }),
+        };
+        return b;
+      }
+      throw new Error(`fake db: unexpected table ${table}`);
+    },
+    storage: {
+      from() {
+        return {
+          upload: async (path: string, bytes: Uint8Array, config: { contentType: string }) => {
+            const message = opts.uploadErrors?.[path];
+            if (message !== undefined) return { data: null, error: { message } };
+            uploads.push({ path, contentType: config.contentType, byteLength: bytes.byteLength });
+            return { data: { path }, error: null };
+          },
+        };
+      },
+    },
+  };
+  return {
+    client: client as unknown as SupabaseClient,
+    inserted,
+    uploads,
+    inChunkSizes,
+    windows,
+    pairs,
+    key,
+  };
+}
+
+async function runForTest(opts: {
+  items: PhotoItem[];
+  sources: PhotoSource[];
+  caches: Record<string, string[]>;
+  fetchText?: (url: string) => Promise<string>;
+  fetchImage?: (url: string) => Promise<Uint8Array>;
+  products?: { id: string; sku: string }[];
+  pairs?: { product_id: string; image_url: string }[];
+  duplicatePairs?: string[];
+  uploadErrors?: Record<string, string>;
+  dry?: boolean;
+}): Promise<{ db: FakeDb; totals: RunTotals; cacheDir: string }> {
+  const cacheDir = makeTmpDir();
+  for (const [source, urls] of Object.entries(opts.caches)) writeCache(cacheDir, source, urls);
+  const itemsPath = path.join(cacheDir, 'items.json');
+  writeFileSync(itemsPath, JSON.stringify(opts.items));
+  const db = makeFakeDb(opts);
+  const totals = await run(
+    { itemsPath, sources: opts.sources, cacheDir, dry: opts.dry === true },
+    {
+      client: db.client,
+      fetchText:
+        opts.fetchText ??
+        (async () => {
+          throw new Error('unexpected fetchText call');
+        }),
+      fetchImage:
+        opts.fetchImage ??
+        (async () => {
+          throw new Error('unexpected fetchImage call');
+        }),
+      throttleMs: 0,
+      log: () => {},
+    },
+  );
+  return { db, totals, cacheDir };
+}
+
+function cleanup(dir: string): void {
+  rmSync(dir, { recursive: true, force: true });
+}
+
+const JPEG_BYTES = Uint8Array.from([
+  0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x02, 0x03,
+]);
+const PNG_BYTES = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x01]);
+
+test('wallpaper-photos CLI: run() slav — пишет внешние hotlink-URL (main sort 0 + текстуры)', async () => {
+  const page =
+    '<html><body>' +
+    '<img src="https://oboi-slav-oboi.com/assets/products/2746/main.jpg">' +
+    "<img src='/assets/products/2746/tex-1.jpg'>" +
+    '<img src="/assets/products/2746/tex-2.jpg">' +
+    '</body></html>';
+  const { db, totals, cacheDir } = await runForTest({
+    items: [{ code: '100', name: 'шпалери 6647-04', article: '6647-04' }],
+    sources: ['slav'],
+    caches: { slav: [SLAV_URL] },
+    fetchText: async (url) => {
+      assert.equal(url, SLAV_URL);
+      return page;
+    },
+    products: [{ id: 'p-100', sku: 'wc-6647-04' }],
+  });
+  assert.equal(db.inserted.length, 3);
+  assert.deepEqual(db.inserted[0], {
+    product_id: 'p-100',
+    image_url: 'https://oboi-slav-oboi.com/assets/products/2746/main.jpg',
+    is_main: true,
+    sort_order: 0,
+  });
+  assert.deepEqual(db.inserted[1], {
+    product_id: 'p-100',
+    image_url: 'https://oboi-slav-oboi.com/assets/products/2746/tex-1.jpg',
+    is_main: false,
+    sort_order: 1,
+  });
+  assert.deepEqual(db.inserted[2], {
+    product_id: 'p-100',
+    image_url: 'https://oboi-slav-oboi.com/assets/products/2746/tex-2.jpg',
+    is_main: false,
+    sort_order: 2,
+  });
+  assert.equal(db.uploads.length, 0);
+  assert.equal(totals.bySource.slav?.matched, 1);
+  assert.equal(totals.bySource.slav?.hotlinked, 3);
+  assert.equal(totals.insertedRows, 3);
+  assert.deepEqual(totals.noPhotoCodes, []);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() epicentr — скачивает, upload в Storage, ОТНОСИТЕЛЬНЫЙ путь в БД', async () => {
+  const imageUrl = 'https://epicentrk.ua/upload/oboi-bravo-86000br90-1-06x10-05-m.jpg';
+  const { db, totals, cacheDir } = await runForTest({
+    items: [{ code: '200', name: 'Браво темні', article: '86000BR90' }],
+    sources: ['epicentr'],
+    caches: { epicentr: [imageUrl] },
+    fetchImage: async (url) => {
+      assert.equal(url, imageUrl);
+      return JPEG_BYTES;
+    },
+    products: [{ id: 'p-200', sku: 'wc-86000br90' }],
+  });
+  assert.equal(db.uploads.length, 1);
+  assert.deepEqual(db.uploads[0], {
+    path: 'wc-86000br90/oboi-bravo-86000br90-1-06x10-05-m.jpg',
+    contentType: 'image/jpeg',
+    byteLength: JPEG_BYTES.byteLength,
+  });
+  assert.deepEqual(db.inserted, [
+    {
+      product_id: 'p-200',
+      image_url: 'wc-86000br90/oboi-bravo-86000br90-1-06x10-05-m.jpg',
+      is_main: true,
+      sort_order: 0,
+    },
+  ]);
+  assert.equal(totals.bySource.epicentr?.downloaded, 1);
+  assert.equal(totals.bySource.epicentr?.hotlinked, 0);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() 23505 — no-op, не фатал, позиция закрыта', async () => {
+  const dupUrl = 'https://oboi-slav-oboi.com/assets/products/1/main.jpg';
+  const { db, totals, cacheDir } = await runForTest({
+    items: [{ code: '100', name: 'шпалери', article: '6647-04' }],
+    sources: ['slav'],
+    caches: { slav: [SLAV_URL] },
+    fetchText: async () => `<img src="${dupUrl}">`,
+    products: [{ id: 'p-1', sku: 'wc-6647-04' }],
+    duplicatePairs: [`p-1\u0000${dupUrl}`],
+  });
+  assert.equal(db.inserted.length, 0);
+  assert.equal(totals.bySource.slav?.noop23505, 1);
+  assert.deepEqual(totals.noPhotoCodes, []);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() идемпотентный повтор — 0 вставок, upload не повторяется', async () => {
+  const cacheDir = makeTmpDir();
+  writeCache(cacheDir, 'epicentr', ['https://epicentrk.ua/upload/oboi-bravo-86000br90.jpg']);
+  const itemsPath = path.join(cacheDir, 'items.json');
+  writeFileSync(
+    itemsPath,
+    JSON.stringify([{ code: '200', name: 'Браво темні', article: '86000BR90' }]),
+  );
+  const db = makeFakeDb({ products: [{ id: 'p-200', sku: 'wc-86000br90' }] });
+  const deps = {
+    client: db.client,
+    fetchImage: async () => JPEG_BYTES,
+    throttleMs: 0,
+    log: () => {},
+  };
+  const first = await run({ itemsPath, sources: ['epicentr'], cacheDir, dry: false }, deps);
+  assert.equal(first.insertedRows, 1);
+  const second = await run({ itemsPath, sources: ['epicentr'], cacheDir, dry: false }, deps);
+  assert.equal(second.insertedRows, 0);
+  assert.equal(second.alreadyHadPhotos, 1);
+  assert.equal(second.matchedProducts, 0);
+  assert.equal(db.inserted.length, 1);
+  assert.equal(db.uploads.length, 1);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() первый источник закрывает позицию — epicentr не трогается', async () => {
+  let epicentrTried = false;
+  const { db, totals, cacheDir } = await runForTest({
+    items: [{ code: '100', name: 'шпалери 6647-04', article: '6647-04' }],
+    sources: ['slav', 'epicentr'],
+    caches: { slav: [SLAV_URL], epicentr: ['https://epicentrk.ua/upload/oboi-6647-04.jpg'] },
+    fetchText: async () =>
+      '<img src="https://oboi-slav-oboi.com/assets/products/2746/main.jpg">',
+    fetchImage: async () => {
+      epicentrTried = true;
+      return JPEG_BYTES;
+    },
+    products: [{ id: 'p-100', sku: 'wc-6647-04' }],
+  });
+  assert.equal(epicentrTried, false);
+  assert.equal(db.inserted.length, 1);
+  assert.equal(totals.bySource.slav?.matched, 1);
+  assert.equal(totals.bySource.epicentr?.matched, 0);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() без кэша индекса — честная ошибка «сначала --index»', async () => {
+  const cacheDir = makeTmpDir();
+  const itemsPath = path.join(cacheDir, 'items.json');
+  writeFileSync(itemsPath, JSON.stringify([{ code: '1', name: 'x', article: null }]));
+  await assert.rejects(
+    run(
+      { itemsPath, sources: ['epicentr'], cacheDir, dry: true },
+      { client: makeFakeDb({}).client, log: () => {} },
+    ),
+    /--index epicentr/,
+  );
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() --dry — читает и матчит, но 0 записей в БД/Storage', async () => {
+  const { db, totals, cacheDir } = await runForTest({
+    items: [{ code: '200', name: 'Браво темні', article: '86000BR90' }],
+    sources: ['epicentr'],
+    caches: { epicentr: ['https://epicentrk.ua/upload/oboi-bravo-86000br90.jpg'] },
+    fetchImage: async () => JPEG_BYTES,
+    products: [{ id: 'p-200', sku: 'wc-86000br90' }],
+    dry: true,
+  });
+  assert.equal(db.inserted.length, 0);
+  assert.equal(db.uploads.length, 0);
+  assert.equal(totals.insertedRows, 1); // would-write счётчик
+  assert.equal(totals.bySource.epicentr?.downloaded, 1);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() сбой скачивания не фатален — позиция достаётся следующему источнику', async () => {
+  const styleoUrl = 'https://styleo.com.ua/p/oboi-bravo-86000br90';
+  const epicentrUrl = 'https://epicentrk.ua/upload/oboi-bravo-86000br90.jpg';
+  const { totals, cacheDir } = await runForTest({
+    items: [{ code: '200', name: 'Браво темні', article: '86000BR90' }],
+    sources: ['epicentr', 'styleo'],
+    caches: { epicentr: [epicentrUrl], styleo: [styleoUrl] },
+    fetchImage: async (url) => {
+      if (url === epicentrUrl) throw new HttpFetchError(404, 'HTTP 404');
+      return PNG_BYTES;
+    },
+    products: [{ id: 'p-200', sku: 'wc-86000br90' }],
+  });
+  assert.equal(totals.bySource.epicentr?.failed, 1);
+  assert.equal(totals.bySource.styleo?.downloaded, 1);
+  assert.deepEqual(totals.downloadFailedCodes, []); // спасено styleo
+  assert.deepEqual(totals.noPhotoCodes, []);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() сбой на всех источниках — «сбой скачивания» + «без фото»', async () => {
+  const { totals, cacheDir } = await runForTest({
+    items: [{ code: '200', name: 'Браво темні', article: '86000BR90' }],
+    sources: ['epicentr', 'styleo'],
+    caches: {
+      epicentr: ['https://epicentrk.ua/upload/oboi-bravo-86000br90.jpg'],
+      styleo: ['https://styleo.com.ua/p/oboi-bravo-86000br90'],
+    },
+    fetchImage: async () => {
+      throw new HttpFetchError(500, 'HTTP 500');
+    },
+    products: [{ id: 'p-200', sku: 'wc-86000br90' }],
+  });
+  assert.equal(totals.bySource.epicentr?.failed, 1);
+  assert.equal(totals.bySource.styleo?.failed, 1);
+  assert.deepEqual(totals.downloadFailedCodes, ['200']);
+  assert.deepEqual(totals.noPhotoCodes, ['200']);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() >5 МБ и не-image magic bytes — сбой без записи', async () => {
+  const oversized = new Uint8Array(MAX_IMAGE_BYTES + 1);
+  oversized[0] = 0xff;
+  oversized[1] = 0xd8;
+  oversized[2] = 0xff;
+  const garbage = Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  const { db, totals, cacheDir } = await runForTest({
+    items: [
+      { code: '300', name: 'шпалери 5243-02', article: '5243-02' },
+      { code: '400', name: 'шпалери 30202', article: '30202' },
+    ],
+    sources: ['epicentr'],
+    caches: {
+      epicentr: [
+        'https://epicentrk.ua/upload/oboi-5243-02.jpg',
+        'https://epicentrk.ua/upload/oboi-30202.jpg',
+      ],
+    },
+    fetchImage: async (url) => (url.includes('5243-02') ? oversized : garbage),
+    products: [
+      { id: 'p-300', sku: 'wc-5243-02' },
+      { id: 'p-400', sku: 'wc-30202' },
+    ],
+  });
+  assert.equal(db.inserted.length, 0);
+  assert.equal(db.uploads.length, 0);
+  assert.equal(totals.bySource.epicentr?.failed, 2);
+  assert.deepEqual(totals.downloadFailedCodes, ['300', '400']);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() пагинация — окна ≤1000 c .order(id), .in чанки ≤200, сквозной матч', async () => {
+  const products = Array.from({ length: 2500 }, (_, i) => ({
+    id: `p-${i}`,
+    sku: `wc-x${1000 + i}`,
+  }));
+  const { db, totals, cacheDir } = await runForTest({
+    items: [{ code: '3499', name: 'шпалери 3499', article: null }], // sku = wc-x3499 (последний товар)
+    sources: ['slav'],
+    caches: { slav: ['https://oboi-slav-oboi.com/ua/v1-3499/'] },
+    fetchText: async () => '<img src="/assets/products/3499/main.jpg">',
+    products,
+  });
+  assert.deepEqual(db.inserted, [
+    {
+      product_id: 'p-2499',
+      image_url: 'https://oboi-slav-oboi.com/assets/products/3499/main.jpg',
+      is_main: true,
+      sort_order: 0,
+    },
+  ]);
+  const productWindows = db.windows
+    .filter((w) => w.startsWith('products range='))
+    .map((w) => w.replace('products range=', ''));
+  assert.deepEqual(productWindows, ['0-999', '1000-1999', '2000-2999']);
+  assert.ok(db.windows.includes('products order=id'));
+  assert.ok(db.windows.includes('product_images order=product_id'));
+  assert.ok(db.inChunkSizes.length > 1);
+  for (const size of db.inChunkSizes) assert.ok(size <= 200);
+  assert.equal(
+    db.inChunkSizes.reduce((sum, size) => sum + size, 0),
+    2500,
+  );
+  assert.deepEqual(totals.noPhotoCodes, []);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() позиция без wc-* товара — пропущена (без товара)', async () => {
+  let fetched = false;
+  const { db, totals, cacheDir } = await runForTest({
+    items: [{ code: '999', name: 'шпалери', article: null }], // sku wc-x999 — нет в products
+    sources: ['slav'],
+    caches: { slav: [SLAV_URL] },
+    fetchText: async () => {
+      fetched = true;
+      return '<img src="/assets/products/1/main.jpg">';
+    },
+    products: [{ id: 'p-1', sku: 'wc-x1' }],
+  });
+  assert.equal(fetched, false);
+  assert.equal(db.inserted.length, 0);
+  assert.equal(totals.noProduct, 1);
+  assert.deepEqual(totals.noPhotoCodes, []);
+  cleanup(cacheDir);
 });
 
 // ---------------------------------------------------------------------------
@@ -627,22 +1255,40 @@ test('wallpaper-photos CLI: --plan rejects invalid items JSON shapes', async () 
 // CLI: статические инварианты (без сети/БД/Storage)
 // ---------------------------------------------------------------------------
 
-test('wallpaper-photos CLI: static invariants — timeout 30s, UA header, throttle 200ms, no DB/Storage', () => {
-  const scriptPath = path.join(
-    path.dirname(fileURLToPath(import.meta.url)),
-    '..',
-    'scripts',
-    'wallpaper-photos.ts',
+function readPhotosScriptSource(): string {
+  return readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'wallpaper-photos.ts'),
+    'utf8',
   );
-  const src = readFileSync(scriptPath, 'utf8');
+}
+
+test('wallpaper-photos CLI: static invariants — timeout 30s, UA header, throttle 200ms, cache dir', () => {
+  const src = readPhotosScriptSource();
   assert.match(src, /FETCH_TIMEOUT_MS\s*=\s*30_000/);
   assert.match(src, /AbortSignal\.timeout\(\s*FETCH_TIMEOUT_MS\s*\)/);
   assert.match(src, /['"]user-agent['"]/);
   assert.match(src, /THROTTLE_MS\s*=\s*200/);
-  assert.match(src, /throw new Error\('NOT_IMPLEMENTED_WAITING_ORCHESTRATOR'\)/);
-  // задача 8 НЕ пишет в БД/Storage: никаких supabase-клиентов
-  assert.doesNotMatch(src, /@supabase/);
   assert.match(src, /data['"],\s*['"]photo-cache/);
+});
+
+test('wallpaper-photos CLI: static invariants — --run: service-role, diff-aware, лимиты пагинации', () => {
+  const src = readPhotosScriptSource();
+  // окна чтения ≤1000 с tiebreaker, .in чанки ≤200 (проектные инварианты)
+  assert.match(src, /PAGE_SIZE\s*=\s*1000/);
+  assert.match(src, /PAIR_CHUNK_SIZE\s*=\s*200/);
+  assert.match(src, /\.order\('product_id'\)/);
+  assert.match(src, /\.order\('id'\)/);
+  // service-role клиент собирается ЛЕНИВО внутри --run (паттерн wallpaper-import.ts)
+  assert.match(src, /persistSession:\s*false/);
+  assert.match(src, /await import\('@supabase\/supabase-js'\)/);
+  assert.match(src, /\.env\.local/);
+  // Storage: bucket, санитизация имени, magic bytes + лимит 5 МБ, без upsert
+  assert.match(src, /STORAGE_BUCKET\s*=\s*'product_images'/);
+  assert.match(src, /sanitizeUploadFileName/);
+  assert.match(src, /MAX_IMAGE_BYTES\s*=\s*5 \* 1024 \* 1024/);
+  assert.match(src, /upsert:\s*false/);
+  // --run без --items невозможен (fail-closed, как --plan)
+  assert.match(src, /--run requires --items/);
 });
 
 // ---------------------------------------------------------------------------

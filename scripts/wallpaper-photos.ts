@@ -3,10 +3,8 @@
  * Wallpapers PHOTO PIPELINE — CLI (plan Task 8, spec §4).
  *
  * Responsibilities of THIS task: sitemap INDEXING of photo sources,
- * article-token MATCHING and --plan coverage reports.
- *
- * Writing to DB/Storage (--run) is intentionally NOT implemented here —
- * it is wired by the orchestrator as a separate GO (see run()).
+ * article-token MATCHING, --plan coverage reports and the --run acquisition
+ * phase (orchestrator GO only).
  *
  * Modes:
  *   node scripts/wallpaper-photos.ts --index <slav|epicentr|shpalery-ua|styleo|shpaleru>
@@ -16,29 +14,55 @@
  *       Read cached indexes + a JSON file of stock positions
  *       (array of {code,name,article}) and print how many positions each
  *       source covers (strict token match, priority order). Read-only.
- *   node scripts/wallpaper-photos.ts --run [--source <s>]
- *       NOT IMPLEMENTED YET: throws NOT_IMPLEMENTED_WAITING_ORCHESTRATOR
- *       (slav -> hotlink URLs; others -> download -> Storage upload).
+ *   node scripts/wallpaper-photos.ts --run --items <items.json>
+ *        [--source <s> | --sources <a,b,c>] [--dry]
+ *       Photo acquisition (writes DB/Storage — orchestrator GO only):
+ *       maps items onto wc-* products with the importer sku rule, walks the
+ *       sources in priority order (first hit closes a position; positions
+ *       that already own any product_images row are skipped):
+ *         - slav   -> fetch the product page (30s timeout, 200ms throttle),
+ *                     parse <img> (/assets/products/), write hotlink URLs
+ *                     (main sort_order=0 + up to 12 textures);
+ *         - others -> download the image (≤5 MB, jpeg/png/webp by magic
+ *                     bytes), upload to Storage bucket product_images under
+ *                     `<sku>/<sanitized>.<ext>` (upload-filename hardening)
+ *                     and write the RELATIVE path to product_images;
+ *       product_images INSERT is diff-aware: existing (product_id,image_url)
+ *       pairs are pre-read (`.in` chunks ≤200, windows ≤1000 + .order),
+ *       duplicates (23505) are skipped as no-ops, other DB errors stop the
+ *       run (a re-run is the recovery path). Download failures are never
+ *       fatal — the position lands in the «сбой скачивания» / «без фото»
+ *       reports. --dry performs everything except DB/Storage writes.
  *
- * NO DB / NO Storage access in this script at this stage (statically pinned
- * by tests/wallpaper-photo-sources.test.ts).
+ * --index/--plan stay read-only; only --run touches Supabase (service-role
+ * client built lazily from .env.local / shell env, persistSession: false —
+ * pattern scripts/wallpaper-import.ts; statically pinned by
+ * tests/wallpaper-photo-sources.test.ts).
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { parseArticleTokens } from '../app/lib/wallpapers/parse.ts';
 import {
   SOURCE_PRIORITY,
   SOURCE_SITEMAPS,
+  detectImageMime,
+  extractPageImages,
   extractSitemapUrls,
   isPhotoSource,
+  matchSourceByUrl,
   normalizeArticleToken,
+  pickMainAndTextures,
   planPhotoCoverage,
   unionCoveredCodes,
+  wallpaperSkuForItem,
   type PhotoItem,
   type PhotoSource,
 } from '../app/lib/wallpapers/photo-sources.ts';
+import { sanitizeUploadFileName } from '../app/lib/upload-filename.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -51,13 +75,22 @@ export const THROTTLE_MS = 200;
 /** Defensive cap on sitemap-index nesting expansion. */
 const NESTED_SITEMAP_CAP = 20;
 
+/** PostgREST caps any single response at 1000 rows — read windows stay ≤1000. */
+export const PAGE_SIZE = 1000;
+/** Project invariant: ≤200 ids per `.in()` chunk (long GET URLs break PostgREST). */
+export const PAIR_CHUNK_SIZE = 200;
+/** Storage bucket limit (migration 025): larger images are rejected. */
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+/** Public-read bucket; relative object paths are stored in product_images. */
+export const STORAGE_BUCKET = 'product_images';
+
 export const USER_AGENT =
   'Mozilla/5.0 (compatible; MyShopWallpaperPhotos/1.0; photo-index bot; +https://towary-dla-domu.com)';
 
 const USAGE = `Usage:
   node scripts/wallpaper-photos.ts --index <slav|epicentr|shpalery-ua|styleo|shpaleru> [--cache-dir DIR]
   node scripts/wallpaper-photos.ts --plan --items <items.json> [--source <s>] [--cache-dir DIR]
-  node scripts/wallpaper-photos.ts --run [--source <s>]   # NOT IMPLEMENTED (orchestrator GO)`;
+  node scripts/wallpaper-photos.ts --run --items <items.json> [--source <s> | --sources <a,b,c>] [--dry] [--cache-dir DIR]`;
 
 // ---------------------------------------------------------------------------
 // Fetching
@@ -84,6 +117,20 @@ export async function fetchSitemapText(url: string): Promise<string> {
   });
   if (!res.ok) throw new HttpFetchError(res.status, `HTTP ${res.status} for ${url}`);
   return await res.text();
+}
+
+/** Image download: UA header, 30s hard timeout, non-2xx -> HttpFetchError. */
+export async function fetchImageBytes(url: string): Promise<Uint8Array> {
+  const res = await fetch(url, {
+    headers: {
+      'user-agent': USER_AGENT,
+      accept: 'image/jpeg,image/png,image/webp,image/*;q=0.8,*/*;q=0.5',
+    },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    redirect: 'follow',
+  });
+  if (!res.ok) throw new HttpFetchError(res.status, `HTTP ${res.status} for ${url}`);
+  return new Uint8Array(await res.arrayBuffer());
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -229,16 +276,49 @@ function loadItems(itemsPath: string): PhotoItem[] {
 export interface CliArgs {
   action: 'index' | 'plan' | 'run';
   source?: PhotoSource;
+  /** --run only: resolved source list, priority order (see resolveRunSources). */
+  sources?: PhotoSource[];
   items?: string;
   cacheDir: string;
+  /** --run only: full simulation, ZERO DB/Storage writes. */
+  dry: boolean;
+}
+
+/**
+ * --run source list resolution: `--source` (single), `--sources` (comma-
+ * separated, deduped and reordered to SOURCE_PRIORITY) or all sources.
+ */
+export function resolveRunSources(
+  source: PhotoSource | undefined,
+  sourcesRaw: string | null,
+): PhotoSource[] {
+  if (source !== undefined) return [source];
+  if (sourcesRaw !== null) {
+    const requested = sourcesRaw.split(',').map((s) => s.trim()).filter((s) => s !== '');
+    if (requested.length === 0) {
+      throw new Error(
+        `--sources requires at least one source (valid: ${SOURCE_PRIORITY.join('|')})\n` + USAGE,
+      );
+    }
+    for (const s of requested) {
+      if (!isPhotoSource(s)) {
+        throw new Error(`unknown source "${s}" (valid: ${SOURCE_PRIORITY.join('|')})\n` + USAGE);
+      }
+    }
+    const unique = new Set(requested);
+    return SOURCE_PRIORITY.filter((s) => unique.has(s));
+  }
+  return [...SOURCE_PRIORITY];
 }
 
 export function parseArgs(argv: string[]): CliArgs {
   const actions: string[] = [];
   let indexSource: string | null = null;
   let sourceFlag: string | null = null;
+  let sourcesRaw: string | null = null;
   let items: string | null = null;
   let cacheDir: string | null = null;
+  let dry = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -269,6 +349,15 @@ export function parseArgs(argv: string[]): CliArgs {
         i += 1;
         break;
       }
+      case '--sources': {
+        const value = argv[i + 1];
+        if (value === undefined || value === '') {
+          throw new Error('--sources requires a comma-separated list\n' + USAGE);
+        }
+        sourcesRaw = value;
+        i += 1;
+        break;
+      }
       case '--items': {
         const value = argv[i + 1];
         if (value === undefined || value === '') {
@@ -287,6 +376,9 @@ export function parseArgs(argv: string[]): CliArgs {
         i += 1;
         break;
       }
+      case '--dry':
+        dry = true;
+        break;
       default:
         throw new Error(`unknown argument "${arg}"\n${USAGE}`);
     }
@@ -303,12 +395,15 @@ export function parseArgs(argv: string[]): CliArgs {
     if (sourceFlag !== null) {
       throw new Error('--source is not used with --index (the source is the --index argument)');
     }
+    if (sourcesRaw !== null || dry) {
+      throw new Error('--sources/--dry are only valid with --run\n' + USAGE);
+    }
     if (indexSource === null || !isPhotoSource(indexSource)) {
       throw new Error(
         `unknown source "${indexSource ?? ''}" (valid: ${SOURCE_PRIORITY.join('|')})`,
       );
     }
-    return { action: 'index', source: indexSource, cacheDir: cacheDir ?? DEFAULT_CACHE_DIR };
+    return { action: 'index', source: indexSource, cacheDir: cacheDir ?? DEFAULT_CACHE_DIR, dry: false };
   }
 
   let source: PhotoSource | undefined;
@@ -320,25 +415,565 @@ export function parseArgs(argv: string[]): CliArgs {
   }
 
   if (actions[0] === 'plan') {
+    if (sourcesRaw !== null || dry) {
+      throw new Error('--sources/--dry are only valid with --run\n' + USAGE);
+    }
     if (items === null) throw new Error('--plan requires --items <items.json>\n' + USAGE);
-    return { action: 'plan', source, items, cacheDir: cacheDir ?? DEFAULT_CACHE_DIR };
+    return { action: 'plan', source, items, cacheDir: cacheDir ?? DEFAULT_CACHE_DIR, dry: false };
   }
 
-  return { action: 'run', source, cacheDir: cacheDir ?? DEFAULT_CACHE_DIR };
+  // --run: positions file is mandatory, sources resolve to a priority list.
+  if (items === null) throw new Error('--run requires --items <items.json>\n' + USAGE);
+  if (source !== undefined && sourcesRaw !== null) {
+    throw new Error('use either --source <s> or --sources <a,b,c>, not both\n' + USAGE);
+  }
+  return {
+    action: 'run',
+    source,
+    sources: resolveRunSources(source, sourcesRaw),
+    items,
+    cacheDir: cacheDir ?? DEFAULT_CACHE_DIR,
+    dry,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// --run: Supabase access (service role, pattern: scripts/wallpaper-import.ts)
+// ---------------------------------------------------------------------------
+
+/** .env.local loader (same contract as scripts/wallpaper-import.ts). */
+function loadEnvLocal(): void {
+  try {
+    for (const line of readFileSync(path.join(root, '.env.local'), 'utf8').split('\n')) {
+      const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+      if (
+        match &&
+        match[1] !== undefined &&
+        match[2] !== undefined &&
+        process.env[match[1]] === undefined
+      ) {
+        process.env[match[1]] = match[2];
+      }
+    }
+  } catch {
+    // env vars can come from the shell too
+  }
+}
+
+/** Service-role client, built lazily ONLY inside --run (persistSession: false). */
+async function createServiceClient(): Promise<SupabaseClient> {
+  loadEnvLocal();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+  if (supabaseUrl === '' || serviceKey === '') {
+    throw new Error(
+      'Немає SUPABASE env-змінних (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)',
+    );
+  }
+  const { createClient } = await import('@supabase/supabase-js');
+  return createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false },
+  });
+}
+
+type PageResult<T> = { data: T[] | null; error: { message: string } | null };
+type PageFetcher<T> = (from: number) => PromiseLike<PageResult<T>>;
+
+/** Deterministic multi-page read: contiguous PAGE_SIZE windows with an
+ * `.order()` tiebreaker at every call site (project pagination invariant). */
+async function readAllPages<T>(fetchPage: PageFetcher<T>, what: string): Promise<T[]> {
+  const rows: T[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await fetchPage(from);
+    if (error) throw new Error(`помилка читання ${what}: ${error.message}`);
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return rows;
+    from += PAGE_SIZE;
+  }
+}
+
+interface ProductDbRow {
+  id: unknown;
+  sku: unknown;
+}
+
+/** The wallpaper domain only: yugcontract_id IS NULL AND sku LIKE 'wc-%'. */
+async function readWallpaperProducts(
+  client: SupabaseClient,
+): Promise<Map<string, { id: string; sku: string }>> {
+  const rows = await readAllPages<ProductDbRow>(
+    (from) =>
+      client
+        .from('products')
+        .select('id,sku')
+        .is('yugcontract_id', null)
+        .like('sku', 'wc-%')
+        .order('id')
+        .range(from, from + PAGE_SIZE - 1)
+        .returns<ProductDbRow[]>(),
+    'products (wc-*)',
+  );
+  const bySku = new Map<string, { id: string; sku: string }>();
+  for (const row of rows) {
+    if (typeof row.id !== 'string' || typeof row.sku !== 'string') continue;
+    const sku = row.sku.trim();
+    if (sku === '') continue;
+    bySku.set(sku, { id: row.id, sku });
+  }
+  return bySku;
+}
+
+interface ImagePairDbRow {
+  product_id: unknown;
+  image_url: unknown;
 }
 
 /**
- * The DB/Storage write phase. Deliberately a stub in this task: the
- * orchestrator wires it as a separate GO (hotlink for slav, download+upload
- * for the rest — plan Task 8 `--run` semantics).
+ * Existing (product_id, image_url) pairs for the whole wc-* domain:
+ * `.in` chunks of ≤200 ids, each chunk read in PAGE_SIZE pages with an
+ * `.order('product_id')` tiebreaker — the content-images/publish pattern
+ * (project pagination invariants). Keyed product_id → set of image_url.
  */
-export async function run(): Promise<never> {
-  throw new Error('NOT_IMPLEMENTED_WAITING_ORCHESTRATOR');
+async function readExistingImagePairs(
+  client: SupabaseClient,
+  productIds: readonly string[],
+): Promise<Map<string, Set<string>>> {
+  const pairs = new Map<string, Set<string>>();
+  for (let i = 0; i < productIds.length; i += PAIR_CHUNK_SIZE) {
+    const group = productIds.slice(i, i + PAIR_CHUNK_SIZE);
+    const rows = await readAllPages<ImagePairDbRow>(
+      (from) =>
+        client
+          .from('product_images')
+          .select('product_id,image_url')
+          .in('product_id', group)
+          .order('product_id')
+          .range(from, from + PAGE_SIZE - 1)
+          .returns<ImagePairDbRow[]>(),
+      'product_images',
+    );
+    for (const row of rows) {
+      if (typeof row.product_id !== 'string' || typeof row.image_url !== 'string') continue;
+      rememberPair(pairs, row.product_id, row.image_url);
+    }
+  }
+  return pairs;
+}
+
+function pairExists(
+  pairs: ReadonlyMap<string, Set<string>>,
+  productId: string,
+  imageUrl: string,
+): boolean {
+  return pairs.get(productId)?.has(imageUrl) === true;
+}
+
+function rememberPair(pairs: Map<string, Set<string>>, productId: string, imageUrl: string): void {
+  const set = pairs.get(productId);
+  if (set === undefined) pairs.set(productId, new Set([imageUrl]));
+  else set.add(imageUrl);
+}
+
+interface ProductImageInsert {
+  product_id: string;
+  image_url: string;
+  is_main: boolean;
+  sort_order: number;
+}
+
+type InsertOutcome = 'inserted' | 'duplicate';
+
+function isUniqueViolation(error: { code?: string; message: string }): boolean {
+  return error.code === '23505' || /duplicate key|unique constraint/i.test(error.message);
+}
+
+/** Single-row INSERT so a 23505 (unique pair / main-per-product race) stays a
+ * per-row no-op instead of failing a whole batch. Any other DB error throws —
+ * a re-run is the recovery path (diff-aware → only missing rows are written). */
+async function insertImageRow(
+  client: SupabaseClient,
+  row: ProductImageInsert,
+): Promise<InsertOutcome> {
+  const { error } = await client.from('product_images').insert(row);
+  if (error === null) return 'inserted';
+  if (isUniqueViolation(error)) return 'duplicate';
+  throw new Error(
+    `product_images insert (product_id=${row.product_id}, url=${row.image_url}): ${error.message}`,
+  );
+}
+
+/** Basename of a URL path (query/hash stripped), never empty. */
+function urlBasename(url: string): string {
+  const clean = url.split(/[?#]/)[0] ?? url;
+  const name = clean.substring(clean.lastIndexOf('/') + 1);
+  return name === '' ? 'image' : name;
+}
+
+/** Default Storage upload: bucket product_images, MIME from magic bytes,
+ * never upsert (a duplicate path must surface, not silently overwrite). */
+async function uploadViaStorage(
+  client: SupabaseClient,
+  storagePath: string,
+  bytes: Uint8Array,
+  contentType: string,
+): Promise<{ error: { message: string } | null }> {
+  const { error } = await client.storage.from(STORAGE_BUCKET).upload(storagePath, bytes, {
+    contentType,
+    upsert: false,
+  });
+  return { error: error === null ? null : { message: error.message } };
+}
+
+// ---------------------------------------------------------------------------
+// --run: the acquisition phase (orchestrator GO only)
+// ---------------------------------------------------------------------------
+
+export interface RunOptions {
+  /** JSON file of stock positions (array of {code,name,article}), as --plan. */
+  itemsPath: string;
+  /** Requested sources; ALWAYS walked in SOURCE_PRIORITY order. */
+  sources: readonly PhotoSource[];
+  cacheDir: string;
+  /** Everything except DB/Storage writes (orchestrator pre-flight). */
+  dry: boolean;
+}
+
+export interface SourceRunStats {
+  matched: number;
+  /** Non-slav copies downloaded + uploaded to Storage (1 per position). */
+  downloaded: number;
+  /** slav hotlink URL rows written to product_images. */
+  hotlinked: number;
+  /** Download/upload failures for this source (never fatal). */
+  failed: number;
+  /** INSERTs rejected as 23505 → skipped as no-ops. */
+  noop23505: number;
+}
+
+export interface RunTotals {
+  items: number;
+  /** Items mapped onto a wc-* product and eligible this run. */
+  matchedProducts: number;
+  /** Items whose derived sku has no wc-* product row (skipped). */
+  noProduct: number;
+  /** Positions that already own ≥1 image (diff-aware skip, never re-written). */
+  alreadyHadPhotos: number;
+  /** Total rows written (dry: would-be rows). */
+  insertedRows: number;
+  /** Codes with a download failure that still ended the run WITHOUT photos. */
+  downloadFailedCodes: string[];
+  /** Codes with no photo after every requested source (съёмка checklist). */
+  noPhotoCodes: string[];
+  bySource: Partial<Record<PhotoSource, SourceRunStats>>;
+}
+
+/**
+ * Photo acquisition. Diff-aware and idempotent: positions already owning any
+ * product_images row are skipped, first matching source closes a position,
+ * duplicate pairs (23505) degrade to logged no-ops — a full re-run inserts
+ * nothing. Download/upload failures are per-position and non-fatal.
+ */
+export async function run(options: RunOptions, deps: CliDeps = {}): Promise<RunTotals> {
+  const log = deps.log ?? ((line: string) => console.log(line));
+  const fetchText = deps.fetchText ?? fetchSitemapText;
+  const fetchImage = deps.fetchImage ?? fetchImageBytes;
+  const throttleGap = deps.throttleMs ?? THROTTLE_MS;
+
+  // Priority order wins regardless of how the caller listed the sources.
+  const sources = SOURCE_PRIORITY.filter((s) => options.sources.includes(s));
+
+  // ---- items (same loader/validation as --plan) ----
+  const items = loadItems(options.itemsPath);
+
+  // ---- pre-flight: EVERY requested source must have an index cache ----
+  // Fail before any read/write so a missing later source cannot strand
+  // half-processed positions behind a crash.
+  const indexBySource: Partial<Record<PhotoSource, string[]>> = {};
+  for (const source of sources) {
+    const cachePath = path.join(options.cacheDir, `${source}.json`);
+    if (!existsSync(cachePath)) {
+      throw new Error(
+        `[run] ${source}: нет кэша индекса (${cachePath}) — сначала выполните: ` +
+          `node scripts/wallpaper-photos.ts --index ${source}`,
+      );
+    }
+    let parsed: { urls?: unknown };
+    try {
+      parsed = JSON.parse(readFileSync(cachePath, 'utf8')) as { urls?: unknown };
+    } catch (err) {
+      throw new Error(
+        `[run] ${source}: кэш индекса повреждён (${cachePath}): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    indexBySource[source] = Array.isArray(parsed.urls)
+      ? parsed.urls.filter((u): u is string => typeof u === 'string')
+      : [];
+  }
+
+  // ---- DB: wc-* products + existing (product_id, image_url) pairs ----
+  const client = deps.client ?? (await createServiceClient());
+  const productsBySku = await readWallpaperProducts(client);
+  const existingPairs = await readExistingImagePairs(
+    client,
+    [...productsBySku.values()].map((p) => p.id),
+  );
+
+  // ---- item -> product positioning (diff-aware closure) ----
+  interface Position {
+    item: PhotoItem;
+    product: { id: string; sku: string };
+    open: boolean;
+  }
+  const positions: Position[] = [];
+  let noProduct = 0;
+  const noProductCodes: string[] = [];
+  let alreadyHadPhotos = 0;
+  for (const item of items) {
+    const product = productsBySku.get(wallpaperSkuForItem(item));
+    if (product === undefined) {
+      noProduct += 1;
+      noProductCodes.push(item.code);
+      continue;
+    }
+    // A position with any image (previous run or manual upload) is closed:
+    // extra sources stay «альтернативы» and are never written (spec §4.2).
+    if ((existingPairs.get(product.id)?.size ?? 0) > 0) {
+      alreadyHadPhotos += 1;
+      continue;
+    }
+    positions.push({ item, product, open: true });
+  }
+
+  const stats: Partial<Record<PhotoSource, SourceRunStats>> = {};
+  for (const source of sources) {
+    stats[source] = { matched: 0, downloaded: 0, hotlinked: 0, failed: 0, noop23505: 0 };
+  }
+  const failedCodes = new Set<string>();
+  let lastNetworkAt = 0;
+  const throttle = async (): Promise<void> => {
+    if (throttleGap <= 0) return;
+    const nowMs = Date.now();
+    if (lastNetworkAt + throttleGap > nowMs) {
+      await sleep(lastNetworkAt + throttleGap - nowMs);
+    }
+    lastNetworkAt = Date.now();
+  };
+
+  log(
+    `[run] ${options.dry ? 'DRY (без записів)' : 'WRITE'} items=${items.length} ` +
+      `sources=${sources.join(',')} products(wc-*)=${productsBySku.size}`,
+  );
+
+  for (const source of sources) {
+    const sStats = stats[source] as SourceRunStats;
+    const urls = indexBySource[source] ?? [];
+    for (const pos of positions) {
+      if (!pos.open) continue;
+      const url = matchSourceByUrl(urls, articleTokensForItem(pos.item));
+      if (url === null) continue;
+      sStats.matched += 1;
+
+      if (source === 'slav') {
+        // ---- hotlink branch: fetch page, parse <img>, write absolute URLs ----
+        await throttle();
+        let html: string;
+        try {
+          html = await fetchText(url);
+        } catch (err) {
+          sStats.failed += 1;
+          failedCodes.add(pos.item.code);
+          log(
+            `[run] slav: ${pos.item.code} сбой скачивания страницы ${url}: ` +
+              `${err instanceof Error ? err.message : String(err)}`,
+          );
+          continue;
+        }
+        const picked = pickMainAndTextures(extractPageImages(html));
+        if (picked === null) {
+          sStats.failed += 1;
+          failedCodes.add(pos.item.code);
+          log(`[run] slav: ${pos.item.code} на странице нет фото /assets/products/ — ${url}`);
+          continue;
+        }
+        const rows: ProductImageInsert[] = [
+          { product_id: pos.product.id, image_url: picked.main, is_main: true, sort_order: 0 },
+          ...picked.textures.map((texture, i) => ({
+            product_id: pos.product.id,
+            image_url: texture,
+            is_main: false,
+            sort_order: i + 1,
+          })),
+        ];
+        let written = 0;
+        for (const row of rows) {
+          if (pairExists(existingPairs, row.product_id, row.image_url)) continue;
+          if (options.dry) {
+            written += 1;
+            continue;
+          }
+          const outcome = await insertImageRow(client, row);
+          if (outcome === 'duplicate') {
+            sStats.noop23505 += 1;
+            log(`[run] slav: ${pos.item.code} дубликат product_images — no-op (${row.image_url})`);
+            continue;
+          }
+          rememberPair(existingPairs, row.product_id, row.image_url);
+          written += 1;
+        }
+        sStats.hotlinked += written;
+        pos.open = false;
+      } else {
+        // ---- copy branch: download -> validate -> Storage upload -> relative path ----
+        await throttle();
+        let bytes: Uint8Array;
+        try {
+          bytes = await fetchImage(url);
+        } catch (err) {
+          sStats.failed += 1;
+          failedCodes.add(pos.item.code);
+          log(
+            `[run] ${source}: ${pos.item.code} сбой скачивания ${url}: ` +
+              `${err instanceof Error ? err.message : String(err)}`,
+          );
+          continue;
+        }
+        if (bytes.byteLength > MAX_IMAGE_BYTES) {
+          sStats.failed += 1;
+          failedCodes.add(pos.item.code);
+          log(
+            `[run] ${source}: ${pos.item.code} файл ${bytes.byteLength} байт превышает лимит ` +
+              `${MAX_IMAGE_BYTES} (5 МБ) — ${url}`,
+          );
+          continue;
+        }
+        const mime = detectImageMime(bytes);
+        if (mime === null) {
+          sStats.failed += 1;
+          failedCodes.add(pos.item.code);
+          log(`[run] ${source}: ${pos.item.code} не jpeg/png/webp по magic bytes — ${url}`);
+          continue;
+        }
+        const safeName = sanitizeUploadFileName(urlBasename(url), mime);
+        if (safeName === null) {
+          // Defensive: mime is always whitelisted here, so this is unreachable.
+          sStats.failed += 1;
+          failedCodes.add(pos.item.code);
+          continue;
+        }
+        const storagePath = `${pos.product.sku}/${safeName}`;
+        if (pairExists(existingPairs, pos.product.id, storagePath)) {
+          pos.open = false; // partial previous run: DB row exists, nothing to do
+          continue;
+        }
+        if (!options.dry) {
+          const uploadResult =
+            deps.uploadObject !== undefined
+              ? await deps.uploadObject(storagePath, bytes, mime)
+              : await uploadViaStorage(client, storagePath, bytes, mime);
+          if (uploadResult.error !== null && !/already exists/i.test(uploadResult.error.message)) {
+            sStats.failed += 1;
+            failedCodes.add(pos.item.code);
+            log(
+              `[run] ${source}: ${pos.item.code} сбой загрузки в Storage ${storagePath}: ` +
+                `${uploadResult.error.message}`,
+            );
+            continue;
+          }
+          // "already exists" in Storage (orphan object of a crashed run):
+          // the DB pair is missing, so the insert below reconciles the state.
+        }
+        const row: ProductImageInsert = {
+          product_id: pos.product.id,
+          image_url: storagePath,
+          is_main: true,
+          sort_order: 0,
+        };
+        if (options.dry) {
+          sStats.downloaded += 1;
+        } else {
+          const outcome = await insertImageRow(client, row);
+          if (outcome === 'duplicate') {
+            sStats.noop23505 += 1;
+            log(`[run] ${source}: ${pos.item.code} дубликат product_images — no-op (${storagePath})`);
+          } else {
+            rememberPair(existingPairs, row.product_id, row.image_url);
+            sStats.downloaded += 1;
+          }
+        }
+        pos.open = false;
+      }
+    }
+  }
+
+  // ---- report ----
+  const noPhotoCodes = positions.filter((p) => p.open).map((p) => p.item.code);
+  const downloadFailedCodes = [...failedCodes].filter(
+    (code) => !positions.some((p) => p.item.code === code && !p.open),
+  );
+
+  log(
+    `[run] items=${items.length}, products(wc-*)=${productsBySku.size}, ` +
+      `уже с фото=${alreadyHadPhotos}, без товара=${noProduct}`,
+  );
+  for (const source of sources) {
+    const s = stats[source] as SourceRunStats;
+    log(
+      `[run] ${source}: matched=${s.matched} downloaded=${s.downloaded} hotlinked=${s.hotlinked} ` +
+        `failed=${s.failed} noop23505=${s.noop23505}`,
+    );
+  }
+  if (downloadFailedCodes.length > 0) {
+    log(
+      `[run] сбой скачивания: ${downloadFailedCodes.length} ` +
+        `(первые 20: ${downloadFailedCodes.slice(0, 20).join(', ')})`,
+    );
+  }
+  log(`[run] без фото (для съёмки): ${noPhotoCodes.length}`);
+  if (noPhotoCodes.length > 0) {
+    log(`[run]   первые 20: ${noPhotoCodes.slice(0, 20).join(', ')}`);
+  }
+  if (noProductCodes.length > 0) {
+    log(
+      `[run] без товара wc-* (пропущено): ${noProductCodes.length} ` +
+        `(первые 20: ${noProductCodes.slice(0, 20).join(', ')})`,
+    );
+  }
+  if (options.dry) log('[run] dry-run: записей в БД/Storage нет.');
+
+  const insertedRows = sources.reduce((sum, s) => {
+    const sStats = stats[s] as SourceRunStats;
+    return sum + sStats.downloaded + sStats.hotlinked;
+  }, 0);
+
+  return {
+    items: items.length,
+    matchedProducts: positions.length,
+    noProduct,
+    alreadyHadPhotos,
+    insertedRows,
+    downloadFailedCodes,
+    noPhotoCodes,
+    bySource: stats,
+  };
 }
 
 export interface CliDeps {
   /** Network seam (tests inject a stub; default = real fetch). */
   fetchText?: (url: string) => Promise<string>;
+  /** Image download seam (tests inject a stub; default = real fetch). */
+  fetchImage?: (url: string) => Promise<Uint8Array>;
+  /** Supabase seam (tests inject a fake; default = service-role from env). */
+  client?: SupabaseClient;
+  /** Storage upload seam (tests inject a stub; default = client.storage). */
+  uploadObject?: (
+    storagePath: string,
+    bytes: Uint8Array,
+    contentType: string,
+  ) => Promise<{ error: { message: string } | null }>;
+  /** Politeness gap override (tests pass 0; default THROTTLE_MS). */
+  throttleMs?: number;
   cacheDir?: string;
   now?: () => Date;
   log?: (line: string) => void;
@@ -425,9 +1060,20 @@ export async function runPhotosCli(argv: string[], deps: CliDeps = {}): Promise<
     case 'plan':
       planAction(args as CliArgs & { action: 'plan'; items: string }, cacheDir, log);
       return 0;
-    case 'run':
-      await run();
-      return 1;
+    case 'run': {
+      await run(
+        {
+          itemsPath: args.items as string,
+          sources: args.sources ?? [...SOURCE_PRIORITY],
+          cacheDir,
+          dry: args.dry,
+        },
+        deps,
+      );
+      // The report IS the product (same contract as --plan): exit 0 even when
+      // some positions lack photos — the owner reads the checklist.
+      return 0;
+    }
   }
 }
 

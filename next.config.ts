@@ -15,6 +15,7 @@ const SUPABASE_HOST = (() => {
 // cards and next/image requests must stay allowed in img-src.
 const YUGCONTRACT_IMAGE_ORIGIN = "https://b2b.yugcontract.ua";
 const YUGCONTRACT_IMAGE_ORIGIN_HOST = "b2b.yugcontract.ua";
+// Wallpaper supplier imagery is hotlinked the same way (2026-09-10).
 
 /**
  * CSP ENFORCING (2026-08-27 security hardening stage).
@@ -94,6 +95,7 @@ const nextConfig: NextConfig = {
     // is rejected with 400 by the optimizer.
     remotePatterns: [
       { protocol: "https", hostname: YUGCONTRACT_IMAGE_ORIGIN_HOST, pathname: "/**" },
+      { protocol: "https", hostname: "oboi-slav-oboi.com", pathname: "/**" },
       ...(SUPABASE_HOST
         ? [
             {

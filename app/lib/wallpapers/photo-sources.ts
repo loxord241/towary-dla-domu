@@ -135,6 +135,102 @@ export function extractSitemapUrls(xml: string): string[] {
 /** Product page carries the main photo + up to this many texture crops. */
 export const MAX_TEXTURES = 12;
 
+/** Host used to absolutize root-relative <img src> values on slav pages. */
+const SLAV_ORIGIN = 'https://oboi-slav-oboi.com';
+
+/** `src`/`href` carrying the product-asset path (img thumbs + fancybox <a> links).
+ *  Lookbehind rejects `data-src` (hyphen/word char before the key). */
+const PAGE_ASSET_ATTR_RE =
+  /(?<![\w-])(?:src|href)\s*=\s*(?:"([^"]*assets\/products\/[^"]*)"|'([^']*assets\/products\/[^']*)')/gi;
+
+/**
+ * slav product-page image extraction (hotlink branch of --run): <img src>
+ * thumbs AND fancybox <a href> full-size links, bare-relative included.
+ * Keeps only URLs carrying the product-asset pattern `/assets/products/`,
+ * absolutizes protocol-relative (`//…`) and root-relative (`/…`) values and
+ * dedupes case-insensitively (first occurrence wins, document order kept).
+ * The main/texture split (cap MAX_TEXTURES) is pickMainAndTextures' job.
+ */
+export function extractPageImages(html: string): string[] {
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  for (const attrMatch of html.matchAll(PAGE_ASSET_ATTR_RE)) {
+    const raw = (attrMatch[1] ?? attrMatch[2] ?? '').trim();
+    if (raw === '') continue;
+    let url = decodeBasicXmlEntities(raw);
+    if (/^https?:\/\//i.test(url)) {
+      // уже абсолютный
+    } else if (url.startsWith('//')) url = `https:${url}`;
+    else if (url.startsWith('/')) url = `${SLAV_ORIGIN}${url}`;
+    else url = `${SLAV_ORIGIN}/${url}`; // bare-relative (fancybox href)
+    if (!/^https?:\/\//i.test(url)) continue;
+    const key = url.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    urls.push(url);
+  }
+  return urls;
+}
+
+/** MIME types accepted by the product_images bucket (JPEG/PNG/WebP only). */
+export type DetectedImageMime = 'image/jpeg' | 'image/png' | 'image/webp';
+
+/**
+ * Magic-byte sniffing for downloaded image copies (never trust the source's
+ * content-type or file extension). SVG/HTML/GIF are deliberately absent —
+ * same allow-list as the admin upload endpoint.
+ */
+export function detectImageMime(bytes: Uint8Array): DetectedImageMime | null {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return 'image/png';
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 && // R
+    bytes[1] === 0x49 && // I
+    bytes[2] === 0x46 && // F
+    bytes[3] === 0x46 && // F
+    bytes[8] === 0x57 && // W
+    bytes[9] === 0x45 && // E
+    bytes[10] === 0x42 && // B
+    bytes[11] === 0x50 // P
+  ) {
+    return 'image/webp';
+  }
+  return null;
+}
+
+/** Sku prefix that marks a product as owned by the wallpapers feed. */
+const WALLPAPER_SKU_PREFIX = 'wc-';
+
+/**
+ * EXACT copy of the importer sku rule (app/lib/wallpapers/import-plan.ts:
+ * normalizeArticleKey + wallpaperSkuFor): article → `wc-<article lowercased,
+ * whitespace stripped>`; article null/blank → `wc-x<code>`. Duplicated here
+ * (import-plan keeps it private) so the photo pipeline maps items to the very
+ * same product identity; equivalence is pinned by tests.
+ */
+export function wallpaperSkuForItem(item: PhotoItem): string {
+  if (item.article !== null && item.article !== undefined) {
+    const key = item.article.trim().toLowerCase().replace(/\s+/g, '');
+    if (key !== '') return `${WALLPAPER_SKU_PREFIX}${key}`;
+  }
+  return `${WALLPAPER_SKU_PREFIX}x${item.code.trim()}`;
+}
+
 export interface MainAndTextures {
   main: string;
   textures: string[];
