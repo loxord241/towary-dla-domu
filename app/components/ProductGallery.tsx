@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import Lightbox from './Lightbox';
 
 export interface GalleryImage {
   url: string;
@@ -16,6 +17,10 @@ export interface GalleryImage {
  * (opacity-only, 200ms) after a user-driven switch. The initial render
  * carries NO animation classes — that image is the preloaded LCP element
  * of the PDP (stage 14), so it must paint immediately.
+ *
+ * Lightbox (owner task 2026-09-11): clicking the MAIN image opens the
+ * fullscreen overlay (Lightbox.tsx). Thumbnails only switch the selection —
+ * they never open the overlay.
  */
 export default function ProductGallery({ images }: { images: GalleryImage[] }) {
   const [selected, setSelected] = useState(0);
@@ -24,6 +29,8 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
   // URL of the image that is fully visible: the initial one, or one whose
   // keyed remount has finished loading (fade-in completes on onLoad).
   const [settledUrl, setSettledUrl] = useState(images[0]?.url ?? null);
+  // Fullscreen overlay state; the lightbox manages its own navigation.
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const selectImage = (next: (current: number) => number) => {
     setSelected(next);
@@ -57,19 +64,28 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
             deprecated `priority` prop; 2026-08 UX audit + perf audit).
             key={main.url} remounts the element per selection so the
             opacity fade replays for every switch (opacity only — the fixed
-            h-96 box keeps layout identical, zero CLS). */}
-        <Image
-          key={main.url}
-          src={main.url}
-          alt={main.alt}
-          width={960}
-          height={768}
-          preload
-          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 100vw, 50vw"
-          onLoad={() => setSettledUrl(main.url)}
-          onError={() => setSettledUrl(main.url)}
-          className={`w-full h-96 object-contain ${mainMotion}`}
-        />
+            h-96 box keeps layout identical, zero CLS). The click-to-zoom
+            button wrapper opens the lightbox; it carries no transition of
+            its own (the img keeps the fade, the wrapper stays static). */}
+        <button
+          type="button"
+          onClick={() => setLightboxOpen(true)}
+          aria-label="Відкрити фото на весь екран"
+          className="block w-full cursor-zoom-in"
+        >
+          <Image
+            key={main.url}
+            src={main.url}
+            alt={main.alt}
+            width={960}
+            height={768}
+            preload
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 100vw, 50vw"
+            onLoad={() => setSettledUrl(main.url)}
+            onError={() => setSettledUrl(main.url)}
+            className={`w-full h-96 object-contain ${mainMotion}`}
+          />
+        </button>
         {images.length > 1 && (
           <span className="absolute bottom-2 right-2 rounded-full bg-black/50 px-2.5 py-1 text-xs font-medium text-white">
             {Math.min(selected, images.length - 1) + 1} / {images.length}
@@ -130,6 +146,14 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
             </button>
           ))}
         </div>
+      )}
+
+      {lightboxOpen && (
+        <Lightbox
+          images={images}
+          initialIndex={Math.min(selected, images.length - 1)}
+          onClose={() => setLightboxOpen(false)}
+        />
       )}
     </div>
   );

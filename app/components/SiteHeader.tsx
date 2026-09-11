@@ -2,13 +2,15 @@ import Link from 'next/link';
 import CartBadge from './CartBadge';
 import FavoritesBadge from './FavoritesBadge';
 import NavDrawer from './NavDrawer';
-import { SearchIcon } from './icons';
+import SearchSuggest from './SearchSuggest';
 
 /**
  * Shared storefront header. The search input is a plain GET form targeting
  * /catalog?q=... so it works without client-side JavaScript. When the
  * current view carries a search term, it is pre-filled (defaultValue) so
- * the user can refine their query on the results page.
+ * the user can refine their query on the results page. The input (+ submit
+ * button) is wrapped by the SearchSuggest client island, which ADDS live
+ * autocomplete suggestions on top of the unchanged no-JS form behaviour.
  */
 export default function SiteHeader({
   searchQuery,
@@ -39,23 +41,7 @@ export default function SiteHeader({
 
           {/* Search collapses to its own row on small screens */}
           <form action="/catalog" method="get" className="order-last w-full sm:order-none sm:w-auto sm:flex-1 sm:mx-8">
-            <div className="relative">
-              <input
-                type="search"
-                name="q"
-                aria-label="Пошук"
-                placeholder="Пошук товарів..."
-                defaultValue={searchQuery}
-                className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button
-                type="submit"
-                aria-label="Шукати"
-                className="absolute right-0.5 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center text-gray-400 hover:text-blue-600"
-              >
-                <SearchIcon className="h-5 w-5" />
-              </button>
-            </div>
+            <SearchSuggest defaultValue={searchQuery} />
           </form>
 
           <div className="flex items-center space-x-1">

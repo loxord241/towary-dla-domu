@@ -4,6 +4,7 @@ import { cache } from 'react';
 // by allowImportingTsExtensions for the Next bundler.
 import { collectSubtreeIds } from './category-tree.ts';
 import { WALLPAPER_CATEGORY_MAP, WALLPAPER_ROOT } from './wallpapers/categories.ts';
+import { WALLPAPER_BASE_SPEC_NAME } from './wallpapers/filters.ts';
 
 // unstable_cache is resolved dynamically: the bare 'next/cache' specifier
 // does not resolve under plain-node ESM (no ./cache subpath in next's
@@ -1519,7 +1520,9 @@ export async function fetchCatalogProducts(
 // search and no category filter on /oboi (subcategory navigation lives in the
 // page chips that link to /catalog?category=shpaleri-*), so the ranked-search
 // path has no counterpart here and the wallpaper view needs no junction
-// filter — the sku prefix alone IS the domain filter.
+// filter — the sku prefix alone IS the domain filter. Since 2026-09-11 the
+// owner-requested ?base= spec filter narrows BOTH queries with a jsonb
+// contains on products.specifications (see the function body).
 // Deliberately NOT wrapped in unstable_cache: user-controlled `page` would
 // multiply cache entries; the /oboi route bounds the read like the catalog.
 // ---------------------------------------------------------------------------
@@ -1532,19 +1535,38 @@ export interface WallpaperPage {
 }
 
 export async function fetchWallpaperProducts(
-  filters: Pick<CatalogFilters, 'sort' | 'page' | 'size'> = {}
+  filters: Pick<CatalogFilters, 'sort' | 'page' | 'size'> & {
+    /** Exact «Основа» spec value (dictionary: app/lib/wallpapers/filters.ts). */
+    base?: string;
+  } = {}
 ): Promise<WallpaperPage> {
   const size = Math.min(
     Math.max(filters.size ?? CATALOG_PAGE_SIZE, 1),
     CATALOG_MAX_PAGE_SIZE
   );
+  // Spec filter (owner task 2026-09-11): jsonb contains with an EXACT
+  // element ({name:'Основа', value:…}) — applied to BOTH the count and the
+  // data query below so the pagination totals always match the visible grid.
+  // «Приміщення» stays deferred: its comma-joined values cannot substring-
+  // match a jsonb contains (see app/lib/wallpapers/filters.ts).
+  const base = filters.base?.trim() || undefined;
 
   // ---- total count (identical filters, no pagination) ----
-  const { count, error: countError } = await supabase
+  let countQuery = supabase
     .from('products')
     .select(ELIGIBLE_COUNT_SELECT, { count: 'exact', head: true })
     .eq('is_active', true)
     .like('sku', WALLPAPER_SKU_LIKE);
+  if (base) {
+    // JSON.stringify: supabase-js would mangle object ELEMENTS passed as a
+    // JS array (cs.{[object Object]}); the wire form must be the jsonb array
+    // containment cs.[{"name":…,"value":…}].
+    countQuery = countQuery.contains(
+      'specifications',
+      JSON.stringify([{ name: WALLPAPER_BASE_SPEC_NAME, value: base }])
+    );
+  }
+  const { count, error: countError } = await countQuery;
   if (countError) {
     throw new Error(`Failed to count wallpaper products: ${countError.message}`);
   }
@@ -1559,6 +1581,12 @@ export async function fetchWallpaperProducts(
     .select(CATALOG_CARD_SELECT)
     .eq('is_active', true)
     .like('sku', WALLPAPER_SKU_LIKE);
+  if (base) {
+    query = query.contains(
+      'specifications',
+      JSON.stringify([{ name: WALLPAPER_BASE_SPEC_NAME, value: base }])
+    );
+  }
 
   // Same sort switch as fetchCatalogProducts: every branch keeps the `id`
   // tiebreaker (bulk-imported wc-* rows share created_at), and the default

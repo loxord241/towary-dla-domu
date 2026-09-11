@@ -7,6 +7,7 @@ import {
 } from '@/app/lib/catalog'
 import { buildWallpapersMetadata } from '@/app/lib/seo'
 import { WALLPAPER_CATEGORY_MAP } from '@/app/lib/wallpapers/categories'
+import { WALLPAPER_BASE_VALUES } from '@/app/lib/wallpapers/filters'
 import { buildPageWindow } from '@/app/lib/pagination'
 import { getMainPublicImageUrl } from '@/app/lib/supabase-storage'
 import SiteHeader from '@/app/components/SiteHeader'
@@ -48,19 +49,53 @@ const pageNumberLinkClass =
 const pageNumberCurrentClass =
   'inline-flex min-w-[44px] items-center justify-center rounded-md border border-blue-600 bg-blue-600 px-2 py-2 text-sm font-semibold text-white';
 
-function oboiPageUrl(targetPage: number): string {
-  return targetPage > 1 ? `/oboi?page=${targetPage}` : '/oboi';
+/** Filter chips reuse the subcategory-chip look + an active state and the
+    motion-reduce opt-out (owner task 2026-09-11). */
+const filterChipClass =
+  'inline-flex items-center rounded-full border px-3 py-1 text-sm transition-colors motion-reduce:transition-none';
+const filterChipActiveClass = 'border-blue-600 bg-blue-600 text-white';
+const filterChipIdleClass =
+  'border-gray-200 bg-gray-50 text-blue-700 hover:bg-blue-50';
+
+/** Filter links reset to page 1 (a new filter = a new result set). */
+function oboiFilterUrl(base: string | undefined): string {
+  return base ? `/oboi?base=${encodeURIComponent(base)}` : '/oboi';
 }
 
-/** Indexable with canonical /oboi on page 1; deeper pages are noindex,follow
-    duplicates (same policy as catalog pagination — see lib/seo.ts). */
+function oboiPageUrl(targetPage: number, base: string | undefined): string {
+  const params = new URLSearchParams();
+  if (base) params.set('base', base);
+  if (targetPage > 1) params.set('page', String(targetPage));
+  const qs = params.toString();
+  return qs !== '' ? `/oboi?${qs}` : '/oboi';
+}
+
+/** ANY present ?base= value (junk/empty included) must noindex — filter
+    values on an existing resource, same policy as the catalog slugs. */
+function baseParamOf(rawParams: {
+  base?: string | string[];
+}): string | undefined {
+  return rawParams.base !== undefined ? firstParam(rawParams.base) : undefined;
+}
+
+/** Whitelist is for the CHIPS; the query itself takes the raw exact value
+    (PostgREST contains is parameterized, unknown values → honest 0 rows). */
+function baseValueOf(rawBase: string | undefined): string | undefined {
+  return rawBase && rawBase.trim() !== '' ? rawBase : undefined;
+}
+
+/** Indexable with canonical /oboi on page 1; deeper pages and spec-filtered
+    views are noindex,follow duplicates (same policy as catalog — seo.ts). */
 export async function generateMetadata({
   searchParams,
 }: {
   searchParams: SearchParams
 }): Promise<Metadata> {
   const rawParams = await searchParams;
-  return buildWallpapersMetadata(parsePageParam(rawParams.page));
+  return buildWallpapersMetadata(
+    parsePageParam(rawParams.page),
+    baseParamOf(rawParams)
+  );
 }
 
 export default async function OboiPage({
@@ -70,9 +105,10 @@ export default async function OboiPage({
 }) {
   const rawParams = await searchParams;
   const page = parsePageParam(rawParams.page);
+  const base = baseValueOf(baseParamOf(rawParams));
 
   const [catalog, categories] = await Promise.all([
-    fetchWallpaperProducts({ page, size: CATALOG_PAGE_SIZE }),
+    fetchWallpaperProducts({ page, size: CATALOG_PAGE_SIZE, base }),
     fetchActiveCategories(),
   ]);
   const products = catalog.products;
@@ -110,11 +146,56 @@ export default async function OboiPage({
             ))}
           </ul>
 
+          {/* Основа filter chips — server-filtered via a jsonb contains on
+              products.specifications (exact value, count+data). One filter
+              dimension in v1: «Приміщення» stays deferred — its comma-joined
+              values cannot substring-match in PostgREST
+              (app/lib/wallpapers/filters.ts). */}
+          <div className="mb-6">
+            <p className="mb-2 text-sm font-medium text-gray-700">Основа:</p>
+            <ul className="flex flex-wrap gap-2">
+              <li>
+                <Link
+                  href={oboiFilterUrl(undefined)}
+                  aria-current={base === undefined ? 'true' : undefined}
+                  className={`${filterChipClass} ${
+                    base === undefined
+                      ? filterChipActiveClass
+                      : filterChipIdleClass
+                  }`}
+                >
+                  Усі
+                </Link>
+              </li>
+              {WALLPAPER_BASE_VALUES.map((value) => (
+                <li key={value}>
+                  <Link
+                    href={oboiFilterUrl(value)}
+                    aria-current={base === value ? 'true' : undefined}
+                    className={`${filterChipClass} ${
+                      base === value ? filterChipActiveClass : filterChipIdleClass
+                    }`}
+                  >
+                    {value}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           {products.length === 0 ? (
             <EmptyState
               icon={<SearchIcon className="h-10 w-10" />}
-              title="Шпалери з’являться тут незабаром"
-              description="Каталог шпалер поповнюється щодня — загляньте трохи пізніше."
+              title={
+                base
+                  ? 'За фільтром нічого не знайдено'
+                  : 'Шпалери з’являться тут незабаром'
+              }
+              description={
+                base
+                  ? 'Спробуйте інше значення фільтра або натисніть «Усі», щоб скинути його.'
+                  : 'Каталог шпалер поповнюється щодня — загляньте трохи пізніше.'
+              }
             />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -134,7 +215,7 @@ export default async function OboiPage({
           {maxPage > 1 && (
             <nav className="mt-6 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
               {currentPage > 1 ? (
-                <Link href={oboiPageUrl(currentPage - 1)} className={paginationControlClass}>
+                <Link href={oboiPageUrl(currentPage - 1, base)} className={paginationControlClass}>
                   ← Назад
                 </Link>
               ) : (
@@ -162,7 +243,7 @@ export default async function OboiPage({
                 ) : (
                   <Link
                     key={`page-${item}`}
-                    href={oboiPageUrl(item)}
+                    href={oboiPageUrl(item, base)}
                     aria-label={`Сторінка ${item}`}
                     className={pageNumberLinkClass}
                   >
@@ -175,7 +256,7 @@ export default async function OboiPage({
                 <span className="text-gray-400"> · знайдено {total}</span>
               </span>
               {currentPage < maxPage ? (
-                <Link href={oboiPageUrl(currentPage + 1)} className={paginationControlClass}>
+                <Link href={oboiPageUrl(currentPage + 1, base)} className={paginationControlClass}>
                   Далі →
                 </Link>
               ) : (

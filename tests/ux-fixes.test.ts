@@ -41,10 +41,11 @@ test('FavoriteButton: hit area class guarantees a ~44px target around the icon',
 });
 
 test('SiteHeader: search submit button has a ~44px hit area and the input reserves room', () => {
-  const header = src('app/components/SiteHeader.tsx');
-  assert.match(header, /h-11 w-11/);
+  // 2026-09-11: the input + submit button live in the SearchSuggest island.
+  const search = src('app/components/SearchSuggest.tsx');
+  assert.match(search, /h-11 w-11/);
   // input must not hide typed text under the absolutely positioned button
-  assert.match(header, /pr-1[0-4]/);
+  assert.match(search, /pr-1[0-4]/);
 });
 
 // ---- P4: no Russian leftovers in the touched storefront UI
@@ -119,8 +120,12 @@ test('cart: integer prices render without forced .00 decimals', () => {
 });
 
 test('header: search input has an accessible label; badges hide zero state', () => {
+  // 2026-09-11: the search input (+ label) moved into the SearchSuggest
+  // autocomplete island; the header keeps the same no-JS GET form.
   const header = src('app/components/SiteHeader.tsx');
-  assert.match(header, /aria-label="Пошук"/);
+  assert.match(header, /<SearchSuggest/);
+  const search = src('app/components/SearchSuggest.tsx');
+  assert.match(search, /aria-label="Пошук"/);
   const cartBadge = src('app/components/CartBadge.tsx');
   const favBadge = src('app/components/FavoritesBadge.tsx');
   assert.match(cartBadge, /count > 0 &&/);

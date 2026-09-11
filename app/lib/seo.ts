@@ -164,20 +164,26 @@ export function buildCatalogViewMetadata(
 // /oboi — wallpapers storefront (owner task 2026-09-10). A STATIC indexable
 // route on the same footing as /catalog: it is part of the
 // «indexable set = sitemap set» invariant, and app/sitemap.ts lists it in
-// its static entries. Deep pagination (?page=N>1) follows the catalog
+// its static entries. Deep pagination (?page=N>1) AND spec-filtered views
+// (?base=…, owner task 2026-09-11 — any value present, junk included: these
+// are filter VALUES on an existing resource, not routes) follow the catalog
 // policy: a noindex,follow duplicate view WITHOUT a canonical tag
 // (canonicals on noindex pages send contradictory signals).
 // ---------------------------------------------------------------------------
 
 export const OBOI_CANONICAL_PATH = '/oboi';
 
-export function buildWallpapersMetadata(page = 1): ViewMetadata {
+export function buildWallpapersMetadata(
+  page = 1,
+  /** Raw ?base= param: ANY present value (even '' or junk) → noindex. */
+  base?: string
+): ViewMetadata {
   const title = `Шпалери — купити в ${SITE_NAME}`;
   // Copy stays factual: the type list mirrors the wallpaper subcategory
   // names the importer creates (app/lib/wallpapers/categories.ts).
   const description = `Каталог шпалер інтернет-магазину ${SITE_NAME}: вініл, флізелін, дуплекс, метрові, шовкографія та інші типи — з доставкою по Україні.`;
 
-  if (page > 1) {
+  if (page > 1 || base !== undefined) {
     return {
       title,
       description,

@@ -86,10 +86,13 @@ test('ICONS: HeartIcon renders filled and outline states via a filled flag', () 
 // ---- 3. controls keep their accessible names and really use the SVGs
 
 test('ICONS: SiteHeader search keeps aria-labels and renders SearchIcon', () => {
-  const header = src('app/components/SiteHeader.tsx');
-  assert.match(header, /aria-label="Пошук"/);
-  assert.match(header, /aria-label="Шукати"/);
-  assert.match(header, /<SearchIcon\b/);
+  // 2026-09-11: the input + submit button moved into the SearchSuggest
+  // autocomplete island (header keeps the no-JS GET form wrapper).
+  const suggest = src('app/components/SearchSuggest.tsx');
+  assert.match(suggest, /aria-label="Пошук"/);
+  assert.match(suggest, /aria-label="Шукати"/);
+  assert.match(suggest, /<SearchIcon\b/);
+  assert.match(src('app/components/SiteHeader.tsx'), /<SearchSuggest/);
 });
 
 test('ICONS: CartBadge keeps its aria-label and renders CartIcon', () => {
@@ -117,9 +120,9 @@ test('ICONS: FavoriteButton keeps labels, aria-pressed and swaps hearts by state
 test('ICONS: hit-area invariants survive the icon swap', () => {
   // Superseded 2026-08-28 (P1 mobile audit B4): hit areas raised to ~44px.
   assert.match(src('app/components/FavoriteButton.tsx'), /h-9 w-9/);
-  const header = src('app/components/SiteHeader.tsx');
-  assert.match(header, /h-11 w-11/);
-  assert.match(header, /pr-12/);
+  const suggest = src('app/components/SearchSuggest.tsx');
+  assert.match(suggest, /h-11 w-11/);
+  assert.match(suggest, /pr-12/);
   assert.match(src('app/components/CartBadge.tsx'), /p-2/);
   assert.match(src('app/components/FavoritesBadge.tsx'), /p-2/);
 });
