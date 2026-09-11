@@ -94,20 +94,117 @@ test('IDEMPOTENCY: same data twice → second run produces zero ops', () => {
   assert.equal(second.noops, 2);
 });
 
-test('REORDER: staging order change updates sort_order and switches is_main within imported set', () => {
+test('ORDER-INSENSITIVE: same URL set in a different feed order → zero write ops, DB order kept', () => {
   const existing = [
     img('d1', 'p1', URL1, { sortOrder: 0, isMain: true }),
-    img('d2', 'p1', URL2, { sortOrder: 1, isMain: false }),
+    img('d2', 'p1', URL2, { sortOrder: 1 }),
   ];
   const plan = planImageOps(
     [product('p1', '101')],
-    new Map([['101', [URL2, URL1]]]),
+    new Map([['101', [URL2, URL1]]]), // feed shuffled vs DB order
     existing
   );
   assert.equal(plan.inserts.length, 0);
-  const byId = new Map(plan.updates.map((u) => [u.id, u]));
-  assert.deepEqual(byId.get('d1')!.fields, { sort_order: 1, is_main: false });
-  assert.deepEqual(byId.get('d2')!.fields, { sort_order: 0, is_main: true });
+  assert.equal(plan.updates.length, 0); // no sort_order rewrites, main kept by URL
+  assert.equal(plan.noops, 2);
+});
+
+test('CHURN FIX: same set in two different feed orders → each subsequent plan = 0 write ops', () => {
+  const first = planImageOps(
+    [product('p1', '101')],
+    new Map([['101', [URL1, URL2, URL3]]]),
+    []
+  );
+  const persisted = first.inserts.map((i, idx) =>
+    img(`db${idx}`, i.product_id, i.image_url, {
+      sortOrder: i.sort_order,
+      isMain: i.is_main,
+    })
+  );
+  for (const shuffled of [
+    [URL3, URL1, URL2],
+    [URL2, URL3, URL1],
+    [URL3, URL2, URL1],
+  ]) {
+    const plan = planImageOps([product('p1', '101')], new Map([['101', shuffled]]), persisted);
+    assert.equal(plan.inserts.length, 0, `inserts for feed ${shuffled.join()}`);
+    assert.equal(plan.updates.length, 0, `updates for feed ${shuffled.join()}`);
+    assert.equal(plan.noops, 3);
+  }
+});
+
+test('DETERMINISM: LCG-shuffled pictures[] fixture — second plan totals zero write-ops', () => {
+  const URL4 = 'https://b2b.yugcontract.ua/fileslibrary/products/1/d.jpg';
+  const feed = [URL1, URL2, URL3, URL4];
+  // Deterministic LCG shuffle (same seed → same permutation) so the test
+  // never flakes but genuinely permutes the fixture.
+  const shuffled = (seed: number): string[] => {
+    const out = [...feed];
+    let s = seed;
+    for (let i = out.length - 1; i > 0; i -= 1) {
+      s = (s * 1103515245 + 12345) % 2147483648;
+      const j = s % (i + 1);
+      [out[i], out[j]] = [out[j]!, out[i]!];
+    }
+    return out;
+  };
+  const first = planImageOps([product('p1', '101')], new Map([['101', feed]]), []);
+  const persisted = first.inserts.map((i, idx) =>
+    img(`db${idx}`, i.product_id, i.image_url, {
+      sortOrder: i.sort_order,
+      isMain: i.is_main,
+    })
+  );
+  let secondRunWrites = 0;
+  for (const seed of [7, 99, 12345]) {
+    const plan = planImageOps(
+      [product('p1', '101')],
+      new Map([['101', shuffled(seed)]]),
+      persisted
+    );
+    secondRunWrites += plan.inserts.length + plan.updates.length;
+  }
+  assert.equal(secondRunWrites, 0);
+});
+
+test('MAIN URL CHANGE: main left the feed → exactly one demote + one promote, zero sort writes', () => {
+  const existing = [
+    img('dA', 'p1', URL1, { sortOrder: 0, isMain: true }),
+    img('dB', 'p1', URL2, { sortOrder: 1 }),
+  ];
+  const plan = planImageOps(
+    [product('p1', '101')],
+    new Map([['101', [URL3, URL2]]]), // URL1 (main) gone; URL3 new
+    existing
+  );
+  // new URL appended at the end, non-main (existing dB is next in line)
+  assert.deepEqual(
+    plan.inserts.map((i) => [i.image_url, i.sort_order, i.is_main]),
+    [[URL3, 2, false]]
+  );
+  assert.equal(plan.updates.length, 2);
+  const byId = new Map(plan.updates.map((u) => [u.id, u.fields]));
+  assert.deepEqual(byId.get('dA'), { is_main: false }); // demote, no sort_order key
+  assert.deepEqual(byId.get('dB'), { is_main: true }); // promote, no sort_order key
+  assert.deepEqual(plan.staleImported.map((s) => s.id), ['dA']);
+});
+
+test('ADD URL: one INSERT appended at the end; existing order and main untouched', () => {
+  const existing = [
+    img('d1', 'p1', URL1, { sortOrder: 0, isMain: true }),
+    img('d2', 'p1', URL2, { sortOrder: 1 }),
+  ];
+  const plan = planImageOps(
+    [product('p1', '101')],
+    new Map([['101', [URL2, URL3, URL1]]]), // URL3 added anywhere in the feed
+    existing
+  );
+  assert.deepEqual(
+    plan.inserts.map((i) => [i.image_url, i.sort_order, i.is_main]),
+    [[URL3, 2, false]]
+  );
+  assert.equal(plan.updates.length, 0); // d1 stays main, no renumbering
+  assert.equal(plan.noops, 2);
 });
 
 test('MANUAL PRESERVATION: manual main kept; imports appended after max foreign sort_order, all non-main', () => {
@@ -185,25 +282,25 @@ test('invalid URLs inside staging are dropped by revalidation BEFORE planning (e
   assert.equal(plan.inserts[0].image_url, URL1);
 });
 
-test('REORDER within pure-imported set cannot end up with zero mains', () => {
+test('ZERO-MAIN GUARD: promotion picks next-in-line by EXISTING sort_order, not feed position', () => {
   const existing = [
-    img('d1', 'p1', URL1, { sortOrder: 0, isMain: true }),
-    img('d2', 'p1', URL2, { sortOrder: 1 }),
-    img('d3', 'p1', URL3, { sortOrder: 2 }),
+    img('d1', 'p1', URL1, { sortOrder: 5, isMain: true }),
+    img('d2', 'p1', URL2, { sortOrder: 6 }),
+    img('d3', 'p1', URL3, { sortOrder: 7 }),
   ];
   const plan = planImageOps(
     [product('p1', '101')],
-    new Map([['101', [URL3, URL1]]]), // d2 disappeared; d3 now first
+    new Map([['101', [URL3, URL2]]]), // main URL1 gone from the feed
     existing
   );
   const byId = new Map(plan.updates.map((u) => [u.id, u.fields]));
-  // d3 becomes main+first, d1 demoted; d2 reported stale, NOT deleted
-  assert.deepEqual(byId.get('d3'), { sort_order: 0, is_main: true });
-  assert.deepEqual(byId.get('d1'), { sort_order: 1, is_main: false });
-  assert.deepEqual(
-    plan.staleImported.map((s) => s.id),
-    ['d2']
-  );
+  assert.deepEqual(byId.get('d1'), { is_main: false }); // stale main demoted
+  assert.deepEqual(byId.get('d2'), { is_main: true }); // next-in-line (sort 6), NOT feed-first URL3
+  assert.ok(!byId.has('d3'));
+  assert.deepEqual(plan.staleImported.map((s) => s.id), ['d1']);
+  // F12 sequence: demote strictly before promote
+  const order = plan.updates.map((u) => u.id);
+  assert.ok(order.indexOf('d1') < order.indexOf('d2'));
 });
 
 // ---- F12: demote-before-promote ordering vs partial unique (product_id) WHERE is_main ----
@@ -245,8 +342,8 @@ function assertDemotesBeforePromotes(
   }
 }
 
-test('F12 SEQUENCE reorder main: old main demoted BEFORE new main promoted', () => {
-  // A(main,0) B(1) C(2) → staging [B,C,A]: B promoted, A demoted.
+test('F12 SEQUENCE main replacement: old main demoted BEFORE new main promoted', () => {
+  // A(main,0) B(1) C(2) → feed drops A: B promoted (next-in-line), A demoted.
   const existing = [
     img('dA', 'p1', URL1, { sortOrder: 0, isMain: true }),
     img('dB', 'p1', URL2, { sortOrder: 1 }),
@@ -254,7 +351,7 @@ test('F12 SEQUENCE reorder main: old main demoted BEFORE new main promoted', () 
   ];
   const plan = planImageOps(
     [product('p1', '101')],
-    new Map([['101', [URL2, URL3, URL1]]]),
+    new Map([['101', [URL3, URL2]]]),
     existing
   );
   assert.equal(plan.inserts.length, 0);
@@ -267,7 +364,7 @@ test('F12 SEQUENCE reorder main: old main demoted BEFORE new main promoted', () 
   assertDemotesBeforePromotes(plan);
 });
 
-test('F12 PARTIAL UNIQUE: reordered plan applies cleanly under the constraint simulator', () => {
+test('F12 PARTIAL UNIQUE: set-match with shuffled feed emits zero ops (churn regression)', () => {
   const existing = [
     img('d1', 'p1', URL1, { sortOrder: 0, isMain: true }),
     img('d2', 'p1', URL2, { sortOrder: 1 }),
@@ -277,29 +374,31 @@ test('F12 PARTIAL UNIQUE: reordered plan applies cleanly under the constraint si
     new Map([['101', [URL2, URL1]]]),
     existing
   );
-  // Pre-fix this exact sequence was [promote d2, demote d1] → 23505 live.
+  // Pre-sticky-fix this exact feed produced [promote d2, demote d1] → 23505
+  // risk + wholesale churn; now the set matches and the main URL persists,
+  // so nothing is written at all.
+  assert.equal(plan.updates.length, 0);
   assert.doesNotThrow(() => applyWithPartialUnique(existing, plan.updates));
 });
 
-test('F12 ZERO-MAIN edge: vacant set gets a main without any demote', () => {
+test('F12 ZERO-MAIN edge: vacant main repaired by a single flag promote, order untouched', () => {
   const existing = [
     img('d1', 'p1', URL1, { sortOrder: 5 }), // admin cleared the flag
     img('d2', 'p1', URL2, { sortOrder: 6 }),
   ];
   const plan = planImageOps(
     [product('p1', '101')],
-    new Map([['101', [URL1, URL2]]]),
+    new Map([['101', [URL2, URL1]]]), // any feed order — sticky ignores it
     existing
   );
-  // Phase order: neutral sort-only op first, then the promote.
+  // next-in-line by existing sort_order (d1) is promoted; no sort rewrites
   assert.deepEqual(plan.updates, [
-    { id: 'd2', product_id: 'p1', fields: { sort_order: 1 } },
-    { id: 'd1', product_id: 'p1', fields: { sort_order: 0, is_main: true } },
+    { id: 'd1', product_id: 'p1', fields: { is_main: true } },
   ]);
   assert.doesNotThrow(() => applyWithPartialUnique(existing, plan.updates));
 });
 
-test('F12 MANUAL MAIN: reorder of imported set never emits a promote next to manual main', () => {
+test('F12 MANUAL MAIN: shuffled imported set next to manual main → zero ops at all', () => {
   const existing = [
     img('m1', 'p1', 'products/p1/manual.jpg', { sortOrder: 9, isMain: true }),
     img('d1', 'p1', URL1, { sortOrder: 10 }),
@@ -315,10 +414,11 @@ test('F12 MANUAL MAIN: reorder of imported set never emits a promote next to man
     plan.updates.every((u) => u.fields.is_main !== true),
     'imported image не должен претендовать на main при живом manual main'
   );
+  assert.equal(plan.updates.length, 0); // sticky: set matches → nothing to write
   assert.doesNotThrow(() => applyWithPartialUnique(existing, plan.updates));
 });
 
-test('F12 SAME-MAIN reorder: main unchanged → zero is_main ops, sort_order only', () => {
+test('F12 SAME-MAIN reorder: main unchanged → zero ops (sort_order is sticky)', () => {
   const existing = [
     img('d1', 'p1', URL1, { sortOrder: 0, isMain: true }),
     img('d2', 'p1', URL2, { sortOrder: 1 }),
@@ -326,7 +426,7 @@ test('F12 SAME-MAIN reorder: main unchanged → zero is_main ops, sort_order onl
   ];
   const plan = planImageOps(
     [product('p1', '101')],
-    new Map([['101', [URL1, URL3, URL2]]]), // main stays URL1
+    new Map([['101', [URL1, URL3, URL2]]]), // main stays URL1, rest shuffled
     existing
   );
   assert.equal(plan.inserts.length, 0);
@@ -334,7 +434,8 @@ test('F12 SAME-MAIN reorder: main unchanged → zero is_main ops, sort_order onl
     plan.updates.every((u) => !('is_main' in u.fields)),
     'main не менялся — is_main операций быть не должно'
   );
-  assert.equal(plan.updates.length, 2); // d2↔d3 sort swap only
+  assert.equal(plan.updates.length, 0); // feed shuffle больше не переписывает порядок
+  assert.equal(plan.noops, 3);
 });
 
 test('F12 STALE MAIN: full photo replacement demotes stale main before inserting new main', () => {
@@ -351,12 +452,13 @@ test('F12 STALE MAIN: full photo replacement demotes stale main before inserting
   assert.deepEqual(plan.updates, [
     { id: 'd-old', product_id: 'p1', fields: { is_main: false } },
   ]);
+  // new URL appended AFTER max(existing sort_order), promoted (no remaining rows)
   assert.deepEqual(plan.inserts, [
     {
       product_id: 'p1',
       image_url: NEW,
       alt: null,
-      sort_order: 0,
+      sort_order: 1,
       is_main: true,
     },
   ]);
@@ -364,25 +466,32 @@ test('F12 STALE MAIN: full photo replacement demotes stale main before inserting
   assert.doesNotThrow(() => applyWithPartialUnique(existing, plan.updates));
 });
 
-test('F12 IDEMPOTENCY after reorder: applying the plan makes the next plan a NO-OP', () => {
-  const existing = [
-    img('dA', 'p1', URL1, { sortOrder: 0, isMain: true }),
-    img('dB', 'p1', URL2, { sortOrder: 1 }),
-    img('dC', 'p1', URL3, { sortOrder: 2 }),
-  ];
+test('F12 IDEMPOTENCY under feed shuffle: applying a plan makes every reshuffled plan a NO-OP', () => {
   const first = planImageOps(
     [product('p1', '101')],
-    new Map([['101', [URL2, URL3, URL1]]]),
-    existing
+    new Map([['101', [URL1, URL2, URL3]]]),
+    []
   );
-  const store = new Map(existing.map((r) => [{ ...r }.id, { ...r }]));
+  const store = new Map(
+    first.inserts.map((i, idx) => [
+      `db${idx}`,
+      img(`db${idx}`, i.product_id, i.image_url, {
+        sortOrder: i.sort_order,
+        isMain: i.is_main,
+      }),
+    ])
+  );
   for (const u of first.updates) Object.assign(store.get(u.id)!, u.fields);
-  const second = planImageOps(
-    [product('p1', '101')],
-    new Map([['101', [URL2, URL3, URL1]]]),
-    [...store.values()]
-  );
-  assert.equal(second.inserts.length, 0);
-  assert.equal(second.updates.length, 0);
-  assert.equal(second.noops, 3);
+  const persisted = [...store.values()];
+  let totalWrites = 0;
+  for (const order of [
+    [URL2, URL3, URL1],
+    [URL3, URL2, URL1],
+    [URL1, URL2, URL3],
+  ]) {
+    const plan = planImageOps([product('p1', '101')], new Map([['101', order]]), persisted);
+    totalWrites += plan.inserts.length + plan.updates.length;
+    assert.equal(plan.noops, 3);
+  }
+  assert.equal(totalWrites, 0);
 });

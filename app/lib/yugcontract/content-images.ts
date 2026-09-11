@@ -19,16 +19,31 @@ import { isImportableExternalImageUrl } from './content-staging.ts';
  *     supplier host can ONLY have been created by this importer and is
  *     the ONLY kind of row this phase may ever modify or report stale.
  *
- * Ordering semantics (matches project invariants):
- *   - at most ONE is_main=true per product (admin UI enforces this);
+ * Ordering semantics — STICKY (churn fix 2026-09-11):
+ *   - at most ONE is_main=true per product (partial unique index enforces);
  *   - gallery order = sort_order ASC.
- *   Fresh products (zero existing images): staging.pictures[0] gets
- *   sort_order 0 + is_main=true, rest follow by index — exactly the spec.
- *   Products that already HAVE any image (manual main included): their
- *   existing main is NEVER touched; imported pictures are appended AFTER
- *   max(existing sort_order), ALL is_main=false — two mains would break
- *   storefront main-image resolution, and demoting a manual main is out
- *   of scope without an explicit business decision.
+ *   ROOT CAUSE this encodes: the supplier feed returns pictures[] in an
+ *   UNSTABLE order between API calls (measured by scripts/images-churn.mts:
+ *   every sync rewrote ~1836/5200 products). The previous planner derived
+ *   the canonical state from the feed index (sort_order = offset + index,
+ *   is_main = index === 0), so every feed shuffle was misread as a real
+ *   reorder → wholesale UPDATE churn at zero actual change.
+ *   DECISION: the DB order is "sticky" — the feed position of ALREADY
+ *   IMPORTED urls is ignored entirely. Specifically:
+ *     1. desired URL set == existing imported set AND the row holding
+ *        is_main=true keeps its URL → ZERO write ops (DB order preserved);
+ *     2. new URLs are INSERTed AFTER max(existing sort_order) in feed
+ *        order (appended, existing rows never renumbered);
+ *     3. main is a property of the URL, not of position: it changes only
+ *        when the current main URL disappears from the feed (next-in-line
+ *        by EXISTING gallery order is promoted, demote-before-promote per
+ *        F12) or the slot is vacant (first new URL / first existing row);
+ *     4. sort_order of existing rows is NEVER written.
+ *   Fresh products (zero existing images) keep the original spec:
+ *   staging.pictures[0] → sort_order 0 + is_main=true, rest by index.
+ *   Foreign (manual) images and their main slot remain untouchable;
+ *   imported pictures land after max(foreign sort_order), all is_main=false
+ *   when a foreign main exists.
  *
  * Deletions: NOT implemented (v1). Rows imported earlier but missing
  * from current staging.pictures are reported as staleImported so the
@@ -169,46 +184,67 @@ export function planImageOps(
     const foreignHasMain = foreignRows.some((r) => r.is_main === true);
     if (foreignHasMain) manualMainPreserved += 1;
 
-    // Canonical desired state for THIS product's imported set:
-    //   sort_order = baseOffset + staging index (stable across re-runs);
-    //   is_main    = staging index 0, UNLESS a foreign image owns the main slot.
-    const baseOffset =
-      foreignRows.length > 0
-        ? Math.max(0, ...foreignRows.map((r) => Math.max(0, r.sort_order ?? 0))) + 1
-        : 0;
-    const desiredState = new Map<string, { sortOrder: number; isMain: boolean }>();
-    desired.forEach((url, index) => {
-      desiredState.set(url, {
-        sortOrder: baseOffset + index,
-        isMain: index === 0 && !foreignHasMain,
-      });
-    });
-
+    // STICKY, order-insensitive diff (see "Ordering semantics" above).
+    // Feed duplicates collapse via Set (identity = (product_id, image_url)).
+    const desiredUrls = [...new Set(desired)];
+    const desiredSet = new Set(desiredUrls);
     const existingByUrl = new Map(existingImported.map((r) => [r.image_url, r]));
 
-    // A) INSERT missing / B+C) reconcile existing imported rows
-    for (const [url, want] of desiredState) {
+    const remainingRows: ProductImageRow[] = []; // url still in the feed
+    const newUrls: string[] = []; // feed order preserved for appends
+    for (const url of desiredUrls) {
       const row = existingByUrl.get(url);
-      if (!row) {
-        inserts.push({
-          product_id: product.dbId,
-          image_url: url,
-          alt: null,
-          sort_order: want.sortOrder,
-          is_main: want.isMain,
-        });
-        continue;
-      }
+      if (row) remainingRows.push(row);
+      else newUrls.push(url);
+    }
 
-      const curSort = row.sort_order ?? 0;
-      const curMain = row.is_main === true;
-      const fields: ImageUpdateOp['fields'] = {};
-      if (curSort !== want.sortOrder) fields.sort_order = want.sortOrder;
-      // is_main reconciles only within the imported set AND only when no
-      // foreign (manual) image owns the main slot.
-      if (!foreignHasMain && curMain !== want.isMain) fields.is_main = want.isMain;
-      if (Object.keys(fields).length > 0) {
-        updates.push({ id: row.id, product_id: row.product_id, fields });
+    // Main is a property of the URL, not of feed position: the row holding
+    // is_main=true keeps the main slot for as long as its URL is in the
+    // feed (≤1 main per product is guaranteed by the partial unique index;
+    // a foreign main always wins and imported rows never claim it).
+    const currentMain = existingImported.find((r) => r.is_main === true) ?? null;
+
+    // Promotion only when the main is gone from the feed or the slot is
+    // vacant: next-in-line by the EXISTING gallery order (sticky — never a
+    // positional flip-flop), else the first newly inserted URL. Never next
+    // to a foreign (manual) main.
+    let promoteRow: ProductImageRow | null = null;
+    let promoteNewUrl: string | null = null;
+    if (!foreignHasMain) {
+      const mainPersists = currentMain !== null && desiredSet.has(currentMain.image_url);
+      if (!mainPersists) {
+        promoteRow =
+          [...remainingRows].sort(
+            (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id.localeCompare(b.id)
+          )[0] ?? null;
+        if (!promoteRow) promoteNewUrl = newUrls[0] ?? null;
+      }
+    }
+
+    // INSERT missing URLs AFTER max(existing sort_order) — appended at the
+    // end; existing rows are never renumbered. Fresh product (no rows at
+    // all): feed order 0..n-1, first URL is main — the original spec.
+    const maxExistingSort = [...foreignRows, ...existingImported].reduce(
+      (m, r) => Math.max(m, r.sort_order ?? 0),
+      0
+    );
+    let nextSort = existingRows.length > 0 ? maxExistingSort + 1 : 0;
+    for (const url of newUrls) {
+      inserts.push({
+        product_id: product.dbId,
+        image_url: url,
+        alt: null,
+        sort_order: nextSort,
+        is_main: url === promoteNewUrl,
+      });
+      nextSort += 1;
+    }
+
+    // Existing rows: NO sort_order writes, ever. The only update emitted
+    // here is a main promotion (main-URL replacement or zero-main repair).
+    for (const row of remainingRows) {
+      if (promoteRow?.id === row.id && row.is_main !== true) {
+        updates.push({ id: row.id, product_id: row.product_id, fields: { is_main: true } });
       } else {
         noops += 1;
       }
@@ -222,7 +258,7 @@ export function planImageOps(
     // flag-only demote below. It is still never deleted and still
     // reported here.
     for (const row of existingImported) {
-      if (!desiredState.has(row.image_url)) {
+      if (!desiredSet.has(row.image_url)) {
         staleImported.push({ id: row.id, product_id: row.product_id, image_url: row.image_url });
         if (row.is_main === true) {
           // Clears an orphaned main so the canonical main can be promoted.
