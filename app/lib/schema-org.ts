@@ -198,6 +198,39 @@ export function buildCatalogBreadcrumbJsonLd(
 }
 
 /**
+ * schema.org/FAQPage builder (category FAQ, 2026-09-11) — same honesty
+ * rules as the other builders: only caller-supplied Q&A pairs are emitted,
+ * trimmed; pairs with an empty question or answer are dropped; an empty
+ * set yields null so the component renders no script at all. Serialized
+ * through serializeJsonLd by FaqJsonLd.tsx.
+ */
+export interface FaqItemLike {
+  question: string;
+  answer: string;
+}
+
+export function buildFaqJsonLd(
+  questions: FaqItemLike[]
+): Record<string, unknown> | null {
+  const mainEntity = (Array.isArray(questions) ? questions : [])
+    .map((item) => ({
+      '@type': 'Question',
+      name: typeof item?.question === 'string' ? item.question.trim() : '',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: typeof item?.answer === 'string' ? item.answer.trim() : '',
+      },
+    }))
+    .filter((item) => item.name.length > 0 && item.acceptedAnswer.text.length > 0);
+  if (mainEntity.length === 0) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity,
+  };
+}
+
+/**
  * THE serialization invariant: escape '<' so no supplier string can emit
  * '</script>' inside the JSON-LD sink. Used by ProductJsonLd.tsx and pinned
  * by tests/seo-jsonld.test.ts.

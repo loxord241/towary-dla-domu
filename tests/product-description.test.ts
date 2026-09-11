@@ -7,9 +7,10 @@
  *   1) the fallback decision is extracted into a PURE function
  *      (resolveProductDescription) and unit-tested directly;
  *   2) project-level invariants are enforced by reading the sources:
- *      exactly ONE dangerouslySetInnerHTML exists project-wide, it lives
- *      in ProductDescription.tsx, the sanitizer stays on the import
- *      layer only, and product page wires the component in.
+ *      the dangerouslySetInnerHTML sinks exist ONLY on a small allowlist
+ *      (ProductDescription.tsx + the two JSON-LD script components), the
+ *      sanitizer stays on the import layer only, and product page wires
+ *      the component in.
  * Run: npm test
  */
 import { test } from 'node:test';
@@ -129,11 +130,17 @@ test('INVARIANT: product page gates the «Опис» section behind shouldRender
 
 // ---- project-wide source invariants -------------------------------------------
 
-test('INVARIANT: exactly two sanctioned dangerouslySetInnerHTML sinks in app/', () => {
-  // Allowlist (SEO package 2026-08-26): 1) ProductDescription — sanitized
-  // supplier HTML; 2) ProductJsonLd — JSON-LD built by schema-org.ts and
-  // serialized with '<'-escaping (see tests/seo-jsonld.test.ts).
-  const ALLOWED = [/ProductDescription\.tsx$/, /ProductJsonLd\.tsx$/];
+test('INVARIANT: exactly three sanctioned dangerouslySetInnerHTML sinks in app/', () => {
+  // Allowlist (SEO package 2026-08-26 + category FAQ stage 2026-09-11):
+  // 1) ProductDescription — sanitized supplier HTML; 2) ProductJsonLd —
+  // JSON-LD built by schema-org.ts and serialized with '<'-escaping (see
+  // tests/seo-jsonld.test.ts); 3) FaqJsonLd — same serialization pattern,
+  // input only from WALLPAPER_FAQ via buildFaqJsonLd.
+  const ALLOWED = [
+    /ProductDescription\.tsx$/,
+    /ProductJsonLd\.tsx$/,
+    /FaqJsonLd\.tsx$/,
+  ];
   const files = walkApp(path.join(root, 'app'));
   const hits = files.filter((f) => readFileSync(f, 'utf8').includes('dangerouslySetInnerHTML'));
   assert.equal(hits.length, ALLOWED.length, `очікується рівно ${ALLOWED.length} файл(и), знайдено: ${hits.map((h) => path.relative(root, h)).join(', ')}`);

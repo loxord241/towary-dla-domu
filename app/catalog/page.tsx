@@ -31,7 +31,17 @@ import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
 import Announcements from '@/app/components/Announcements'
 import ProductJsonLd from '@/app/components/ProductJsonLd'
+import FaqJsonLd from '@/app/components/FaqJsonLd'
+import FaqSection from '@/app/components/FaqSection'
 import SearchViewTracker from '@/app/components/SearchViewTracker'
+import {
+  WALLPAPER_FAQ,
+  isWallpaperCategorySlug,
+} from '@/app/lib/faq-content'
+import {
+  fetchCategoryDescription,
+  splitDescriptionParagraphs,
+} from '@/app/lib/category-description'
 import CatalogFilters from './CatalogFilters'
 import SortSelect from './SortSelect'
 import { CATALOG_PAGE_SIZE } from '@/app/lib/catalog'
@@ -314,6 +324,22 @@ export default async function CatalogPage({
         siteUrl
       )
     : null;
+  // Admin-authored category description (seeded by
+  // data/category-seo-texts.sql, editable in the admin UI): plain text read
+  // for ONE slug, only on category page-1 views — paginated pages must not
+  // duplicate the copy. `page` is the server-clamped page, so an
+  // out-of-range request that renders page 1 behaves like page 1.
+  const showCategoryDescription =
+    Boolean(filters.categorySlug) && page === 1;
+  const descriptionParagraphs = showCategoryDescription
+    ? splitDescriptionParagraphs(
+        await fetchCategoryDescription(filters.categorySlug as string)
+      )
+    : [];
+  // FAQ block: wallpaper categories only (slug 'shpaleri%' — root and all
+  // subgroups), page 1 only, same clamped-page reasoning as above.
+  const showWallpaperFaq =
+    page === 1 && isWallpaperCategorySlug(filters.categorySlug);
   const heading = catalogHeading(filters, names, seo?.h1);
 
   return (
@@ -323,6 +349,9 @@ export default async function CatalogPage({
       {/* BreadcrumbList for category views — ProductJsonLd is the sanctioned
           JSON-LD script sink (same serializeJsonLd escaping). */}
       <ProductJsonLd data={breadcrumbJsonLd} />
+      {/* FAQPage structured data — rendered ONLY for wallpaper categories
+          (shpaleri%) on page 1, mirroring the visible FaqSection below. */}
+      {showWallpaperFaq && <FaqJsonLd questions={WALLPAPER_FAQ} />}
       {/* Anonymous search analytics: rendered only when a search term is
           applied; the tracker sanitizes the term (PII guard) before firing.
           hasResults is a deliberate boolean (total > 0 — the rendered view
@@ -379,6 +408,19 @@ export default async function CatalogPage({
               {seo && (
                 <div className="mb-6 text-sm leading-relaxed text-gray-600">
                   {seo.intro.map((paragraph) => (
+                    <p key={paragraph.slice(0, 24)} className="mb-2">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* Admin-authored category description: PLAIN TEXT from the
+                  admin UI — paragraphs render as React text children (no
+                  HTML parsing); muted style, page 1 only. */}
+              {descriptionParagraphs.length > 0 && (
+                <div className="mb-6 text-sm leading-relaxed text-gray-600">
+                  {descriptionParagraphs.map((paragraph) => (
                     <p key={paragraph.slice(0, 24)} className="mb-2">
                       {paragraph}
                     </p>
@@ -537,6 +579,10 @@ export default async function CatalogPage({
                   )}
                 </nav>
               )}
+
+              {/* «Часті питання» — wallpaper categories only, page 1 only
+                  (gates computed above); mirrors FaqJsonLd in the head. */}
+              {showWallpaperFaq && <FaqSection />}
             </div>
           </main>
         </div>
