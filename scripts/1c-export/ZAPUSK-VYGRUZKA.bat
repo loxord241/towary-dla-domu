@@ -1,4 +1,7 @@
 @echo off
+rem ===== LEGACY (2026-09-10): owner exports Excel BY HAND now; daily channel =
+rem ===== xls-report-to-ingest-csv.py + POST /api/ingest/1c-wallpaper (AGENTS.md).
+rem ===== Keep this VBS pair only as reference. DO NOT run without owner GO.
 rem ===== REAL path to the 1C base (edit here if base moves) =====
 set BASE="D:\Baza 2023"
 rem ===== virtual drive letter (no spaces allowed by 1C 7.7) =====

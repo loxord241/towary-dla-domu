@@ -3,7 +3,11 @@
  * (wallpapers import, Task 5; spec §3/§6:
  * docs/superpowers/specs/2026-09-10-wallpapers-import-design.md).
  *
- * Channel: a VBS script on the owner's PC POSTs text/csv
+ * Channel (2026-09-11): the ORCHESTRATOR converts the owner's manual 1C 7.7
+ * Excel export (scripts/1c-export/xls-report-to-ingest-csv.py — owner decided
+ * on 2026-09-10 to export Excel by hand instead of VBS automation) and POSTs
+ * the CSV here; see «Синк шпалер 1С» in AGENTS.md. The retired VBS channel
+ * (scripts/1c-export/slav-oboi-export.vbs) used the same contract: text/csv
  * (`code;name;article;unit;price_retail;qty`, optional header line, BOM and
  * CRLF tolerated) with `Authorization: Bearer ${WALLPAPER_INGEST_SECRET}` and
  * `X-Export-Date: YYYYMMDD`. The endpoint validates the payload and APPENDS
