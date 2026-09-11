@@ -47,17 +47,34 @@ test('homography: перенос quad — apply() маппит углы элем
   }
 });
 
-test('homography: перспективный (неаффинный) quad — средняя точка проецируется внутрь', () => {
+test('homography: перспективный (неаффинный) quad — ВСЕ 4 угла точно', () => {
+  // Регрессия 2026-09-11: неверный коэффициент в Y-строке системы давал
+  // матрицу, у которой верх совпадал, а низ уезжал (на аффинных тест-кейсах
+  // баг был незаметен) — поэтому проверяем все углы жёстко.
   const persp: Quad = [
-    { x: 0, y: 0 },
-    { x: 200, y: 20 },
-    { x: 180, y: 180 },
-    { x: 20, y: 160 },
+    { x: 318, y: 212.4 },
+    { x: 720.8, y: 130.98 },
+    { x: 720.8, y: 531 },
+    { x: 318, y: 467.28 },
   ];
-  const h = homography(persp, { w: 100, h: 100 });
+  const h = homography(persp, { w: 402.8, h: 399.3 });
   assert.ok(h);
-  const c = h.apply(50, 50);
-  assert.ok(c.x > 0 && c.x < 200 && c.y > 0 && c.y < 180);
+  const src = [
+    { x: 0, y: 0 },
+    { x: 402.8, y: 0 },
+    { x: 402.8, y: 399.3 },
+    { x: 0, y: 399.3 },
+  ];
+  for (const [i, p] of src.entries()) {
+    const out = h.apply(p.x, p.y);
+    assert.ok(
+      Math.abs(out.x - persp[i]!.x) < 1e-4 && Math.abs(out.y - persp[i]!.y) < 1e-4,
+      `угол ${i}: (${out.x.toFixed(2)}, ${out.y.toFixed(2)}) ≠ (${persp[i]!.x}, ${persp[i]!.y})`,
+    );
+  }
+  // центр остаётся внутри
+  const c = h.apply(201.4, 199.65);
+  assert.ok(c.x > 300 && c.x < 700 && c.y > 100 && c.y < 500);
 });
 
 test('homography: вырожденный quad (линия) → null', () => {

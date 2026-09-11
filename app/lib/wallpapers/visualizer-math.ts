@@ -73,7 +73,7 @@ export function homography(
     const d = quad[i]!;
     A.push([s.x, s.y, 1, 0, 0, 0, -d.x * s.x, -d.y * s.x]);
     b.push(d.x);
-    A.push([0, 0, 0, s.x, s.y, 1, -d.x * s.y, -d.y * s.y]);
+    A.push([0, 0, 0, s.x, s.y, 1, -d.y * s.x, -d.y * s.y]);
     b.push(d.y);
   }
   const m = solve8(A, b);

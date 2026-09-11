@@ -15,7 +15,10 @@ const SUPABASE_HOST = (() => {
 // cards and next/image requests must stay allowed in img-src.
 const YUGCONTRACT_IMAGE_ORIGIN = "https://b2b.yugcontract.ua";
 const YUGCONTRACT_IMAGE_ORIGIN_HOST = "b2b.yugcontract.ua";
-// Wallpaper supplier imagery is hotlinked the same way (2026-09-10).
+// Wallpaper supplier imagery is hotlinked the same way (2026-09-10):
+// /vizualizator loads supplier textures client-side (CSS background),
+// so the host must be in img-src (2026-09-11).
+const SLAV_IMAGE_ORIGIN = "https://oboi-slav-oboi.com";
 
 /**
  * CSP ENFORCING (2026-08-27 security hardening stage).
@@ -52,7 +55,12 @@ function buildCsp(isDev: boolean): string {
     "default-src 'self'",
     `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
-    ["img-src 'self'", SUPABASE_HOST && `https://${SUPABASE_HOST}`, YUGCONTRACT_IMAGE_ORIGIN]
+    [
+      "img-src 'self'",
+      SUPABASE_HOST && `https://${SUPABASE_HOST}`,
+      YUGCONTRACT_IMAGE_ORIGIN,
+      SLAV_IMAGE_ORIGIN,
+    ]
       .filter(Boolean)
       .join(" "),
     "font-src 'self'",
