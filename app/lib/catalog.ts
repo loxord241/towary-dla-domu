@@ -1252,8 +1252,12 @@ export async function fetchCatalogProducts(
   // Wallpaper separation (owner task 2026-09-10, see WALLPAPER_SKU_PREFIX):
   // a category view scoped to the wallpaper subtree (shpaleri-*) keeps its
   // wc-* products — /oboi's subcategory chips link to these views — while
-  // every GENERAL listing (bare catalog, search, brand views, filters)
-  // excludes them.
+  // every GENERAL listing (bare catalog, brand views, filters) excludes
+  // them. SEARCH keeps them too (owner bug report 2026-09-11: «шпалери»
+  // yielded zero hits because wallpapers were hidden from the search view):
+  // the header search box is a cross-domain surface, and wallpaper names
+  // («...шпалери,53см*10м») are exactly what such queries must find.
+  const hasSearch = (filters.search ?? '').trim() !== '';
   const isWallpaperView =
     categoryId !== null &&
     activeCategories.some(
@@ -1261,6 +1265,7 @@ export async function fetchCatalogProducts(
         WALLPAPER_CATEGORY_SLUGS.has(category.slug) &&
         subtreeIds.includes(category.id)
     );
+  const hideWallpapers = !isWallpaperView && !hasSearch;
 
   // ---- total count with identical filters (no pagination) ----
   // The eligibility join MUST mirror PRODUCT_SELECT, otherwise totals
@@ -1278,8 +1283,8 @@ export async function fetchCatalogProducts(
       .eq('is_active', true);
 
     // General listings hide the wallpaper domain (owner task 2026-09-10);
-    // wallpaper-scoped category views keep it (see isWallpaperView).
-    if (!isWallpaperView) {
+    // wallpaper-scoped category views and search keep it (see hideWallpapers).
+    if (hideWallpapers) {
       q = q.not('sku', 'like', WALLPAPER_SKU_LIKE);
     }
 
@@ -1405,7 +1410,7 @@ export async function fetchCatalogProducts(
 
   // Same wallpaper decision as the count query — total and the grid must
   // never disagree (owner task 2026-09-10).
-  if (!isWallpaperView) {
+  if (hideWallpapers) {
     query = query.not('sku', 'like', WALLPAPER_SKU_LIKE);
   }
 

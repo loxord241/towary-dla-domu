@@ -12,9 +12,11 @@
  * Eligibility contract (mirrors PRODUCT_SELECT / CATALOG_CARD_SELECT in
  * catalog.ts): a suggestion is a storefront-visible product —
  * is_active = true AND at least one photo via `product_images!inner`.
- * The wallpaper domain (sku prefix `wc-`, single source of truth
- * WALLPAPER_SKU_PREFIX in catalog.ts) is EXCLUDED: owner decision —
- * wallpapers live on /oboi and stay off the general search surface.
+ * The wallpaper domain (sku prefix `wc-`) IS included (owner bug report
+ * 2026-09-11: «шпалери» searches found nothing): wallpapers are a live
+ * storefront domain on /oboi, so the dropdown must surface them like any
+ * other product. WALLPAPER_SKU_LIKE stays exported only for the test that
+ * pins the prefix in sync with catalog.ts's WALLPAPER_SKU_PREFIX.
  *
  * Failure contract: suggestions must never break typing. Every consumer
  * path (route catch, fetchSearchSuggest) degrades to an empty item list.
@@ -30,7 +32,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // with the single source of truth WALLPAPER_SKU_PREFIX ('wc-') by the
 // tests/search-suggest.test.ts synchronization assertion.
 export const WALLPAPER_SKU_LIKE = 'wc-%';
-
 /** Max suggestions returned per request (dropdown size). */
 export const SUGGEST_LIMIT = 8;
 
@@ -145,10 +146,11 @@ export function buildSuggestResponse(rows: SuggestQueryRow[]): SuggestItem[] {
 
 /**
  * SERVER (client injected): run the suggest query. Filters:
- * is_active + images!inner (eligibility) + name/sku ILIKE + wallpaper
- * exclusion; ordering in-stock first (`in_stock` < `out_of_stock`
- * lexicographically — the catalog default-sort contract), then name,
- * with `id` as the deterministic tiebreaker; window = SUGGEST_LIMIT.
+ * is_active + images!inner (eligibility) + name/sku ILIKE; wallpapers are
+ * INCLUDED since 2026-09-11 (owner bug report — «шпалери» found nothing);
+ * ordering in-stock first (`in_stock` < `out_of_stock` lexicographically —
+ * the catalog default-sort contract), then name, with `id` as the
+ * deterministic tiebreaker; window = SUGGEST_LIMIT.
  * Throws on DB errors — the route catch degrades to { items: [] }.
  */
 export async function fetchSuggestItems(
@@ -159,7 +161,6 @@ export async function fetchSuggestItems(
     .from('products')
     .select(SUGGEST_SELECT)
     .eq('is_active', true)
-    .not('sku', 'like', WALLPAPER_SKU_LIKE)
     .or(suggestOrCondition(sanitizedTerm))
     .order('availability_status', { ascending: true })
     .order('name', { ascending: true })

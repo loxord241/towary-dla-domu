@@ -8,10 +8,11 @@
  *    malformed rows skipped), client fetcher contract.
  *  - RUNTIME fake-PostgREST (real supabase-js, same pattern as
  *    tests/admin-search-pagination.test.ts): the outgoing query carries
- *    the eligibility join (images!inner), is_active, the wallpaper
- *    exclusion (sku not like wc-%), the name/sku or= and the
- *    in-stock-first + name ordering with limit 8 — and the fake honours
- *    those semantics so exclusion/ordering are proven, not assumed.
+ *    the eligibility join (images!inner), is_active, the name/sku or=
+ *    and the in-stock-first + name ordering with limit 8 — and the fake
+ *    honours those semantics so ordering/composition are proven, not
+ *    assumed. Wallpapers are INCLUDED (2026-09-11 owner bug report:
+ *    «шпалери» found nothing — the old wc-% exclusion is gone).
  *  - STATIC invariants: route wiring (rate-limit rule, sanitize reuse,
  *    degrade-to-empty-items error contract, GET-only, no maxDuration),
  *    the no-JS GET form contract in SiteHeader, the a11y/motion
@@ -257,7 +258,8 @@ function makeDataset(): Row[] {
       images: [{ image_url: 'products/x.jpg', is_main: true, sort_order: 0 }],
     },
     {
-      // wallpaper domain — excluded by the sku not-like filter
+      // wallpaper domain — included since 2026-09-11 (owner bug report:
+      // «шпалери» searches must surface the /oboi assortment)
       slug: 'oboi-wc',
       name: 'Обои TEFAL collection',
       price: 500,
@@ -270,7 +272,7 @@ function makeDataset(): Row[] {
   ];
 }
 
-test('fetchSuggestItems: eligibility + wc- exclusion + or= + in-stock-first + limit', async () => {
+test('fetchSuggestItems: eligibility + wallpapers included + or= + in-stock-first + limit', async () => {
   const requests: URL[] = [];
   const server = await startServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
@@ -280,10 +282,6 @@ test('fetchSuggestItems: eligibility + wc- exclusion + or= + in-stock-first + li
     const rows = makeDataset().filter((row) => {
       const isActive = url.searchParams.get('is_active');
       if (isActive === 'eq.true' && row.is_active !== true) return false;
-      const skuNot = url.searchParams.get('sku');
-      if (skuNot === 'not.like.wc-%' && String(row.sku ?? '').startsWith('wc-')) {
-        return false;
-      }
       const orExpr = url.searchParams.get('or');
       if (orExpr && !evalOr(row, orExpr)) return false;
       return true;
@@ -320,7 +318,8 @@ test('fetchSuggestItems: eligibility + wc- exclusion + or= + in-stock-first + li
     assert.ok(select.includes('slug'), select);
     assert.ok(select.includes('availability_status'), select);
     assert.equal(q.get('is_active'), 'eq.true');
-    assert.equal(q.get('sku'), 'not.like.wc-%');
+    // Wallpapers included: no sku filter on the wire (2026-09-11).
+    assert.equal(q.get('sku'), null);
     // supabase-js wraps the expression: or=(name.ilike.%v%,sku.ilike.%v%)
     assert.equal(
       q.get('or'),
@@ -333,13 +332,14 @@ test('fetchSuggestItems: eligibility + wc- exclusion + or= + in-stock-first + li
     assert.equal(q.get('offset'), '0');
     assert.equal(q.get('limit'), String(suggest.SUGGEST_LIMIT));
 
-    // ---- results: eligibility/wallpaper filtering + ordering + mapping ----
-    assert.equal(items.length, 2);
+    // ---- results: eligibility filtering + ordering + mapping ----
+    // JS sort: 'm' (U+006D) < 'О' (U+041E) — latin name before cyrillic.
+    assert.equal(items.length, 3);
     assert.equal(items[0]?.slug, 'multivarka-tefal'); // in_stock first
     assert.equal(items[0]?.imageUrl?.endsWith('tefal-main.jpg'), true);
-    assert.equal(items[1]?.slug, 'tefal-pantry-oos'); // out_of_stock after
+    assert.equal(items[1]?.slug, 'oboi-wc'); // wallpaper, in_stock, after 'm'
+    assert.equal(items[2]?.slug, 'tefal-pantry-oos'); // out_of_stock last
     assert.ok(!items.some((i) => i.slug === 'tefal-inactive'));
-    assert.ok(!items.some((i) => i.slug === 'oboi-wc')); // wc- excluded
   } finally {
     await server.stop();
   }

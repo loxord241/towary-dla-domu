@@ -79,8 +79,14 @@ test('WALLPAPER: fetchCatalogProducts count + data queries exclude wc-*', () => 
     'const total = count ?? 0;'
   );
   assert.ok(countPart.includes(EXCLUSION), 'count query must exclude wc-*');
+  assert.match(
+    countPart,
+    /if \(hideWallpapers\)/,
+    'exclusion is conditional: an active search keeps wallpapers (2026-09-11)'
+  );
   const dataPart = sliceBetween(src, '// ---- paged data query ----', '// Every sort gets');
   assert.ok(dataPart.includes(EXCLUSION), 'data query must exclude wc-*');
+  assert.match(dataPart, /if \(hideWallpapers\)/, 'data guard mirrors the count guard');
   assert.ok(dataPart.includes(`.in('pc.category_id', subtreeIds)`));
 });
 
@@ -277,6 +283,16 @@ test('RUNTIME: general catalog count+data carry sku=not.like.wc-; /oboi carries 
     }
     assert.equal(catalog.total, TOTAL);
     assert.equal(catalog.products.length, rows.length);
+
+    // Search view (owner bug report 2026-09-11 «шукають "шпалери" — немає
+    // результатів»): with an active search term NEITHER request may carry
+    // the wc-% exclusion — wallpapers are a live storefront domain.
+    await fetchCatalogProducts({ page: 1, size: 12, search: 'шпалери' });
+    const searchRequests = requests.splice(0);
+    assert.equal(searchRequests.length, 2, 'one head-count + one data window');
+    for (const r of searchRequests) {
+      assert.equal(r.sku, null, `search view must keep wc-* (${r.method})`);
+    }
 
     // /oboi: BOTH requests restrict to wc-*.
     const wallpaper = await fetchWallpaperProducts({ page: 1, size: 12 });
