@@ -80,7 +80,7 @@ export default function ProductCard({
         </div>
 
         <div className="flex flex-1 flex-col p-4">
-          <h3 className="mb-1 line-clamp-2 font-semibold text-gray-900 transition-colors motion-reduce:transition-none group-hover:text-blue-700">
+          <h3 className="mb-1 line-clamp-2 wrap-anywhere font-semibold text-gray-900 transition-colors motion-reduce:transition-none group-hover:text-blue-700">
             {product.name}
           </h3>
           {product.brand && (

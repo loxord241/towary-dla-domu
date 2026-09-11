@@ -19,8 +19,9 @@ interface LightboxProps {
  * Fullscreen photo lightbox for the PDP gallery (owner task 2026-09-11).
  *
  * Overlay: fixed inset-0 bg-black/90, image contained; closes via ✕,
- * Escape or a backdrop click; ‹/› buttons (plus ArrowLeft/ArrowRight) walk
- * the gallery images when there is more than one. The overlay keeps its OWN
+ * Escape or a backdrop click; ‹/› buttons (plus ArrowLeft/ArrowRight) and
+ * horizontal touch swipes (|Δx| > 40px) walk the gallery images when there
+ * is more than one. The overlay keeps its OWN
  * index: flipping photos here must not replay the gallery fade behind it.
  *
  * Motion: keyframe entry (fade on the overlay, fade+zoom settle on the
@@ -39,9 +40,31 @@ export default function Lightbox({
     Math.min(Math.max(initialIndex, 0), Math.max(images.length - 1, 0))
   );
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+  // Swipe support: clientX where the current touch started (null = no swipe).
+  const touchStartXRef = useRef<number | null>(null);
 
   const hasMany = images.length > 1;
   const current = images[index];
+
+  // The same walkers the ‹/› arrows use (also bound to the swipe handlers).
+  const prev = () => setIndex((i) => (i - 1 + images.length) % images.length);
+  const next = () => setIndex((i) => (i + 1) % images.length);
+
+  const onTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    touchStartXRef.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const onTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const startX = touchStartXRef.current;
+    touchStartXRef.current = null;
+    const endX = event.changedTouches[0]?.clientX;
+    if (startX === null || endX === undefined || !hasMany) return;
+    const deltaX = endX - startX;
+    if (Math.abs(deltaX) > 40) {
+      if (deltaX < 0) next();
+      else prev();
+    }
+  };
 
   // Initial focus: the close button is the overlay's primary action.
   useEffect(() => {
@@ -82,6 +105,8 @@ export default function Lightbox({
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
       className="lightbox-fade motion-reduce:animate-none fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
     >
       <button
@@ -89,7 +114,7 @@ export default function Lightbox({
         ref={closeBtnRef}
         onClick={onClose}
         aria-label="Закрити"
-        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20 transition-colors motion-reduce:transition-none"
+        className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20 transition-colors motion-reduce:transition-none"
       >
         ✕
       </button>
@@ -98,9 +123,7 @@ export default function Lightbox({
         <button
           type="button"
           aria-label="Попереднє фото"
-          onClick={() =>
-            setIndex((i) => (i - 1 + images.length) % images.length)
-          }
+          onClick={prev}
           className="absolute left-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-3xl leading-none text-white hover:bg-white/20 transition-colors motion-reduce:transition-none"
         >
           ‹
@@ -114,14 +137,14 @@ export default function Lightbox({
         width={1600}
         height={1200}
         sizes="100vw"
-        className="lightbox-zoom motion-reduce:animate-none h-auto max-h-[85vh] w-auto max-w-full object-contain"
+        className="lightbox-zoom motion-reduce:animate-none h-auto max-h-[85dvh] w-auto max-w-full object-contain"
       />
 
       {hasMany && (
         <button
           type="button"
           aria-label="Наступне фото"
-          onClick={() => setIndex((i) => (i + 1) % images.length)}
+          onClick={next}
           className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-3xl leading-none text-white hover:bg-white/20 transition-colors motion-reduce:transition-none"
         >
           ›

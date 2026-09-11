@@ -383,7 +383,7 @@ export default async function CatalogPage({
           <main className="md:w-3/4">
             <div className="bg-white rounded-lg shadow p-6 mb-6">
               <div className="mb-2 flex items-baseline justify-between gap-4 flex-wrap">
-                <h1 className="text-2xl font-bold">{heading}</h1>
+                <h1 className="min-w-0 wrap-anywhere text-2xl font-bold">{heading}</h1>
                 <span className="text-sm text-gray-500">
                   Знайдено: {total}
                 </span>
@@ -398,7 +398,7 @@ export default async function CatalogPage({
                   className="mb-4 text-sm text-gray-600"
                 >
                   Показані результати для{' '}
-                  <strong>«{appliedSearch}»</strong> — за запитом «
+                  <strong className="wrap-anywhere">«{appliedSearch}»</strong> — за запитом «
                   {filters.search}» нічого не знайдено.
                 </p>
               )}
@@ -464,7 +464,7 @@ export default async function CatalogPage({
                       <Link
                         key={chip.removeKey}
                         href={removeParamUrl(rawParams, chip.removeKey)}
-                        className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                        className="inline-flex min-w-0 items-center gap-1 [overflow-wrap:anywhere] rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
                         aria-label={`Прибрати фільтр ${chip.label}`}
                       >
                         {chip.label}
@@ -473,7 +473,7 @@ export default async function CatalogPage({
                     ))}
                     <Link
                       href="/catalog"
-                      className="text-xs text-gray-500 underline hover:text-red-600"
+                      className="inline-flex items-center px-3 py-2 text-xs text-gray-500 underline hover:text-red-600"
                     >
                       Скинути всі
                     </Link>
@@ -561,7 +561,7 @@ export default async function CatalogPage({
                       </Link>
                     )
                   )}
-                  <span className="text-sm text-gray-600">
+                  <span className="hidden text-sm text-gray-600 sm:inline">
                     Сторінка {page} із {maxPage}
                     <span className="text-gray-400"> · знайдено {total}</span>
                   </span>

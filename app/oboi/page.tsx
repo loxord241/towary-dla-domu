@@ -52,7 +52,7 @@ const pageNumberCurrentClass =
 /** Filter chips reuse the subcategory-chip look + an active state and the
     motion-reduce opt-out (owner task 2026-09-11). */
 const filterChipClass =
-  'inline-flex items-center rounded-full border px-3 py-1 text-sm transition-colors motion-reduce:transition-none';
+  'inline-flex items-center rounded-full border px-3 py-2 text-sm transition-colors motion-reduce:transition-none';
 const filterChipActiveClass = 'border-blue-600 bg-blue-600 text-white';
 const filterChipIdleClass =
   'border-gray-200 bg-gray-50 text-blue-700 hover:bg-blue-50';
@@ -138,7 +138,7 @@ export default async function OboiPage({
               <li key={subcategory.slug}>
                 <Link
                   href={`/catalog?category=${encodeURIComponent(subcategory.slug)}`}
-                  className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-blue-700 transition hover:bg-blue-50"
+                  className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-blue-700 transition hover:bg-blue-50"
                 >
                   {subcategory.name}
                 </Link>
@@ -251,7 +251,7 @@ export default async function OboiPage({
                   </Link>
                 )
               )}
-              <span className="text-sm text-gray-600">
+              <span className="hidden text-sm text-gray-600 sm:inline">
                 Сторінка {currentPage} із {maxPage}
                 <span className="text-gray-400"> · знайдено {total}</span>
               </span>

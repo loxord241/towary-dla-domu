@@ -158,10 +158,10 @@ export default function ProductReviews({
                     {dateFormatter.format(new Date(review.created_at))}
                   </time>
                 </div>
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="wrap-anywhere text-sm font-semibold text-gray-900">
                   {review.display_name ?? 'Анонімний відгук'}
                 </p>
-                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
+                <p className="wrap-anywhere mt-1 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
                   {review.text}
                 </p>
               </li>
@@ -181,7 +181,7 @@ export default function ProductReviews({
                     event.preventDefault();
                     loadPage(pageData.page - 1);
                   }}
-                  className="text-blue-600 hover:underline"
+                  className="inline-block py-2 text-blue-600 hover:underline"
                 >
                   ← Попередні
                 </a>
@@ -198,7 +198,7 @@ export default function ProductReviews({
                     event.preventDefault();
                     loadPage(pageData.page + 1);
                   }}
-                  className="text-blue-600 hover:underline"
+                  className="inline-block py-2 text-blue-600 hover:underline"
                 >
                   Наступні →
                 </a>

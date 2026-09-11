@@ -110,7 +110,7 @@ export default function AddToCartButton({
               setVariantId(e.target.value);
               setQuantity(1);
             }}
-            className="w-full border border-gray-300 rounded-md p-2"
+            className="w-full text-base min-h-[44px] border border-gray-300 rounded-md p-2"
           >
             <option value="">— Оберіть варіант —</option>
             {variants.map((v) => (
@@ -141,7 +141,7 @@ export default function AddToCartButton({
               : 1;
             setQuantity(n);
           }}
-          className="w-20 border border-gray-300 rounded-md p-2"
+          className="w-20 text-base min-h-[44px] border border-gray-300 rounded-md p-2"
         />
         {/* Unselected variant = unknown stock: «макс. 99» would be a lie
             (Audit 2026-09-05, item 3). Simple products always have a number. */}

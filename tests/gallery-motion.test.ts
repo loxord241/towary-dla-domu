@@ -71,7 +71,9 @@ test('gallery: fade is opacity-only and the LCP box keeps zero CLS', () => {
   assert.doesNotMatch(motionBlock, /scale-|translate-|animate-/,
     'fade must not rely on transform/keyframe animation classes');
   // fixed main-image box: opacity changes must not shift layout
-  assert.match(gallery, /w-full h-96 object-contain/);
+  // (mobile fix 2026-09-11: h-64 on mobile, sm:h-96 from the sm breakpoint —
+  // the box stays fixed per breakpoint, so CLS stays zero)
+  assert.match(gallery, /w-full h-64 object-contain sm:h-96/);
   // fade replays per switch via a keyed remount settling on image load
   assert.match(gallery, /key=\{main\.url\}/);
   assert.match(gallery, /onLoad=\{\(\) => setSettledUrl\(main\.url\)\}/);

@@ -222,7 +222,7 @@ export default function CatalogFilters({
   const priceField = (
     <div className="mb-6">
       <h4 className="font-semibold mb-2">Ціна (UAH)</h4>
-      <div className="flex items-center gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <input
           type="number"
           min="0"
@@ -234,7 +234,7 @@ export default function CatalogFilters({
           aria-invalid={priceRangeInvalid || undefined}
           className="input"
         />
-        <span className="text-gray-400">—</span>
+        <span className="hidden text-gray-400">—</span>
         <input
           type="number"
           min="0"
@@ -258,12 +258,12 @@ export default function CatalogFilters({
   const stockField = (
     <div className="mb-6">
       <h4 className="font-semibold mb-2">Наявність</h4>
-      <label className="flex cursor-pointer items-center">
+      <label className="flex cursor-pointer items-center py-2">
         <input
           type="checkbox"
           checked={inStockOnly}
           onChange={(e) => setInStockOnly(e.target.checked)}
-          className="mr-2"
+          className="mr-2 size-5"
         />
         <span>Тільки в наявності</span>
       </label>
@@ -440,7 +440,7 @@ function FiltersSheet({
 
         <div className="flex-1 overflow-y-auto p-5">{children}</div>
 
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-gray-200 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="flex gap-3">
             <button
               type="button"

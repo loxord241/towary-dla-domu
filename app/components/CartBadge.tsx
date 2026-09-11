@@ -17,7 +17,7 @@ export default function CartBadge() {
       href="/cart"
       title="Кошик"
       aria-label={`Кошик, товарів: ${count}`}
-      className="p-2 text-gray-600 hover:text-blue-600 relative"
+      className="-m-0.5 p-2.5 text-gray-600 hover:text-blue-600 relative"
     >
       <CartIcon className="h-5 w-5" />
       {count > 0 && (

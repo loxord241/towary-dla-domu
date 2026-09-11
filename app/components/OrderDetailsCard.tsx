@@ -37,7 +37,7 @@ export default function OrderDetailsCard({
         <tbody className="divide-y divide-gray-100">
           {items.map((item, idx) => (
             <tr key={idx}>
-              <td className="py-2 pr-2">
+              <td className="wrap-anywhere py-2 pr-2">
                 {item.product_name}
                 {item.variant_name && (
                   <span className="text-gray-500"> · {item.variant_name}</span>

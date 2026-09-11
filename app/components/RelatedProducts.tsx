@@ -17,9 +17,9 @@ export default function RelatedProducts({
   if (products.length === 0) return null;
 
   return (
-    <section className="mb-8 rounded-lg bg-white p-6 shadow">
+    <section className="mb-8 rounded-lg bg-white p-4 sm:p-6 shadow">
       <h2 className="mb-4 text-xl font-bold">Схожі товари</h2>
-      <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
         {products.map((product) => (
           <ProductCard
             key={product.id}

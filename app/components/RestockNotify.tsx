@@ -108,7 +108,7 @@ export default function RestockNotify({ productId }: { productId: string }) {
           onChange={(e) => setEmail(e.target.value)}
           disabled={status === 'submitting'}
           maxLength={254}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400 motion-reduce:transition-none"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400 motion-reduce:transition-none"
         />
         <button
           type="submit"

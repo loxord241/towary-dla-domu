@@ -17,7 +17,7 @@ export default function FavoritesBadge() {
       href="/favorites"
       title="Обране"
       aria-label={`Обране, товарів: ${count}`}
-      className="p-2 text-gray-600 hover:text-blue-600 relative"
+      className="-m-0.5 p-2.5 text-gray-600 hover:text-blue-600 relative"
     >
       <HeartIcon filled className="h-5 w-5" />
       {count > 0 && (

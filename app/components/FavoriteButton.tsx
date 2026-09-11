@@ -36,7 +36,7 @@ export default function FavoriteButton({
           // surface the cap instead of pretending nothing happened.
           setLimitNotice(!toggleFavorite(productId));
         }}
-        className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${
+        className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition ${
           active ? 'text-red-500' : 'opacity-40 hover:opacity-80'
         }`}
       >

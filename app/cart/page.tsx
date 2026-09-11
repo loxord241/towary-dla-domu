@@ -231,7 +231,7 @@ export default function CartPage() {
                         <>
                           <Link
                             href={`/product/${preview.slug}`}
-                            className="font-semibold hover:text-blue-600"
+                            className="wrap-anywhere font-semibold hover:text-blue-600"
                           >
                             {preview.name}
                           </Link>
@@ -261,48 +261,57 @@ export default function CartPage() {
                       )}
                     </div>
 
-                    {!unavailable && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          aria-label="Зменшити кількість"
-                          onClick={() =>
-                            updateQuantity(item.productId, item.variantId, item.quantity - 1)
-                          }
-                          disabled={item.quantity <= 1}
-                          className="h-11 w-11 rounded-lg border border-gray-300 text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40"
-                        >
-                          −
-                        </button>
-                        <span className="w-8 text-center">{item.quantity}</span>
-                        <button
-                          type="button"
-                          aria-label="Збільшити кількість"
-                          onClick={() =>
-                            updateQuantity(item.productId, item.variantId, item.quantity + 1)
-                          }
-                          disabled={item.quantity >= maxQty}
-                          className="h-11 w-11 rounded-lg border border-gray-300 text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40"
-                        >
-                          +
-                        </button>
-                      </div>
-                    )}
+                    {/*
+                      Mobile fix 2026-09-11: stepper, price and the remove
+                      button share one wrapping row so on narrow screens they
+                      spread across the full width instead of huddling left.
+                      Render conditions are unchanged — the remove button
+                      still renders even for unavailable rows.
+                    */}
+                    <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto">
+                      {!unavailable && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            aria-label="Зменшити кількість"
+                            onClick={() =>
+                              updateQuantity(item.productId, item.variantId, item.quantity - 1)
+                            }
+                            disabled={item.quantity <= 1}
+                            className="h-11 w-11 rounded-lg border border-gray-300 text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40"
+                          >
+                            −
+                          </button>
+                          <span className="w-8 text-center">{item.quantity}</span>
+                          <button
+                            type="button"
+                            aria-label="Збільшити кількість"
+                            onClick={() =>
+                              updateQuantity(item.productId, item.variantId, item.quantity + 1)
+                            }
+                            disabled={item.quantity >= maxQty}
+                            className="h-11 w-11 rounded-lg border border-gray-300 text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40"
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
 
-                    {!unavailable && preview?.unitPrice != null && (
-                      <div className="w-28 text-right font-semibold whitespace-nowrap">
-                        {formatPrice(preview.unitPrice * item.quantity, preview.currency)}
-                      </div>
-                    )}
+                      {!unavailable && preview?.unitPrice != null && (
+                        <div className="w-28 text-right font-semibold whitespace-nowrap">
+                          {formatPrice(preview.unitPrice * item.quantity, preview.currency)}
+                        </div>
+                      )}
 
-                    <button
-                      type="button"
-                      aria-label="Видалити з кошика"
-                      onClick={() => removeItem(item.productId, item.variantId)}
-                      className="flex h-11 w-11 items-center justify-center rounded-lg text-xl leading-none text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                    >
-                      ×
-                    </button>
+                      <button
+                        type="button"
+                        aria-label="Видалити з кошика"
+                        onClick={() => removeItem(item.productId, item.variantId)}
+                        className="flex h-11 w-11 items-center justify-center rounded-lg text-xl leading-none text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -310,7 +319,7 @@ export default function CartPage() {
               <button
                 type="button"
                 onClick={clearCart}
-                className="text-sm text-gray-500 hover:text-red-600 underline"
+                className="inline-flex min-h-[40px] items-center text-sm text-gray-500 hover:text-red-600 underline"
               >
                 Очистити кошик
               </button>

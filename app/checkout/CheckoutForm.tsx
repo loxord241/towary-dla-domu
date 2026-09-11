@@ -912,7 +912,7 @@ export default function CheckoutForm() {
                       aria-controls={
                         selected ? `carrier-services-${c.value}` : undefined
                       }
-                      className={`w-full rounded-md px-1 py-1 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                      className={`min-h-[44px] w-full rounded-md px-1 py-2.5 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                         selected ? 'text-blue-700' : 'text-gray-700'
                       }`}
                     >
@@ -951,7 +951,7 @@ export default function CheckoutForm() {
                               type="button"
                               onClick={() => applyServiceType(t.value)}
                               aria-pressed={deliveryType === t.value}
-                              className={`rounded-md border px-3 py-2 text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                              className={`min-h-[40px] rounded-md border px-3 py-2 text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                                 deliveryType === t.value
                                   ? 'border-blue-600 bg-blue-50 font-medium text-blue-700'
                                   : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
@@ -1500,7 +1500,7 @@ export default function CheckoutForm() {
                       />
                     )}
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{preview?.name}</span>
+                      <span className="block line-clamp-2 font-medium">{preview?.name}</span>
                       {preview?.variantName && (
                         <span className="block text-xs text-gray-500">{preview.variantName}</span>
                       )}

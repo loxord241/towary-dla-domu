@@ -47,7 +47,7 @@ export default function Modal({
             type="button"
             onClick={onClose}
             aria-label="Закрити"
-            className="rounded p-1 text-xl leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="flex min-h-[44px] min-w-[44px] -mr-2 items-center justify-center rounded text-xl leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-600"
           >
             ×
           </button>

@@ -28,7 +28,7 @@ function SortSelectInner() {
         const qs = buildSortSearchParams(searchParams, e.target.value);
         router.push(qs ? `/catalog?${qs}` : '/catalog');
       }}
-      className="p-2 border border-gray-300 rounded"
+      className="p-2 text-base min-h-[44px] w-full sm:w-auto border border-gray-300 rounded"
     >
       {SORT_OPTIONS.map((option) => (
         <option key={option.value} value={option.value}>

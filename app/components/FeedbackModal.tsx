@@ -135,7 +135,7 @@ export default function FeedbackModal({ label }: { label: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="hover:text-white hover:underline"
+        className="inline-flex min-h-[44px] items-center hover:text-white hover:underline"
       >
         {label}
       </button>
@@ -154,7 +154,7 @@ export default function FeedbackModal({ label }: { label: string }) {
             role="dialog"
             aria-modal="true"
             aria-label="Зворотний зв'язок"
-            className={`relative w-full max-w-md rounded-t-xl bg-white p-5 shadow-xl transition-[opacity,scale] duration-200 ease-out motion-reduce:transition-none sm:rounded-xl ${
+            className={`relative max-h-[100dvh] w-full max-w-md overflow-y-auto rounded-t-xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl transition-[opacity,scale] duration-200 ease-out motion-reduce:transition-none sm:rounded-xl ${
               shown ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
             }`}
           >
@@ -190,7 +190,7 @@ export default function FeedbackModal({ label }: { label: string }) {
                   rows={5}
                   maxLength={FEEDBACK_MAX_LENGTH}
                   required
-                  className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 p-3 text-base focus:border-transparent focus:ring-2 focus:ring-blue-500"
                   placeholder="Що можна покращити?"
                 />
                 {/* honeypot — invisible to humans, bots fill it */}

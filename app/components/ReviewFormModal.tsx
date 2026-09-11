@@ -171,7 +171,7 @@ export default function ReviewFormModal({
             role="dialog"
             aria-modal="true"
             aria-label={label}
-            className={`relative w-full max-w-md rounded-t-xl bg-white p-5 shadow-xl transition-[opacity,scale] duration-200 ease-out motion-reduce:transition-none sm:rounded-xl ${
+            className={`relative max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl transition-[opacity,scale] duration-200 ease-out motion-reduce:transition-none sm:rounded-xl ${
               shown ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
             }`}
           >
@@ -211,12 +211,12 @@ export default function ReviewFormModal({
                         onMouseEnter={() => setHoveredRating(value)}
                         onMouseLeave={() => setHoveredRating(0)}
                         onClick={() => setRating(value)}
-                        className={`rounded p-1 transition-colors ${
+                        className={`rounded p-1.5 transition-colors ${
                           value <= shownRating ? 'text-amber-500' : 'text-gray-300'
                         } hover:text-amber-400`}
                       >
                         <StarIcon
-                          className="h-7 w-7"
+                          className="h-8 w-8"
                           filled={value <= shownRating}
                         />
                       </button>
@@ -234,7 +234,7 @@ export default function ReviewFormModal({
                   onChange={(e) => setDisplayName(e.target.value)}
                   maxLength={REVIEW_NAME_MAX_LENGTH}
                   autoComplete="off"
-                  className="mb-3 w-full rounded-lg border border-gray-300 p-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                  className="mb-3 w-full rounded-lg border border-gray-300 p-2.5 text-base focus:border-transparent focus:ring-2 focus:ring-blue-500"
                   placeholder="Наприклад: Оксана"
                 />
 
@@ -248,7 +248,7 @@ export default function ReviewFormModal({
                   rows={5}
                   maxLength={REVIEW_MAX_LENGTH}
                   required
-                  className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 p-3 text-base focus:border-transparent focus:ring-2 focus:ring-blue-500"
                   placeholder="Поділіться враженнями про товар…"
                 />
 

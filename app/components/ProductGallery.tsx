@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Image from 'next/image';
 import Lightbox from './Lightbox';
 
@@ -31,6 +31,29 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
   const [settledUrl, setSettledUrl] = useState(images[0]?.url ?? null);
   // Fullscreen overlay state; the lightbox manages its own navigation.
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  // Horizontal swipe on the main image (mobile fix 2026-09-11): clientX at
+  // touchstart; |delta| > 40px at touchend flips prev/next through the same
+  // selectImage path as the arrows (so the fade gate stays intact).
+  const touchStartXRef = useRef<number | null>(null);
+
+  const onTouchStart = (event: React.TouchEvent) => {
+    touchStartXRef.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const onTouchEnd = (event: React.TouchEvent) => {
+    const startX = touchStartXRef.current;
+    touchStartXRef.current = null;
+    if (startX === null || images.length < 2) return;
+    const endX = event.changedTouches[0]?.clientX;
+    if (endX === undefined) return;
+    const deltaX = endX - startX;
+    if (Math.abs(deltaX) <= 40) return;
+    if (deltaX < 0) {
+      selectImage((s) => (s + 1) % images.length);
+    } else {
+      selectImage((s) => (s - 1 + images.length) % images.length);
+    }
+  };
 
   const selectImage = (next: (current: number) => number) => {
     setSelected(next);
@@ -58,7 +81,7 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
 
   return (
     <div>
-      <div className="relative">
+      <div className="relative" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {/* Above-the-fold LCP image: preload inserts a <head> link so the
             fetch starts before hydration (Next 16 replacement for the
             deprecated `priority` prop; 2026-08 UX audit + perf audit).
@@ -83,7 +106,7 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 100vw, 50vw"
             onLoad={() => setSettledUrl(main.url)}
             onError={() => setSettledUrl(main.url)}
-            className={`w-full h-96 object-contain ${mainMotion}`}
+            className={`w-full h-64 object-contain sm:h-96 ${mainMotion}`}
           />
         </button>
         {images.length > 1 && (
@@ -99,7 +122,7 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
               onClick={() =>
                 selectImage((s) => (s - 1 + images.length) % images.length)
               }
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full w-9 h-9 shadow hover:bg-white transition-colors motion-reduce:transition-none"
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full w-11 h-11 shadow hover:bg-white transition-colors motion-reduce:transition-none"
             >
               ‹
             </button>
@@ -107,7 +130,7 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
               type="button"
               aria-label="Наступне фото"
               onClick={() => selectImage((s) => (s + 1) % images.length)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full w-9 h-9 shadow hover:bg-white transition-colors motion-reduce:transition-none"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full w-11 h-11 shadow hover:bg-white transition-colors motion-reduce:transition-none"
             >
               ›
             </button>

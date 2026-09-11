@@ -30,7 +30,7 @@ test('P3-R1: product page uses formatPrice; variants use product currency', () =
 test('P3-N1: RecentlyViewed has no own container wrapper', () => {
   const src = read('app/components/RecentProducts.tsx');
   assert.ok(!src.includes('container mx-auto'), 'must align with sibling sections');
-  assert.match(src, /mb-8 rounded-lg bg-white p-6 shadow/);
+  assert.match(src, /mb-8 rounded-lg bg-white p-4 sm:p-6 shadow/);
   // empty-state contract unchanged
   assert.match(src, /if \(!mounted \|\| !hasEntries \|\| lines\.length === 0\) return null;/);
 });

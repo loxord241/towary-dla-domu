@@ -13,7 +13,7 @@ export default function RemoveFavoriteButton({
     <button
       type="button"
       onClick={() => removeFavorite(productId)}
-      className="mt-3 text-xs text-gray-500 underline transition-colors hover:text-red-600"
+      className="mt-3 inline-flex min-h-[40px] items-center px-3 py-2 text-xs text-gray-500 underline transition-colors hover:text-red-600"
     >
       Прибрати з обраного
     </button>
