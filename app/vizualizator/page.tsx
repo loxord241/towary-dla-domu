@@ -7,9 +7,9 @@ import { fetchWallpaperSwatches } from '@/app/lib/catalog';
 // /vizualizator?wallpaper=<slug>&room=<id> шарится покупателями.
 export const metadata: Metadata = {
   title: `Візуалізатор шпалер в інтер'єрі — Товари для дому`,
-  description:
-    'Оберіть шпалери на панелі — і подивіться, як вони виглядають на стіні кімнати. Вітальня, спальня, дитяча, кухня.',
-  alternates: { canonical: '/vizualizator' },
+  // Переработка сцен (2026-09-11): страница скрыта с витрины и от
+  // поисковиков; доступ только по прямой ссылке (для тестов/фидбека).
+  robots: { index: false, follow: false },
 };
 
 export default async function VisualizerPage({

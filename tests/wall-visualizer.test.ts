@@ -16,10 +16,10 @@ const page = read('app/vizualizator/page.tsx');
 const pdp = read('app/product/[slug]/page.tsx');
 const catalog = read('app/lib/catalog.ts');
 
-test('viz: страница серверная — метаданные, canonical, deep-link params', () => {
+test('viz: страница серверная — noindex (переработка), deep-link params', () => {
   assert.match(page, /export const metadata: Metadata/);
   assert.match(page, /Візуалізатор шпалер/);
-  assert.match(page, /canonical: '\/vizualizator'/);
+  assert.match(page, /index: false, follow: false/, 'страница скрыта от индексации');
   assert.match(page, /searchParams/);
   assert.match(page, /wallpaper \?\?|params\.wallpaper/);
   assert.match(page, /fetchWallpaperSwatches\(\)/);
@@ -52,11 +52,16 @@ test('viz: островок — тап клеит сам, БЕЗ ручек/сл
   assert.match(app, /loading="lazy"/);
 });
 
-test('viz: модалка старая удалена, PDP ведёт на страницу с товаром', () => {
+test('viz: визуализатор скрыт с витрины (переработка 2026-09-11), PDP без кнопки', () => {
   assert.equal(existsSync(path.join(root, 'app/components/WallVisualizer.tsx')), false);
   assert.equal(existsSync(path.join(root, 'app/components/WallVisualizerSlot.tsx')), false);
-  assert.ok(!pdp.includes('WallVisualizerSlot'), 'слот удалён с PDP');
-  assert.match(pdp, /vizualizator\?wallpaper=\$\{product\.slug\}/);
+  // скрытые входы: ни кнопки на PDP, ни баннера на /oboi
+  assert.ok(!pdp.includes('vizualizator'), 'PDP не ссылается на примерочную');
+  const oboi = read('app/oboi/page.tsx');
+  assert.ok(!oboi.includes('/vizualizator'), 'oboi не ссылается на примерочную');
+  // страница жива только по прямому URL и закрыта от индексации
+  assert.match(page, /robots: \{ index: false, follow: false \}/);
+  assert.ok(!page.includes('canonical'), 'без canonical у noindex-страницы');
   // при этом калькулятор на PDP остался
   assert.match(pdp, /id="roll-calculator"/);
 });

@@ -240,16 +240,10 @@ export default async function ProductPage({
                 return [{ url, alt: image.alt ?? product.name }];
               })}
             />
-            {/* Візуалізатор «Подивитись в інтер'єрі» — лише для шпалер з фото:
-                повноекранна сторінка-примерочна, товар передекрано вибрано. */}
-            {isWallpaper && galleryUrls.length > 0 && (
-              <Link
-                href={`/vizualizator?wallpaper=${product.slug}`}
-                className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-blue-600 px-4 py-2 text-base font-semibold text-blue-700 transition-colors hover:bg-blue-50 motion-reduce:transition-none"
-              >
-                {"Подивитись в інтер'єрі"}
-              </Link>
-            )}
+            {/* Візуалізатор тимчасово ПРИХОВАНО (2026-09-11): переробка на
+                рендери-пресети; сторінка /vizualizатор доступна лише за
+                прямим URL і noindex. Повернемо кнопку після апруву
+                власником нових сцен. */}
           </div>
 
           {/* Product Details. min-w-0 на обох дітях grid: без нього
@@ -379,8 +373,8 @@ export default async function ProductPage({
             {/* Калькулятор рулонів — для КОЖНОЇ шпалери (wc-*). rollSize=null
                 (розміру немає в назві 1С) не ховає блок: покупець обирає
                 розмір у select вручну — нічого не вгадується. */}
-            {/* id="roll-calculator" — якір «До товару» зі сторінки-примерочної
-                /vizualizator. Умова монтування лишається ВСЕРЕДИНІ обгортки:
+            {/* id="roll-calculator" — якір для майбутнього зв'язку з примерочною
+                (сторінка в переробці). Умова монтування лишається ВСЕРЕДИНІ обгортки:
                 статичний пін roll-calculator-тесту матчить блок дослівно. */}
             <div id="roll-calculator">
               {isWallpaper && (

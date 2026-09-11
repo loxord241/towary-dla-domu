@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { homography, toPx, type Quad, type QuadN } from '@/app/lib/wallpapers/visualizer-math';
+import { clipPathForQuad, homography, toPx, type Quad, type QuadN } from '@/app/lib/wallpapers/visualizer-math';
 import rooms from '../../public/rooms/rooms.json';
 import type { WallpaperSwatch } from '@/app/lib/catalog';
 
@@ -19,6 +19,9 @@ interface RoomPreset {
   label: string;
   /** Нормализованные 0..1 углы стены из rooms.json: [[x,y] × 4], TL,TR,BR,BL. */
   wall: [number, number][];
+  /** Мебель, перекрывающая стену (копия фото клипуется по этому полигону
+   *  ПОВЕРХ обоев — корректная окклюзия, как в референсе). */
+  fg?: [number, number][];
 }
 
 const ROOMS = rooms as unknown as RoomPreset[];
@@ -62,7 +65,12 @@ export default function WallVisualizerApp({
 
   const room = ROOMS.find((r) => r.id === roomId) ?? ROOMS[0]!;
   // rooms.json хранит точки МАССИВАМИ [x,y] — переводим в объекты Point. 
-  const quadN: QuadN = room.wall.map(([x, y]) => ({ x, y })) as QuadN;
+  // memo: стабильная ссылка (react-compiler требует устойчивые deps у
+  // последующих useMemo); room.wall — числа из статического rooms.json.
+  const quadN = useMemo<QuadN>(
+    () => room.wall.map(([x, y]) => ({ x, y })) as QuadN,
+    [room],
+  );
   // Выбранный образец — только среди живых; битый выбор → первый живой.
   const aliveSelected = alive.find((s) => s.slug === selectedSlug) ?? null;
   const selected = aliveSelected ?? (selectedSlug === null ? initial : (alive[0] ?? null));
@@ -128,7 +136,7 @@ export default function WallVisualizerApp({
     <div className="flex min-h-[100dvh] flex-col bg-gray-100 lg:flex-row">
       {/* Сцена */}
       <div className="relative lg:flex-1">
-        <div ref={stageRef} className="relative select-none">
+        <div ref={stageRef} className="relative isolate select-none">
           {/* eslint-disable-next-line @next/next/no-img-element -- бокс <img> измеряется ResizeObserver-ом; статика /public */}
           <img
             src={room.src}
@@ -137,18 +145,54 @@ export default function WallVisualizerApp({
             className="block max-h-[52vh] w-full object-cover lg:max-h-[100dvh]"
           />
           {quadPx !== null && homog !== null && bbox !== null && active !== null && (
-            <div
-              className="absolute left-0 top-0"
-              style={{
-                width: bbox.w,
-                height: bbox.h,
-                backgroundImage: `url("${active.imageUrl}")`,
-                backgroundRepeat: 'repeat',
-                backgroundSize: `${stripPx}px auto`,
-                transform: homog.css,
-                transformOrigin: '0 0',
-              }}
-            />
+            <>
+              {/* Обои: гомография отображает прямоугольник элемента в quad */}
+              <div
+                className="absolute left-0 top-0"
+                style={{
+                  width: bbox.w,
+                  height: bbox.h,
+                  backgroundImage: `url("${active.imageUrl}")`,
+                  backgroundRepeat: 'repeat',
+                  backgroundSize: `${stripPx}px auto`,
+                  filter: 'saturate(0.95) brightness(1.02)',
+                  transform: homog.css,
+                  transformOrigin: '0 0',
+                }}
+              />
+              {/* Shading — главный приём фотореализма: оригинальное фото
+                  поверх текстуры с multiply «впитывает» в обои свет, тени
+                  и градиенты стены. Клип по quad — обои видны только на
+                  стене. Слой — БРАТ текстуры (не внутри 3D-родителя):
+                  иначе Safari ломает blend. */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- копия фото комнаты для mix-blend-mode */}
+              <img
+                src={room.src}
+                alt=""
+                aria-hidden
+                draggable={false}
+                className="pointer-events-none absolute inset-0 h-full w-full select-none"
+                style={{
+                  clipPath: clipPathForQuad(quadPx),
+                  mixBlendMode: 'multiply',
+                  opacity: 0.45,
+                }}
+              />
+              {/* Окклюзия: мебель (диван/кроватка) поверх обоев — иначе
+                  обои «заклеивают» предметы, стоящие перед стеной. */}
+              {room.fg && (
+                <img
+                  src={room.src}
+                  alt=""
+                  aria-hidden
+                  draggable={false}
+                  className="pointer-events-none absolute inset-0 h-full w-full select-none"
+                  style={{
+                    clipPath: `polygon(${room.fg.map(([x, y]) => `${x * 100}% ${y * 100}%`).join(', ')})`,
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
 

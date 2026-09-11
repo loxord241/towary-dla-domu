@@ -130,14 +130,7 @@ export default async function OboiPage({
             <span className="text-sm text-gray-500">Знайдено: {total}</span>
           </div>
 
-          {/* Візуалізатор (2026-09-11): примерочная на всю страницу —
-              тап по образцу, обои «самі клеяться» на стіну комнаты. */}
-          <Link
-            href="/vizualizator"
-            className="mb-4 flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-base font-medium text-blue-700 transition-colors hover:bg-blue-100 motion-reduce:transition-none"
-          >
-            {"🖼 Подивитись шпалери в інтер'єрі — візуалізатор кімнати"}
-          </Link>
+
 
           {/* Subcategory chips — deep links into the wallpaper-scoped
               /catalog views (shpaleri-*), which render the same wc-*
