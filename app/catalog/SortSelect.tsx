@@ -41,7 +41,7 @@ function SortSelectInner() {
 
 export default function SortSelect() {
   return (
-    <Suspense fallback={<select className="p-2 border border-gray-300 rounded" aria-label="Сортування" />}>
+    <Suspense fallback={<select className="min-h-[44px] w-full rounded border border-gray-300 p-2 text-base sm:w-auto" aria-label="Сортування" />}>
       <SortSelectInner />
     </Suspense>
   );

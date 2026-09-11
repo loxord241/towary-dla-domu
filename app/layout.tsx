@@ -27,6 +27,9 @@ const geistMono = Geist_Mono({
 // metadata; docs: 01-app/03-api-reference/04-functions/generate-viewport).
 export const viewport: Viewport = {
   themeColor: '#2563eb',
+  // viewport-fit=cover: иначе env(safe-area-inset-*) == 0 и все
+  // safe-area-паддинги bottom-sheet'ов/лайтбокса не работают на iPhone.
+  viewportFit: 'cover',
 };
 
 export const metadata: Metadata = {

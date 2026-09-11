@@ -158,7 +158,7 @@ export default function ReviewFormModal({
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+        <div className="fixed inset-0 z-50 flex overscroll-contain items-end justify-center sm:items-center">
           <div
             className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ease-out motion-reduce:transition-none ${
               shown ? 'opacity-100' : 'pointer-events-none opacity-0'

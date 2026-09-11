@@ -141,7 +141,7 @@ export default function FeedbackModal({ label }: { label: string }) {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+        <div className="fixed inset-0 z-50 flex overscroll-contain items-end justify-center sm:items-center">
           <div
             className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ease-out motion-reduce:transition-none ${
               shown ? 'opacity-100' : 'pointer-events-none opacity-0'
@@ -154,7 +154,7 @@ export default function FeedbackModal({ label }: { label: string }) {
             role="dialog"
             aria-modal="true"
             aria-label="Зворотний зв'язок"
-            className={`relative max-h-[100dvh] w-full max-w-md overflow-y-auto rounded-t-xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl transition-[opacity,scale] duration-200 ease-out motion-reduce:transition-none sm:rounded-xl ${
+            className={`relative max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl transition-[opacity,scale] duration-200 ease-out motion-reduce:transition-none sm:rounded-xl ${
               shown ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
             }`}
           >

@@ -31,7 +31,7 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex overscroll-contain items-start justify-center overflow-y-auto bg-black/50 p-4"
       role="dialog"
       aria-modal="true"
       onClick={(e) => {

@@ -35,9 +35,11 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
   // touchstart; |delta| > 40px at touchend flips prev/next through the same
   // selectImage path as the arrows (so the fade gate stays intact).
   const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
 
   const onTouchStart = (event: React.TouchEvent) => {
     touchStartXRef.current = event.touches[0]?.clientX ?? null;
+    touchStartYRef.current = event.touches[0]?.clientY ?? null;
   };
 
   const onTouchEnd = (event: React.TouchEvent) => {
@@ -48,6 +50,10 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
     if (endX === undefined) return;
     const deltaX = endX - startX;
     if (Math.abs(deltaX) <= 40) return;
+    // диагональный дрейф: вертикальный скролл страницы не должен листать фото
+    const startY = touchStartYRef.current;
+    const endY = event.changedTouches[0]?.clientY;
+    if (startY !== null && endY !== undefined && Math.abs(endY - startY) >= Math.abs(deltaX)) return;
     if (deltaX < 0) {
       selectImage((s) => (s + 1) % images.length);
     } else {
@@ -87,7 +93,7 @@ export default function ProductGallery({ images }: { images: GalleryImage[] }) {
             deprecated `priority` prop; 2026-08 UX audit + perf audit).
             key={main.url} remounts the element per selection so the
             opacity fade replays for every switch (opacity only — the fixed
-            h-96 box keeps layout identical, zero CLS). The click-to-zoom
+            per-breakpoint box h-64 sm:h-96 keeps layout identical, zero CLS). The click-to-zoom
             button wrapper opens the lightbox; it carries no transition of
             its own (the img keeps the fade, the wrapper stays static). */}
         <button

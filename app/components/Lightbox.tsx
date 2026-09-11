@@ -42,6 +42,7 @@ export default function Lightbox({
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   // Swipe support: clientX where the current touch started (null = no swipe).
   const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
 
   const hasMany = images.length > 1;
   const current = images[index];
@@ -52,6 +53,7 @@ export default function Lightbox({
 
   const onTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
     touchStartXRef.current = event.touches[0]?.clientX ?? null;
+    touchStartYRef.current = event.touches[0]?.clientY ?? null;
   };
 
   const onTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -60,7 +62,10 @@ export default function Lightbox({
     const endX = event.changedTouches[0]?.clientX;
     if (startX === null || endX === undefined || !hasMany) return;
     const deltaX = endX - startX;
-    if (Math.abs(deltaX) > 40) {
+    const startY = touchStartYRef.current;
+    const endY = event.changedTouches[0]?.clientY;
+    const diagonal = startY !== null && endY !== undefined && Math.abs(endY - startY) >= Math.abs(deltaX);
+    if (Math.abs(deltaX) > 40 && !diagonal) {
       if (deltaX < 0) next();
       else prev();
     }
@@ -107,7 +112,7 @@ export default function Lightbox({
       }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
-      className="lightbox-fade motion-reduce:animate-none fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+      className="lightbox-fade motion-reduce:animate-none fixed inset-0 z-50 flex overscroll-contain items-center justify-center bg-black/90 p-4"
     >
       <button
         type="button"

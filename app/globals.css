@@ -164,3 +164,19 @@ body {
     animation: lightbox-zoom 200ms ease-out;
   }
 }
+
+
+/* 2026-09-11 mobile pass: мгновенная реакция на тап (без 300мс double-tap
+   zoom delay) и без серого вспыхивания на Android. */
+@layer base {
+  a,
+  button,
+  [role='button'],
+  input,
+  select,
+  textarea,
+  label {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}

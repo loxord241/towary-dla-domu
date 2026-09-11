@@ -951,7 +951,7 @@ export default function CheckoutForm() {
                               type="button"
                               onClick={() => applyServiceType(t.value)}
                               aria-pressed={deliveryType === t.value}
-                              className={`min-h-[40px] rounded-md border px-3 py-2 text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                              className={`min-h-[44px] rounded-md border px-3 py-2 text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                                 deliveryType === t.value
                                   ? 'border-blue-600 bg-blue-50 font-medium text-blue-700'
                                   : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
