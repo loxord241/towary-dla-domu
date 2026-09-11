@@ -135,8 +135,16 @@ export const RATE_RULES = {
   // review READS (GET /api/reviews pagination): generous, abuse-only
   // ceiling — a real user pages through a handful of pages per PDP visit.
   reviewsGet: [{ max: 60, windowMs: 60_000 }],
+  // restock notify («Повідомити про наявність»): one visitor needs a couple
+  // of attempts at most (a typo retry), so a tight burst over a 10-minute
+  // window; no hourly ceiling — the valid-email gate already bounds abuse.
+  restockNotify: [{ max: 5, windowMs: 10 * 60_000 }],
   // read-only catalog preview: generous, abuse-only ceiling
   cartPreview: [{ max: 120, windowMs: 60_000 }],
+  // search autocomplete (GET /api/search/suggest): a typing user fires a
+  // debounced request every ~250ms — 60/min absorbs real typing bursts,
+  // still caps scripted hammering
+  searchSuggest: [{ max: 60, windowMs: 60_000 }],
   // Yugcontract preview is admin-only, but every run downloads the FULL
   // provider feed (~200k rows) and hits an external B2B API — hard ceiling
   yugcontractPreview: [{ max: 3, windowMs: 10 * 60_000 }],

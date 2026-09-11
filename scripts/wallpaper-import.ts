@@ -30,6 +30,17 @@
  *         UPDATE products SET is_active = false WHERE sku LIKE 'wc-%' AND NOT EXISTS (...);
  *       resolved as a paged JS semi-join; prints «опубліковано X, приховано Y».
  *
+ * Restock hook (v1, «Повідомити про наявність»): AFTER a successful --run
+ * (never in --plan/--publish) the CLI checks `restock_requests`
+ * (migration 042) for requests whose product NOW has stock
+ * (stock_quantity > 0 AND is_active) and hands the owner a Telegram
+ * digest «Надійшли товари (N): sku — назва (запитів: X, emails: …)»
+ * (emails included — the owner contacts the customers; private owner chat,
+ * sendTelegramText reuse). notified_at is stamped ONLY after a confirmed
+ * send, so a Telegram failure retries on the next run. The hook NEVER
+ * fails the import: every error path is caught and logged, the run summary
+ * stays the source of truth (customer auto-email is v2, once SMTP exists).
+ *
  * Invariants (pinned by tests/wallpaper-import-cli.test.ts and
  * tests/wallpaper-publish.test.ts):
  *   - availability_status is NEVER set on UPDATE: the migration 040 trigger
@@ -77,6 +88,10 @@ import {
   WALLPAPER_ROOT,
   type ExistingWallpaperCategory,
 } from '../app/lib/wallpapers/categories.ts';
+import {
+  sendTelegramText,
+  type TelegramSendResult,
+} from '../app/lib/notifications/telegram.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -539,6 +554,19 @@ export async function runImportCli(argv: readonly string[]): Promise<number> {
     `\n== Підсумок (${elapsedS} с): створено ${totals.created}, оновлено ${totals.updated}, ` +
       `зниклі→OOS ${totals.missingSet}, history ${totals.history}, no-op ${totals.noops} ==`
   );
+
+  // Restock hook (v1) — ONLY here, after a successful --run (the --plan and
+  // --publish branches have already returned above). notifyRestockRequests
+  // never throws: a hook failure is logged and the run still exits 0.
+  const restock = await notifyRestockRequests(client);
+  if (restock.ok) {
+    console.log(
+      `Restock-запити: ${restock.pendingRequests} очікували, товарів зі стоком ${restock.matchedProducts}, ` +
+        `telegram ${restock.telegramSent ? 'надіслано' : 'не надіслано'}, notified_at ${restock.markedNotified}`
+    );
+  } else {
+    console.log('Restock-запити: пропущено (помилка — див. лог вище); імпорт не зачеплено.');
+  }
   return 0;
 }
 
@@ -845,6 +873,244 @@ export async function publishWallpapers(client: SupabaseClient): Promise<Publish
   }
 
   return { published, hidden, withPhotos: withPhotos.size, total: existing.size };
+}
+
+// ---------------------------------------------------------------------------
+// Restock hook (v1) — «Повідомити про наявність» owner digest, invoked ONLY
+// from the --run branch after applyPlan succeeds (see runImportCli above).
+// Defined AFTER the publish executor on purpose: tests/wallpaper-import-cli
+// slices the sync half before publishWallpapers, and this section belongs to
+// neither sync nor publish — it reads/writes ONLY restock_requests
+// (migration 042; RLS + revoke, service-role client) and never products.
+// ---------------------------------------------------------------------------
+
+/** A pending `restock_requests` row (SELECT only; notified_at IS NULL). */
+export interface RestockRequestRow {
+  id: string;
+  product_id: string;
+  email: string;
+}
+
+/** The product facts the digest filter needs (all SELECT-only). */
+export interface RestockProductRow {
+  id: string;
+  sku: string;
+  name: string;
+  stockQuantity: number;
+  isActive: boolean;
+}
+
+/** One «product that came back in stock» digest line (pure). */
+export interface RestockDigestEntry {
+  productId: string;
+  sku: string;
+  name: string;
+  requestCount: number;
+  emails: string[];
+}
+
+/** Digest caps: Telegram hard limit is 4096 — keep headroom (telegram.ts). */
+export const RESTOCK_MESSAGE_MAX = 3900;
+/** Products per digest message; overflow is summarized, never lost. */
+export const RESTOCK_MAX_PRODUCTS = 50;
+/** Emails listed per product; the rest collapse into «+N». */
+export const RESTOCK_MAX_EMAILS_PER_PRODUCT = 10;
+
+/**
+ * Pure grouping: pending requests → digest entries for products that NOW
+ * have stock (stock_quantity > 0 AND is_active — the storefront-visible
+ * restock). Products unknown to the map (deleted), sold-out-again or still
+ * unpublished are skipped (their requests stay pending for a later run);
+ * first-appearance order of requests is preserved.
+ */
+export function buildRestockEntries(
+  requests: readonly RestockRequestRow[],
+  productsById: ReadonlyMap<string, RestockProductRow>
+): RestockDigestEntry[] {
+  const order: string[] = [];
+  const byProduct = new Map<string, string[]>();
+  for (const r of requests) {
+    if (!productsById.has(r.product_id)) continue;
+    let emails = byProduct.get(r.product_id);
+    if (emails === undefined) {
+      emails = [];
+      byProduct.set(r.product_id, emails);
+      order.push(r.product_id);
+    }
+    if (!emails.includes(r.email)) emails.push(r.email);
+  }
+
+  const entries: RestockDigestEntry[] = [];
+  for (const productId of order) {
+    const product = productsById.get(productId);
+    const emails = byProduct.get(productId);
+    if (product === undefined || emails === undefined) continue;
+    if (!(product.stockQuantity > 0) || !product.isActive) continue;
+    entries.push({
+      productId,
+      sku: product.sku,
+      name: product.name,
+      requestCount: emails.length,
+      emails,
+    });
+  }
+  return entries;
+}
+
+/**
+ * Plain-text owner digest (no parse_mode, same reasoning as telegram.ts):
+ *   Надійшли товари (2):
+ *   • wc-x6647-04 — Шпалери 6647-04, 53см*10м (запитів: 3, emails: a@b.c, d@e.f)
+ * Capped per RESTOCK_* constants; the message itself is hard-capped at
+ * RESTOCK_MESSAGE_MAX (per-recipient Telegram failures never depend on it).
+ */
+export function buildRestockMessage(entries: readonly RestockDigestEntry[]): string {
+  const lines: string[] = [`Надійшли товари (${entries.length}):`];
+  const shown = entries.slice(0, RESTOCK_MAX_PRODUCTS);
+  for (const entry of shown) {
+    const emailList =
+      entry.emails.length <= RESTOCK_MAX_EMAILS_PER_PRODUCT
+        ? entry.emails.join(', ')
+        : `${entry.emails.slice(0, RESTOCK_MAX_EMAILS_PER_PRODUCT).join(', ')} +${entry.emails.length - RESTOCK_MAX_EMAILS_PER_PRODUCT}`;
+    const name = entry.name.length > 120 ? `${entry.name.slice(0, 120)}…` : entry.name;
+    lines.push(`• ${entry.sku} — ${name} (запитів: ${entry.requestCount}, emails: ${emailList})`);
+  }
+  if (entries.length > shown.length) {
+    lines.push(`…та ще ${entries.length - shown.length} товарів (наступний прогон)`);
+  }
+  const message = lines.join('\n');
+  return message.length > RESTOCK_MESSAGE_MAX
+    ? `${message.slice(0, RESTOCK_MESSAGE_MAX)}…`
+    : message;
+}
+
+export interface RestockNotifyResult {
+  /** false = the hook aborted (read/update failure) — the import is unaffected. */
+  ok: boolean;
+  /** Pending (notified_at IS NULL) requests found at read time. */
+  pendingRequests: number;
+  /** Digest products that qualified (stock > 0 AND active). */
+  matchedProducts: number;
+  /** Confirmed Telegram delivery (all configured recipients). */
+  telegramSent: boolean;
+  /** Requests stamped notified_at (only after a confirmed send). */
+  markedNotified: number;
+}
+
+/**
+ * Runs the whole hook; NEVER throws (any failure is logged and resolved as
+ * { ok: false }), so a restock problem can never fail a finished --run.
+ * Semantics:
+ *  - 0 pending requests → nothing else happens (telegram is NOT called);
+ *  - telegram send not confirmed (failure OR disabled env) → notified_at is
+ *    NOT stamped — the same requests are offered again on the next run;
+ *  - migration 042 not applied yet → the read fails → { ok: false }, run ok.
+ */
+export async function notifyRestockRequests(
+  client: SupabaseClient,
+  sendText: (text: string) => Promise<TelegramSendResult> = sendTelegramText
+): Promise<RestockNotifyResult> {
+  try {
+    const requests = await readAllPages<RestockRequestRow>(
+      (from) =>
+        client
+          .from('restock_requests')
+          .select('id,product_id,email')
+          .is('notified_at', null)
+          .order('id')
+          .range(from, from + PAGE_SIZE - 1)
+          .returns<RestockRequestRow[]>(),
+      'restock_requests'
+    );
+    if (requests.length === 0) {
+      return { ok: true, pendingRequests: 0, matchedProducts: 0, telegramSent: false, markedNotified: 0 };
+    }
+
+    // Fresh stock facts for the requested products only, ≤200 ids per .in
+    // window (project invariant); the result set is ≤ ids count < 1000, so
+    // one read per window is enough.
+    const productIds = [...new Set(requests.map((r) => r.product_id))];
+    const productsById = new Map<string, RestockProductRow>();
+    for (const group of chunkRows(productIds, BATCH_SIZE)) {
+      const { data, error } = await client
+        .from('products')
+        .select('id,sku,name,stock_quantity,is_active')
+        .in('id', group)
+        .returns<
+          {
+            id: unknown;
+            sku: unknown;
+            name: unknown;
+            stock_quantity: unknown;
+            is_active: unknown;
+          }[]
+        >();
+      if (error) throw new Error(`помилка читання products: ${error.message}`);
+      for (const r of data ?? []) {
+        if (typeof r.id !== 'string' || typeof r.sku !== 'string') continue;
+        const stock = toFiniteNumber(r.stock_quantity);
+        if (stock === null) continue;
+        productsById.set(r.id, {
+          id: r.id,
+          sku: r.sku,
+          name: typeof r.name === 'string' ? r.name : '',
+          stockQuantity: stock,
+          isActive: r.is_active === true,
+        });
+      }
+    }
+
+    const entries = buildRestockEntries(requests, productsById);
+    if (entries.length === 0) {
+      return {
+        ok: true,
+        pendingRequests: requests.length,
+        matchedProducts: 0,
+        telegramSent: false,
+        markedNotified: 0,
+      };
+    }
+
+    const result = await sendText(buildRestockMessage(entries));
+    if (!result.sent) {
+      console.error(
+        `restock notify: telegram не надіслано (${result.reason ?? 'невідома причина'}) — notified_at НЕ проставлено, заявки підуть у наступний прогон`
+      );
+      return {
+        ok: true,
+        pendingRequests: requests.length,
+        matchedProducts: entries.length,
+        telegramSent: false,
+        markedNotified: 0,
+      };
+    }
+
+    // Stamp ONLY the requests that were included in the digest.
+    const digested = new Set(entries.map((e) => e.productId));
+    const issuedIds = [...new Set(requests.filter((r) => digested.has(r.product_id)).map((r) => r.id))];
+    let markedNotified = 0;
+    for (const group of chunkRows(issuedIds, BATCH_SIZE)) {
+      const { error } = await client
+        .from('restock_requests')
+        .update({ notified_at: new Date().toISOString() })
+        .in('id', group);
+      if (error) throw new Error(`помилка позначення notified_at: ${error.message}`);
+      markedNotified += group.length;
+    }
+
+    return {
+      ok: true,
+      pendingRequests: requests.length,
+      matchedProducts: entries.length,
+      telegramSent: true,
+      markedNotified,
+    };
+  } catch (error) {
+    console.error(
+      `restock notify failed (імпорт не зачеплено): ${error instanceof Error ? error.message : 'error'}`
+    );
+    return { ok: false, pendingRequests: 0, matchedProducts: 0, telegramSent: false, markedNotified: 0 };
+  }
 }
 
 // Direct execution guard: tests import this module without side effects.

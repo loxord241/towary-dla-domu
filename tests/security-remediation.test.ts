@@ -101,9 +101,9 @@ test('migrations are sequentially numbered with no gaps above 030', () => {
     assert.ok(prev !== undefined && curr !== undefined);
     assert.equal(curr, prev + 1, `gap between ${prev} and ${curr}`);
   }
-  // Pinned to the latest migration: 040 (availability-from-stock trigger)
-  // and 041 (wallpaper_stock staging) ship together in the wallpapers batch.
-  assert.equal(nums[nums.length - 1], 41);
+  // Pinned to the latest migration: 042 (restock_requests, «Повідомити про
+  // наявність») follows the wallpapers batch (040 trigger + 041 staging).
+  assert.equal(nums[nums.length - 1], 42);
 });
 
 const m032 = readFileSync(

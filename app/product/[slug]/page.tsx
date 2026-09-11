@@ -14,6 +14,7 @@ import ProductDescription from '@/app/components/ProductDescription'
 import ProductSpecifications from '@/app/components/ProductSpecifications'
 import ProductReviews from '@/app/components/ProductReviews'
 import RollCalculator from '@/app/components/RollCalculator'
+import RestockNotify from '@/app/components/RestockNotify'
 import { parseRollSize } from '@/app/lib/wallpapers/parse'
 import RecentProducts from '@/app/components/RecentProducts'
 import RecentlyViewedTracker from '@/app/components/RecentlyViewedTracker'
@@ -346,6 +347,13 @@ export default async function ProductPage({
                 availabilityStatus: v.availability_status,
               }))}
             />
+
+            {/* Повідомити про наявність — лише для позицій «Немає в наявності»
+                (сервер-гейт за availability_status; v1: Telegram власнику,
+                автоemail покупцю — v2). */}
+            {product.availability_status === 'out_of_stock' && (
+              <RestockNotify productId={product.id} />
+            )}
 
             {/* Калькулятор рулонів — лише для шпалер (wc-*) з розпізнаним
                 розміром рулона; інакше просто не рендериться. */}
