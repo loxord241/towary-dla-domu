@@ -124,8 +124,8 @@ test('ICONS: hit-area invariants survive the icon swap', () => {
   const suggest = src('app/components/SearchSuggest.tsx');
   assert.match(suggest, /h-11 w-11/);
   assert.match(suggest, /pr-12/);
-  assert.match(src('app/components/CartBadge.tsx'), /p-2\.5/);
-  assert.match(src('app/components/FavoritesBadge.tsx'), /p-2\.5|-m-1 p-3/);
+  assert.match(src('app/components/CartBadge.tsx'), /-m-1 p-3/);
+  assert.match(src('app/components/FavoritesBadge.tsx'), /-m-1 p-3/);
 });
 
 test('ICONS: error boundary renders WarningIcon instead of an emoji', () => {

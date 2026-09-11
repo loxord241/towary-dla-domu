@@ -95,7 +95,7 @@ test('VIEWPORT: root layout exports themeColor #2563eb via a static viewport', (
   assert.match(layout, /import type \{ Metadata, Viewport \} from "next";/);
   assert.match(
     layout,
-    /export const viewport: Viewport = \{\s*themeColor: '#2563eb',\s*\};/
+    /export const viewport: Viewport = \{[^}]*themeColor: '#2563eb',[^}]*viewportFit: 'cover',[^}]*\};/
   );
   // themeColor belongs in viewport, NOT in metadata (Next 14+ convention).
   assert.ok(
