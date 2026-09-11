@@ -172,6 +172,59 @@ export function extractPageImages(html: string): string[] {
   return urls;
 }
 
+// ---------------------------------------------------------------------------
+// og:image of a product page (non-slav copy branch of --run)
+// ---------------------------------------------------------------------------
+
+/** Any `<meta …>` tag; og:image detection and content extraction both scan the
+ * FULL tag, so attribute order never matters (`content` before `property`). */
+const META_TAG_RE = /<meta\b[^>]*>/gi;
+
+/** og:image marker: `property="og:image"` or fallback `name="og:image"`.
+ * The closing quote right after the value keeps `og:image:secure_url` out. */
+const OG_IMAGE_MARKER_RE = /\b(?:property|name)\s*=\s*(["'])og:image\1/i;
+
+/** `content="…"` / `content='…'` attribute of a meta tag. */
+const META_CONTENT_RE = /\bcontent\s*=\s*(?:"([^"]*)"|'([^']*)')/i;
+
+/**
+ * First `<meta property="og:image" content="…">` of an HTML page (fallback
+ * `<meta name="og:image" …>`) — pure; consumed by the non-slav branch of
+ * --run, which feeds the sitemap's product PAGE URL here after direct image
+ * downloads kept failing magic-bytes (those sitemaps list pages, not images).
+ *
+ * Resolution of the content value: trim + basic entity decode (`&amp;` → `&`,
+ * the same HTML escaping as the sitemap <loc> values), absolute http(s) kept
+ * as-is, protocol-relative `//…` pinned to https, anything else resolved
+ * against `baseUrl` via the URL constructor. Non-http values (`data:` URIs)
+ * and relative paths without a usable base are returned AS-IS — the caller
+ * rejects them with an explicit «не http(s)» failure (the value itself is the
+ * diagnostic). No og:image meta with non-empty content → null (a soft-404 or
+ * a page without a preview image).
+ */
+export function extractOgImage(html: string, baseUrl?: string): string | null {
+  for (const tagMatch of html.matchAll(META_TAG_RE)) {
+    const tag = tagMatch[0] ?? '';
+    if (!OG_IMAGE_MARKER_RE.test(tag)) continue;
+    const contentMatch = META_CONTENT_RE.exec(tag);
+    const raw = (contentMatch?.[1] ?? contentMatch?.[2] ?? '').trim();
+    if (raw === '') continue;
+    const url = decodeBasicXmlEntities(raw);
+    if (/^https?:\/\//i.test(url)) return url;
+    if (url.startsWith('//')) return `https:${url}`;
+    const base = typeof baseUrl === 'string' ? baseUrl.trim() : '';
+    if (base !== '') {
+      try {
+        return new URL(url, base).href;
+      } catch {
+        continue; // malformed relative/base pair — try the next og:image tag
+      }
+    }
+    return url;
+  }
+  return null;
+}
+
 /** MIME types accepted by the product_images bucket (JPEG/PNG/WebP only). */
 export type DetectedImageMime = 'image/jpeg' | 'image/png' | 'image/webp';
 

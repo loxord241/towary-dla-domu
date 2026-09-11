@@ -27,7 +27,11 @@
  *                     — это ДРУГИЕ колеровки той же серии, в карточку товара
  *                     они больше НЕ пишутся (2852 чужих не-main фото уже
  *                     удалены из БД оркестратором);
- *         - others -> download the image (≤5 MB, jpeg/png/webp by magic
+ *         - others -> the matched sitemap/url-map URL is a PRODUCT PAGE:
+ *                     fetch it as TEXT (30s timeout, 200ms throttle), take the
+ *                     first og:image meta (relative values resolve against the
+ *                     page URL; no og:image = soft-404 → «сбой скачивания»)
+ *                     and download THAT image (≤5 MB, jpeg/png/webp by magic
  *                     bytes), upload to Storage bucket product_images under
  *                     `<sku>/<sanitized>.<ext>` (upload-filename hardening)
  *                     and write the RELATIVE path to product_images;
@@ -71,6 +75,7 @@ import {
   SOURCE_PRIORITY,
   SOURCE_SITEMAPS,
   detectImageMime,
+  extractOgImage,
   extractPageImages,
   extractSitemapUrls,
   isPhotoSource,
@@ -154,6 +159,23 @@ export async function fetchImageBytes(url: string): Promise<Uint8Array> {
   });
   if (!res.ok) throw new HttpFetchError(res.status, `HTTP ${res.status} for ${url}`);
   return new Uint8Array(await res.arrayBuffer());
+}
+
+/** Product-page download for the non-slav copy branch: UA header, HTML accept,
+ * 30s hard timeout, non-2xx -> HttpFetchError (separate from fetchSitemapText/
+ * fetchImageBytes because the accept header differs and the response is text,
+ * never bytes). */
+export async function fetchPageText(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: {
+      'user-agent': USER_AGENT,
+      accept: 'text/html,application/xhtml+xml,*/*;q=0.8',
+    },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    redirect: 'follow',
+  });
+  if (!res.ok) throw new HttpFetchError(res.status, `HTTP ${res.status} for ${url}`);
+  return await res.text();
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -772,6 +794,7 @@ function sourceFromUrl(url: string): PhotoSource | null {
 export async function run(options: RunOptions, deps: CliDeps = {}): Promise<RunTotals> {
   const log = deps.log ?? ((line: string) => console.log(line));
   const fetchText = deps.fetchText ?? fetchSitemapText;
+  const fetchPage = deps.fetchPageText ?? fetchPageText;
   const fetchImage = deps.fetchImage ?? fetchImageBytes;
   const throttleGap = deps.throttleMs ?? THROTTLE_MS;
 
@@ -913,16 +936,55 @@ export async function run(options: RunOptions, deps: CliDeps = {}): Promise<RunT
         sStats.hotlinked += written;
         pos.open = false;
       } else {
-        // ---- copy branch: download -> validate -> Storage upload -> relative path ----
+        // ---- copy branch: page -> og:image -> download -> validate -> Storage ----
+        // The sitemaps of epicentr/shpalery-ua/styleo/shpaleru index PRODUCT
+        // PAGES, not images (live run 2026-09-11: 64+2+4 «сбой скачивания» —
+        // HTML failed the magic-bytes guard). Fetch the page as text, take the
+        // first og:image and go on with the REAL image URL through the
+        // existing guards (≤5 МБ, magic bytes, Storage upload, product_images).
+        await throttle();
+        // Research url-maps may carry DIRECT image URLs (cdn.27.ua,
+        // images.prom.ua) — image-extension URLs skip the page step.
+        let imageUrl: string | null = /\.(jpe?g|png|webp)(?:[?#]|$)/i.test(url) ? url : null;
+        if (imageUrl === null) {
+          let html: string;
+          try {
+            html = await fetchPage(url);
+          } catch (err) {
+            sStats.failed += 1;
+            failedCodes.add(pos.item.code);
+            log(
+              `[run] ${source}: ${pos.item.code} сбой скачивания страницы ${url}: ` +
+                `${err instanceof Error ? err.message : String(err)}`,
+            );
+            continue;
+          }
+          imageUrl = extractOgImage(html, url);
+        }
+        if (imageUrl === null) {
+          sStats.failed += 1;
+          failedCodes.add(pos.item.code);
+          log(`[run] ${source}: ${pos.item.code} og:image не найден на странице (софт-404?) — ${url}`);
+          continue;
+        }
+        if (!/^https?:\/\//i.test(imageUrl)) {
+          sStats.failed += 1;
+          failedCodes.add(pos.item.code);
+          log(
+            `[run] ${source}: ${pos.item.code} og:image не http(s), скачивание отменено ` +
+              `(${imageUrl.slice(0, 80)}) — ${url}`,
+          );
+          continue;
+        }
         await throttle();
         let bytes: Uint8Array;
         try {
-          bytes = await fetchImage(url);
+          bytes = await fetchImage(imageUrl);
         } catch (err) {
           sStats.failed += 1;
           failedCodes.add(pos.item.code);
           log(
-            `[run] ${source}: ${pos.item.code} сбой скачивания ${url}: ` +
+            `[run] ${source}: ${pos.item.code} сбой скачивания картинки ${imageUrl}: ` +
               `${err instanceof Error ? err.message : String(err)}`,
           );
           continue;
@@ -932,7 +994,7 @@ export async function run(options: RunOptions, deps: CliDeps = {}): Promise<RunT
           failedCodes.add(pos.item.code);
           log(
             `[run] ${source}: ${pos.item.code} файл ${bytes.byteLength} байт превышает лимит ` +
-              `${MAX_IMAGE_BYTES} (5 МБ) — ${url}`,
+              `${MAX_IMAGE_BYTES} (5 МБ) — ${imageUrl}`,
           );
           continue;
         }
@@ -940,10 +1002,10 @@ export async function run(options: RunOptions, deps: CliDeps = {}): Promise<RunT
         if (mime === null) {
           sStats.failed += 1;
           failedCodes.add(pos.item.code);
-          log(`[run] ${source}: ${pos.item.code} не jpeg/png/webp по magic bytes — ${url}`);
+          log(`[run] ${source}: ${pos.item.code} не jpeg/png/webp по magic bytes — ${imageUrl}`);
           continue;
         }
-        const safeName = sanitizeUploadFileName(urlBasename(url), mime);
+        const safeName = sanitizeUploadFileName(urlBasename(imageUrl), mime);
         if (safeName === null) {
           // Defensive: mime is always whitelisted here, so this is unreachable.
           sStats.failed += 1;
@@ -1214,6 +1276,9 @@ export async function runSpecs(options: SpecsOptions, deps: CliDeps = {}): Promi
 export interface CliDeps {
   /** Network seam (tests inject a stub; default = real fetch). */
   fetchText?: (url: string) => Promise<string>;
+  /** Product-page download seam of the non-slav copy branch (tests inject a
+   * stub; default = real fetch with the HTML accept header). */
+  fetchPageText?: (url: string) => Promise<string>;
   /** Image download seam (tests inject a stub; default = real fetch). */
   fetchImage?: (url: string) => Promise<Uint8Array>;
   /** Supabase seam (tests inject a fake; default = service-role from env). */

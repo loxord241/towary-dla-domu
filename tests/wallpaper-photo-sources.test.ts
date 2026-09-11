@@ -10,8 +10,9 @@
  * Сетевых вызовов и обращений к БД/Storage НЕТ: fetch и supabase-клиент
  * инжектируются (CLI deps DI-паттерн), кэш — во временных папках os.tmpdir(),
  * supabase — in-memory fake (runtime-тесты run()-логики: slav-хотлинки
- * (ТОЛЬКО main — «1 фото = 1 карточка»), epicentr-копии в Storage,
- * 23505 → no-op, идемпотентный повтор, пагинация; --specs: UPDATE
+ * (ТОЛЬКО main — «1 фото = 1 карточка»), не-slav источники: страница →
+ * og:image → копия картинки в Storage (epicentr/shpalery-ua), 23505 → no-op,
+ * идемпотентный повтор, пагинация; --specs: UPDATE
  * products.specifications payload, --dry → 0 записей, throttle,
  * пустые характеристики → товар не тронут).
  *
@@ -35,6 +36,7 @@ import {
   SOURCE_PRIORITY,
   SOURCE_SITEMAPS,
   detectImageMime,
+  extractOgImage,
   matchSourceUrl,
   matchSourceByUrl,
   normalizeArticleToken,
@@ -325,6 +327,93 @@ test('photo-sources: extractPageImages + pickMainAndTextures — дедуп и �
   assert.equal(
     picked.textures[MAX_TEXTURES - 1],
     'https://oboi-slav-oboi.com/assets/products/9/t13.jpg',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// extractOgImage — первый og:image страницы товара (не-slav ветка --run)
+// ---------------------------------------------------------------------------
+
+// Epicentr-подобная страница (research 2026-09-11): og:image в <head>,
+// абсолютный cdn-URL с &amp; в query; дальше идут og:image:secure_url,
+// name="og:image" и прочие og:* — они НЕ должны перебить первый og:image.
+const EPICENTR_PAGE_HTML = `<!doctype html>
+<html lang="uk"><head>
+  <meta charset="utf-8">
+  <title>Обои Bravo 86000BR90 — Epicentr</title>
+  <meta property="og:type" content="product">
+  <meta property="og:title" content="Обои Bravo">
+  <meta name="description" content="шпалери">
+  <meta property="og:image" content="https://cdn.27.ua/shop/22/oboi-bravo-86000br90.jpg?w=600&amp;h=800">
+  <meta property="og:image:secure_url" content="https://cdn.27.ua/shop/22/secure.jpg">
+  <meta name="og:image" content="https://cdn.27.ua/shop/22/second.jpg">
+</head><body><h1>Браво</h1></body></html>`;
+
+test('photo-sources: extractOgImage — первый og:image, декод &amp;, secure_url/name не перебивают', () => {
+  assert.equal(
+    extractOgImage(EPICENTR_PAGE_HTML),
+    'https://cdn.27.ua/shop/22/oboi-bravo-86000br90.jpg?w=600&h=800',
+  );
+});
+
+test('photo-sources: extractOgImage — fallback <meta name="og:image">', () => {
+  assert.equal(
+    extractOgImage('<head><meta name="og:image" content="https://cdn.example.com/n.jpg"></head>'),
+    'https://cdn.example.com/n.jpg',
+  );
+});
+
+test('photo-sources: extractOgImage — порядок атрибутов и кавычки не важны', () => {
+  assert.equal(
+    extractOgImage('<meta content="https://cdn.example.com/a.jpg" property="og:image">'),
+    'https://cdn.example.com/a.jpg',
+  );
+  assert.equal(
+    extractOgImage("<meta property='og:image' content='https://cdn.example.com/b.jpg'>"),
+    'https://cdn.example.com/b.jpg',
+  );
+});
+
+test('photo-sources: extractOgImage — относительный контент абсолютизируется от baseUrl', () => {
+  const html = '<meta property="og:image" content="/upload/oboi-5310-01.jpg">';
+  assert.equal(
+    extractOgImage(html, 'https://shpalery-ua.com/ua/p/v76-5310-01'),
+    'https://shpalery-ua.com/upload/oboi-5310-01.jpg',
+  );
+  // без base относительное значение возвращается как есть — caller отбракует «не http»
+  assert.equal(extractOgImage(html), '/upload/oboi-5310-01.jpg');
+  // protocol-relative пиннится к https даже без base
+  assert.equal(
+    extractOgImage('<meta property="og:image" content="//cdn.27.ua/x.jpg">'),
+    'https://cdn.27.ua/x.jpg',
+  );
+});
+
+test('photo-sources: extractOgImage — data:-URI проходит насквозь (отбраковка — дело caller)', () => {
+  assert.equal(
+    extractOgImage(
+      '<meta property="og:image" content="data:image/png;base64,AAAA">',
+      'https://epicentrk.ua/p.html',
+    ),
+    'data:image/png;base64,AAAA',
+  );
+});
+
+test('photo-sources: extractOgImage — первый непустой og:image побеждает, пустой content пропускается', () => {
+  const html =
+    '<meta property="og:image" content="   ">' +
+    '<meta property="og:image" content="https://cdn.example.com/real.jpg">';
+  assert.equal(extractOgImage(html), 'https://cdn.example.com/real.jpg');
+});
+
+test('photo-sources: extractOgImage — без og:image / пустая страница -> null', () => {
+  assert.equal(extractOgImage(''), null);
+  assert.equal(extractOgImage('<html><body><p>404</p></body></html>'), null);
+  assert.equal(extractOgImage('<meta property="og:title" content="без картинки">'), null);
+  // софт-404 epicentr: HTML есть, og:image нет
+  assert.equal(
+    extractOgImage('<html><head><title>Сторінку не знайдено</title></head><body></body></html>'),
+    null,
   );
 });
 
@@ -855,6 +944,7 @@ async function runForTest(opts: {
   sources: PhotoSource[];
   caches: Record<string, string[]>;
   fetchText?: (url: string) => Promise<string>;
+  fetchPageText?: (url: string) => Promise<string>;
   fetchImage?: (url: string) => Promise<Uint8Array>;
   products?: { id: string; sku: string }[];
   pairs?: { product_id: string; image_url: string }[];
@@ -876,6 +966,11 @@ async function runForTest(opts: {
         (async () => {
           throw new Error('unexpected fetchText call');
         }),
+      fetchPageText:
+        opts.fetchPageText ??
+        (async () => {
+          throw new Error('unexpected fetchPageText call');
+        }),
       fetchImage:
         opts.fetchImage ??
         (async () => {
@@ -896,6 +991,16 @@ const JPEG_BYTES = Uint8Array.from([
   0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x02, 0x03,
 ]);
 const PNG_BYTES = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x01]);
+
+/** Минимальная страница товара не-slav источника: og:image в <head>. */
+function pageWithOgImage(ogContent: string): string {
+  return (
+    '<!doctype html><html><head>' +
+    '<meta property="og:title" content="Обои">' +
+    `<meta property="og:image" content="${ogContent}">` +
+    '</head><body><div class="product">товар</div></body></html>'
+  );
+}
 
 test('wallpaper-photos CLI: run() slav — пишет ТОЛЬКО главное фото (1 фото = 1 карточка)', async () => {
   const page =
@@ -931,34 +1036,125 @@ test('wallpaper-photos CLI: run() slav — пишет ТОЛЬКО главно�
   cleanup(cacheDir);
 });
 
-test('wallpaper-photos CLI: run() epicentr — скачивает, upload в Storage, ОТНОСИТЕЛЬНЫЙ путь в БД', async () => {
-  const imageUrl = 'https://epicentrk.ua/upload/oboi-bravo-86000br90-1-06x10-05-m.jpg';
+test('wallpaper-photos CLI: run() epicentr — страница -> og:image -> Storage, ОТНОСИТЕЛЬНЫЙ путь в БД', async () => {
+  // Сайдмап epicentr содержит СТРАНИЦЫ товаров (прямой даунлоад падал на
+  // magic-bytes): страница -> og:image (cdn) -> скачивание УЖЕ КАРТИНКИ.
+  const ogUrl = 'https://cdn.27.ua/shop/22/oboi-bravo-86000br90-1-06x10-05-m_jpeg_600x.jpg';
   const { db, totals, cacheDir } = await runForTest({
     items: [{ code: '200', name: 'Браво темні', article: '86000BR90' }],
     sources: ['epicentr'],
-    caches: { epicentr: [imageUrl] },
+    caches: { epicentr: [EPICENTR_URL] },
+    fetchPageText: async (url) => {
+      assert.equal(url, EPICENTR_URL);
+      return pageWithOgImage(ogUrl);
+    },
     fetchImage: async (url) => {
-      assert.equal(url, imageUrl);
+      assert.equal(url, ogUrl);
       return JPEG_BYTES;
     },
     products: [{ id: 'p-200', sku: 'wc-86000br90' }],
   });
+  // Имя объекта Storage — от og:image (cdn-файла), расширение — из magic bytes.
   assert.equal(db.uploads.length, 1);
   assert.deepEqual(db.uploads[0], {
-    path: 'wc-86000br90/oboi-bravo-86000br90-1-06x10-05-m.jpg',
+    path: 'wc-86000br90/oboi-bravo-86000br90-1-06x10-05-m_jpeg_600x.jpg',
     contentType: 'image/jpeg',
     byteLength: JPEG_BYTES.byteLength,
   });
   assert.deepEqual(db.inserted, [
     {
       product_id: 'p-200',
-      image_url: 'wc-86000br90/oboi-bravo-86000br90-1-06x10-05-m.jpg',
+      image_url: 'wc-86000br90/oboi-bravo-86000br90-1-06x10-05-m_jpeg_600x.jpg',
       is_main: true,
       sort_order: 0,
     },
   ]);
+  assert.equal(totals.bySource.epicentr?.matched, 1);
   assert.equal(totals.bySource.epicentr?.downloaded, 1);
   assert.equal(totals.bySource.epicentr?.hotlinked, 0);
+  assert.deepEqual(totals.noPhotoCodes, []);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() epicentr — страница без og:image = софт-404, failed с логом', async () => {
+  const logs: string[] = [];
+  const cacheDir = makeTmpDir();
+  writeCache(cacheDir, 'epicentr', [EPICENTR_URL]);
+  const itemsPath = path.join(cacheDir, 'items.json');
+  writeFileSync(
+    itemsPath,
+    JSON.stringify([{ code: '200', name: 'Браво темні', article: '86000BR90' }]),
+  );
+  const db = makeFakeDb({ products: [{ id: 'p-200', sku: 'wc-86000br90' }] });
+  const totals = await run(
+    { itemsPath, sources: ['epicentr'], cacheDir, dry: false },
+    {
+      client: db.client,
+      // страница отдала HTML 200, но og:image нет (софт-404 epicentr)
+      fetchPageText: async () =>
+        '<html><head><title>Сторінку не знайдено</title></head><body>404</body></html>',
+      throttleMs: 0,
+      log: (line) => logs.push(line),
+    },
+  );
+  assert.equal(db.uploads.length, 0);
+  assert.equal(db.inserted.length, 0);
+  assert.equal(totals.bySource.epicentr?.matched, 1);
+  assert.equal(totals.bySource.epicentr?.failed, 1);
+  assert.equal(totals.bySource.epicentr?.downloaded, 0);
+  assert.deepEqual(totals.downloadFailedCodes, ['200']);
+  assert.deepEqual(totals.noPhotoCodes, ['200']);
+  assert.ok(logs.some((line) => line.includes('og:image не найден')), logs.join('\n'));
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() epicentr — og:image не http (data:) — failed без попытки скачивания', async () => {
+  const { db, totals, cacheDir } = await runForTest({
+    items: [{ code: '200', name: 'Браво темні', article: '86000BR90' }],
+    sources: ['epicentr'],
+    caches: { epicentr: [EPICENTR_URL] },
+    fetchPageText: async () => pageWithOgImage('data:image/png;base64,AAAA'),
+    // fetchImage-стаб по умолчанию бросает «unexpected call» — скачивания быть не должно
+    products: [{ id: 'p-200', sku: 'wc-86000br90' }],
+  });
+  assert.equal(db.uploads.length, 0);
+  assert.equal(db.inserted.length, 0);
+  assert.equal(totals.bySource.epicentr?.failed, 1);
+  assert.deepEqual(totals.noPhotoCodes, ['200']);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() shpalery-ua — относительный og:image абсолютизируется от страницы', async () => {
+  const pageUrl = 'https://shpalery-ua.com/ua/p/v76-5310-01';
+  const { db, totals, cacheDir } = await runForTest({
+    items: [{ code: '300', name: 'шпалери 5310-01', article: '5310-01' }],
+    sources: ['shpalery-ua'],
+    caches: { 'shpalery-ua': [pageUrl] },
+    fetchPageText: async (url) => {
+      assert.equal(url, pageUrl);
+      return pageWithOgImage('/upload/oboi-5310-01.jpg');
+    },
+    fetchImage: async (url) => {
+      assert.equal(url, 'https://shpalery-ua.com/upload/oboi-5310-01.jpg');
+      return PNG_BYTES;
+    },
+    products: [{ id: 'p-300', sku: 'wc-5310-01' }],
+  });
+  assert.deepEqual(db.uploads[0], {
+    path: 'wc-5310-01/oboi-5310-01.png',
+    contentType: 'image/png',
+    byteLength: PNG_BYTES.byteLength,
+  });
+  assert.deepEqual(db.inserted, [
+    {
+      product_id: 'p-300',
+      image_url: 'wc-5310-01/oboi-5310-01.png',
+      is_main: true,
+      sort_order: 0,
+    },
+  ]);
+  assert.equal(totals.bySource['shpalery-ua']?.downloaded, 1);
+  assert.deepEqual(totals.noPhotoCodes, []);
   cleanup(cacheDir);
 });
 
@@ -980,7 +1176,7 @@ test('wallpaper-photos CLI: run() 23505 — no-op, не фатал, позици
 
 test('wallpaper-photos CLI: run() идемпотентный повтор — 0 вставок, upload не повторяется', async () => {
   const cacheDir = makeTmpDir();
-  writeCache(cacheDir, 'epicentr', ['https://epicentrk.ua/upload/oboi-bravo-86000br90.jpg']);
+  writeCache(cacheDir, 'epicentr', [EPICENTR_URL]);
   const itemsPath = path.join(cacheDir, 'items.json');
   writeFileSync(
     itemsPath,
@@ -989,6 +1185,7 @@ test('wallpaper-photos CLI: run() идемпотентный повтор — 0 
   const db = makeFakeDb({ products: [{ id: 'p-200', sku: 'wc-86000br90' }] });
   const deps = {
     client: db.client,
+    fetchPageText: async () => pageWithOgImage('https://cdn.27.ua/shop/22/oboi-bravo-86000br90.jpg'),
     fetchImage: async () => JPEG_BYTES,
     throttleMs: 0,
     log: () => {},
@@ -1043,7 +1240,8 @@ test('wallpaper-photos CLI: run() --dry — читает и матчит, но 0
   const { db, totals, cacheDir } = await runForTest({
     items: [{ code: '200', name: 'Браво темні', article: '86000BR90' }],
     sources: ['epicentr'],
-    caches: { epicentr: ['https://epicentrk.ua/upload/oboi-bravo-86000br90.jpg'] },
+    caches: { epicentr: [EPICENTR_URL] },
+    fetchPageText: async () => pageWithOgImage('https://cdn.27.ua/shop/22/oboi-bravo-86000br90.jpg'),
     fetchImage: async () => JPEG_BYTES,
     products: [{ id: 'p-200', sku: 'wc-86000br90' }],
     dry: true,
@@ -1057,13 +1255,16 @@ test('wallpaper-photos CLI: run() --dry — читает и матчит, но 0
 
 test('wallpaper-photos CLI: run() сбой скачивания не фатален — позиция достаётся следующему источнику', async () => {
   const styleoUrl = 'https://styleo.com.ua/p/oboi-bravo-86000br90';
-  const epicentrUrl = 'https://epicentrk.ua/upload/oboi-bravo-86000br90.jpg';
+  const epicentrOg = 'https://cdn.27.ua/shop/22/oboi-bravo-86000br90.jpg';
+  const styleoOg = 'https://styleo.com.ua/image/cache/oboi-bravo-86000br90.png';
   const { totals, cacheDir } = await runForTest({
     items: [{ code: '200', name: 'Браво темні', article: '86000BR90' }],
     sources: ['epicentr', 'styleo'],
-    caches: { epicentr: [epicentrUrl], styleo: [styleoUrl] },
+    caches: { epicentr: [EPICENTR_URL], styleo: [styleoUrl] },
+    fetchPageText: async (url) => pageWithOgImage(url === EPICENTR_URL ? epicentrOg : styleoOg),
     fetchImage: async (url) => {
-      if (url === epicentrUrl) throw new HttpFetchError(404, 'HTTP 404');
+      if (url === epicentrOg) throw new HttpFetchError(404, 'HTTP 404');
+      assert.equal(url, styleoOg);
       return PNG_BYTES;
     },
     products: [{ id: 'p-200', sku: 'wc-86000br90' }],
@@ -1080,9 +1281,10 @@ test('wallpaper-photos CLI: run() сбой на всех источниках �
     items: [{ code: '200', name: 'Браво темні', article: '86000BR90' }],
     sources: ['epicentr', 'styleo'],
     caches: {
-      epicentr: ['https://epicentrk.ua/upload/oboi-bravo-86000br90.jpg'],
+      epicentr: [EPICENTR_URL],
       styleo: ['https://styleo.com.ua/p/oboi-bravo-86000br90'],
     },
+    fetchPageText: async () => pageWithOgImage('https://cdn.27.ua/shop/22/oboi-bravo.jpg'),
     fetchImage: async () => {
       throw new HttpFetchError(500, 'HTTP 500');
     },
@@ -1109,10 +1311,12 @@ test('wallpaper-photos CLI: run() >5 МБ и не-image magic bytes — сбой
     sources: ['epicentr'],
     caches: {
       epicentr: [
-        'https://epicentrk.ua/upload/oboi-5243-02.jpg',
-        'https://epicentrk.ua/upload/oboi-30202.jpg',
+        'https://epicentrk.ua/ua/shop/oboi-5243-02.html',
+        'https://epicentrk.ua/ua/shop/oboi-30202.html',
       ],
     },
+    fetchPageText: async (url) =>
+      pageWithOgImage(`https://cdn.27.ua/shop/22/${url.includes('5243-02') ? 'oboi-5243-02' : 'oboi-30202'}.jpg`),
     fetchImage: async (url) => (url.includes('5243-02') ? oversized : garbage),
     products: [
       { id: 'p-300', sku: 'wc-5243-02' },
