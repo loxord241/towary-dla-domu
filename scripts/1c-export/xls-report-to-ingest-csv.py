@@ -82,7 +82,9 @@ def main(xls_path: str, out_dir: str) -> None:
         w = csv.writer(f, delimiter=';', lineterminator='\n')
         w.writerow(['code', 'name', 'article', 'unit', 'price_retail', 'qty'])
         for code, name, price, qty, _sg in items:
-            w.writerow([code, name, '', 'рулон', price, qty])
+            # xlrd отдаёт числа float; контракт парсера требует qty целым
+            # (`\d+`), цена — «просто число» (допустим и int-вид `171`).
+            w.writerow([code, name, '', 'рулон', f'{price:g}', f'{qty:g}'])
 
     cat_map = {}
     unknown_subgroups = {}
