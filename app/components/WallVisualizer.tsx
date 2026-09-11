@@ -224,14 +224,16 @@ export default function WallVisualizer({
     [quadN, box],
   );
 
-  // bbox quad — размер обоев-div до трансформации.
-  const bbox = useMemo<{ w: number; h: number } | null>(() => {
+  // bbox quad — размер обоев-div до трансформации + его левый верхний угол.
+  const bbox = useMemo<{ w: number; h: number; x: number; y: number } | null>(() => {
     if (quadPx === null) return null;
     const xs = quadPx.map((p) => p.x);
     const ys = quadPx.map((p) => p.y);
-    const w = Math.max(...xs) - Math.min(...xs);
-    const h = Math.max(...ys) - Math.min(...ys);
-    return w > 0 && h > 0 ? { w, h } : null;
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    const w = Math.max(...xs) - x;
+    const h = Math.max(...ys) - y;
+    return w > 0 && h > 0 ? { w, h, x, y } : null;
   }, [quadPx]);
 
   // Единичный прямоугольник bbox → quad; вырожденный quad даёт null —
@@ -391,21 +393,21 @@ export default function WallVisualizer({
                 />
                 {quadPx !== null && clipPath !== null && homog !== null && bbox !== null && (
                   <>
-                    {/* Шпалера: clip-path режет повторяющийся фон по quad */}
-                    <div className="absolute inset-0" style={{ clipPath }}>
-                      <div
-                        className="absolute left-0 top-0"
-                        style={{
-                          width: bbox.w,
-                          height: bbox.h,
-                          backgroundImage: `url("${textureUrl}")`,
-                          backgroundRepeat: 'repeat',
-                          backgroundSize: `${stripPx}px auto`,
-                          transform: homog.css,
-                          transformOrigin: '0 0',
-                        }}
-                      />
-                    </div>
+                    {/* Шпалера: гомография отображает ПРЯМОУГОЛЬНИК элемента
+                        ровно в quad стены — clip-path не нужен вовсе
+                        (и iOS-независимо: никакой вложенности 3D-слоёв). */}
+                    <div
+                      className="absolute left-0 top-0"
+                      style={{
+                        width: bbox.w,
+                        height: bbox.h,
+                        backgroundImage: `url("${textureUrl}")`,
+                        backgroundRepeat: 'repeat',
+                        backgroundSize: `${stripPx}px auto`,
+                        transform: homog.css,
+                        transformOrigin: '0 0',
+                      }}
+                    />
                     {/* 4 угловые ручки: 44px, pointer capture, клавиатура.
                         Развернуты явно (не .map) — статический инвариант
                         теста считает тап-зоны ≥44px по исходнику. */}
@@ -417,9 +419,11 @@ export default function WallVisualizer({
                       onPointerUp={onHandlePointerFinish}
                       onPointerCancel={onHandlePointerFinish}
                       onKeyDown={onHandleKeyDown(0)}
-                      className="absolute h-11 w-11 touch-none rounded-full border-2 border-white bg-blue-600/70 shadow-md transition-transform hover:bg-blue-600 focus-visible:outline-2 focus-visible:outline-blue-700 motion-reduce:transition-none"
+                      className="absolute flex h-11 w-11 touch-none items-center justify-center rounded-full transition-transform motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-blue-700"
                       style={{ left: quadPx[0]!.x, top: quadPx[0]!.y, transform: 'translate(-50%, -50%)' }}
-                    />
+                    >
+                      <span className="block h-[18px] w-[18px] rounded-full border-2 border-white bg-blue-600 shadow-md" />
+                    </button>
                     <button
                       type="button"
                       aria-label="Кут стіни — правий верхній"
@@ -428,9 +432,11 @@ export default function WallVisualizer({
                       onPointerUp={onHandlePointerFinish}
                       onPointerCancel={onHandlePointerFinish}
                       onKeyDown={onHandleKeyDown(1)}
-                      className="absolute h-11 w-11 touch-none rounded-full border-2 border-white bg-blue-600/70 shadow-md transition-transform hover:bg-blue-600 focus-visible:outline-2 focus-visible:outline-blue-700 motion-reduce:transition-none"
+                      className="absolute flex h-11 w-11 touch-none items-center justify-center rounded-full transition-transform motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-blue-700"
                       style={{ left: quadPx[1]!.x, top: quadPx[1]!.y, transform: 'translate(-50%, -50%)' }}
-                    />
+                    >
+                      <span className="block h-[18px] w-[18px] rounded-full border-2 border-white bg-blue-600 shadow-md" />
+                    </button>
                     <button
                       type="button"
                       aria-label="Кут стіни — правий нижній"
@@ -439,9 +445,11 @@ export default function WallVisualizer({
                       onPointerUp={onHandlePointerFinish}
                       onPointerCancel={onHandlePointerFinish}
                       onKeyDown={onHandleKeyDown(2)}
-                      className="absolute h-11 w-11 touch-none rounded-full border-2 border-white bg-blue-600/70 shadow-md transition-transform hover:bg-blue-600 focus-visible:outline-2 focus-visible:outline-blue-700 motion-reduce:transition-none"
+                      className="absolute flex h-11 w-11 touch-none items-center justify-center rounded-full transition-transform motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-blue-700"
                       style={{ left: quadPx[2]!.x, top: quadPx[2]!.y, transform: 'translate(-50%, -50%)' }}
-                    />
+                    >
+                      <span className="block h-[18px] w-[18px] rounded-full border-2 border-white bg-blue-600 shadow-md" />
+                    </button>
                     <button
                       type="button"
                       aria-label="Кут стіни — лівий нижній"
@@ -450,9 +458,11 @@ export default function WallVisualizer({
                       onPointerUp={onHandlePointerFinish}
                       onPointerCancel={onHandlePointerFinish}
                       onKeyDown={onHandleKeyDown(3)}
-                      className="absolute h-11 w-11 touch-none rounded-full border-2 border-white bg-blue-600/70 shadow-md transition-transform hover:bg-blue-600 focus-visible:outline-2 focus-visible:outline-blue-700 motion-reduce:transition-none"
+                      className="absolute flex h-11 w-11 touch-none items-center justify-center rounded-full transition-transform motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-blue-700"
                       style={{ left: quadPx[3]!.x, top: quadPx[3]!.y, transform: 'translate(-50%, -50%)' }}
-                    />
+                    >
+                      <span className="block h-[18px] w-[18px] rounded-full border-2 border-white bg-blue-600 shadow-md" />
+                    </button>
                   </>
                 )}
                 <span className="absolute bottom-2 left-2 rounded-full bg-black/50 px-2.5 py-1 text-xs font-medium text-white">
