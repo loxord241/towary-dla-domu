@@ -240,6 +240,11 @@ export interface MainAndTextures {
  * main = first URL; textures = the remaining unique URLs, up to MAX_TEXTURES.
  * Deduplication is global (a repeat of `main` never re-enters textures).
  * Returns null when no usable URL remains.
+ *
+ * NOTE (решение владельца 2026-09-10 «1 фото = 1 карточка»): --run writes
+ * ONLY `main` to product_images — textures are characteristics of OTHER
+ * colourways of the same series, not of this product card. The pure split
+ * stays intact so `main` selection keeps its tested semantics.
  */
 export function pickMainAndTextures(imageUrls: string[]): MainAndTextures | null {
   const unique: string[] = [];
@@ -253,6 +258,58 @@ export function pickMainAndTextures(imageUrls: string[]): MainAndTextures | null
   const main = unique[0];
   if (main === undefined) return null;
   return { main, textures: unique.slice(1, 1 + MAX_TEXTURES) };
+}
+
+// ---------------------------------------------------------------------------
+// slav product-page characteristics (--specs)
+// ---------------------------------------------------------------------------
+
+/** Characteristic row of the slav spec table:
+ * `<div class="table-item--caption">Довжина</div>…<div class="table-item--text">10.05 м</div>`.
+ * The lazy gap between caption and text must not cross into the NEXT caption
+ * (tempered pattern) — a caption without a text sibling is never paired. */
+const SLAV_SPEC_PAIR_RE =
+  /class="table-item--caption"[^>]*>([^<]*)<\/div>(?:(?!table-item--caption)[\s\S])*?class="table-item--text"[^>]*>([^<]*)</g;
+
+/** Any anchor carrying the room filter (`/f/tip-pomeshheniya=…` + `item-filter`);
+ * the visible room name is the anchor's leading text. */
+const SLAV_ROOM_ANCHOR_RE = /<a\b([^>]*)>([^<]*)</g;
+
+/** Name of the synthesized characteristic holding the comma-joined rooms. */
+export const SLAV_ROOMS_SPEC_NAME = 'Приміщення';
+
+/**
+ * Characteristics of a slav product page (pure; consumed by --specs):
+ *  - caption/text pairs of the spec table, trimmed, basic-decoded (`&amp;` …),
+ *    deduped by name (FIRST value wins — same-name duplicates on the page are
+ *    render variants, unlike the YC feed where duplicates are meaningful);
+ *  - plus one synthesized `{name: 'Приміщення', value: 'Вітальня, Спальня'}`
+ *    (join ', ') when the page lists ≥1 room filter chip.
+ * Empty names/values and icon-first anchors yield nothing; `''` → `[]`.
+ */
+export function parseSlavCharacteristics(html: string): Array<{ name: string; value: string }> {
+  const specs: Array<{ name: string; value: string }> = [];
+  const seenNames = new Set<string>();
+  for (const m of html.matchAll(SLAV_SPEC_PAIR_RE)) {
+    const name = decodeBasicXmlEntities((m[1] ?? '').trim());
+    const value = decodeBasicXmlEntities((m[2] ?? '').trim());
+    if (name === '' || value === '') continue;
+    if (seenNames.has(name)) continue; // дедуп по name — первое значение побеждает
+    seenNames.add(name);
+    specs.push({ name, value });
+  }
+  const rooms: string[] = [];
+  const seenRooms = new Set<string>();
+  for (const m of html.matchAll(SLAV_ROOM_ANCHOR_RE)) {
+    const attrs = (m[1] ?? '').toLowerCase();
+    if (!attrs.includes('tip-pomeshheniya=') || !attrs.includes('item-filter')) continue;
+    const room = decodeBasicXmlEntities((m[2] ?? '').trim());
+    if (room === '' || seenRooms.has(room)) continue;
+    seenRooms.add(room);
+    rooms.push(room);
+  }
+  if (rooms.length > 0) specs.push({ name: SLAV_ROOMS_SPEC_NAME, value: rooms.join(', ') });
+  return specs;
 }
 
 // ---------------------------------------------------------------------------

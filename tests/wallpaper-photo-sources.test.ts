@@ -9,8 +9,11 @@
  *
  * Сетевых вызовов и обращений к БД/Storage НЕТ: fetch и supabase-клиент
  * инжектируются (CLI deps DI-паттерн), кэш — во временных папках os.tmpdir(),
- * supabase — in-memory fake (runtime-тесты run()-логики: slav-хотлинки,
- * epicentr-копии в Storage, 23505 → no-op, идемпотентный повтор, пагинация).
+ * supabase — in-memory fake (runtime-тесты run()-логики: slav-хотлинки
+ * (ТОЛЬКО main — «1 фото = 1 карточка»), epicentr-копии в Storage,
+ * 23505 → no-op, идемпотентный повтор, пагинация; --specs: UPDATE
+ * products.specifications payload, --dry → 0 записей, throttle,
+ * пустые характеристики → товар не тронут).
  *
  * Run: npm test
  */
@@ -35,11 +38,13 @@ import {
   matchSourceUrl,
   matchSourceByUrl,
   normalizeArticleToken,
+  parseSlavCharacteristics,
   extractPageImages,
   extractSitemapUrls,
   MAX_TEXTURES,
   pickMainAndTextures,
   planPhotoCoverage,
+  SLAV_ROOMS_SPEC_NAME,
   unionCoveredCodes,
   wallpaperSkuForItem,
   type PhotoItem,
@@ -52,7 +57,9 @@ import {
   parseArgs,
   run,
   runPhotosCli,
+  runSpecs,
   type RunTotals,
+  type SpecsRunTotals,
 } from '../scripts/wallpaper-photos.ts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -322,6 +329,85 @@ test('photo-sources: extractPageImages + pickMainAndTextures — дедуп и �
 });
 
 // ---------------------------------------------------------------------------
+// parseSlavCharacteristics — характеристики страницы товара slav (--specs)
+// ---------------------------------------------------------------------------
+
+// РЕАЛЬНЫЙ фрагмент страницы oboi-slav-oboi.com (research 2026-09-10):
+// таблица характеристик + чипы-фильтры помещений.
+const SLAV_SPECS_FRAGMENT =
+  '<div class="table-item"><div class="table-item--caption">Довжина</div>' +
+  '<div class="table-item--text">10.05 м</div></div>' +
+  '<div class="table-item"><div class="table-item--caption">Ширина</div>' +
+  '<div class="table-item--text">0.53 м</div></div>' +
+  '<div class="table-item"><div class="table-item--caption">Основа</div>' +
+  '<div class="table-item--text">Паперова</div></div>';
+const SLAV_ROOMS_FRAGMENT =
+  '<div class="filters"><a href="https://oboi-slav-oboi.com/ua/catalog/f/tip-pomeshheniya=gostinnaya/" ' +
+  'class="item-filter">Вітальня<i class="icon icon-bed"></i></a> ' +
+  '<a href="https://oboi-slav-oboi.com/ua/catalog/f/tip-pomeshheniya=spalnya/" class="item-filter">Спальня<i></i></a></div>';
+
+test('photo-sources: parseSlavCharacteristics — реальный фрагмент: пары + Приміщення', () => {
+  assert.deepEqual(parseSlavCharacteristics(SLAV_SPECS_FRAGMENT + SLAV_ROOMS_FRAGMENT), [
+    { name: 'Довжина', value: '10.05 м' },
+    { name: 'Ширина', value: '0.53 м' },
+    { name: 'Основа', value: 'Паперова' },
+    { name: 'Приміщення', value: 'Вітальня, Спальня' },
+  ]);
+});
+
+test('photo-sources: parseSlavCharacteristics — без чипов помещений нет записи Приміщення', () => {
+  assert.deepEqual(parseSlavCharacteristics(SLAV_SPECS_FRAGMENT), [
+    { name: 'Довжина', value: '10.05 м' },
+    { name: 'Ширина', value: '0.53 м' },
+    { name: 'Основа', value: 'Паперова' },
+  ]);
+  assert.equal(SLAV_ROOMS_SPEC_NAME, 'Приміщення');
+});
+
+test('photo-sources: parseSlavCharacteristics — только помещения -> одна запись', () => {
+  assert.deepEqual(parseSlavCharacteristics(SLAV_ROOMS_FRAGMENT), [
+    { name: 'Приміщення', value: 'Вітальня, Спальня' },
+  ]);
+});
+
+test('photo-sources: parseSlavCharacteristics — пусто/без разметки -> []', () => {
+  assert.deepEqual(parseSlavCharacteristics(''), []);
+  assert.deepEqual(parseSlavCharacteristics('<div>ничего релевантного</div>'), []);
+  // caption без text-сиблинга не склеивается со СЛЕДУЮЩЕЙ парой
+  assert.deepEqual(
+    parseSlavCharacteristics(
+      '<div class="table-item--caption">Основа</div>' +
+        '<div class="table-item"><div class="table-item--caption">Ширина</div>' +
+        '<div class="table-item--text">0.53 м</div></div>',
+    ),
+    [{ name: 'Ширина', value: '0.53 м' }],
+  );
+});
+
+test('photo-sources: parseSlavCharacteristics — дедуп по name, первое значение побеждает', () => {
+  const html =
+    '<div class="table-item--caption">Ширина</div><div class="table-item--text">0.53 м</div>' +
+    '<div class="table-item--caption">Ширина</div><div class="table-item--text">1.06 м</div>';
+  assert.deepEqual(parseSlavCharacteristics(html), [{ name: 'Ширина', value: '0.53 м' }]);
+  // повтор чипа помещения не дублируется в join
+  const dupRoom = SLAV_ROOMS_FRAGMENT + SLAV_ROOMS_FRAGMENT;
+  assert.deepEqual(parseSlavCharacteristics(dupRoom), [
+    { name: 'Приміщення', value: 'Вітальня, Спальня' },
+  ]);
+});
+
+test('photo-sources: parseSlavCharacteristics — trim и декод &amp;', () => {
+  const html =
+    '<div class="table-item"><div class="table-item--caption"> Колекція </div>' +
+    '<div class="table-item--text"> Nika &amp; Sons </div></div>' +
+    '<a href="/ua/catalog/f/tip-pomeshheniya=dityacha/" class="item-filter">Дитяча &amp; ігрова<i></i></a>';
+  assert.deepEqual(parseSlavCharacteristics(html), [
+    { name: 'Колекція', value: 'Nika & Sons' },
+    { name: 'Приміщення', value: 'Дитяча & ігрова' },
+  ]);
+});
+
+// ---------------------------------------------------------------------------
 // detectImageMime — magic bytes (jpeg/png/webp)
 // ---------------------------------------------------------------------------
 
@@ -569,6 +655,46 @@ test('wallpaper-photos CLI: parseArgs rejects unknown source in --sources', () =
 });
 
 // ---------------------------------------------------------------------------
+// CLI: parseArgs --specs (характеристики: slav-only, --items обязателен)
+// ---------------------------------------------------------------------------
+
+test('wallpaper-photos CLI: parseArgs --specs with --items, --dry and --url-map', () => {
+  const args = parseArgs([
+    '--specs',
+    '--items',
+    '/tmp/items.json',
+    '--dry',
+    '--url-map',
+    '/tmp/map.json',
+  ]);
+  assert.equal(args.action, 'specs');
+  assert.equal(args.items, '/tmp/items.json');
+  assert.equal(args.dry, true);
+  assert.deepEqual(args.urlMapFiles, ['/tmp/map.json']);
+  assert.match(args.cacheDir, /data[\\/]photo-cache$/);
+});
+
+test('wallpaper-photos CLI: parseArgs --specs requires --items', () => {
+  assert.throws(() => parseArgs(['--specs']), /--specs requires --items/i);
+  assert.throws(() => parseArgs(['--specs', '--dry']), /--specs requires --items/i);
+});
+
+test('wallpaper-photos CLI: parseArgs --specs rejects --source/--sources (slav-only action)', () => {
+  assert.throws(
+    () => parseArgs(['--specs', '--items', 'x.json', '--source', 'slav']),
+    /not applicable to --specs/i,
+  );
+  assert.throws(
+    () => parseArgs(['--specs', '--items', 'x.json', '--sources', 'slav,epicentr']),
+    /not applicable to --specs/i,
+  );
+});
+
+test('wallpaper-photos CLI: parseArgs rejects conflicting --specs with other actions', () => {
+  assert.throws(() => parseArgs(['--specs', '--run', '--items', 'x.json']), /exactly one action/i);
+});
+
+// ---------------------------------------------------------------------------
 // CLI: --run — runtime-тесты на стабах (fake fetch + fake supabase-клиент)
 // ---------------------------------------------------------------------------
 
@@ -582,6 +708,8 @@ interface FakeImageRow {
 interface FakeDb {
   client: SupabaseClient;
   inserted: FakeImageRow[];
+  /** products.specifications UPDATE (--specs): {id,Specifications payload}. */
+  updates: { id: string; specifications: unknown }[];
   uploads: { path: string; contentType: string; byteLength: number }[];
   inChunkSizes: number[];
   windows: string[];
@@ -590,7 +718,7 @@ interface FakeDb {
 }
 
 /** In-memory supabase-клиент: paged-чтения с реальным range-поведением,
- * INSERT с симуляцией 23505, Storage upload. */
+ * INSERT с симуляцией 23505, Storage upload, products UPDATE (--specs). */
 function makeFakeDb(opts: {
   products?: { id: string; sku: string }[];
   pairs?: { product_id: string; image_url: string }[];
@@ -598,10 +726,13 @@ function makeFakeDb(opts: {
   duplicatePairs?: string[];
   /** path -> сообщение об ошибке upload. */
   uploadErrors?: Record<string, string>;
+  /** product id -> сообщение об ошибке products UPDATE (--specs). */
+  updateErrors?: Record<string, string>;
 }): FakeDb {
   const products = (opts.products ?? []).map((p) => ({ ...p }));
   const pairs = (opts.pairs ?? []).map((p) => ({ ...p }));
   const inserted: FakeImageRow[] = [];
+  const updates: FakeDb['updates'] = [];
   const uploads: FakeDb['uploads'] = [];
   const inChunkSizes: number[] = [];
   const windows: string[] = [];
@@ -629,6 +760,19 @@ function makeFakeDb(opts: {
           then: (resolve: (value: unknown) => void) => {
             resolve({ data: products.slice(state.from, state.to + 1), error: null });
           },
+          update: (values: Record<string, unknown>) => ({
+            eq: (_column: string, value: string) => ({
+              then: (resolve: (value: unknown) => void) => {
+                const message = opts.updateErrors?.[value];
+                if (message !== undefined) {
+                  resolve({ data: null, error: { message } });
+                  return;
+                }
+                updates.push({ id: value, specifications: values['specifications'] });
+                resolve({ data: null, error: null });
+              },
+            }),
+          }),
         };
         return b;
       }
@@ -697,6 +841,7 @@ function makeFakeDb(opts: {
   return {
     client: client as unknown as SupabaseClient,
     inserted,
+    updates,
     uploads,
     inChunkSizes,
     windows,
@@ -752,7 +897,7 @@ const JPEG_BYTES = Uint8Array.from([
 ]);
 const PNG_BYTES = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x01]);
 
-test('wallpaper-photos CLI: run() slav — пишет внешние hotlink-URL (main sort 0 + текстуры)', async () => {
+test('wallpaper-photos CLI: run() slav — пишет ТОЛЬКО главное фото (1 фото = 1 карточка)', async () => {
   const page =
     '<html><body>' +
     '<img src="https://oboi-slav-oboi.com/assets/products/2746/main.jpg">' +
@@ -769,29 +914,19 @@ test('wallpaper-photos CLI: run() slav — пишет внешние hotlink-URL
     },
     products: [{ id: 'p-100', sku: 'wc-6647-04' }],
   });
-  assert.equal(db.inserted.length, 3);
+  // Решение владельца 2026-09-10: текстуры (другие колеровки серии) в
+  // карточку НЕ пишутся — ровно одна строка main.
+  assert.equal(db.inserted.length, 1);
   assert.deepEqual(db.inserted[0], {
     product_id: 'p-100',
     image_url: 'https://oboi-slav-oboi.com/assets/products/2746/main.jpg',
     is_main: true,
     sort_order: 0,
   });
-  assert.deepEqual(db.inserted[1], {
-    product_id: 'p-100',
-    image_url: 'https://oboi-slav-oboi.com/assets/products/2746/tex-1.jpg',
-    is_main: false,
-    sort_order: 1,
-  });
-  assert.deepEqual(db.inserted[2], {
-    product_id: 'p-100',
-    image_url: 'https://oboi-slav-oboi.com/assets/products/2746/tex-2.jpg',
-    is_main: false,
-    sort_order: 2,
-  });
   assert.equal(db.uploads.length, 0);
   assert.equal(totals.bySource.slav?.matched, 1);
-  assert.equal(totals.bySource.slav?.hotlinked, 3);
-  assert.equal(totals.insertedRows, 3);
+  assert.equal(totals.bySource.slav?.hotlinked, 1);
+  assert.equal(totals.insertedRows, 1);
   assert.deepEqual(totals.noPhotoCodes, []);
   cleanup(cacheDir);
 });
@@ -1047,6 +1182,195 @@ test('wallpaper-photos CLI: run() позиция без wc-* товара — п
 });
 
 // ---------------------------------------------------------------------------
+// CLI: --specs — runtime-тесты на стабах (fake fetch + fake supabase-клиент)
+// ---------------------------------------------------------------------------
+
+/** Страница slav с характеристиками: реальный фрагмент (пары + помещения). */
+const SPECS_PAGE = `<html><body>${SLAV_SPECS_FRAGMENT}${SLAV_ROOMS_FRAGMENT}</body></html>`;
+const SPECS_PAYLOAD = [
+  { name: 'Довжина', value: '10.05 м' },
+  { name: 'Ширина', value: '0.53 м' },
+  { name: 'Основа', value: 'Паперова' },
+  { name: 'Приміщення', value: 'Вітальня, Спальня' },
+];
+
+async function runSpecsForTest(opts: {
+  items: PhotoItem[];
+  slavUrls?: string[];
+  fetchText?: (url: string) => Promise<string>;
+  products?: { id: string; sku: string }[];
+  urlMap?: Record<string, string>;
+  dry?: boolean;
+  throttleMs?: number;
+  updateErrors?: Record<string, string>;
+}): Promise<{ db: FakeDb; totals: SpecsRunTotals; cacheDir: string }> {
+  const cacheDir = makeTmpDir();
+  writeCache(cacheDir, 'slav', opts.slavUrls ?? []);
+  let urlMapFiles: string[] | undefined;
+  if (opts.urlMap !== undefined) {
+    const mapPath = path.join(cacheDir, 'url-map.json');
+    writeFileSync(mapPath, JSON.stringify(opts.urlMap));
+    urlMapFiles = [mapPath];
+  }
+  const itemsPath = path.join(cacheDir, 'items.json');
+  writeFileSync(itemsPath, JSON.stringify(opts.items));
+  const db = makeFakeDb({ products: opts.products, updateErrors: opts.updateErrors });
+  const totals = await runSpecs(
+    { itemsPath, cacheDir, dry: opts.dry === true, urlMapFiles },
+    {
+      client: db.client,
+      fetchText:
+        opts.fetchText ??
+        (async () => {
+          throw new Error('unexpected fetchText call');
+        }),
+      throttleMs: opts.throttleMs ?? 0,
+      log: () => {},
+    },
+  );
+  return { db, totals, cacheDir };
+}
+
+test('wallpaper-photos CLI: --specs — UPDATE products.specifications jsonb-массивом пар', async () => {
+  const { db, totals, cacheDir } = await runSpecsForTest({
+    items: [{ code: '100', name: 'шпалери 6647-04', article: '6647-04' }],
+    slavUrls: [SLAV_URL],
+    fetchText: async (url) => {
+      assert.equal(url, SLAV_URL);
+      return SPECS_PAGE;
+    },
+    products: [{ id: 'p-100', sku: 'wc-6647-04' }],
+  });
+  assert.equal(db.updates.length, 1);
+  assert.deepEqual(db.updates[0], { id: 'p-100', specifications: SPECS_PAYLOAD });
+  assert.equal(totals.items, 1);
+  assert.equal(totals.productsWc, 1);
+  assert.equal(totals.matched, 1);
+  assert.equal(totals.updated, 1);
+  assert.equal(totals.emptySpecs, 0);
+  assert.equal(totals.failed, 0);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: --specs --dry — скачивает и парсит, но 0 UPDATE', async () => {
+  const { db, totals, cacheDir } = await runSpecsForTest({
+    items: [{ code: '100', name: 'шпалери 6647-04', article: '6647-04' }],
+    slavUrls: [SLAV_URL],
+    fetchText: async () => SPECS_PAGE,
+    products: [{ id: 'p-100', sku: 'wc-6647-04' }],
+    dry: true,
+  });
+  assert.equal(db.updates.length, 0); // записей нет
+  assert.equal(totals.updated, 1); // would-write счётчик
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: --specs — страница без характеристик: товар НЕ трогается', async () => {
+  const { db, totals, cacheDir } = await runSpecsForTest({
+    items: [{ code: '100', name: 'шпалери 6647-04', article: '6647-04' }],
+    slavUrls: [SLAV_URL],
+    fetchText: async () => '<html><body><p>страница без таблицы характеристик</p></body></html>',
+    products: [{ id: 'p-100', sku: 'wc-6647-04' }],
+  });
+  assert.equal(db.updates.length, 0);
+  assert.equal(totals.emptySpecs, 1);
+  assert.equal(totals.updated, 0);
+  assert.equal(totals.matched, 1);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: --specs — throttle 200мс-контракт между скачиваниями страниц', async () => {
+  const stamps: number[] = [];
+  const secondUrl = 'https://oboi-slav-oboi.com/ua/v1-5310-02/';
+  const { db, totals, cacheDir } = await runSpecsForTest({
+    items: [
+      { code: '100', name: 'шпалери 6647-04', article: '6647-04' },
+      { code: '300', name: 'шпалери 5310-02', article: '5310-02' },
+    ],
+    slavUrls: [SLAV_URL, secondUrl],
+    fetchText: async () => {
+      stamps.push(Date.now());
+      return SPECS_PAGE;
+    },
+    products: [
+      { id: 'p-100', sku: 'wc-6647-04' },
+      { id: 'p-300', sku: 'wc-5310-02' },
+    ],
+    throttleMs: 100,
+  });
+  assert.equal(stamps.length, 2);
+  const [firstStamp, secondStamp] = stamps;
+  assert.ok(firstStamp !== undefined && secondStamp !== undefined);
+  assert.ok(secondStamp - firstStamp >= 50, `gap ${secondStamp - firstStamp}ms below throttle`);
+  assert.equal(db.updates.length, 2);
+  assert.equal(totals.updated, 2);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: --specs --url-map — slav-переопределение работает, не-slav записи игнорируются', async () => {
+  const { db, totals, cacheDir } = await runSpecsForTest({
+    items: [{ code: '100', name: 'шпалери 6647-04', article: '6647-04' }],
+    slavUrls: [], // пустой индекс: без url-map матча не было бы
+    urlMap: {
+      '100': SLAV_URL,
+      '999': 'https://epicentrk.ua/upload/not-slav.jpg', // чужой источник — мимо
+    },
+    fetchText: async (url) => {
+      assert.equal(url, SLAV_URL);
+      return SPECS_PAGE;
+    },
+    products: [{ id: 'p-100', sku: 'wc-6647-04' }],
+  });
+  assert.equal(db.updates.length, 1);
+  assert.deepEqual(db.updates[0]?.specifications, SPECS_PAYLOAD);
+  assert.equal(totals.matched, 1);
+  assert.equal(totals.noMatch, 0);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: --specs — сбой скачивания не фатален, товар не тронут', async () => {
+  const { db, totals, cacheDir } = await runSpecsForTest({
+    items: [{ code: '100', name: 'шпалери 6647-04', article: '6647-04' }],
+    slavUrls: [SLAV_URL],
+    fetchText: async () => {
+      throw new HttpFetchError(500, 'HTTP 500');
+    },
+    products: [{ id: 'p-100', sku: 'wc-6647-04' }],
+  });
+  assert.equal(db.updates.length, 0);
+  assert.equal(totals.failed, 1);
+  assert.equal(totals.updated, 0);
+  cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: --specs — ошибка UPDATE останавливает run (fail-fast, re-run = recovery)', async () => {
+  await assert.rejects(
+    runSpecsForTest({
+      items: [{ code: '100', name: 'шпалери 6647-04', article: '6647-04' }],
+      slavUrls: [SLAV_URL],
+      fetchText: async () => SPECS_PAGE,
+      products: [{ id: 'p-100', sku: 'wc-6647-04' }],
+      updateErrors: { 'p-100': 'violates foreign key constraint' },
+    }),
+    /products.specifications update \(id=p-100/,
+  );
+});
+
+test('wallpaper-photos CLI: --specs без кэша slav-индекса — честная ошибка «сначала --index»', async () => {
+  const cacheDir = makeTmpDir();
+  const itemsPath = path.join(cacheDir, 'items.json');
+  writeFileSync(itemsPath, JSON.stringify([{ code: '1', name: 'x', article: null }]));
+  await assert.rejects(
+    runSpecs(
+      { itemsPath, cacheDir, dry: true },
+      { client: makeFakeDb({}).client, log: () => {} },
+    ),
+    /--index slav/,
+  );
+  cleanup(cacheDir);
+});
+
+// ---------------------------------------------------------------------------
 // CLI: --index с инжектированным fetch (без сети), кэш во временную папку
 // ---------------------------------------------------------------------------
 
@@ -1289,6 +1613,19 @@ test('wallpaper-photos CLI: static invariants — --run: service-role, diff-awar
   assert.match(src, /upsert:\s*false/);
   // --run без --items невозможен (fail-closed, как --plan)
   assert.match(src, /--run requires --items/);
+});
+
+test('wallpaper-photos CLI: static invariants — --specs: slav-only, --items обязателен, парсер подключён', () => {
+  const src = readPhotosScriptSource();
+  // fail-closed CLI-контракт
+  assert.match(src, /--specs requires --items/);
+  assert.match(src, /not applicable to --specs/);
+  // характеристики пишет ТОЛЬКО pure-парсер из photo-sources (никакого HTML-парсинга в CLI)
+  assert.match(src, /parseSlavCharacteristics/);
+  assert.doesNotMatch(src, /dangerouslySetInnerHTML/);
+  // 1 фото = 1 карточка: решение владельца зафиксировано в slav-ветке run()
+  assert.match(src, /1 фото = 1 карточка/);
+  assert.match(src, /ПЕРЕЗАПИСЫВАЕТСЯ slav-версией/);
 });
 
 // ---------------------------------------------------------------------------

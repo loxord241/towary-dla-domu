@@ -21,8 +21,12 @@
  *       sources in priority order (first hit closes a position; positions
  *       that already own any product_images row are skipped):
  *         - slav   -> fetch the product page (30s timeout, 200ms throttle),
- *                     parse <img> (/assets/products/), write hotlink URLs
- *                     (main sort_order=0 + up to 12 textures);
+ *                     parse <img> (/assets/products/), write ONE hotlink URL
+ *                     (main, is_main=true, sort_order=0). РЕШЕНИЕ владельца
+ *                     2026-09-10 «1 фото = 1 карточка»: текстуры со страницы
+ *                     — это ДРУГИЕ колеровки той же серии, в карточку товара
+ *                     они больше НЕ пишутся (2852 чужих не-main фото уже
+ *                     удалены из БД оркестратором);
  *         - others -> download the image (≤5 MB, jpeg/png/webp by magic
  *                     bytes), upload to Storage bucket product_images under
  *                     `<sku>/<sanitized>.<ext>` (upload-filename hardening)
@@ -33,10 +37,27 @@
  *       run (a re-run is the recovery path). Download failures are never
  *       fatal — the position lands in the «сбой скачивания» / «без фото»
  *       reports. --dry performs everything except DB/Storage writes.
+ *   node scripts/wallpaper-photos.ts --specs --items <items.json>
+ *        [--url-map map.json] [--dry]
+ *       Characteristics import from slav product pages (writes DB —
+ *       orchestrator GO only): for wc-* products whose codes match the slav
+ *       index cache (data/photo-cache/slav.json, --url-map overrides per
+ *       code) fetch the page (30s timeout, 200ms throttle), parse the spec
+ *       table + room chips (parseSlavCharacteristics) and, when non-empty,
+ *       UPDATE products.specifications (jsonb array [{name,value}...]).
+ *       Products whose page parses to NO characteristics are NOT touched.
+ *       РЕШЕНИЕ владельца 2026-09-10: для wc-* товаров specifications
+ *       ПЕРЕЗАПИСЫВАЕТСЯ slav-версией без diff — wc-* импортированы этим
+ *       пайплайном и собственных specifications из другой системы не имеют;
+ *       товары вне wc-* домена недостижимы по построению (выборка
+ *       `yugcontract_id IS NULL AND sku LIKE 'wc-%'`). DB update errors stop
+ *       the run (a re-run is the recovery path); --dry performs everything
+ *       except the UPDATE.
  *
- * --index/--plan stay read-only; only --run touches Supabase (service-role
- * client built lazily from .env.local / shell env, persistSession: false —
- * pattern scripts/wallpaper-import.ts; statically pinned by
+ * --index/--plan/--specs stay read-only unless --specs is given --dry=false;
+ * DB writes happen only in --run/--specs (service-role client built lazily
+ * from .env.local / shell env, persistSession: false — pattern
+ * scripts/wallpaper-import.ts; statically pinned by
  * tests/wallpaper-photo-sources.test.ts).
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -55,6 +76,7 @@ import {
   isPhotoSource,
   matchSourceByUrl,
   normalizeArticleToken,
+  parseSlavCharacteristics,
   pickMainAndTextures,
   planPhotoCoverage,
   unionCoveredCodes,
@@ -90,7 +112,8 @@ export const USER_AGENT =
 const USAGE = `Usage:
   node scripts/wallpaper-photos.ts --index <slav|epicentr|shpalery-ua|styleo|shpaleru> [--cache-dir DIR]
   node scripts/wallpaper-photos.ts --plan --items <items.json> [--source <s>] [--cache-dir DIR]
-  node scripts/wallpaper-photos.ts --run --items <items.json> [--source <s> | --sources <a,b,c>] [--dry] [--cache-dir DIR]`;
+  node scripts/wallpaper-photos.ts --run --items <items.json> [--source <s> | --sources <a,b,c>] [--dry] [--cache-dir DIR]
+  node scripts/wallpaper-photos.ts --specs --items <items.json> [--url-map map.json] [--dry] [--cache-dir DIR]`;
 
 // ---------------------------------------------------------------------------
 // Fetching
@@ -232,6 +255,31 @@ async function fetchSourceIndex(
   return { urls: collected, sitemapUrls };
 }
 
+/** Shared pre-flight for --run/--specs: read data/photo-cache/<source>.json
+ * (fail-closed BEFORE any read/write; a corrupt cache is never silently []).
+ * logPrefix keeps the per-action error tags ("[run]"/"[specs]"). */
+function readIndexCache(cacheDir: string, source: PhotoSource, logPrefix: string): string[] {
+  const cachePath = path.join(cacheDir, `${source}.json`);
+  if (!existsSync(cachePath)) {
+    throw new Error(
+      `${logPrefix} ${source}: нет кэша индекса (${cachePath}) — сначала выполните: ` +
+        `node scripts/wallpaper-photos.ts --index ${source}`,
+    );
+  }
+  let parsed: { urls?: unknown };
+  try {
+    parsed = JSON.parse(readFileSync(cachePath, 'utf8')) as { urls?: unknown };
+  } catch (err) {
+    throw new Error(
+      `${logPrefix} ${source}: кэш индекса повреждён (${cachePath}): ` +
+        `${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  return Array.isArray(parsed.urls)
+    ? parsed.urls.filter((u): u is string => typeof u === 'string')
+    : [];
+}
+
 // ---------------------------------------------------------------------------
 // --plan helpers
 // ---------------------------------------------------------------------------
@@ -274,7 +322,7 @@ function loadItems(itemsPath: string): PhotoItem[] {
 // ---------------------------------------------------------------------------
 
 export interface CliArgs {
-  action: 'index' | 'plan' | 'run';
+  action: 'index' | 'plan' | 'run' | 'specs';
   source?: PhotoSource;
   /** --run only: resolved source list, priority order (see resolveRunSources). */
   sources?: PhotoSource[];
@@ -282,7 +330,7 @@ export interface CliArgs {
   cacheDir: string;
   /** --run only: full simulation, ZERO DB/Storage writes. */
   dry: boolean;
-  /** --run only: research-agent maps {1C code -> page/image URL}. */
+  /** --run/--specs: research-agent maps {1C code -> page/image URL}. */
   urlMapFiles?: string[];
 }
 
@@ -342,6 +390,9 @@ export function parseArgs(argv: string[]): CliArgs {
         break;
       case '--run':
         actions.push('run');
+        break;
+      case '--specs':
+        actions.push('specs');
         break;
       case '--source': {
         const value = argv[i + 1];
@@ -432,6 +483,24 @@ export function parseArgs(argv: string[]): CliArgs {
     }
     if (items === null) throw new Error('--plan requires --items <items.json>\n' + USAGE);
     return { action: 'plan', source, items, cacheDir: cacheDir ?? DEFAULT_CACHE_DIR, dry: false };
+  }
+
+  // --specs: characteristics import from slav pages (single source by design).
+  if (actions[0] === 'specs') {
+    if (sourceFlag !== null || sourcesRaw !== null) {
+      throw new Error(
+        '--source/--sources are not applicable to --specs (slav is the only characteristics source)\n' +
+          USAGE,
+      );
+    }
+    if (items === null) throw new Error('--specs requires --items <items.json>\n' + USAGE);
+    return {
+      action: 'specs',
+      items,
+      cacheDir: cacheDir ?? DEFAULT_CACHE_DIR,
+      dry,
+      urlMapFiles: urlMapFiles.length > 0 ? urlMapFiles : undefined,
+    };
   }
 
   // --run: positions file is mandatory, sources resolve to a priority list.
@@ -730,24 +799,7 @@ export async function run(options: RunOptions, deps: CliDeps = {}): Promise<RunT
   // half-processed positions behind a crash.
   const indexBySource: Partial<Record<PhotoSource, string[]>> = {};
   for (const source of sources) {
-    const cachePath = path.join(options.cacheDir, `${source}.json`);
-    if (!existsSync(cachePath)) {
-      throw new Error(
-        `[run] ${source}: нет кэша индекса (${cachePath}) — сначала выполните: ` +
-          `node scripts/wallpaper-photos.ts --index ${source}`,
-      );
-    }
-    let parsed: { urls?: unknown };
-    try {
-      parsed = JSON.parse(readFileSync(cachePath, 'utf8')) as { urls?: unknown };
-    } catch (err) {
-      throw new Error(
-        `[run] ${source}: кэш индекса повреждён (${cachePath}): ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-    indexBySource[source] = Array.isArray(parsed.urls)
-      ? parsed.urls.filter((u): u is string => typeof u === 'string')
-      : [];
+    indexBySource[source] = readIndexCache(options.cacheDir, source, '[run]');
   }
 
   // ---- DB: wc-* products + existing (product_id, image_url) pairs ----
@@ -836,14 +888,11 @@ export async function run(options: RunOptions, deps: CliDeps = {}): Promise<RunT
           log(`[run] slav: ${pos.item.code} на странице нет фото /assets/products/ — ${url}`);
           continue;
         }
+        // 1 фото = 1 карточка (решение владельца 2026-09-10): текстуры страницы
+        // — другие колеровки серии, в карточку НЕ пишутся. picked остаётся
+        // источником main (его семантика закреплена pure-тестами).
         const rows: ProductImageInsert[] = [
           { product_id: pos.product.id, image_url: picked.main, is_main: true, sort_order: 0 },
-          ...picked.textures.map((texture, i) => ({
-            product_id: pos.product.id,
-            image_url: texture,
-            is_main: false,
-            sort_order: i + 1,
-          })),
         ];
         let written = 0;
         for (const row of rows) {
@@ -998,6 +1047,170 @@ export async function run(options: RunOptions, deps: CliDeps = {}): Promise<RunT
   };
 }
 
+// ---------------------------------------------------------------------------
+// --specs: characteristics import from slav product pages (orchestrator GO)
+// ---------------------------------------------------------------------------
+
+export interface SpecsOptions {
+  /** JSON file of stock positions (array of {code,name,article}), as --run. */
+  itemsPath: string;
+  cacheDir: string;
+  /** Everything except the products.specifications UPDATE (pre-flight). */
+  dry: boolean;
+  /** Research-agent maps {1C code -> page URL}; overrides the index match.
+   * Same origin validation as --run; only slav entries participate. */
+  urlMapFiles?: string[];
+}
+
+export interface SpecsRunTotals {
+  items: number;
+  /** wc-* products in the DB domain (yugcontract_id IS NULL, sku LIKE 'wc-%'). */
+  productsWc: number;
+  /** Items positioned onto a wc-* product with a slav page URL. */
+  matched: number;
+  /** Page fetch failures (per-position, never fatal). */
+  failed: number;
+  /** Pages with ZERO parsed characteristics — product deliberately NOT touched. */
+  emptySpecs: number;
+  /** products.specifications UPDATEs (dry: would-write counter). */
+  updated: number;
+  /** Items whose derived sku has no wc-* product row (skipped). */
+  noProduct: number;
+  /** Items with no slav match in the index cache / url-map (skipped). */
+  noMatch: number;
+}
+
+/**
+ * Characteristics import (--specs): for wc-* products whose codes match the
+ * slav index (data/photo-cache/slav.json; --url-map overrides per code),
+ * fetch the slav page (30s timeout, 200ms throttle — shared fetchText seam),
+ * parse the spec table + room chips (parseSlavCharacteristics) and write
+ * products.specifications (jsonb — the JS array is passed as the column
+ * value; Postgres stores it as a jsonb array of {name,value}).
+ *
+ * РЕШЕНИЕ владельца (2026-09-10): specifications у wc-* товаров
+ * ПЕРЕЗАПИСЫВАЕТСЯ slav-версией без diff — wc-* импортированы этим
+ * пайплайном и specifications из другой системы не имеют; товары вне домена
+ * недостижимы по построению (readWallpaperProducts: yugcontract_id IS NULL
+ * AND sku LIKE 'wc-%'). Товар без распарсенных характеристик не трогается.
+ *
+ * Fetch failures are per-position and non-fatal; a DB UPDATE error stops the
+ * run (a re-run is the recovery path: writes are keyed by product id and
+ * idempotent — the same slav payload is rewritten).
+ */
+export async function runSpecs(options: SpecsOptions, deps: CliDeps = {}): Promise<SpecsRunTotals> {
+  const log = deps.log ?? ((line: string) => console.log(line));
+  const fetchText = deps.fetchText ?? fetchSitemapText;
+  const throttleGap = deps.throttleMs ?? THROTTLE_MS;
+
+  // ---- items (same loader/validation as --plan/--run) ----
+  const items = loadItems(options.itemsPath);
+
+  // ---- explicit URL maps: same origin validation as --run ----
+  const slavExplicit = new Map<string, string>();
+  for (const mapFile of options.urlMapFiles ?? []) {
+    const map = JSON.parse(readFileSync(mapFile, 'utf8')) as Record<string, string>;
+    for (const [code, url] of Object.entries(map)) {
+      const src = sourceFromUrl(url);
+      if (src === null) {
+        throw new Error(`[specs] ${mapFile}: неопознанный источник у ${code}: ${url}`);
+      }
+      if (src === 'slav') slavExplicit.set(code, url);
+    }
+  }
+
+  // ---- slav index cache (fail-closed pre-flight, shared with --run) ----
+  const slavUrls = readIndexCache(options.cacheDir, 'slav', '[specs]');
+
+  // ---- DB: wc-* products (read-only domain scope) ----
+  const client = deps.client ?? (await createServiceClient());
+  const productsBySku = await readWallpaperProducts(client);
+
+  const totals: SpecsRunTotals = {
+    items: items.length,
+    productsWc: productsBySku.size,
+    matched: 0,
+    failed: 0,
+    emptySpecs: 0,
+    updated: 0,
+    noProduct: 0,
+    noMatch: 0,
+  };
+
+  let lastNetworkAt = 0;
+  const throttle = async (): Promise<void> => {
+    if (throttleGap <= 0) return;
+    const nowMs = Date.now();
+    if (lastNetworkAt + throttleGap > nowMs) {
+      await sleep(lastNetworkAt + throttleGap - nowMs);
+    }
+    lastNetworkAt = Date.now();
+  };
+
+  log(
+    `[specs] ${options.dry ? 'DRY (без записей)' : 'WRITE'} items=${items.length} ` +
+      `products(wc-*)=${productsBySku.size}`,
+  );
+
+  const processedProducts = new Set<string>();
+  for (const item of items) {
+    const product = productsBySku.get(wallpaperSkuForItem(item));
+    if (product === undefined) {
+      totals.noProduct += 1;
+      continue;
+    }
+    if (processedProducts.has(product.id)) continue; // дубликат артикула в items
+    processedProducts.add(product.id);
+    const url = slavExplicit.get(item.code) ?? matchSourceByUrl(slavUrls, articleTokensForItem(item));
+    if (url === null) {
+      totals.noMatch += 1;
+      continue;
+    }
+    totals.matched += 1;
+
+    await throttle();
+    let html: string;
+    try {
+      html = await fetchText(url);
+    } catch (err) {
+      totals.failed += 1;
+      log(
+        `[specs] ${item.code} сбой скачивания страницы ${url}: ` +
+          `${err instanceof Error ? err.message : String(err)}`,
+      );
+      continue;
+    }
+    const specs = parseSlavCharacteristics(html);
+    if (specs.length === 0) {
+      totals.emptySpecs += 1;
+      log(`[specs] ${item.code}: характеристик на странице нет — товар не тронут (${url})`);
+      continue;
+    }
+    if (options.dry) {
+      totals.updated += 1; // would-write counter
+      continue;
+    }
+    const { error } = await client
+      .from('products')
+      .update({ specifications: specs })
+      .eq('id', product.id);
+    if (error !== null) {
+      throw new Error(
+        `products.specifications update (id=${product.id}, sku=${product.sku}): ${error.message}`,
+      );
+    }
+    totals.updated += 1;
+  }
+
+  log(
+    `[specs] matched=${totals.matched}, failed=${totals.failed}, ` +
+      `без характеристик=${totals.emptySpecs}, updated=${totals.updated}, ` +
+      `без товара=${totals.noProduct}, без матча=${totals.noMatch}` +
+      (options.dry ? ' (dry-run: записей нет)' : ''),
+  );
+  return totals;
+}
+
 export interface CliDeps {
   /** Network seam (tests inject a stub; default = real fetch). */
   fetchText?: (url: string) => Promise<string>;
@@ -1112,6 +1325,20 @@ export async function runPhotosCli(argv: string[], deps: CliDeps = {}): Promise<
       );
       // The report IS the product (same contract as --plan): exit 0 even when
       // some positions lack photos — the owner reads the checklist.
+      return 0;
+    }
+    case 'specs': {
+      await runSpecs(
+        {
+          itemsPath: args.items as string,
+          cacheDir,
+          dry: args.dry,
+          urlMapFiles: args.urlMapFiles,
+        },
+        deps,
+      );
+      // Same reporting contract: exit 0 unless the run threw (per-position
+      // fetch failures land in the totals, not the exit code).
       return 0;
     }
   }
