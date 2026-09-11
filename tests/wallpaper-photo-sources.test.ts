@@ -950,15 +950,23 @@ async function runForTest(opts: {
   pairs?: { product_id: string; image_url: string }[];
   duplicatePairs?: string[];
   uploadErrors?: Record<string, string>;
+  urlMap?: Record<string, string>;
   dry?: boolean;
-}): Promise<{ db: FakeDb; totals: RunTotals; cacheDir: string }> {
+}): Promise<{ db: FakeDb; totals: RunTotals; cacheDir: string; logs: string[] }> {
   const cacheDir = makeTmpDir();
   for (const [source, urls] of Object.entries(opts.caches)) writeCache(cacheDir, source, urls);
   const itemsPath = path.join(cacheDir, 'items.json');
   writeFileSync(itemsPath, JSON.stringify(opts.items));
+  let urlMapFiles: string[] | undefined;
+  if (opts.urlMap !== undefined) {
+    const mapPath = path.join(cacheDir, 'url-map.json');
+    writeFileSync(mapPath, JSON.stringify(opts.urlMap));
+    urlMapFiles = [mapPath];
+  }
   const db = makeFakeDb(opts);
+  const logs: string[] = [];
   const totals = await run(
-    { itemsPath, sources: opts.sources, cacheDir, dry: opts.dry === true },
+    { itemsPath, sources: opts.sources, cacheDir, dry: opts.dry === true, urlMapFiles },
     {
       client: db.client,
       fetchText:
@@ -977,10 +985,10 @@ async function runForTest(opts: {
           throw new Error('unexpected fetchImage call');
         }),
       throttleMs: 0,
-      log: () => {},
+      log: (line) => logs.push(line),
     },
   );
-  return { db, totals, cacheDir };
+  return { db, totals, cacheDir, logs };
 }
 
 function cleanup(dir: string): void {
@@ -1126,10 +1134,13 @@ test('wallpaper-photos CLI: run() epicentr — og:image не http (data:) — fa
 
 test('wallpaper-photos CLI: run() shpalery-ua — относительный og:image абсолютизируется от страницы', async () => {
   const pageUrl = 'https://shpalery-ua.com/ua/p/v76-5310-01';
+  // Артикул «5310-01» без латинских букв: не-slav авто-матч запрещён
+  // (правило 2026-09-11), страница задаётся проверенным --url-map.
   const { db, totals, cacheDir } = await runForTest({
     items: [{ code: '300', name: 'шпалери 5310-01', article: '5310-01' }],
     sources: ['shpalery-ua'],
     caches: { 'shpalery-ua': [pageUrl] },
+    urlMap: { '300': pageUrl },
     fetchPageText: async (url) => {
       assert.equal(url, pageUrl);
       return pageWithOgImage('/upload/oboi-5310-01.jpg');
@@ -1156,6 +1167,45 @@ test('wallpaper-photos CLI: run() shpalery-ua — относительный og:
   assert.equal(totals.bySource['shpalery-ua']?.downloaded, 1);
   assert.deepEqual(totals.noPhotoCodes, []);
   cleanup(cacheDir);
+});
+
+test('wallpaper-photos CLI: run() не-slav — чисто цифровой артикул НЕ матчится (RTX 5070 у шпалер), url-map спасает', async () => {
+  // Регрессия 2026-09-11: у шпалер «5070 квіти» (артикул 5070) оказалась
+  // фотка видеокарты RTX 5070 с epicentr. Цифровой артикул больше не может
+  // авто-матчиться на не-slav источниках; fetchPageText-стаб по умолчанию
+  // бросает «unexpected call» — попыток скачать чужую страницу быть не должно.
+  const gpuPage = 'https://epicentrk.ua/ua/videokarta-msi-geforce-rtx-5070.html';
+  const first = await runForTest({
+    items: [{ code: '35990', name: '5070 квіти коричневі,шпалери,53см*10м', article: null }],
+    sources: ['epicentr'],
+    caches: { epicentr: [gpuPage] },
+    products: [{ id: 'p-x', sku: 'wc-x35990' }],
+  });
+  assert.equal(first.db.inserted.length, 0);
+  assert.equal(first.db.uploads.length, 0);
+  assert.equal(first.totals.bySource.epicentr?.matched, 0);
+  assert.ok(
+    first.logs.some((l) => l.includes('артикул без латинских букв')),
+    first.logs.join('\n'),
+  );
+  cleanup(first.cacheDir);
+
+  // Проверенный исследованием --url-map остаётся единственным каналом.
+  const second = await runForTest({
+    items: [{ code: '35990', name: '5070 квіти коричневі,шпалери,53см*10м', article: null }],
+    sources: ['epicentr'],
+    caches: { epicentr: [gpuPage] },
+    urlMap: { '35990': gpuPage },
+    fetchPageText: async (url) => {
+      assert.equal(url, gpuPage);
+      return pageWithOgImage('https://cdn.27.ua/799/xx/right-wallpaper_jpeg_600x.jpg');
+    },
+    fetchImage: async () => JPEG_BYTES,
+    products: [{ id: 'p-x', sku: 'wc-x35990' }],
+  });
+  assert.equal(second.db.inserted.length, 1);
+  assert.equal(second.totals.bySource.epicentr?.matched, 1);
+  cleanup(second.cacheDir);
 });
 
 test('wallpaper-photos CLI: run() 23505 — no-op, не фатал, позиция закрыта', async () => {
@@ -1314,6 +1364,11 @@ test('wallpaper-photos CLI: run() >5 МБ и не-image magic bytes — сбой
         'https://epicentrk.ua/ua/shop/oboi-5243-02.html',
         'https://epicentrk.ua/ua/shop/oboi-30202.html',
       ],
+    },
+    // цифровые артикулы не матчатся авто (правило 2026-09-11) — через url-map
+    urlMap: {
+      '300': 'https://epicentrk.ua/ua/shop/oboi-5243-02.html',
+      '400': 'https://epicentrk.ua/ua/shop/oboi-30202.html',
     },
     fetchPageText: async (url) =>
       pageWithOgImage(`https://cdn.27.ua/shop/22/${url.includes('5243-02') ? 'oboi-5243-02' : 'oboi-30202'}.jpg`),

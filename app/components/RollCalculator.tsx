@@ -113,7 +113,7 @@ export default function RollCalculator({
   };
 
   return (
-    <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+    <div className="wrap-anywhere mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
       <h3 className="mb-3 font-semibold text-gray-900">
         Розрахунок кількості рулонів
       </h3>

@@ -121,7 +121,10 @@ export default function ProductDescription({
                   // Content source: sanitized-at-import products.description.
                   dangerouslySetInnerHTML={{ __html: resolved.value }}
                   className={
-                    `${RICH_TYPOGRAPHY} ` +
+                    // wrap-anywhere: постачальницький HTML містить довгі
+                    // нерозривні токени; у згорнутому превʼю (обгортка
+                    // overflow-hidden) інакше вони обрізаються по краю.
+                    `wrap-anywhere ${RICH_TYPOGRAPHY} ` +
                     (clamped
                       ? // Collapsed preview: wide <table>s are squeezed to
                         // the container width in the preview (3 supplier

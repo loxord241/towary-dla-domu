@@ -212,7 +212,10 @@ export default async function ProductPage({
             </>
           )}
           <span className="mx-1.5 text-gray-300">/</span>
-          <span className="text-gray-900">{product.name}</span>
+          {/* wrap-anywhere: назви шпалер — кома-ланцюжки без пробілів
+              («коричневі,шпалери,53см*10м»), і хлібна крихта не повинна
+              розсуваати сторінку на вузьких екранах. */}
+          <span className="wrap-anywhere text-gray-900">{product.name}</span>
         </nav>
 
         {/* Structured data: real DB fields only (see schema-org.ts honesty rules) */}
@@ -224,7 +227,7 @@ export default async function ProductPage({
               the (taller) details column's height, which left an empty tail
               under the fixed h-96 gallery on desktop; the single-column
               mobile layout is unaffected (2026-09 audit). */}
-          <div className="bg-white rounded-lg shadow p-4 md:self-start">
+          <div className="min-w-0 bg-white rounded-lg shadow p-4 md:self-start">
             <ProductGallery
               images={product.images.flatMap((image, idx) => {
                 // galleryUrls is index-preserving (null for unresolvable
@@ -237,10 +240,16 @@ export default async function ProductPage({
             />
           </div>
 
-          {/* Product Details */}
-          <div className="bg-white rounded-lg shadow p-6">
+          {/* Product Details. min-w-0 на обох дітях grid: без нього
+              grid-трек (min-width:auto) розсувається до min-content
+              найдовшого нерозривного токена — на мобільному вся картка
+              («текст») виїжджає за viewport (баг-репорт 2026-09-11). */}
+          <div className="min-w-0 bg-white rounded-lg shadow p-6">
+            {/* wrap-anywhere на h1: flex-сусід FavoriteButton + назви-кому-
+                ланцюжки без пробілів — без цього h1 не стискається нижче
+                min-content і виштовхує вміст картки за екран. */}
             <div className="flex items-start justify-between gap-3">
-              <h1 className="text-2xl font-bold mb-2">{product.name}</h1>
+              <h1 className="min-w-0 wrap-anywhere text-2xl font-bold mb-2">{product.name}</h1>
               <FavoriteButton productId={product.id} productName={product.name} />
             </div>
 
