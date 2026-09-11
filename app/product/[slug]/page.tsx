@@ -10,6 +10,7 @@ import Announcements from '@/app/components/Announcements'
 import AddToCartButton from '@/app/components/AddToCartButton'
 import FavoriteButton from '@/app/components/FavoriteButton'
 import ProductGallery from '@/app/components/ProductGallery'
+import WallVisualizerSlot from '@/app/components/WallVisualizerSlot'
 import ProductDescription from '@/app/components/ProductDescription'
 import ProductSpecifications from '@/app/components/ProductSpecifications'
 import ProductReviews from '@/app/components/ProductReviews'
@@ -240,6 +241,15 @@ export default async function ProductPage({
                 return [{ url, alt: image.alt ?? product.name }];
               })}
             />
+            {/* Візуалізатор «Подивитись в інтер'єрі» — лише для шпалер з фото;
+                ленивий слот тягне модалку окремим чанком лише по кліку. */}
+            {isWallpaper && galleryUrls.length > 0 && (
+              <WallVisualizerSlot
+                textureUrl={galleryUrls[0]!}
+                rollSize={rollSize}
+                slug={product.slug}
+              />
+            )}
           </div>
 
           {/* Product Details. min-w-0 на обох дітях grid: без нього
@@ -369,9 +379,15 @@ export default async function ProductPage({
             {/* Калькулятор рулонів — для КОЖНОЇ шпалери (wc-*). rollSize=null
                 (розміру немає в назві 1С) не ховає блок: покупець обирає
                 розмір у select вручну — нічого не вгадується. */}
-            {isWallpaper && (
-              <RollCalculator productId={product.id} rollSize={rollSize} />
-            )}
+            {/* id="roll-calculator" — ціль кнопки «До калькулятора» з
+                WallVisualizerSlot. Умова монтування лишається ВСЕРЕДИНІ
+                обгортки без змін: статичний пін roll-calculator-тесту
+                матчить цей блок дослівно (по цьому — рівно один монтир). */}
+            <div id="roll-calculator">
+              {isWallpaper && (
+                <RollCalculator productId={product.id} rollSize={rollSize} />
+              )}
+            </div>
 
             {/* Компактний вказівник на повну політику: деталі живуть на
                 /delivery — тут нічого не дублюємо і не вигадуємо. */}
