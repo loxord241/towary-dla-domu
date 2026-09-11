@@ -117,13 +117,17 @@ export default function WallVisualizer({
 
   const stageRef = useRef<HTMLDivElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
-  const dragIndex = useRef<number | null>(null);
-  // Зеркало quadN для обработчиков pointerup/keydown — без устаревших замыканий.
-  const quadRef = useRef<QuadN | null>(null);
-  quadRef.current = quadN;
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   const room = rooms?.find((r) => r.id === roomId) ?? null;
   const showStage = room !== null && quadN !== null;
+
+  // Первая комната: начальный quad выводим из пресета/localStorage прямо
+  // при рендере (задокументированный React derive-паттерн «adjust state
+  // when a prop changes» — вместо setState-in-effect).
+  if (room !== null && quadN === null) {
+    setQuadN(quadForRoom(room.id));
+  }
 
   // rooms.json — статика из /public; ошибка → модалка с одним сообщением.
   useEffect(() => {
@@ -162,21 +166,27 @@ export default function WallVisualizer({
     };
   }, []);
 
-  // Смена комнаты: quad из localStorage или дефолт пресета.
-  useEffect(() => {
-    if (room === null) return;
-    let stored: QuadN | null = null;
+  // quad для комнаты: сохранённая подгонка или дефолт пресета.
+  // Читается в обработчиках (не в effect — react-hooks/set-state-in-effect).
+  function quadForRoom(rid: string): QuadN {
     try {
-      const raw = window.localStorage.getItem(`wallviz:${slug}:${room.id}`);
+      const raw = window.localStorage.getItem(`wallviz:${slug}:${rid}`);
       if (raw !== null) {
         const parsed: unknown = JSON.parse(raw);
-        if (isValidQuadN(parsed)) stored = parsed;
+        if (isValidQuadN(parsed)) return parsed;
       }
     } catch {
       // private mode / битый JSON — тихо берём дефолт пресета
     }
-    setQuadN(stored ?? presetToQuadN(room.wall));
-  }, [room, slug]);
+    const preset = rooms?.find((r) => r.id === rid);
+    return presetToQuadN((preset ?? { wall: [[0, 0], [0, 0], [0, 0], [0, 0]] }).wall);
+  }
+
+  // Смена комнаты — в обработчике клика: сразу и roomId, и quad.
+  function selectRoom(rid: string): void {
+    setRoomId(rid);
+    setQuadN(quadForRoom(rid));
+  }
 
   // Esc + блокировка скролла body — паттерн app/components/Modal.tsx.
   useEffect(() => {
@@ -251,12 +261,17 @@ export default function WallVisualizer({
     [slug],
   );
 
+  // Сохранение подгонки: любая смена quad → localStorage (private mode — тихо).
+  useEffect(() => {
+    if (roomId !== null && quadN !== null) persistQuad(quadN, roomId);
+  }, [quadN, roomId, persistQuad]);
+
   const setCorner = (i: number, p: Point): void => {
-    const prev = quadRef.current;
-    if (prev === null) return;
-    const next = prev.map((q, idx) => (idx === i ? p : q)) as QuadN;
-    quadRef.current = next;
-    setQuadN(next);
+    setQuadN((prev) =>
+      prev === null
+        ? prev
+        : (prev.map((q, idx) => (idx === i ? p : q)) as QuadN),
+    );
   };
 
   const normFromEvent = (e: ReactPointerEvent<HTMLButtonElement>): Point | null => {
@@ -272,25 +287,22 @@ export default function WallVisualizer({
 
   const onHandlePointerDown = (i: number) => (e: ReactPointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    dragIndex.current = i;
+    setDragIndex(i);
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const onHandlePointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    const i = dragIndex.current;
-    if (i === null) return;
+    if (dragIndex === null) return;
+    const i = dragIndex;
     const p = normFromEvent(e);
     if (p !== null) setCorner(i, p);
   };
 
   const onHandlePointerFinish = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    if (dragIndex.current === null) return;
-    dragIndex.current = null;
+    if (dragIndex === null) return;
+    setDragIndex(null);
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-    if (quadRef.current !== null && roomId !== null) {
-      persistQuad(quadRef.current, roomId);
     }
   };
 
@@ -305,22 +317,15 @@ export default function WallVisualizer({
     const delta = deltas[e.key];
     if (delta === undefined) return;
     e.preventDefault();
-    const prev = quadRef.current;
-    if (prev === null) return;
-    const cur = prev[i]!;
+    if (quadN === null) return;
+    const cur = quadN[i]!;
     setCorner(i, { x: clampN(cur.x + delta.x), y: clampN(cur.y + delta.y) });
-    if (roomId !== null && quadRef.current !== null) {
-      persistQuad(quadRef.current, roomId);
-    }
   };
 
   // «Скинути» — дефолтный quad пресета.
   const resetQuad = (): void => {
     if (room === null) return;
-    const def = presetToQuadN(room.wall);
-    quadRef.current = def;
-    setQuadN(def);
-    persistQuad(def, room.id);
+    setQuadN(presetToQuadN(room.wall));
   };
 
   // «До калькулятора»: закрыть модалку и скроллить к калькулятору,
@@ -377,7 +382,8 @@ export default function WallVisualizer({
             <div className="p-3 sm:p-6">
               {/* Фото комнаты: бокс измеряется, quad хранится нормализованным */}
               <div ref={stageRef} className="relative select-none">
-                <img
+                {/* eslint-disable-next-line @next/next/no-img-element -- бокс <img> измеряется ResizeObserver-ом; статика /public */}
+          <img
                   src={room!.src}
                   alt={room!.label}
                   draggable={false}
@@ -461,7 +467,7 @@ export default function WallVisualizer({
                     <button
                       key={r.id}
                       type="button"
-                      onClick={() => setRoomId(r.id)}
+                      onClick={() => selectRoom(r.id)}
                       aria-pressed={r.id === roomId}
                       className={`min-h-[44px] rounded-lg border p-1 transition-colors motion-reduce:transition-none ${
                         r.id === roomId
@@ -469,6 +475,7 @@ export default function WallVisualizer({
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
+                      {/* eslint-disable-next-line @next/next/no-img-element -- миниатюра пресета, статика /public */}
                       <img src={r.src} alt="" className="h-12 w-full rounded object-cover" />
                       <span className="mt-1 block text-xs text-gray-600">{r.label}</span>
                     </button>
