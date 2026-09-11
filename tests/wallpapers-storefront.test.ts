@@ -183,18 +183,19 @@ test('OBOI: sitemap lists /oboi in the static set (indexable set = sitemap set)'
 
 // ---- static: home page buttons ----
 
-test('HOME: two catalog entry cards with correct hrefs', () => {
+test('HOME: two catalog buttons live in the blue hero (owner, 2026-09-11)', () => {
   const home = read('app/(home)/page.tsx');
-  const blockStart = home.indexOf('Каталог техніки');
-  const blockEnd = home.indexOf('Каталог шпалер');
-  assert.ok(blockStart !== -1 && blockEnd > blockStart, 'both cards present');
-  const block = home.slice(
-    home.lastIndexOf('<section', blockStart),
-    home.indexOf('</section>', blockEnd)
-  );
-  assert.match(block, /href="\/catalog"/);
-  assert.match(block, /href="\/oboi"/);
-  assert.match(block, /motion-reduce:transition-none/, 'hover transitions respect motion-reduce');
+  const heroStart = home.indexOf('bg-gradient-to-br from-blue-700');
+  assert.ok(heroStart !== -1, 'blue hero section present');
+  const heroEnd = home.indexOf('</section>', heroStart);
+  const hero = home.slice(heroStart, heroEnd);
+  const tech = hero.indexOf('Каталог техніки');
+  const shp = hero.indexOf('Каталог шпалер');
+  assert.ok(tech !== -1 && shp > tech, 'both buttons present inside the hero');
+  assert.match(hero, /href="\/catalog"/);
+  assert.match(hero, /href="\/oboi"/);
+  // showcase cards block below the hero must stay removed
+  assert.ok(!home.includes('Дві вітрини'), 'showcase cards block removed');
 });
 
 // ---- pure seo policy ----

@@ -71,56 +71,15 @@ export default async function Home() {
               href="/catalog"
               className="btn bg-white px-6 py-3 text-blue-700 hover:bg-blue-50"
             >
-              Перейти до каталогу
+              Каталог техніки
             </Link>
-            {categories.length > 0 && (
-              <Link
-                href="#categories"
-                className="btn border border-white/40 px-6 py-3 text-white hover:bg-white/10"
-              >
-                Категорії товарів
-              </Link>
-            )}
+            <Link
+              href="/oboi"
+              className="btn border border-white/40 px-6 py-3 text-white hover:bg-white/10"
+            >
+              Каталог шпалер
+            </Link>
           </div>
-        </div>
-      </section>
-
-      {/* Дві вітрини: техніка (/catalog) та шпалери (/oboi) — обои
-          виведені із загального каталогу на окрему сторінку. */}
-      <section className="container mx-auto px-4 pt-10">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Link
-            href="/catalog"
-            className="card group flex flex-col justify-between p-6 transition-shadow hover:shadow-md"
-          >
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 transition-colors motion-reduce:transition-none group-hover:text-blue-700">
-                Каталог техніки
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Побутова техніка, посуд та товари для дому
-              </p>
-            </div>
-            <span className="mt-4 text-sm font-medium text-blue-600">
-              Перейти до каталогу →
-            </span>
-          </Link>
-          <Link
-            href="/oboi"
-            className="card group flex flex-col justify-between p-6 transition-shadow hover:shadow-md"
-          >
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 transition-colors motion-reduce:transition-none group-hover:text-blue-700">
-                Каталог шпалер
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Шпалери — окрема вітрина з власним каталогом
-              </p>
-            </div>
-            <span className="mt-4 text-sm font-medium text-blue-600">
-              Переглянути шпалери →
-            </span>
-          </Link>
         </div>
       </section>
 
