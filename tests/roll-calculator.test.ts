@@ -95,9 +95,34 @@ test('roll-calculator: impossible-кейс показує пояснення, а
   assert.match(componentSrc, /не\s+вміщується\s+в\s+рулон/);
 });
 
+test('roll-calculator: rollSize=null — підказка + placeholder у select, без вгадувань', () => {
+  // Баг-репорт 2026-09-11: у 198 з 327 активних назв 1С розміру немає взагалі
+  // («Лісса2 1619-10») — приховувати калькулятор для них було неправильно.
+  assert.match(
+    componentSrc,
+    /Розмір рулона не вказано в назві товару/,
+    'видима підказка, що розмір треба обрати вручну'
+  );
+  assert.match(
+    componentSrc,
+    /<option value="" disabled>\s*оберіть розмір\s*<\/option>/,
+    'select стартує з вимкненого placeholder-а, розмір НЕ вгадується'
+  );
+  assert.match(
+    componentSrc,
+    /rollSize === null \? '' : optionKeyOf\(rollSize\)/,
+    'без розпізнаного розміру початковий rollKey порожній'
+  );
+  assert.match(
+    componentSrc,
+    /if \(roll === null\) return null;/,
+    'рекомендація неможлива, поки розмір не обрано'
+  );
+});
+
 // ---- PDP integration ----------------------------------------------------------
 
-test('roll-calculator: PDP монтує калькулятор ТІЛЬКИ для wc-* з розпізнаним розміром', () => {
+test('roll-calculator: PDP монтує калькулятор для КОЖНОЇ wc-*; розмір парситься на сервері', () => {
   assert.match(
     pageSrc,
     /import RollCalculator from '@\/app\/components\/RollCalculator'/,
@@ -120,11 +145,12 @@ test('roll-calculator: PDP монтує калькулятор ТІЛЬКИ дл
     /const rollSize = isWallpaper \? parseRollSize\(product\.name\) : null/,
     'розмір парситься на сервері; без розпізнаного розміру — null'
   );
-  // …and the render is guarded by BOTH the sku gate and the parsed size.
+  // …the render is guarded by the sku gate ONLY: null size mounts the
+  // calculator with the manual size select (2026-09-11).
   assert.match(
     pageSrc,
-    /\{isWallpaper && rollSize !== null && \(\s*<RollCalculator\s+productId=\{product\.id\}\s+rollSize=\{rollSize\}\s*\/>\s*\)\}/,
-    'рендер лише для wc-* і rollSize !== null'
+    /\{isWallpaper && \(\s*<RollCalculator\s+productId=\{product\.id\}\s+rollSize=\{rollSize\}\s*\/>\s*\)\}/,
+    'рендер для всіх wc-*; rollSize передається як є (може бути null)'
   );
   assert.equal(
     (pageSrc.match(/<RollCalculator/g) ?? []).length,

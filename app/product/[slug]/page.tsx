@@ -167,11 +167,13 @@ export default async function ProductPage({
     product.short_description
   )
 
-  // Roll calculator (wallpapers, 2026-09): mounted ONLY for wc-* SKUs.
+  // Roll calculator (wallpapers, 2026-09): mounted for EVERY wc-* product.
   // Roll size is parsed on the SERVER from the product name (parseRollSize).
-  // Decision (documented): when the size cannot be parsed → NO calculator
-  // rather than a 0.53×10 default — a guessed roll width/length would give
-  // the customer a wrong purchase quantity (e.g. for metre-wide rolls).
+  // When the name states no size, rollSize is null and the calculator still
+  // mounts — the size select starts on an explicit «оберіть розмір»
+  // placeholder with a hint, so nothing is guessed (bug report 2026-09-11:
+  // 198 of 327 active wallpaper names carry no size; hiding the calculator
+  // for all of them hid it from most of the assortment).
   const isWallpaper = product.sku.startsWith('wc-')
   const rollSize = isWallpaper ? parseRollSize(product.name) : null
 
@@ -364,9 +366,10 @@ export default async function ProductPage({
               <RestockNotify productId={product.id} />
             )}
 
-            {/* Калькулятор рулонів — лише для шпалер (wc-*) з розпізнаним
-                розміром рулона; інакше просто не рендериться. */}
-            {isWallpaper && rollSize !== null && (
+            {/* Калькулятор рулонів — для КОЖНОЇ шпалери (wc-*). rollSize=null
+                (розміру немає в назві 1С) не ховає блок: покупець обирає
+                розмір у select вручну — нічого не вгадується. */}
+            {isWallpaper && (
               <RollCalculator productId={product.id} rollSize={rollSize} />
             )}
 

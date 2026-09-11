@@ -15,10 +15,14 @@ interface RollCalculatorProps {
   productId: string;
   /**
    * Roll geometry parsed on the SERVER from the product name
-   * (parseRollSize, app/lib/wallpapers/parse.ts). The PDP mounts the
-   * calculator only when it is non-null, so it is required here.
+   * (parseRollSize, app/lib/wallpapers/parse.ts). MAY BE NULL: most 1C
+   * names state no size at all (bug report 2026-09-11 — those products
+   * had no calculator). Null does NOT hide the calculator: the size
+   * select starts on a disabled «оберіть розмір» placeholder and the
+   * customer picks explicitly — a guessed width (53 vs 106) would give
+   * a wrong purchase quantity, so nothing is assumed.
    */
-  rollSize: RollSize;
+  rollSize: RollSize | null;
 }
 
 interface RollOption {
@@ -68,7 +72,8 @@ export default function RollCalculator({
   const [perimeter, setPerimeter] = useState('');
   const [height, setHeight] = useState('');
   const [pattern, setPattern] = useState(false);
-  const [rollKey, setRollKey] = useState(optionKeyOf(rollSize));
+  // '' = розмір не розпізнано з назви: покупець обирає його в select вручну.
+  const [rollKey, setRollKey] = useState(rollSize === null ? '' : optionKeyOf(rollSize));
   const [added, setAdded] = useState(false);
   const [limitNotice, setLimitNotice] = useState(false);
 
@@ -78,10 +83,12 @@ export default function RollCalculator({
     setLimitNotice(false);
   };
 
-  const roll = rollOptionOf(rollKey);
+  const roll = rollKey === '' ? null : rollOptionOf(rollKey);
 
-  // null until both numbers are positive — no premature recommendation.
+  // null until both numbers are positive AND a roll size is chosen — no
+  // premature recommendation.
   const calc = useMemo<RollCalculation | null>(() => {
+    if (roll === null) return null;
     const perimeterM = parsePositive(perimeter);
     const heightM = parsePositive(height);
     if (perimeterM === null || heightM === null) return null;
@@ -155,6 +162,13 @@ export default function RollCalculator({
         </label>
       </div>
 
+      {rollSize === null && (
+        <p className="mb-3 text-sm text-amber-700" role="note">
+          Розмір рулона не вказано в назві товару — оберіть його вручну, щоб
+          розрахунок був точним.
+        </p>
+      )}
+
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
         <label className="flex items-center gap-2 text-sm text-gray-700">
           <input
@@ -178,6 +192,9 @@ export default function RollCalculator({
             }}
             className="rounded-md border border-gray-300 p-2"
           >
+            <option value="" disabled>
+              оберіть розмір
+            </option>
             {ROLL_OPTIONS.map((option) => (
               <option key={option.key} value={option.key}>
                 {option.label}
@@ -187,7 +204,7 @@ export default function RollCalculator({
         </label>
       </div>
 
-      {calc && calc.impossible && (
+      {calc !== null && roll !== null && calc.impossible && (
         <p className="mt-3 text-sm text-red-600" role="alert">
           Смуга заввишки {calc.stripLengthM.toLocaleString('uk-UA')} м не
           вміщується в рулон {roll.label}. Перевірте висоту стін або оберіть
@@ -195,7 +212,7 @@ export default function RollCalculator({
         </p>
       )}
 
-      {calc && !calc.impossible && calc.rolls !== null && (
+      {calc !== null && roll !== null && !calc.impossible && calc.rolls !== null && (
         <div className="added-in motion-reduce:animate-none mt-3 rounded-md bg-white p-3 shadow-sm">
           <p className="text-gray-700">
             Рекомендовано:{' '}

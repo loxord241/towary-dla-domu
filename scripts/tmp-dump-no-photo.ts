@@ -12,24 +12,12 @@ const client = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { persistSession: false } },
 );
-const { data, error } = await client
-  .from('products')
-  .select('sku, slug, name, price, stock_quantity, availability_status, product_categories(category_id, categories(name))')
-  .like('sku', 'wc-%')
-  .eq('is_active', true)
-  .order('name');
-if (error !== null) throw new Error(error.message);
-const rows = (data ?? []).filter(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (p: any) => Array.isArray(p.product_categories) === false || p.images === undefined,
-);
-// фильтр «без фото» и нормализация делаем в python: проще одним запросом с images
-const { data: withImages, error: err2 } = await client
+const { data: withImages, error } = await client
   .from('products')
   .select('sku, slug, name, price, stock_quantity, availability_status, images:product_images(image_url), product_categories(category_id, categories(name))')
   .like('sku', 'wc-%')
   .eq('is_active', true);
-if (err2 !== null) throw new Error(err2.message);
+if (error !== null) throw new Error(error.message);
 const noPhoto = (withImages ?? [])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .filter((p: any) => (p.images ?? []).length === 0)
