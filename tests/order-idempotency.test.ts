@@ -155,9 +155,11 @@ test('F2 route: fresh → 201, replay → 200, same response body shape (contrac
   const r = route();
   // single decision point: created ? 201 : 200
   assert.match(r, /status: created \? 201 : 200/);
-  // body keys unchanged
+  // body keys unchanged (2026-09-12 rotation: the token VALUE is a fresh
+  // random per-issue token — replay rotates it — but the KEY set and the
+  // status decision are untouched).
   assert.match(r, /orderNumber: result\.order_number/);
-  assert.match(r, /accessToken: orderAccessToken\(result\.order_number\)/);
+  assert.match(r, /accessToken,/);
 });
 
 // ---- F. header validator (real behaviour, pure module) ----

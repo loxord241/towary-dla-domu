@@ -43,3 +43,35 @@ export function verifyOrderAccessToken(
   if (expected.length !== provided.length) return false;
   return crypto.timingSafeEqual(expected, provided);
 }
+
+// ---------------------------------------------------------------------------
+// Rotating per-order tokens (2026-09 audit P1): the deterministic HMAC above
+// is eternal — a leaked URL/log gives permanent order access. New orders get
+// a random token; only its SHA-256 hash is stored (orders.access_token_hash,
+// migration 045). Every successful lookup (email+number proves identity) and
+// every idempotent checkout replay ROTATES the token; legacy links keep
+// working until the first rotation of that specific order (NULL-hash rows).
+// ---------------------------------------------------------------------------
+
+/** URL-safe random token (~190 bit) — issued once per (re)generation. */
+export function generateOrderAccessToken(): string {
+  return crypto.randomBytes(24).toString('base64url');
+}
+
+/** Stored form: SHA-256 of the token — a DB leak does not leak the URL. */
+export function hashOrderAccessToken(token: string): string {
+  return crypto.createHash('sha256').update(token, 'utf8').digest('hex');
+}
+
+/** Constant-time verification against a stored hash. */
+export function verifyStoredAccessToken(
+  token: unknown,
+  storedHash: unknown
+): boolean {
+  if (typeof token !== 'string' || token === '') return false;
+  if (typeof storedHash !== 'string' || storedHash.length !== 64) return false;
+  const expected = Buffer.from(hashOrderAccessToken(token), 'utf8');
+  const provided = Buffer.from(storedHash, 'utf8');
+  if (expected.length !== provided.length) return false;
+  return crypto.timingSafeEqual(expected, provided);
+}

@@ -43,12 +43,19 @@ test('ORDER-SEC: capability token is an HMAC of the service key, verified consta
 
 // ---- guest order view page ----
 
-test('ORDER-SEC: /orders/[orderNumber] verifies the token BEFORE any DB read', () => {
+test('ORDER-SEC: /orders/[orderNumber] verifies the token BEFORE any page-data read', () => {
   const p = src('app/orders/[orderNumber]/page.tsx');
   const verifyAt = p.indexOf('verifyOrderAccessToken(orderNumber, t)');
   const readAt = p.indexOf(".from('orders')");
   assert.ok(verifyAt >= 0, 'token verification call missing');
-  assert.ok(readAt > verifyAt, 'DB read must come after token verification');
+  // 2026-09-12 rotation: the ONLY pre-verify read is the minimal
+  // access_token_hash lookup by order number (the token material itself,
+  // explicitly whitelisted column); every PAGE-data read still comes
+  // after verification.
+  assert.ok(readAt !== -1 && readAt < verifyAt, 'hash lookup precedes verify');
+  assert.match(p, /\.select\('access_token_hash'\)/);
+  const pageDataAt = p.indexOf("'id, order_number, status");
+  assert.ok(pageDataAt > verifyAt, 'page data read must come after verification');
   assert.doesNotMatch(p, /select\('\*'\)|select\("\*"\)/,
     'order reads must use explicit column whitelists');
   assert.match(p, /SUPABASE_SERVICE_ROLE_KEY/, 'view re-reads via service client server-side');

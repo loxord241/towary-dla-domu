@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
-import { verifyOrderAccessToken } from '@/app/lib/order-token';
+import {
+  verifyOrderAccessToken,
+  verifyStoredAccessToken,
+} from '@/app/lib/order-token';
 import OrderDetailsCard from '@/app/components/OrderDetailsCard';
 import OrderStatusBadge, {
   PaymentStatusBadge,
@@ -85,7 +88,21 @@ export default async function GuestOrderViewPage({
     return <NotFound />;
   }
 
-  if (!verifyOrderAccessToken(orderNumber, t)) {
+  // Rotating tokens (migration 045): a row with a stored hash verifies
+  // ONLY against that hash (the legacy HMAC died at the first rotation);
+  // NULL-hash rows (never rotated) still accept the legacy deterministic
+  // token — backward compatible for links issued before 2026-09-12.
+  const row = await supabase
+    .from('orders')
+    .select('access_token_hash')
+    .eq('order_number', orderNumber)
+    .maybeSingle();
+  const storedHash = (row.data as { access_token_hash?: string | null } | null)
+    ?.access_token_hash ?? null;
+  const tokenOk = storedHash
+    ? verifyStoredAccessToken(t, storedHash)
+    : verifyOrderAccessToken(orderNumber, t);
+  if (!tokenOk) {
     return <NotFound />;
   }
 

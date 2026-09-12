@@ -1,6 +1,10 @@
 import { NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { orderAccessToken } from '@/app/lib/order-token';
+import {
+  generateOrderAccessToken,
+  hashOrderAccessToken,
+  orderAccessToken,
+} from '@/app/lib/order-token';
 import { enforceRateLimit } from '@/app/lib/rate-limit';
 import { assertSameOrigin } from '@/app/lib/request-origin';
 import { sanitizeDelivery } from '@/app/lib/checkout-delivery';
@@ -288,6 +292,27 @@ export async function POST(request: Request) {
   // would send a duplicate Telegram message.
   const created = result.created !== false;
 
+  // Per-order random capability token (migration 045): only its SHA-256
+  // hash is stored; every issue (fresh creation AND idempotent replay)
+  // ROTATES it, so a previously leaked URL stops working. If the hash
+  // write fails, fall back to the legacy deterministic HMAC (verified for
+  // NULL-hash rows) — the order itself never fails over a token.
+  let accessToken: string;
+  try {
+    accessToken = generateOrderAccessToken();
+    const { error: tokenError } = await supabase
+      .from('orders')
+      .update({ access_token_hash: hashOrderAccessToken(accessToken) })
+      .eq('order_number', orderNumber);
+    if (tokenError) throw new Error(tokenError.message);
+  } catch (err) {
+    console.error(
+      'access token rotation failed:',
+      err instanceof Error ? err.name : 'error'
+    );
+    accessToken = orderAccessToken(orderNumber);
+  }
+
   // Secondary side effect, strictly AFTER the order is committed: runs once
   // the response is sent (next/server `after`), never blocks checkout and
   // can never affect the order — sendTelegramOrderNotification never throws.
@@ -300,7 +325,7 @@ export async function POST(request: Request) {
       orderNumber: result.order_number,
       total: result.total,
       currency: result.currency,
-      accessToken: orderAccessToken(result.order_number),
+      accessToken,
     },
     // 201 for a genuine creation; 200 for an idempotent replay of the same
     // order (body shape identical — the client contract is preserved).

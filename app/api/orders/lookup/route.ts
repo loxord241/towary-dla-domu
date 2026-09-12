@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { orderAccessToken } from '@/app/lib/order-token';
+import {
+  generateOrderAccessToken,
+  hashOrderAccessToken,
+  orderAccessToken,
+} from '@/app/lib/order-token';
 import { enforceRateLimit } from '@/app/lib/rate-limit';
 
 /**
@@ -104,9 +108,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Замовлення не знайдено' }, { status: 404 });
     }
 
+    // Email + order number proved identity → ROTATE the capability token
+    // (audit P1: the deterministic HMAC was eternal; a leaked URL now dies
+    // on the first successful lookup). The fresh link is shown on screen
+    // immediately. If the rotation write fails, fall back to the legacy
+    // HMAC (valid for NULL-hash rows) — lookup must not break over a token.
+    let accessToken: string;
+    try {
+      accessToken = generateOrderAccessToken();
+      const { error: tokenError } = await supabase
+        .from('orders')
+        .update({ access_token_hash: hashOrderAccessToken(accessToken) })
+        .eq('order_number', data.order_number);
+      if (tokenError) throw new Error(tokenError.message);
+    } catch (err) {
+      console.error(
+        'lookup token rotation failed:',
+        err instanceof Error ? err.name : 'error'
+      );
+      accessToken = orderAccessToken(data.order_number);
+    }
+
     return NextResponse.json({
       orderNumber: data.order_number,
-      accessToken: orderAccessToken(data.order_number),
+      accessToken,
     });
   } catch (err) {
     console.error('orders lookup error:', err);
