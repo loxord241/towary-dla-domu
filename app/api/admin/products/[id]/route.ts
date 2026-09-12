@@ -359,6 +359,25 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       );
     }
 
+    // Restock requests (migration 042) reference products WITHOUT a cascade
+    // until 043 is applied: hard-delete would fail with an FK violation
+    // (23503 → 500). Clear this product's requests first so the delete works
+    // both before and after 043; with the 043 FK cascade in place this is a
+    // harmless no-op. A failed cleanup must abort the deletion — proceeding
+    // would turn the request rows' FK into a hard 500 anyway.
+    const { error: restockError } = await ctx.serviceClient
+      .from('restock_requests')
+      .delete()
+      .eq('product_id', id);
+
+    if (restockError) {
+      console.error('Failed to clear restock requests before product delete:', restockError.message);
+      return NextResponse.json(
+        { error: 'Не вдалося підготувати видалення товару. Спробуйте ще раз' },
+        { status: 500 }
+      );
+    }
+
     const { data, error } = await ctx.serviceClient
       .from('products')
       .delete()

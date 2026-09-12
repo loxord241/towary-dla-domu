@@ -46,6 +46,16 @@ const ADDITIVE_MIGRATIONS: {
       /revoke\s+insert,\s*update,\s*delete,\s*trigger,\s*references\s+on\s+table\s+public\./i,
     ],
   },
+  {
+    // 043: FK redefinition — guarded DROP CONSTRAINT IF EXISTS + ADD
+    // CONSTRAINT makes the pair rerunnable (cascade semantics themselves
+    // are pinned in restock-fk-cascade.test.ts).
+    file: 'database/migrations/043_restock_requests_fk_cascade.sql',
+    idempotentMarkers: [
+      /drop\s+constraint\s+if\s+exists\s+restock_requests_product_id_fkey/i,
+      /on\s+delete\s+cascade/i,
+    ],
+  },
 ];
 
 test('ADDITIVE: migrations 033+ exist', () => {
