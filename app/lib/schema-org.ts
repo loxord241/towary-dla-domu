@@ -92,6 +92,18 @@ export function buildProductJsonLd(
       price: String(product.price),
       priceCurrency: toIsoCurrency(product.currency),
       availability: availabilityUrl(product.availability_status),
+      // Google Merchant warnings (SEO audit P2, 2026-09-12). itemCondition:
+      // the shop sells NEW goods only. returnPolicy reflects what
+      // app/returns actually states: «Умови повернення товару протягом
+      // 14 днів після придбання» — a finite 14-day window, not invented.
+      itemCondition: 'https://schema.org/NewCondition',
+      returnPolicy: {
+        '@type': 'MerchantReturnPolicy',
+        applicableCountry: 'UA',
+        returnPolicyCategory:
+          'https://schema.org/MerchantReturnFiniteReturnWindow',
+        merchantReturnDays: 14,
+      },
     };
   }
 
@@ -237,4 +249,84 @@ export function buildFaqJsonLd(
  */
 export function serializeJsonLd(data: Record<string, unknown>): string {
   return JSON.stringify(data).replace(/</g, '\\u003c');
+}
+
+/**
+ * Organization + LocalBusiness graph for the site-wide layout (SEO audit P2,
+ * 2026-09-12) — same honesty rules as every builder above: ONLY facts that
+ * are already published on the site (app/contacts, app/returns, /public
+ * assets). No openingHours (the contacts page prints «7:30–16:00» without
+ * weekdays — a dayOfWeek would be invented), no ratings, no postal codes.
+ *
+ * The logo is /public/og-image.png — the only brand image asset on the
+ * origin (the header logo is text-only). Both pickup points are rendered as
+ * two Store locations exactly as app/contacts lists them: Мазепи 87А —
+ * побутова техніка; Серафимовича 83А — шпалери.
+ *
+ * Emitted through serializeJsonLd by OrganizationJsonLd.tsx inside the root
+ * layout, so every SSR page carries the graph.
+ */
+
+/** The two real pickup points, verbatim from app/contacts/page.tsx. */
+export const STORE_LOCATIONS: { name: string; streetAddress: string }[] = [
+  {
+    name: 'Пункт видачі — побутова техніка',
+    streetAddress: 'вул. Гетьмана Івана Мазепи, буд. 87А',
+  },
+  {
+    name: 'Пункт видачі — шпалери',
+    streetAddress: 'вул. Серафимовича, 83А',
+  },
+];
+
+/** Phones shown in the header/contacts (single factual source). */
+export const STORE_TELEPHONES = ['+380973144221', '+380983584958'] as const;
+
+export function buildOrganizationJsonLd(
+  siteUrl: string
+): Record<string, unknown> {
+  const base = siteUrl.replace(/\/+$/, '');
+  const organizationId = `${base}/#organization`;
+  const mainAddress = {
+    '@type': 'PostalAddress',
+    streetAddress: STORE_LOCATIONS[0]!.streetAddress,
+    addressLocality: 'Кривий Ріг',
+    addressCountry: 'UA',
+  };
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': organizationId,
+        name: 'Товари для дому',
+        legalName: 'ФОП Денисенко Світлана Юріївна',
+        url: `${base}/`,
+        logo: `${base}/og-image.png`,
+        telephone: [...STORE_TELEPHONES],
+        email: 'magazinujut@gmail.com',
+        address: mainAddress,
+      },
+      {
+        '@type': 'Store',
+        '@id': `${base}/#store`,
+        name: 'Товари для дому',
+        url: `${base}/`,
+        telephone: [...STORE_TELEPHONES],
+        email: 'magazinujut@gmail.com',
+        parentOrganization: { '@id': organizationId },
+        address: mainAddress,
+        location: STORE_LOCATIONS.map((loc) => ({
+          '@type': 'Place',
+          name: loc.name,
+          address: {
+            '@type': 'PostalAddress',
+            streetAddress: loc.streetAddress,
+            addressLocality: 'Кривий Ріг',
+            addressCountry: 'UA',
+          },
+        })),
+      },
+    ],
+  };
 }

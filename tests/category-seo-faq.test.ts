@@ -207,16 +207,20 @@ test('FAQ: catalog page mounts FAQ + JSON-LD only for shpaleri% on page 1', () =
   );
 });
 
-// ---- 5. sink invariant updated to 3 ----------------------------------------
+// ---- 5. sink invariant updated to 4 ----------------------------------------
 
-test('INVARIANT: sink allowlist now counts three sanctioned sinks (incl. FaqJsonLd)', () => {
+test('INVARIANT: sink allowlist now counts four sanctioned sinks (incl. OrganizationJsonLd)', () => {
   const invariant = src('tests/product-description.test.ts');
   const allowlist = invariant.match(/const ALLOWED = \[([\s\S]*?)\];/);
   assert.ok(allowlist, 'ALLOWED array must exist');
   const body = allowlist[1] ?? '';
   const patterns = body.match(/\/[\w.\\$]+\/g?/g) ?? [];
-  assert.equal(patterns.length, 3, `expected 3 allowlist patterns, got ${patterns.length}`);
+  assert.equal(patterns.length, 4, `expected 4 allowlist patterns, got ${patterns.length}`);
   assert.ok(invariant.includes('/FaqJsonLd\\.tsx$/'), 'FaqJsonLd must be allowlisted');
+  assert.ok(
+    invariant.includes('/OrganizationJsonLd\\.tsx$/'),
+    'OrganizationJsonLd must be allowlisted'
+  );
 
   // and the app/ tree really holds exactly the allowlisted sinks
   function walkApp(dir: string): string[] {
@@ -237,8 +241,8 @@ test('INVARIANT: sink allowlist now counts three sanctioned sinks (incl. FaqJson
   );
   assert.equal(
     hits.length,
-    3,
-    `expected exactly 3 sink files, found: ${hits.map((h) => path.relative(root, h)).join(', ')}`
+    4,
+    `expected exactly 4 sink files, found: ${hits.map((h) => path.relative(root, h)).join(', ')}`
   );
 });
 

@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { CartProvider } from "@/app/lib/cart-context";
 import { FavoritesProvider } from "@/app/lib/favorites-context";
 import TrafficSourceTracker from "@/app/components/TrafficSourceTracker";
+import OrganizationJsonLd from "@/app/components/OrganizationJsonLd";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -66,6 +67,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* SEO audit P2 (2026-09-12): Organization + LocalBusiness graph on
+            every SSR page — facts only (contacts page, /public assets). */}
+        <OrganizationJsonLd />
         <CartProvider>
           <FavoritesProvider>{children}</FavoritesProvider>
         </CartProvider>

@@ -7,12 +7,16 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import {
   stripHtmlToText,
   toIsoCurrency,
   buildProductJsonLd,
   buildProductBreadcrumbJsonLd,
   buildCatalogBreadcrumbJsonLd,
+  buildOrganizationJsonLd,
   serializeJsonLd,
 } from '../app/lib/schema-org.ts';
 
@@ -61,6 +65,14 @@ test('JSONLD: happy path emits exactly the real fields', () => {
     price: '10999',
     priceCurrency: 'UAH',
     availability: 'https://schema.org/InStock',
+    itemCondition: 'https://schema.org/NewCondition',
+    returnPolicy: {
+      '@type': 'MerchantReturnPolicy',
+      applicableCountry: 'UA',
+      returnPolicyCategory:
+        'https://schema.org/MerchantReturnFiniteReturnWindow',
+      merchantReturnDays: 14,
+    },
   });
   assert.equal(d.aggregateRating, undefined);
 });
@@ -280,4 +292,108 @@ test('JSONLD: catalog breadcrumb without category keeps two honest levels', () =
     items.map((i) => i.name),
     ['Головна', 'Каталог']
   );
+});
+
+// ---- P2 (2026-09-12): Organization/LocalBusiness graph in the layout -------
+// Pins read the actual shipped source (node:test, readFileSync) so the
+// markup cannot silently regress. Facts only: both phones, both pickup
+// addresses, the real legalName — and NO invented ratings/openingHours.
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const LAYOUT = join(ROOT, 'app', 'layout.tsx');
+const ORG_LD = join(ROOT, 'app', 'components', 'OrganizationJsonLd.tsx');
+
+const layoutSource = () => readFileSync(LAYOUT, 'utf8');
+const orgLdSource = () => readFileSync(ORG_LD, 'utf8');
+
+test('OrgGraph: root layout renders OrganizationJsonLd on every page', () => {
+  assert.match(layoutSource(), /OrganizationJsonLd/);
+  const component = orgLdSource();
+  assert.match(component, /application\/ld\+json/);
+  assert.match(component, /buildOrganizationJsonLd/);
+});
+
+test('OrgGraph: builder emits the Organization facts, nothing invented', () => {
+  const graph = buildOrganizationJsonLd(SITE)['@graph'] as {
+    '@type': string;
+    name?: string;
+    telephone?: string[];
+    email?: string;
+    legalName?: string;
+    address?: { streetAddress?: string };
+  }[];
+  const org = graph.find((n) => n['@type'] === 'Organization');
+  const store = graph.find((n) => n['@type'] === 'Store');
+  assert.ok(org && store);
+  assert.equal(org.name, 'Товари для дому');
+  assert.equal(org.legalName, 'ФОП Денисенко Світлана Юріївна');
+  assert.deepEqual(org.telephone, ['+380973144221', '+380983584958']);
+  assert.equal(org.email, 'magazinujut@gmail.com');
+  assert.equal(org.address?.streetAddress, 'вул. Гетьмана Івана Мазепи, буд. 87А');
+  const locations = (store as unknown as {
+    location: { name: string; address: { streetAddress: string } }[];
+  }).location;
+  assert.equal(locations.length, 2);
+  assert.deepEqual(
+    locations.map((l) => l.address.streetAddress).sort(),
+    ['вул. Гетьмана Івана Мазепи, буд. 87А', 'вул. Серафимовича, 83А'].sort()
+  );
+});
+
+test('OrgGraph: both phones and both pickup addresses survive serialization', () => {
+  const html = serializeJsonLd(buildOrganizationJsonLd(SITE));
+  for (const fact of [
+    '+380973144221',
+    '+380983584958',
+    'вул. Гетьмана Івана Мазепи, буд. 87А',
+    'вул. Серафимовича, 83А',
+    'Кривий Ріг',
+    'magazinujut@gmail.com',
+  ]) {
+    assert.ok(html.includes(fact), `missing fact: ${fact}`);
+  }
+  const parsed = JSON.parse(html) as { '@graph': unknown[] };
+  assert.equal(parsed['@graph'].length, 2);
+});
+
+test('OrgGraph: honesty — no invented ratings, openingHours or postal codes', () => {
+  const html = serializeJsonLd(buildOrganizationJsonLd(SITE));
+  for (const banned of [
+    'aggregateRating',
+    'ratingValue',
+    'openingHours',
+    'postalCode',
+    'priceRange',
+  ]) {
+    assert.ok(!html.includes(banned), `must not invent ${banned}`);
+  }
+  assert.ok(!/rating/i.test(html));
+});
+
+test('Offer: itemCondition + 14-day returnPolicy on every PDP offer (Merchant pins)', () => {
+  const d = buildProductJsonLd(BASE, null, SITE)!;
+  const offers = d.offers as {
+    itemCondition?: string;
+    returnPolicy?: {
+      '@type': string;
+      applicableCountry: string;
+      returnPolicyCategory: string;
+      merchantReturnDays: number;
+    };
+  };
+  assert.equal(offers.itemCondition, 'https://schema.org/NewCondition');
+  assert.deepEqual(offers.returnPolicy, {
+    '@type': 'MerchantReturnPolicy',
+    applicableCountry: 'UA',
+    returnPolicyCategory:
+      'https://schema.org/MerchantReturnFiniteReturnWindow',
+    merchantReturnDays: 14,
+  });
+  // PDP source still routes the builder payload through ProductJsonLd sink.
+  const pdp = readFileSync(
+    join(ROOT, 'app', 'product', '[slug]', 'page.tsx'),
+    'utf8'
+  );
+  assert.match(pdp, /buildProductJsonLd/);
+  assert.match(pdp, /ProductJsonLd/);
 });

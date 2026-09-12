@@ -130,16 +130,20 @@ test('INVARIANT: product page gates the «Опис» section behind shouldRender
 
 // ---- project-wide source invariants -------------------------------------------
 
-test('INVARIANT: exactly three sanctioned dangerouslySetInnerHTML sinks in app/', () => {
-  // Allowlist (SEO package 2026-08-26 + category FAQ stage 2026-09-11):
+test('INVARIANT: exactly four sanctioned dangerouslySetInnerHTML sinks in app/', () => {
+  // Allowlist (SEO package 2026-08-26 + category FAQ stage 2026-09-11 +
+  // Organization graph 2026-09-12):
   // 1) ProductDescription — sanitized supplier HTML; 2) ProductJsonLd —
   // JSON-LD built by schema-org.ts and serialized with '<'-escaping (see
   // tests/seo-jsonld.test.ts); 3) FaqJsonLd — same serialization pattern,
-  // input only from WALLPAPER_FAQ via buildFaqJsonLd.
+  // input only from WALLPAPER_FAQ via buildFaqJsonLd; 4) OrganizationJsonLd
+  // — same serialization pattern, input only from buildOrganizationJsonLd
+  // (hardcoded factual constants, see tests/seo-jsonld.test.ts).
   const ALLOWED = [
     /ProductDescription\.tsx$/,
     /ProductJsonLd\.tsx$/,
     /FaqJsonLd\.tsx$/,
+    /OrganizationJsonLd\.tsx$/,
   ];
   const files = walkApp(path.join(root, 'app'));
   const hits = files.filter((f) => readFileSync(f, 'utf8').includes('dangerouslySetInnerHTML'));
