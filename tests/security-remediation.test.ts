@@ -101,9 +101,10 @@ test('migrations are sequentially numbered with no gaps above 030', () => {
     assert.ok(prev !== undefined && curr !== undefined);
     assert.equal(curr, prev + 1, `gap between ${prev} and ${curr}`);
   }
-  // Pinned to the latest migration: 043 (restock_requests FK → ON DELETE
-  // CASCADE, hard-delete fix) follows 042 (restock_requests table).
-  assert.equal(nums[nums.length - 1], 43);
+  // Pinned to the latest migration: 044 (supabase advisors fixes:
+  // rls_auto_enable revoke, trigger search_path, FK indexes) follows
+  // 043 (restock_requests FK → ON DELETE CASCADE).
+  assert.equal(nums[nums.length - 1], 44);
 });
 
 const m032 = readFileSync(

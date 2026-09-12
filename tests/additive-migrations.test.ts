@@ -56,6 +56,16 @@ const ADDITIVE_MIGRATIONS: {
       /on\s+delete\s+cascade/i,
     ],
   },
+  {
+    // 044: advisors fixes — REVOKE-only privilege changes, guarded
+    // CREATE INDEX IF NOT EXISTS, pinned function search_path.
+    file: 'database/migrations/044_supabase_advisors_fixes.sql',
+    idempotentMarkers: [
+      /revoke\s+execute\s+on\s+function\s+public\.rls_auto_enable\(\)\s+from\s+public/i,
+      /create\s+index\s+if\s+not\s+exists\s+idx_advisors_/i,
+      /set\s+search_path\s*=\s*''/i,
+    ],
+  },
 ];
 
 test('ADDITIVE: migrations 033+ exist', () => {
