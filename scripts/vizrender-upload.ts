@@ -33,7 +33,14 @@ const manifest: Record<string, string[]> = {};
 
 for (const room of ROOMS) {
   const dir = join('viz-render', 'out', room);
-  const files = readdirSync(dir).filter((f) => f.endsWith('.webp'));
+  let files: string[];
+  try {
+    files = readdirSync(dir).filter((f) => f.endsWith('.webp'));
+  } catch {
+    console.warn(`${room}: папки нет — пропуск`);
+    manifest[room] = [];
+    continue;
+  }
   let uploaded = 0;
   for (const f of files) {
     const slug = f.replace(/\.webp$/, '');
