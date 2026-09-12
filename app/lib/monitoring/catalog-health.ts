@@ -244,12 +244,13 @@ export const SYNC_FAIL_AGE_MS = 96 * 60 * 60 * 1000;
 // Orders pending >24h are expected for cash-on-delivery style flow, so the
 // check is advisory and never fails the overall result.
 export const PENDING_ORDER_WARN_HOURS = 24;
-// _du audit invariant (2026-09-07 regeneration): _du products WITHOUT a base
+// _du audit invariant (2026-09-12 regeneration): _du products WITHOUT a base
 // product. The generator hard-fails outside this number; monitoring mirrors it
 // as a WARN regenerate signal. (2026-08-31 audit: 26 → 2026-09-01: 24 →
-// 2026-09-02: 25 → 2026-09-07 post-incident restore: 39 — the supplier's
-// restored catalog added ~180 net-new _du rows, most paired, 14 new orphans.)
-export const DU_EXPECTED_ORPHANS = 39;
+// 2026-09-02: 25 → 2026-09-07 post-incident restore: 39 → 2026-09-12
+// live probe: 40 — supplier keeps adding _du rows; 302 pairs now, ALL
+// redirect to base since the 2026-09-12 policy change.)
+export const DU_EXPECTED_ORPHANS = 40;
 
 // ---- newest-products OOS skew (2026-09-05) ------------------------------
 // The storefront's first screen is populated by the newest active products

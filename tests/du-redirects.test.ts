@@ -1,9 +1,11 @@
 /**
- * _du → base redirect allowlist (Task #34 regeneration; prior audits
- * 2026-08-31 and Task #26 2026-09-01):
+ * _du → base redirect allowlist (regeneration 2026-09-12; prior audits
+ * Task #26/#34):
  * invariants of the generated module + source-level wiring checks:
- * next.config 301-redirects ONLY allowlisted pairs (never the price-diff
- * pairs, never the 25 orphans) and the sitemap excludes exactly those slugs.
+ * next.config 301-redirects ALL verified pairs (2026-09-12 policy: drifted
+ * prices no longer keep a second live page; the price-diff subset stays
+ * documented in DU_PRICE_DIFF_PAIRS) and the sitemap + merchant feed
+ * exclude exactly those slugs.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,13 +15,14 @@ import {
 } from '../app/lib/du-redirects.ts';
 import duRedirectsJson from '../app/lib/du-redirects.json' with { type: 'json' };
 
-test('DU: allowlist counts match the audit (267 redirect + 21 price-diff)', () => {
-  // 2026-09-02 regeneration: 7290720_du drifted to equal prices and moved
-  // from the price-diff list to the redirect list.
-  // 2026-09-05 regeneration: net-new _du row 6381053_du found its base
-  // 6381053 (same-price pair) and joined the redirect list.
-  assert.equal(DU_REDIRECT_PAIRS.length, 267);
-  assert.equal(DU_PRICE_DIFF_PAIRS.length, 21);
+test('DU: allowlist counts match the audit (302 redirect, 20 documented drifts)', () => {
+  // 2026-09-12 regeneration + POLICY CHANGE (owner audit fix «дві ціни на
+  // один товар»): ALL verified pairs redirect to base — a drifted _du
+  // shadow page with a second price must not be a live storefront/feed
+  // page. The price-diff subset stays documented with prices for
+  // monitoring; next drift of the id set fails the generator gate.
+  assert.equal(DU_REDIRECT_PAIRS.length, 302);
+  assert.equal(DU_PRICE_DIFF_PAIRS.length, 20);
 });
 
 test('DU: every pair is well-formed (_du slug strips exactly to base slug)', () => {
@@ -31,11 +34,12 @@ test('DU: every pair is well-formed (_du slug strips exactly to base slug)', () 
   }
 });
 
-test('DU: no duplicate keys, price-diff never overlaps the redirect set', () => {
+test('DU: no duplicate keys; every price-diff pair IS in the redirect set', () => {
   const ycs = [...DU_REDIRECT_BY_YC.keys()];
   assert.equal(new Set(ycs).size, ycs.length);
+  // Policy change: a drifted price no longer keeps the _du page alive.
   for (const p of DU_PRICE_DIFF_PAIRS) {
-    assert.ok(!DU_REDIRECT_BY_YC.has(p.duYc), `${p.duYc} must not redirect`);
+    assert.ok(DU_REDIRECT_BY_YC.has(p.duYc), `${p.duYc} must redirect to base`);
   }
 });
 
@@ -54,7 +58,7 @@ test('DU: next.config 301-redirects exactly the JSON pairs, nothing else', () =>
   const srcCode = src.replace(/\/\/[^\n]*/g, '');
   assert.ok(!srcCode.includes('permanent:'), 'must use statusCode 301, not permanent(308)');
   // JSON is the config source: same slugs as the TS allowlist.
-  assert.equal(duRedirectsJson.redirect.length, 267);
+  assert.equal(duRedirectsJson.redirect.length, 302);
   assert.deepEqual(
     duRedirectsJson.redirect.map((p) => p.duSlug).sort(),
     [...DU_REDIRECT_SLUGS].sort()

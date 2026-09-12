@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-07",
+  "generatedAt": "2026-09-12",
   "redirect": [
     {
       "duSlug": "albom-ufo-10x15x300-pp-46300-3047192_du",
@@ -28,6 +28,10 @@
     {
       "duSlug": "toster-gorenje-t-850-bk-ta8211-6235034_du",
       "baseSlug": "toster-gorenje-t-850-bk-ta8211-6235034"
+    },
+    {
+      "duSlug": "vbud-poverkhnia-whirlpool-akt-8210-lx-6241811_du",
+      "baseSlug": "vbud-poverkhnia-whirlpool-akt-8210-lx-6241811"
     },
     {
       "duSlug": "aksesuar-dlia-brytv-philips-sh50-50-6284421_du",
@@ -74,6 +78,10 @@
       "baseSlug": "toster-gorenje-t-850-we-ta8211-6384918"
     },
     {
+      "duSlug": "aksesuary-dlia-pylososiv-gorenje-bag-set-gb2tbr-6384924_du",
+      "baseSlug": "aksesuary-dlia-pylososiv-gorenje-bag-set-gb2tbr-6384924"
+    },
+    {
       "duSlug": "chainyk-gorenje-k-17-bk-ke01301z-gs-6392779_du",
       "baseSlug": "chainyk-gorenje-k-17-bk-ke01301z-gs-6392779"
     },
@@ -92,6 +100,14 @@
     {
       "duSlug": "skyborizka-sencor-sfs-4050-ss-6429589_du",
       "baseSlug": "skyborizka-sencor-sfs-4050-ss-6429589"
+    },
+    {
+      "duSlug": "stolovi-prylady-ringel-calypso-nabir-stolovykh-lozhok-12-sht-rg-3113-12-2-6441644_du",
+      "baseSlug": "stolovi-prylady-ringel-calypso-nabir-stolovykh-lozhok-12-sht-rg-3113-12-2-6441644"
+    },
+    {
+      "duSlug": "serviz-luminarc-diwali-light-turquoise-19-pr-p2947-6443106_du",
+      "baseSlug": "serviz-luminarc-diwali-light-turquoise-19-pr-p2947-6443106"
     },
     {
       "duSlug": "blender-statsionarnyi-tefal-bl438831-6446612_du",
@@ -116,6 +132,10 @@
     {
       "duSlug": "fen-remington-d5715-6474753_du",
       "baseSlug": "fen-remington-d5715-6474753"
+    },
+    {
+      "duSlug": "plyta-sklokeramika-beko-fsm57300gx-6482008_du",
+      "baseSlug": "plyta-sklokeramika-beko-fsm57300gx-6482008"
     },
     {
       "duSlug": "kukhonnyi-kombain-gorenje-mmc-1000-rl-6489771_du",
@@ -156,6 +176,10 @@
     {
       "duSlug": "frytiurnytsia-sencor-sfr-8200ss-6603534_du",
       "baseSlug": "frytiurnytsia-sencor-sfr-8200ss-6603534"
+    },
+    {
+      "duSlug": "chainyk-philips-hd9318-00-6615810_du",
+      "baseSlug": "chainyk-philips-hd9318-00-6615810"
     },
     {
       "duSlug": "plytka-ergo-hl-2208-6619639_du",
@@ -230,6 +254,10 @@
       "baseSlug": "kavovarka-krapelna-ergo-sd-6700-6672500"
     },
     {
+      "duSlug": "kholodylnyk-hisense-rb440n4gbe-bcd-331w-6711226_du",
+      "baseSlug": "kholodylnyk-hisense-rb440n4gbe-bcd-331w-6711226"
+    },
+    {
       "duSlug": "kholodylnyk-hisense-rb645n4bie-bcd-469wy-6719369_du",
       "baseSlug": "kholodylnyk-hisense-rb645n4bie-bcd-469wy-6719369"
     },
@@ -256,6 +284,10 @@
     {
       "duSlug": "trymer-rowenta-tn3651f0-6767659_du",
       "baseSlug": "trymer-rowenta-tn3651f0-6767659"
+    },
+    {
+      "duSlug": "vbud-dukhovka-gorenje-bsa-6737-e15bg-bo3sa7c01-1-6790006_du",
+      "baseSlug": "vbud-dukhovka-gorenje-bsa-6737-e15bg-bo3sa7c01-1-6790006"
     },
     {
       "duSlug": "vbud-poverkhnia-gorenje-gtw-641-kb-bl025-6790308_du",
@@ -318,6 +350,14 @@
       "baseSlug": "serviz-luminarc-louis-xv-white-18-pr-v2940-6840744"
     },
     {
+      "duSlug": "pralna-mashyna-gorenje-wnhpi-72-scsirv-ua-wflp7012-6849632_du",
+      "baseSlug": "pralna-mashyna-gorenje-wnhpi-72-scsirv-ua-wflp7012-6849632"
+    },
+    {
+      "duSlug": "mikrokhvylova-pich-gorenje-mo17e1bh-6860389_du",
+      "baseSlug": "mikrokhvylova-pich-gorenje-mo17e1bh-6860389"
+    },
+    {
       "duSlug": "kivsh-ringel-zira-z-kryshkoiu-20-sm-2-2l-rg-41006-20-6865314_du",
       "baseSlug": "kivsh-ringel-zira-z-kryshkoiu-20-sm-2-2l-rg-41006-20-6865314"
     },
@@ -336,6 +376,10 @@
     {
       "duSlug": "vbud-mikvokhv-pich-gorenje-bm235g1syb-mxy55z-6871229_du",
       "baseSlug": "vbud-mikvokhv-pich-gorenje-bm235g1syb-mxy55z-6871229"
+    },
+    {
+      "duSlug": "parova-shchitka-tefal-dt2026e1-6873343_du",
+      "baseSlug": "parova-shchitka-tefal-dt2026e1-6873343"
     },
     {
       "duSlug": "vbud-dukhovka-gorenje-bps-6747-a06bg-6875715_du",
@@ -358,6 +402,10 @@
       "baseSlug": "ramka-evg-inno-zb-6-4343-white-collage-6-6884592"
     },
     {
+      "duSlug": "mikrokhvylova-pich-gorenje-mo-20-e1wh-6885495_du",
+      "baseSlug": "mikrokhvylova-pich-gorenje-mo-20-e1wh-6885495"
+    },
+    {
       "duSlug": "sokodavka-gorenje-cj30e-jc3400-gs-6885815_du",
       "baseSlug": "sokodavka-gorenje-cj30e-jc3400-gs-6885815"
     },
@@ -372,6 +420,10 @@
     {
       "duSlug": "kholodylnyk-hisense-rt641n4wfe1-bcd-456wyr-6895806_du",
       "baseSlug": "kholodylnyk-hisense-rt641n4wfe1-bcd-456wyr-6895806"
+    },
+    {
+      "duSlug": "kholodylnyk-hisense-rt641n4wie1-bcd-456wyr-6895807_du",
+      "baseSlug": "kholodylnyk-hisense-rt641n4wie1-bcd-456wyr-6895807"
     },
     {
       "duSlug": "viknomyika-idea-home-ds-1534-20-blue-d-vikon-teleskop-112x20-sm-ds-1534-20-blue-6906759_du",
@@ -454,6 +506,10 @@
       "baseSlug": "vbud-dukhovka-gorenje-bpsa-6747-dgwi-6949363"
     },
     {
+      "duSlug": "kholodylnyk-hisense-rq7p522stfe-6965695_du",
+      "baseSlug": "kholodylnyk-hisense-rq7p522stfe-6965695"
+    },
+    {
       "duSlug": "blender-statsionarnyi-tefal-perfect-mix-bl87g831-6965981_du",
       "baseSlug": "blender-statsionarnyi-tefal-perfect-mix-bl87g831-6965981"
     },
@@ -476,6 +532,10 @@
     {
       "duSlug": "kholodylnyk-hisense-rb435n4bce-6980268_du",
       "baseSlug": "kholodylnyk-hisense-rb435n4bce-6980268"
+    },
+    {
+      "duSlug": "pylosos-akumuliatornyi-dreame-wet-dry-vacuum-cleaner-h11-core-6980326_du",
+      "baseSlug": "pylosos-akumuliatornyi-dreame-wet-dry-vacuum-cleaner-h11-core-6980326"
     },
     {
       "duSlug": "praska-gorenje-sich2200rbc-hc-3001rw-6984810_du",
@@ -530,6 +590,10 @@
       "baseSlug": "kelykh-luminarc-serena-line-nabir-6-550-ml-v6728-6988988"
     },
     {
+      "duSlug": "kholodylnyk-hisense-rq758n4sbse-6990159_du",
+      "baseSlug": "kholodylnyk-hisense-rq758n4sbse-6990159"
+    },
+    {
       "duSlug": "kholodylnyk-hisense-rq760n4ife-6990162_du",
       "baseSlug": "kholodylnyk-hisense-rq760n4ife-6990162"
     },
@@ -562,6 +626,10 @@
       "baseSlug": "soteinyk-iq-be-active-z-dvoma-ruchkamy-aliuminiievyi-28-sm-4-0-l-z-kryshkoiu-iq-6996307"
     },
     {
+      "duSlug": "morozylna-kamera-gorenje-fh43eaw-6998665_du",
+      "baseSlug": "morozylna-kamera-gorenje-fh43eaw-6998665"
+    },
+    {
       "duSlug": "mikser-bez-chashi-gorenje-m-500-dc-6998788_du",
       "baseSlug": "mikser-bez-chashi-gorenje-m-500-dc-6998788"
     },
@@ -572,6 +640,10 @@
     {
       "duSlug": "mikrokhvylova-pich-samsung-ms20a3010ah-ol-7005374_du",
       "baseSlug": "mikrokhvylova-pich-samsung-ms20a3010ah-ol-7005374"
+    },
+    {
+      "duSlug": "pylosos-tsyklonnyi-gorenje-vce01sfabkr-7006966_du",
+      "baseSlug": "pylosos-tsyklonnyi-gorenje-vce01sfabkr-7006966"
     },
     {
       "duSlug": "sushylna-mashyna-hisense-dh7s107bw-7007001_du",
@@ -666,6 +738,10 @@
       "baseSlug": "multypich-philips-na332-00-7064284"
     },
     {
+      "duSlug": "hlechyk-ringel-grey-line-g-1800-ml-rg-0003-1800-g-7067155_du",
+      "baseSlug": "hlechyk-ringel-grey-line-g-1800-ml-rg-0003-1800-g-7067155"
+    },
+    {
       "duSlug": "chainyk-gorenje-k17dpw-7068492_du",
       "baseSlug": "chainyk-gorenje-k17dpw-7068492"
     },
@@ -676,6 +752,14 @@
     {
       "duSlug": "pylosos-myiuchyi-dreame-h14-dual-hhv25a-7069371_du",
       "baseSlug": "pylosos-myiuchyi-dreame-h14-dual-hhv25a-7069371"
+    },
+    {
+      "duSlug": "pylosos-akumuliatornyi-gorenje-svc288191fsiigo-7076766_du",
+      "baseSlug": "pylosos-akumuliatornyi-gorenje-svc288191fsiigo-7076766"
+    },
+    {
+      "duSlug": "parova-shchitka-tefal-dt9814f0-7083113_du",
+      "baseSlug": "parova-shchitka-tefal-dt9814f0-7083113"
     },
     {
       "duSlug": "kholodylnyk-hisense-rq5p470sale-7086538_du",
@@ -706,6 +790,10 @@
       "baseSlug": "chainyk-ergo-gl-8010-7109149"
     },
     {
+      "duSlug": "hryl-gorenje-gcg2000sd-7109372_du",
+      "baseSlug": "hryl-gorenje-gcg2000sd-7109372"
+    },
+    {
       "duSlug": "kholodylnyk-lg-gc-b459fnpw-7110070_du",
       "baseSlug": "kholodylnyk-lg-gc-b459fnpw-7110070"
     },
@@ -720,6 +808,10 @@
     {
       "duSlug": "blendernyi-nabir-ergo-ehb-9500-7110888_du",
       "baseSlug": "blendernyi-nabir-ergo-ehb-9500-7110888"
+    },
+    {
+      "duSlug": "multypich-philips-na231-00-7111320_du",
+      "baseSlug": "multypich-philips-na231-00-7111320"
     },
     {
       "duSlug": "chainyk-gorenje-elektrochainyk-k-17-ds-743903-7112060_du",
@@ -752,6 +844,10 @@
     {
       "duSlug": "hryl-amica-gk-4011-7120215_du",
       "baseSlug": "hryl-amica-gk-4011-7120215"
+    },
+    {
+      "duSlug": "multypich-philips-na555-00-7126071_du",
+      "baseSlug": "multypich-philips-na555-00-7126071"
     },
     {
       "duSlug": "skovoroda-bravo-chef-hlyboka-20-sm-bc-1102-20-h-7133018_du",
@@ -830,12 +926,20 @@
       "baseSlug": "fen-sencor-shd-9050gd-7185654"
     },
     {
+      "duSlug": "pralna-mashyna-electrolux-ews6427bu-7185819_du",
+      "baseSlug": "pralna-mashyna-electrolux-ews6427bu-7185819"
+    },
+    {
       "duSlug": "praska-gorenje-sik2200wb-kb-936-7193446_du",
       "baseSlug": "praska-gorenje-sik2200wb-kb-936-7193446"
     },
     {
       "duSlug": "pralna-mashyna-samsung-ww90fg3m05twlf-7194071_du",
       "baseSlug": "pralna-mashyna-samsung-ww90fg3m05twlf-7194071"
+    },
+    {
+      "duSlug": "pylosos-myiuchyi-dreame-g10-pro-7196133_du",
+      "baseSlug": "pylosos-myiuchyi-dreame-g10-pro-7196133"
     },
     {
       "duSlug": "pylosos-tsyklonnyi-gorenje-vce01g2aw-cj173-7196146_du",
@@ -854,6 +958,10 @@
       "baseSlug": "aksesuary-dlia-pylososiv-sencor-svcx-0452-bags-svc-45-52-5pcs-7200561"
     },
     {
+      "duSlug": "vidpariuvach-tefal-qt1811e0-7204300_du",
+      "baseSlug": "vidpariuvach-tefal-qt1811e0-7204300"
+    },
+    {
       "duSlug": "praska-ergo-des-2090-7204416_du",
       "baseSlug": "praska-ergo-des-2090-7204416"
     },
@@ -864,6 +972,14 @@
     {
       "duSlug": "vbud-kholodylnyk-beko-b3bcna294hs-7220882_du",
       "baseSlug": "vbud-kholodylnyk-beko-b3bcna294hs-7220882"
+    },
+    {
+      "duSlug": "vbud-kholodylnyk-beko-b5bcna325hs-7220883_du",
+      "baseSlug": "vbud-kholodylnyk-beko-b5bcna325hs-7220883"
+    },
+    {
+      "duSlug": "kholodylnyk-beko-rcsa366k40xbn-7220887_du",
+      "baseSlug": "kholodylnyk-beko-rcsa366k40xbn-7220887"
     },
     {
       "duSlug": "kholodylnyk-beko-rcna366k40wn-7220891_du",
@@ -908,6 +1024,10 @@
     {
       "duSlug": "chainyk-gorenje-k17os-7231791_du",
       "baseSlug": "chainyk-gorenje-k17os-7231791"
+    },
+    {
+      "duSlug": "kholodylnyk-beko-gn163140sn-7232191_du",
+      "baseSlug": "kholodylnyk-beko-gn163140sn-7232191"
     },
     {
       "duSlug": "morozylna-kamera-beko-rfnm200t40sn-7232192_du",
@@ -958,6 +1078,14 @@
       "baseSlug": "kholodylnyk-lg-gc-b509emkm-7250275"
     },
     {
+      "duSlug": "sushylna-mashyna-electrolux-ew7d495udu-7250291_du",
+      "baseSlug": "sushylna-mashyna-electrolux-ew7d495udu-7250291"
+    },
+    {
+      "duSlug": "vahy-napolni-tefal-bm9720f0-7257886_du",
+      "baseSlug": "vahy-napolni-tefal-bm9720f0-7257886"
+    },
+    {
       "duSlug": "pylosos-akumuliatornyi-gorenje-svc259449ndco-v24p01fp2535eu-7259026_du",
       "baseSlug": "pylosos-akumuliatornyi-gorenje-svc259449ndco-v24p01fp2535eu-7259026"
     },
@@ -990,6 +1118,10 @@
       "baseSlug": "kholodylnyk-beko-rche325k40w-7264937"
     },
     {
+      "duSlug": "pralna-mashyna-lg-f2x5ps5w-7266827_du",
+      "baseSlug": "pralna-mashyna-lg-f2x5ps5w-7266827"
+    },
+    {
       "duSlug": "pylosos-akumuliatornyi-gorenje-svc259441nfgo-7267156_du",
       "baseSlug": "pylosos-akumuliatornyi-gorenje-svc259441nfgo-7267156"
     },
@@ -1004,6 +1136,10 @@
     {
       "duSlug": "kholodylnyk-lg-gr-h922hmbq-7270046_du",
       "baseSlug": "kholodylnyk-lg-gr-h922hmbq-7270046"
+    },
+    {
+      "duSlug": "kavo-mashyna-krups-ea5088e0-7270074_du",
+      "baseSlug": "kavo-mashyna-krups-ea5088e0-7270074"
     },
     {
       "duSlug": "praska-gorenje-sih3200bb-7278766_du",
@@ -1028,6 +1164,10 @@
     {
       "duSlug": "pralna-mashyna-haier-hw70-b14929-7283431_du",
       "baseSlug": "pralna-mashyna-haier-hw70-b14929-7283431"
+    },
+    {
+      "duSlug": "mikrokhvylova-pich-gorenje-mo20ce1w5-7290695_du",
+      "baseSlug": "mikrokhvylova-pich-gorenje-mo20ce1w5-7290695"
     },
     {
       "duSlug": "mikrokhvylova-pich-gorenje-mo20e1b5-c20mxp99-g7e-b1b-7290706_du",
