@@ -722,10 +722,14 @@ export default function CheckoutForm() {
             phone,
           },
           shipping: {
+            // Аудит P2: у Ukrposhta-заказов NP-settlement всегда null —
+            // город берём из UP-ветки, иначе шло пустое ''.
             city:
               deliveryType === 'pickup'
                 ? 'Кривий Ріг'
-                : settlement?.name ?? '',
+                : deliveryType === 'ukrposhta_warehouse'
+                  ? upSettlement?.name ?? ''
+                  : settlement?.name ?? '',
             address: displayAddress(),
             notes,
             delivery,
@@ -784,7 +788,7 @@ export default function CheckoutForm() {
 
         <fieldset disabled={submitting} className="space-y-5">
           <div>
-            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-400">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
               1. Контактні дані
             </p>
 
@@ -935,7 +939,7 @@ export default function CheckoutForm() {
           </div>
 
           <div className="pt-2 border-t border-gray-100 mt-2">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-400">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
               2. Доставка
             </p>
 
@@ -970,7 +974,7 @@ export default function CheckoutForm() {
                         {c.label}
                         <span
                           aria-hidden="true"
-                          className="text-xs text-gray-400"
+                          className="text-xs text-gray-500"
                         >
                           {selected ? '▴' : '▾'}
                         </span>
@@ -1157,7 +1161,7 @@ export default function CheckoutForm() {
                   list click, so the submit gate stays strict). */}
               {settlementOpen && !settlement && settlementQuery.trim().length >= 2 && (
                 settlementLoading ? (
-                  <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-400 shadow-lg" role="status">
+                  <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-500 shadow-lg" role="status">
                     Шукаємо…
                   </p>
                 ) : settlementResults.length > 0 ? (
@@ -1210,7 +1214,7 @@ export default function CheckoutForm() {
                         >
                           <span className="block">{s.name}</span>
                           {(s.regionName || s.regionParentName) && (
-                            <span className="block text-xs text-gray-400">
+                            <span className="block text-xs text-gray-500">
                               {[s.regionParentName, s.regionName].filter(Boolean).join(', ')}
                             </span>
                           )}
@@ -1219,7 +1223,7 @@ export default function CheckoutForm() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-400 shadow-lg">
+                  <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-500 shadow-lg">
                     Нічого не знайдено — спробуйте іншу назву
                   </p>
                 )
@@ -1236,7 +1240,7 @@ export default function CheckoutForm() {
                 </label>
                 {settlement ? (
                   divisionsLoading ? (
-                    <p className="text-sm text-gray-400" role="status">
+                    <p className="text-sm text-gray-500" role="status">
                       Завантажуємо варіанти…
                     </p>
                   ) : divisionsForType.length > 0 ? (
@@ -1263,12 +1267,12 @@ export default function CheckoutForm() {
                       ))}
                     </select>
                   ) : (
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-gray-500">
                       Немає доступних варіантів у цьому місті
                     </p>
                   )
                 ) : (
-                  <p className="text-sm text-gray-400">спочатку оберіть населений пункт</p>
+                  <p className="text-sm text-gray-500">спочатку оберіть населений пункт</p>
                 )}
               </div>
             )}
@@ -1434,7 +1438,7 @@ export default function CheckoutForm() {
                   />
                   {upSettlementOpen && !upSettlement && upSettlementQuery.trim().length >= 2 && (
                     upSettlementLoading ? (
-                      <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-400 shadow-lg" role="status">
+                      <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-500 shadow-lg" role="status">
                         Шукаємо…
                       </p>
                     ) : upSettlementResults.length > 0 ? (
@@ -1465,7 +1469,7 @@ export default function CheckoutForm() {
                             >
                               <span className="block">{s.name}</span>
                               {(s.regionName || s.districtName) && (
-                                <span className="block text-xs text-gray-400">
+                                <span className="block text-xs text-gray-500">
                                   {[s.regionName, s.districtName].filter(Boolean).join(', ')}
                                 </span>
                               )}
@@ -1474,7 +1478,7 @@ export default function CheckoutForm() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-400 shadow-lg">
+                      <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-500 shadow-lg">
                         Нічого не знайдено — спробуйте іншу назву
                       </p>
                     )
@@ -1487,7 +1491,7 @@ export default function CheckoutForm() {
                   </label>
                   {upSettlement ? (
                     upOfficesLoading ? (
-                      <p className="text-sm text-gray-400" role="status">
+                      <p className="text-sm text-gray-500" role="status">
                         Завантажуємо варіанти…
                       </p>
                     ) : upOffices.length > 0 ? (
@@ -1513,12 +1517,12 @@ export default function CheckoutForm() {
                         ))}
                       </select>
                     ) : (
-                      <p className="text-sm text-gray-400">
+                      <p className="text-sm text-gray-500">
                         Немає доступних відділень у цьому місті
                       </p>
                     )
                   ) : (
-                    <p className="text-sm text-gray-400">спочатку оберіть населений пункт</p>
+                    <p className="text-sm text-gray-500">спочатку оберіть населений пункт</p>
                   )}
                 </div>
               </>
@@ -1541,10 +1545,13 @@ export default function CheckoutForm() {
             />
           </div>
 
-          {/* LiqPay-подсказка не нужна, когда выбрана оплата наличными на
-              точке (самовывоз) — честное состояние для обоих путей. */}
-          {paymentIntent !== 'cash_on_pickup' && (
-            <p className="text-xs text-gray-400">
+          {/* LiqPay-подсказка не нужна, когда оформляется самовывоз с
+              оплатой наличными на точке. Условие привязано К ДОСТАВКЕ, а не
+              только к radio: пользователь мог выбрать готівку, потом
+              переключиться на перевозчика — stale intent не должен прятать
+              подсказку (аудит P2). */}
+          {!(deliveryType === 'pickup' && paymentIntent === 'cash_on_pickup') && (
+            <p className="text-xs text-gray-500">
               Після оформлення замовлення ви зможете одразу сплатити його
               онлайн через LiqPay.
             </p>
@@ -1632,7 +1639,7 @@ export default function CheckoutForm() {
                       {preview?.variantName && (
                         <span className="block text-xs text-gray-500">{preview.variantName}</span>
                       )}
-                      <span className="text-xs text-gray-400">{item.quantity} шт</span>
+                      <span className="text-xs text-gray-500">{item.quantity} шт</span>
                     </span>
                      <span className="whitespace-nowrap font-medium">
                        {formatPrice(

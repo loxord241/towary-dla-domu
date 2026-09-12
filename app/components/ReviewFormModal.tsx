@@ -264,7 +264,7 @@ export default function ReviewFormModal({
                   className="hidden"
                 />
 
-                <div className="mt-1 flex items-center justify-between gap-3 text-xs text-gray-400">
+                <div className="mt-1 flex items-center justify-between gap-3 text-xs text-gray-500">
                   <span>Відгук публікується після перевірки модератором.</span>
                   <span>
                     {trimmedLength}/{REVIEW_MAX_LENGTH}

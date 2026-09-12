@@ -25,14 +25,11 @@ function makeMockClient(rows: unknown[], cap = 1000) {
   const state: MockState = { requests: 0, windows: [] };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client: any = {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     from(_table: string) {
       return {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        select(_select: string) {
+            select(_select: string) {
           const builder = {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            order(_col: string, _opts?: unknown) {
+                    order(_col: string, _opts?: unknown) {
               return builder;
             },
             range(from: number, to: number) {

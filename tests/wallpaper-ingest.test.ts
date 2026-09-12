@@ -8,7 +8,7 @@
  *     timingSafeEqual — the cron-route model), so no timing/length oracle;
  *   - body is text/csv, ≤ 2 MB (413), ≤ 2000 data lines (413); the optional
  *     header line and BOM are tolerated; per-line validation (price
- *     0..100000, qty 0..9999) is delegated to parseWallpaperCsv — bad lines
+ *     50..5000, qty 0..999 — spec windows) is delegated to parseWallpaperCsv — bad lines
  *     land in `errors` (rejected) and never fail the whole file;
  *   - `X-Export-Date: YYYYMMDD` is mandatory, must be a real calendar date
  *     and not older than 400 days → otherwise 400;

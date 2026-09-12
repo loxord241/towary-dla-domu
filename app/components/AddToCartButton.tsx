@@ -146,7 +146,7 @@ export default function AddToCartButton({
         {/* Unselected variant = unknown stock: «макс. 99» would be a lie
             (Audit 2026-09-05, item 3). Simple products always have a number. */}
         {effectiveStock !== null && (
-          <span className="text-xs text-gray-400">макс. {maxQty}</span>
+          <span className="text-xs text-gray-500">макс. {maxQty}</span>
         )}
       </div>
 

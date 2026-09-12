@@ -43,7 +43,7 @@ const WALLPAPER_SUBCATEGORIES = Object.values(WALLPAPER_CATEGORY_MAP);
 
 /** Shared geometry with the /catalog pagination (P3-R2 pattern). */
 const paginationControlClass =
-  'px-4 py-2 rounded-md border border-gray-300 text-sm text-gray-700 transition-colors aria-disabled:border-gray-200 aria-disabled:text-gray-400 aria-disabled:cursor-not-allowed';
+  'px-4 py-2 rounded-md border border-gray-300 text-sm text-gray-700 transition-colors aria-disabled:border-gray-200 aria-disabled:text-gray-500 aria-disabled:cursor-not-allowed';
 
 const pageNumberLinkClass =
   'inline-flex min-w-[44px] items-center justify-center rounded-md border border-gray-300 px-2 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50';
@@ -270,7 +270,7 @@ export default async function OboiPage({
                   <span
                     key={`gap-${idx}`}
                     aria-hidden="true"
-                    className="px-1 text-sm text-gray-400"
+                    className="px-1 text-sm text-gray-500"
                   >
                     …
                   </span>
@@ -295,7 +295,7 @@ export default async function OboiPage({
               )}
               <span className="hidden text-sm text-gray-600 sm:inline">
                 Сторінка {currentPage} із {maxPage}
-                <span className="text-gray-400"> · знайдено {total}</span>
+                <span className="text-gray-500"> · знайдено {total}</span>
               </span>
               {currentPage < maxPage ? (
                 <Link href={oboiPageUrl(currentPage + 1, base, sortParam)} className={paginationControlClass}>

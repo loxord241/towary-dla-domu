@@ -158,7 +158,7 @@ const HEADER = 'code;name;article;unit;price_retail;qty';
 
 test('wallpaper-parse: csv fixture — valid row + strict per-line errors', () => {
   const text =
-    `${HEADER}\n35125;30202 бузкова лілея шпалери;;рулон;210;15\nкривая;строка;x;;-5;99999\n\n`;
+    `${HEADER}\n35125;30202 бузкова лілея шпалери;;рулон;210;15\nкривая;строка;x;;-5;1000\n\n`;
   const { rows, errors } = parseWallpaperCsv(text);
   assert.equal(rows.length, 1);
   assert.deepEqual(rows[0], {
@@ -193,7 +193,7 @@ test('wallpaper-parse: csv without header parses data from line 1', () => {
 });
 
 test('wallpaper-parse: csv CRLF line endings and physical line numbers', () => {
-  const text = `${HEADER}\r\n1;ок;;шт;10;1\r\nbad;строка;;шт;-1;0\r\n`;
+  const text = `${HEADER}\r\n1;ок;;шт;250;1\r\nbad;строка;;шт;-1;0\r\n`;
   const { rows, errors } = parseWallpaperCsv(text);
   assert.equal(rows.length, 1);
   assert.equal(errors.length, 1);
@@ -201,28 +201,33 @@ test('wallpaper-parse: csv CRLF line endings and physical line numbers', () => {
 });
 
 test('wallpaper-parse: csv blank lines are skipped silently', () => {
-  const text = `\n\n${HEADER}\n\n1;а;;шт;5;5\n\n2;б;;шт;6;6\n`;
+  const text = `\n\n${HEADER}\n\n1;а;;шт;250;5\n\n2;б;;шт;260;6\n`;
   const { rows, errors } = parseWallpaperCsv(text);
   assert.deepEqual(errors, []);
   assert.equal(rows.length, 2);
 });
 
-test('wallpaper-parse: csv price boundaries 0..100000 inclusive', () => {
-  const okLow = parseWallpaperCsv(`${HEADER}\n1;а;;шт;0;1`).errors;
-  const okHigh = parseWallpaperCsv(`${HEADER}\n1;а;;шт;100000;1`).errors;
+test('wallpaper-parse: csv price boundaries 50..5000 (spec sanity windows)', () => {
+  // 2026-09-12: windows aligned with the design spec (audit P2) — live
+  // wc-* range 110..1400 грн.
+  const okLow = parseWallpaperCsv(`${HEADER}\n1;а;;шт;50;1`).errors;
+  const okHigh = parseWallpaperCsv(`${HEADER}\n1;а;;шт;5000;1`).errors;
   assert.deepEqual(okLow, []);
   assert.deepEqual(okHigh, []);
-  const badHigh = parseWallpaperCsv(`${HEADER}\n1;а;;шт;100000.01;1`).errors;
+  const badLow = parseWallpaperCsv(`${HEADER}\n1;а;;шт;49;1`).errors;
+  assert.equal(badLow.length, 1);
+  assert.match(badLow[0]?.reason ?? '', /price_retail/);
+  const badHigh = parseWallpaperCsv(`${HEADER}\n1;а;;шт;5000.01;1`).errors;
   assert.equal(badHigh.length, 1);
   assert.match(badHigh[0]?.reason ?? '', /price_retail/);
 });
 
-test('wallpaper-parse: csv qty boundaries 0..9999, decimals rejected', () => {
-  assert.deepEqual(parseWallpaperCsv(`${HEADER}\n1;а;;шт;5;9999`).errors, []);
-  assert.deepEqual(parseWallpaperCsv(`${HEADER}\n1;а;;шт;5;0`).errors, []);
-  const tooBig = parseWallpaperCsv(`${HEADER}\n1;а;;шт;5;10000`).errors;
+test('wallpaper-parse: csv qty boundaries 0..999, decimals rejected', () => {
+  assert.deepEqual(parseWallpaperCsv(`${HEADER}\n1;а;;шт;250;999`).errors, []);
+  assert.deepEqual(parseWallpaperCsv(`${HEADER}\n1;а;;шт;250;0`).errors, []);
+  const tooBig = parseWallpaperCsv(`${HEADER}\n1;а;;шт;250;1000`).errors;
   assert.match(tooBig[0]?.reason ?? '', /qty/);
-  const decimal = parseWallpaperCsv(`${HEADER}\n1;а;;шт;5;12.5`).errors;
+  const decimal = parseWallpaperCsv(`${HEADER}\n1;а;;шт;250;12.5`).errors;
   assert.match(decimal[0]?.reason ?? '', /qty/);
 });
 
@@ -235,9 +240,9 @@ test('wallpaper-parse: csv wrong column count -> error, not throw', () => {
 });
 
 test('wallpaper-parse: csv empty code or empty name -> error', () => {
-  const emptyCode = parseWallpaperCsv(`${HEADER}\n;нет кода;;шт;5;1`).errors;
+  const emptyCode = parseWallpaperCsv(`${HEADER}\n;нет кода;;шт;250;1`).errors;
   assert.match(emptyCode[0]?.reason ?? '', /code/);
-  const emptyName = parseWallpaperCsv(`${HEADER}\n5;;;шт;5;1`).errors;
+  const emptyName = parseWallpaperCsv(`${HEADER}\n5;;;шт;250;1`).errors;
   assert.match(emptyName[0]?.reason ?? '', /name/);
 });
 

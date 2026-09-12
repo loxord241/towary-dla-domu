@@ -127,7 +127,7 @@ const okResponse = (): Response =>
 test('MESSAGE: contains order number, total, customer, delivery, payment', () => {
   const message = buildOrderNotificationMessage(BASE_DATA);
   assert.ok(message.includes('ORD-20260829-ABC123'));
-  assert.ok(message.includes('1\u00A0299 UAH'));
+  assert.ok(message.includes('1\u00A0299 грн'));
   assert.ok(message.includes('Петренко Іван'));
   assert.ok(message.includes('+380501234567'));
   assert.ok(message.includes('ivan@example.com'));
@@ -137,8 +137,8 @@ test('MESSAGE: contains order number, total, customer, delivery, payment', () =>
 
 test('MESSAGE: lists products with quantity and line price, and item count', () => {
   const message = buildOrderNotificationMessage(BASE_DATA);
-  assert.ok(message.includes('• Праска TEFAL FV2C41E0 (SKU-1) × 1 — 1\u00A0199 UAH'));
-  assert.ok(message.includes('• Чайник — Білий (SKU-2) × 2 — 100 UAH'));
+  assert.ok(message.includes('• Праска TEFAL FV2C41E0 (SKU-1) × 1 — 1\u00A0199 грн'));
+  assert.ok(message.includes('• Чайник — Білий (SKU-2) × 2 — 100 грн'));
   assert.ok(message.includes('Разом товарів: 3'));
 });
 

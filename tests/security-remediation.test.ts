@@ -101,10 +101,9 @@ test('migrations are sequentially numbered with no gaps above 030', () => {
     assert.ok(prev !== undefined && curr !== undefined);
     assert.equal(curr, prev + 1, `gap between ${prev} and ${curr}`);
   }
-  // Pinned to the latest migration: 045 (orders.access_token_hash — guest
-  // token rotation) follows 044 (supabase advisors fixes) and 043
-  // (restock_requests FK → ON DELETE CASCADE).
-  assert.equal(nums[nums.length - 1], 45);
+  // Pinned to the latest migration: 046 (data-integrity CHECKs) follows
+  // 045 (orders.access_token_hash), 044 (advisors fixes), 043 (restock FK).
+  assert.equal(nums[nums.length - 1], 46);
 });
 
 const m032 = readFileSync(

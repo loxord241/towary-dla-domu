@@ -220,7 +220,7 @@ export default function CartPage() {
                       <div className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center">
                         {/* Neutral placeholder in the ProductCard style — not
                             a dev prompt (UX audit 2026-09). */}
-                        <span className="text-[10px] text-gray-400">
+                        <span className="text-[10px] text-gray-500">
                           Фото відсутнє
                         </span>
                       </div>
@@ -307,7 +307,7 @@ export default function CartPage() {
                         type="button"
                         aria-label="Видалити з кошика"
                         onClick={() => removeItem(item.productId, item.variantId)}
-                        className="flex h-11 w-11 items-center justify-center rounded-lg text-xl leading-none text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                        className="flex h-11 w-11 items-center justify-center rounded-lg text-xl leading-none text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600"
                       >
                         ×
                       </button>
@@ -346,7 +346,7 @@ export default function CartPage() {
                            .join(' + ')}
                    </span>
                  </div>
-                <p className="text-xs text-gray-400 mb-4">
+                <p className="text-xs text-gray-500 mb-4">
                   Остаточна сума буде перерахована сервером при оформленні.
                 </p>
                 {purchasableRows.length > 0 || unknownRows.length > 0 ? (

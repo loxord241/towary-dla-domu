@@ -30,7 +30,7 @@
  *     bodies fall through to the actual UTF-8 byte-length check) → 413;
  *   - ≤ 2000 data lines (parsed rows + per-line errors; the optional header
  *     line is not counted) → 413;
- *   - price 0..100000 and qty 0..9999 are enforced PER LINE by
+ *   - price 50..5000 and qty 0..999 (spec sanity windows) are enforced PER LINE by
  *     parseWallpaperCsv — bad lines land in `errors` (rejected), they never
  *     fail the whole file;
  *   - `X-Export-Date: YYYYMMDD` is mandatory, must be a real calendar date

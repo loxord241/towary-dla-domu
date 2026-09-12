@@ -736,7 +736,7 @@ test('HOOK runtime: digest groups by product, includes emails, stamps notified_a
   assert.match(message, /Надійшли товари \(1\):/);
   assert.match(
     message,
-    /wc-x6647-04 — Шпалери 6647-04 \(запитів: 2, emails: a@b\.co, A@B\.CO\)/
+    /wc-x6647-04 — Шпалери 6647-04 \(запитів: 2, emails: a\*\*\*@b\.co, A\*\*\*@B\.CO\)/
   );
   assert.doesNotMatch(message, /c@d\.co/, 'still-OOS product must not be announced');
   assert.doesNotMatch(message, /e@f\.co/, 'unknown product must not be announced');
@@ -853,7 +853,7 @@ test('buildRestockMessage: contracted format, caps, hard cap', () => {
   ];
   assert.equal(
     buildRestockMessage(one),
-    'Надійшли товари (1):\n• wc-x6647-04 — Шпалери 6647-04, 53см*10м (запитів: 2, emails: a@b.co, d@e.co)'
+    'Надійшли товари (1):\n• wc-x6647-04 — Шпалери 6647-04, 53см*10м (запитів: 2, emails: a***@b.co, d***@e.co)'
   );
 
   // >10 emails per product → «+N» collapse.
@@ -870,8 +870,10 @@ test('buildRestockMessage: contracted format, caps, hard cap', () => {
     },
   ];
   const msg = buildRestockMessage(many);
-  assert.match(msg, /u9@b\.co \+3\)/);
-  assert.doesNotMatch(msg, /u10@b\.co/);
+    // masking homogenizes the local parts — assert the COUNT shown + collapse
+  assert.equal((msg.match(/u\*\*\*@b\.co/g) ?? []).length, 10);
+  assert.match(msg, /\+3\)/);
+  assert.doesNotMatch(msg, /u10\*\*\*@b\.co/);
 
   // >50 products → overflow summarized.
   const flood: RestockDigestEntry[] = Array.from(

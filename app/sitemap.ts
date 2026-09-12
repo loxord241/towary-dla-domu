@@ -97,7 +97,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/terms',
   ].map((path) => ({
     url: `${base}${path}`,
-    lastModified: new Date(),
+    // No lastModified for static pages (audit P2): `new Date()` re-stamps
+    // every deploy and teaches crawlers the timestamp is noise — omit it
+    // and let changeFrequency do the work.
     changeFrequency:
       path === '' || path === '/catalog' || path === '/oboi'
         ? 'daily'

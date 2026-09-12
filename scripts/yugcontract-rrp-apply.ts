@@ -85,7 +85,6 @@ interface Patch {
   fields: Record<string, unknown>;
 }
 const patches: Patch[] = [];
-let keptPrice = 0;
 let alreadyOk = 0;
 let noRrp = 0;
 let notInFeed = 0;
@@ -111,7 +110,6 @@ for (const row of dbRows) {
     continue;
   }
   patches.push({ id: row.id, sku: row.sku, fields });
-  if (priceDiffers) keptPrice += 0; // counting below
 }
 
 const priceChanges = patches.filter((p) => p.fields.price !== undefined).length;

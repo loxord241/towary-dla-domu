@@ -271,7 +271,7 @@ export default async function ProductPage({
               </span>
               {product.old_price && product.old_price > product.price && (
                 <>
-                  <span className="text-lg text-gray-400 line-through">
+                  <span className="text-lg text-gray-500 line-through">
                     {formatPrice(product.old_price, product.currency)}
                   </span>
                   <span className="rounded bg-red-50 px-2 py-0.5 text-sm font-semibold text-red-600">

@@ -313,10 +313,10 @@ export default function ShipmentPlannerPage() {
 
   // City search + divisions state (per shipment, keyed by shipment position).
   const [cityQuery, setCityQuery] = useState('');
-  const [cityResults, setCityResults] = useState<NpSettlement[]>([]);
+  const [_cityResults, setCityResults] = useState<NpSettlement[]>([]);
   const [citySearchIdx, setCitySearchIdx] = useState<number | null>(null);
   const [divisions, setDivisions] = useState<NpDivision[]>([]);
-  const [pickerBusy, setPickerBusy] = useState(false);
+  const [_pickerBusy, setPickerBusy] = useState(false);
 
   const applyData = useCallback(
     (o: OrderInfo, serverItems: ServerItem[], shipments: ServerShipment[], canEdit: boolean) => {

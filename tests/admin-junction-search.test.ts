@@ -16,11 +16,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import path from 'node:path';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 process.env.NEXT_PUBLIC_SUPABASE_URL ??= 'http://localhost:54321';
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= 'test-anon-key';
@@ -199,7 +195,6 @@ async function startFake(): Promise<{ client: import('@supabase/supabase-js').Su
       );
     }
 
-    const wantsCount = (req.headers.prefer ?? '').includes('count=exact');
     if (req.method === 'HEAD') {
       res.writeHead(200, { 'Content-Range': `*/${filtered.length}` });
       res.end();
@@ -270,7 +265,6 @@ test('ADMIN-JUNCTION: explicit categoryId filter matches every subtree assignmen
     assert.ok(!ids.has(String(products[3].id)), 'товар іншої гілки виключено');
 
     // Both count and data carry the same pc.* filter.
-    const countUrl = fake.urls.find((u) => u.startsWith('products?'));
     const dataUrls = fake.urls.filter((u) => u.startsWith('products?'));
     assert.ok(dataUrls.some((u) => u.includes(encodeURIComponent(C_B_1))), 'піддерево у фільтрі запиту');
   } finally {

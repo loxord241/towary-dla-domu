@@ -4,8 +4,10 @@
  * Contract (plan 2026-09-10, spec §3):
  *  - parseWallpaperCsv — `;`-separated, optional header
  *    `code;name;article;unit;price_retail;qty`, BOM-tolerant, CRLF-tolerant.
- *    Numeric fields are strict (no signs/units/exponents); price 0..100000,
- *    qty 0..9999; bad lines go to `errors` with 1-based physical line numbers
+ *    Numeric fields are strict (no signs/units/exponents); sanity windows
+ *    aligned with the design spec §sanity (audit P2 2026-09-12): price
+ *    50..5000 грн (live wc-* range 110..1400), qty 0..999; bad lines go to
+ *    `errors` with 1-based physical line numbers
  *    — the function NEVER throws, and per-line reasons are aggregated into a
  *    single CsvError so the ingest endpoint can report "first 20" cleanly.
  *  - parseArticleTokens — article candidates from a free-form product name.
@@ -51,10 +53,13 @@ export interface CsvError {
 
 const EXPECTED_HEADER = ['code', 'name', 'article', 'unit', 'price_retail', 'qty'] as const;
 
-const PRICE_MIN = 0;
-const PRICE_MAX = 100000;
+// Spec sanity windows (docs/superpowers/specs/2026-09-10-wallpapers-import-
+// design.md): a wall-paper roll never costs <50 or >5000 грн and qty never
+// exceeds 999. Values outside mean a broken export line — rejected per-line.
+const PRICE_MIN = 50;
+const PRICE_MAX = 5000;
 const QTY_MIN = 0;
-const QTY_MAX = 9999;
+const QTY_MAX = 999;
 
 /** Plain unsigned number, `.` or `,` decimal separator (1C UA locale). */
 const STRICT_NUMBER_RE = /^\d+(?:[.,]\d+)?$/;

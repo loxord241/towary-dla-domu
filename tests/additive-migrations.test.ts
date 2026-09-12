@@ -66,6 +66,15 @@ const ADDITIVE_MIGRATIONS: {
       /set\s+search_path\s*=\s*''/i,
     ],
   },
+  {
+    // 046: data-integrity CHECKs — guarded DO-block (re-runnable), data
+    // verified clean before the first application (VERIFY-PRE queries).
+    file: 'database/migrations/046_data_integrity_checks.sql',
+    idempotentMarkers: [
+      /if\s+not\s+exists\s*\(\s*select\s+1\s+from\s+pg_constraint/i,
+      /add\s+constraint\s+ck_advisors_/i,
+    ],
+  },
 ];
 
 test('ADDITIVE: migrations 033+ exist', () => {

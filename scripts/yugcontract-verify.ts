@@ -267,7 +267,7 @@ async function j(url: string, init?: RequestInit) {
 }
 
 {
-  const { status, text } = await j('/');
+  const { status } = await j('/');
   check('GET /', status === 200, String(status));
 }
 {

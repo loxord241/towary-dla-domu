@@ -958,9 +958,20 @@ export function buildRestockEntries(
 }
 
 /**
+ * PII hygiene (audit P2): the digest goes to stdout/logs — emails are
+ * masked (first char + *** + domain) so a log reader can match requests
+ * without harvesting addresses.
+ */
+export function maskEmail(email: string): string {
+  const at = email.indexOf('@');
+  if (at <= 0) return '***';
+  return `${email[0]}***${email.slice(at)}`;
+}
+
+/**
  * Plain-text owner digest (no parse_mode, same reasoning as telegram.ts):
  *   Надійшли товари (2):
- *   • wc-x6647-04 — Шпалери 6647-04, 53см*10м (запитів: 3, emails: a@b.c, d@e.f)
+ *   • wc-x6647-04 — Шпалери 6647-04, 53см*10м (запитів: 3, emails: a***@b.c, d***@e.f)
  * Capped per RESTOCK_* constants; the message itself is hard-capped at
  * RESTOCK_MESSAGE_MAX (per-recipient Telegram failures never depend on it).
  */
@@ -970,8 +981,8 @@ export function buildRestockMessage(entries: readonly RestockDigestEntry[]): str
   for (const entry of shown) {
     const emailList =
       entry.emails.length <= RESTOCK_MAX_EMAILS_PER_PRODUCT
-        ? entry.emails.join(', ')
-        : `${entry.emails.slice(0, RESTOCK_MAX_EMAILS_PER_PRODUCT).join(', ')} +${entry.emails.length - RESTOCK_MAX_EMAILS_PER_PRODUCT}`;
+        ? entry.emails.map(maskEmail).join(', ')
+        : `${entry.emails.slice(0, RESTOCK_MAX_EMAILS_PER_PRODUCT).map(maskEmail).join(', ')} +${entry.emails.length - RESTOCK_MAX_EMAILS_PER_PRODUCT}`;
     const name = entry.name.length > 120 ? `${entry.name.slice(0, 120)}…` : entry.name;
     lines.push(`• ${entry.sku} — ${name} (запитів: ${entry.requestCount}, emails: ${emailList})`);
   }

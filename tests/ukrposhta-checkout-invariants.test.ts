@@ -201,7 +201,7 @@ test('CHECKOUT: the pre-payment disclaimer now describes the real LiqPay flow', 
   // 2026-09-12: the disclaimer is hidden when a pickup order pays cash at
   // the point (paymentIntent cash_on_pickup) — for every other path it
   // still describes the real LiqPay flow.
-  assert.match(FORM, /paymentIntent !== 'cash_on_pickup'/);
+  assert.match(FORM, /\!\(deliveryType === 'pickup' && paymentIntent === 'cash_on_pickup'\)/);
   assert.match(
     FORM,
     /Після оформлення замовлення ви зможете одразу сплатити його\s+онлайн через LiqPay\./
