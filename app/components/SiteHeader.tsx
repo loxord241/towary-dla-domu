@@ -36,6 +36,9 @@ export default function SiteHeader({
               <Link href="/catalog" className="text-gray-600 hover:text-blue-600">
                 Каталог
               </Link>
+              <Link href="/oboi" className="text-gray-600 hover:text-blue-600">
+                Шпалери
+              </Link>
             </nav>
           </div>
 

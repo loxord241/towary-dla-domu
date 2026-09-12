@@ -35,6 +35,7 @@ const MAX_LIST_ITEMS = 8;
 const DRAWER_CLOSE_MS = 300;
 
 const SHOP_LINKS = [
+  { href: '/oboi', label: 'Шпалери' },
   { href: '/about', label: 'Про нас' },
   { href: '/delivery', label: 'Доставка та оплата' },
   { href: '/returns', label: 'Повернення' },
