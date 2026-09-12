@@ -3,7 +3,8 @@
 // залить в Storage vizualizator-src/{slug}.png. Windows-машине тогда
 // не нужен Python/Pillow — она просто скачивает готовое.
 import { createClient } from '@supabase/supabase-js';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 for (const line of readFileSync('.env.local', 'utf8').split('\n')) {
   const m = line.match(/^([A-Z_]+)=(.*)$/);
   if (m && m[1] && m[2] !== undefined && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
@@ -16,11 +17,10 @@ for (const item of manifest) {
   const raw = `/tmp/viztex2/raw-${slug}.tmp`;
   const out = `/tmp/viztex2/${slug}.png`;
   try {
-    if (!require('node:fs').existsSync(out)) {
+    if (!existsSync(out)) {
       const res = await fetch(item.textureUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       writeFileSync(raw, Buffer.from(await res.arrayBuffer()));
-      const { execSync } = await import('node:child_process');
       execSync(`PYTHONPATH=/tmp/pylibs python3 /tmp/prep.py "${raw}" "${out}"`);
     }
     const body = readFileSync(out);
