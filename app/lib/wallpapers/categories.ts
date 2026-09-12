@@ -30,15 +30,20 @@ export interface WallpaperCategoryTarget {
  * CSV/staging rows). Values are the storefront name + slug.
  * Object order mirrors the 1С report order and is preserved by
  * `planCategoryUpsert` creates.
+ *
+ * 2026-09-12 (owner): «Метровые» REMOVED — the supplier's «метровые»
+ * subgroup must never become a storefront category again (the roll sizes
+ * live in the product names). Флізелін/Шовкографія carry the roll-size
+ * suffix (names match the DB rows — the importer never renames, a
+ * name-only drift would land in `conflicts` and stop linking).
  */
 export const WALLPAPER_CATEGORY_MAP: Record<string, WallpaperCategoryTarget> = {
   'Акрил': { name: 'Акрил', slug: 'shpaleri-akryl' },
   'Винил 10 м': { name: 'Вініл 10 м', slug: 'shpaleri-vinyl-10m' },
   'Винил 15 м': { name: 'Вініл 15 м', slug: 'shpaleri-vinyl-15m' },
   'Дуплекс': { name: 'Дуплекс', slug: 'shpaleri-duplex' },
-  'Метровые': { name: 'Метрові', slug: 'shpaleri-metrovi' },
-  'ФЛИЗЕЛИН': { name: 'Флізелін', slug: 'shpaleri-flizelin' },
-  'ШЕЛКОГРАФИЯ': { name: 'Шовкографія', slug: 'shpaleri-shovkografiya' },
+  'ФЛИЗЕЛИН': { name: 'Флізелін 1м:1.06м', slug: 'shpaleri-flizelin' },
+  'ШЕЛКОГРАФИЯ': { name: 'Шовкографія 1:0.6м', slug: 'shpaleri-shovkografiya' },
   'Мойка простая': { name: 'Мійка проста', slug: 'shpaleri-miika-prosta' },
   'Обои простые': { name: 'Прості шпалери', slug: 'shpaleri-prosti' },
   'Супермойка': { name: 'Супермійка', slug: 'shpaleri-supermiika' },

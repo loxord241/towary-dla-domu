@@ -20,9 +20,8 @@ const EXPECTED_MAP: Record<string, { name: string; slug: string }> = {
   'Винил 10 м': { name: 'Вініл 10 м', slug: 'shpaleri-vinyl-10m' },
   'Винил 15 м': { name: 'Вініл 15 м', slug: 'shpaleri-vinyl-15m' },
   Дуплекс: { name: 'Дуплекс', slug: 'shpaleri-duplex' },
-  Метровые: { name: 'Метрові', slug: 'shpaleri-metrovi' },
-  ФЛИЗЕЛИН: { name: 'Флізелін', slug: 'shpaleri-flizelin' },
-  ШЕЛКОГРАФИЯ: { name: 'Шовкографія', slug: 'shpaleri-shovkografiya' },
+  ФЛИЗЕЛИН: { name: 'Флізелін 1м:1.06м', slug: 'shpaleri-flizelin' },
+  ШЕЛКОГРАФИЯ: { name: 'Шовкографія 1:0.6м', slug: 'shpaleri-shovkografiya' },
   'Мойка простая': { name: 'Мійка проста', slug: 'shpaleri-miika-prosta' },
   'Обои простые': { name: 'Прості шпалери', slug: 'shpaleri-prosti' },
   Супермойка: { name: 'Супермійка', slug: 'shpaleri-supermiika' },
@@ -60,9 +59,9 @@ test('WALLPAPER-CATEGORIES: корень «Шпалери» / shpaleri', () => {
   assert.deepEqual(WALLPAPER_ROOT, { name: 'Шпалери', slug: 'shpaleri' });
 });
 
-test('WALLPAPER-CATEGORIES: маппинг полон — ровно 10 подгрупп отчёта 1С', () => {
+test('WALLPAPER-CATEGORIES: маппинг полон — ровно 9 подгрупп (2026-09-12: «Метрові» убрана владельцем)', () => {
   const keys = Object.keys(WALLPAPER_CATEGORY_MAP);
-  assert.equal(keys.length, 10);
+  assert.equal(keys.length, 9);
   assert.deepEqual([...keys].sort(), [...Object.keys(EXPECTED_MAP)].sort());
   // порядок = порядок отчёта 1С (детерминированный вывод плана)
   assert.deepEqual(keys, Object.keys(EXPECTED_MAP));
@@ -71,23 +70,23 @@ test('WALLPAPER-CATEGORIES: маппинг полон — ровно 10 подг
 test('WALLPAPER-CATEGORIES: uk-имена и slugs точно соответствуют списку', () => {
   assert.deepEqual(WALLPAPER_CATEGORY_MAP, EXPECTED_MAP);
   const slugs = Object.values(WALLPAPER_CATEGORY_MAP).map((c) => c.slug);
-  assert.equal(new Set(slugs).size, 10, 'slugs уникальны');
+  assert.equal(new Set(slugs).size, 9, 'slugs уникальны');
   assert.ok(!slugs.includes(WALLPAPER_ROOT.slug), 'slugs детей не пересекаются с корнем');
 });
 
-test('PLAN: пустая БД → 11 creates (корень + 10), links = {}, conflicts = []', () => {
+test('PLAN: пустая БД → 10 creates (корень + 9), links = {}, conflicts = []', () => {
   const plan = planCategoryUpsert([]);
   assert.deepEqual(plan.links, {});
   assert.deepEqual(plan.conflicts, []);
 
   // корень первый, parentSlug = null
-  assert.equal(plan.creates.length, 11);
+  assert.equal(plan.creates.length, 10);
   assert.deepEqual(plan.creates[0], {
     slug: 'shpaleri',
     name: 'Шпалери',
     parentSlug: null,
   });
-  // все 10 детей ссылаются на корень, в порядке отчёта 1С
+  // все 9 детей ссылаются на корень, в порядке отчёта 1С
   const children = plan.creates.slice(1);
   assert.deepEqual(
     children.map((c) => [c.slug, c.name, c.parentSlug]),
@@ -98,7 +97,7 @@ test('PLAN: пустая БД → 11 creates (корень + 10), links = {}, co
 test('PLAN: идемпотентность — повторный вызов после применения → creates = [], все links', () => {
   const first = planCategoryUpsert([]);
   const existing = simulateApply(first, 'cat');
-  assert.equal(existing.length, 11);
+  assert.equal(existing.length, 10);
 
   const second = planCategoryUpsert(existing);
   assert.deepEqual(second.creates, []);
@@ -113,21 +112,20 @@ test('PLAN: идемпотентность — повторный вызов п�
 test('PLAN: reuse — существующие slug+имя переиспользуются (регистр и ru-вариант)', () => {
   const existing: ExistingWallpaperCategory[] = [
     row('root-1', 'shpaleri', 'ШПАЛЕРИ', null), // регистр не важен
-    row('flz-1', 'shpaleri-flizelin', 'ФЛИЗЕЛИН', 'root-1'), // ключ 1С как есть
+    row('flz-1', 'shpaleri-flizelin', 'Флізелін 1м:1.06м', 'root-1'), // витринное имя
     row('vin-1', 'shpaleri-vinyl-10m', 'Винил 10 м', 'root-1'), // рус. написание
-    row('shv-1', 'shpaleri-shovkografiya', 'Шовкографія', 'root-1'), // uk витринное
+    row('shv-1', 'shpaleri-shovkografiya', 'Шовкографія 1:0.6м', 'root-1'), // витринное имя
   ];
   const plan = planCategoryUpsert(existing);
   assert.deepEqual(plan.conflicts, []);
-  // корень + 3 переиспользованных → создаём только 7 детей
-  assert.equal(plan.creates.length, 7);
+  // корень + 3 переиспользованных → создаём только 6 детей
+  assert.equal(plan.creates.length, 6);
   assert.deepEqual(
     plan.creates.map((c) => c.slug),
     [
       'shpaleri-akryl',
       'shpaleri-vinyl-15m',
       'shpaleri-duplex',
-      'shpaleri-metrovi',
       'shpaleri-miika-prosta',
       'shpaleri-prosti',
       'shpaleri-supermiika',
@@ -150,8 +148,8 @@ test('PLAN: конфликт — slug занят категорией с кар�
   // конфликтную категорию не трогаем: ни create, ни link
   assert.ok(!plan.creates.some((c) => c.slug === 'shpaleri-akryl'));
   assert.ok(!('Акрил' in plan.links));
-  // остальные 9 детей планируются как обычно
-  assert.equal(plan.creates.length, 9);
+  // остальные 8 детей планируются как обычно
+  assert.equal(plan.creates.length, 8);
   assert.equal(Object.keys(plan.links).length, 0);
 });
 
@@ -162,7 +160,7 @@ test('PLAN: конфликт корня — корень не трогаем, д
   const plan = planCategoryUpsert(existing);
   assert.deepEqual(plan.conflicts, ['shpaleri']);
   assert.ok(!plan.creates.some((c) => c.slug === 'shpaleri'));
-  assert.equal(plan.creates.length, 10);
+  assert.equal(plan.creates.length, 9);
 });
 
 test('PLAN: чистая функция — тот же вход даёт тот же план', () => {

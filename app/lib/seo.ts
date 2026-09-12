@@ -176,14 +176,19 @@ export const OBOI_CANONICAL_PATH = '/oboi';
 export function buildWallpapersMetadata(
   page = 1,
   /** Raw ?base= param: ANY present value (even '' or junk) → noindex. */
-  base?: string
+  base?: string,
+  /** Raw ?sort= param: ANY present value → noindex. The DEFAULT sort on
+      /oboi is alphabetical (owner 2026-09-12) — «/oboi» without params IS
+      the sorted view, so only explicit reorderings are duplicates. */
+  sort?: string
 ): ViewMetadata {
   const title = `Шпалери — купити в ${SITE_NAME}`;
   // Copy stays factual: the type list mirrors the wallpaper subcategory
-  // names the importer creates (app/lib/wallpapers/categories.ts).
-  const description = `Каталог шпалер інтернет-магазину ${SITE_NAME}: вініл, флізелін, дуплекс, метрові, шовкографія та інші типи — з доставкою по Україні.`;
+  // names the importer creates (app/lib/wallpapers/categories.ts);
+  // «метрові» removed 2026-09-12 together with the category.
+  const description = `Каталог шпалер інтернет-магазину ${SITE_NAME}: вініл, флізелін, дуплекс, шовкографія та інші типи — з доставкою по Україні.`;
 
-  if (page > 1 || base !== undefined) {
+  if (page > 1 || base !== undefined || (sort !== undefined && sort !== '')) {
     return {
       title,
       description,

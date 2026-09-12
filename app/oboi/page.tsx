@@ -4,6 +4,7 @@ import {
   fetchWallpaperProducts,
   fetchActiveCategories,
   CATALOG_PAGE_SIZE,
+  type CatalogSort,
 } from '@/app/lib/catalog'
 import { buildWallpapersMetadata } from '@/app/lib/seo'
 import { WALLPAPER_CATEGORY_MAP } from '@/app/lib/wallpapers/categories'
@@ -16,6 +17,7 @@ import Announcements from '@/app/components/Announcements'
 import ProductCard from '@/app/components/ProductCard'
 import EmptyState from '@/app/components/EmptyState'
 import { SearchIcon } from '@/app/components/icons'
+import OboiSortSelect from './SortSelect'
 
 // Wallpapers storefront (owner task 2026-09-10): /oboi renders ONLY the
 // wc-* domain (fetchWallpaperProducts) — the general /catalog excludes it.
@@ -57,14 +59,24 @@ const filterChipActiveClass = 'border-blue-600 bg-blue-600 text-white';
 const filterChipIdleClass =
   'border-gray-200 bg-gray-50 text-blue-700 hover:bg-blue-50';
 
-/** Filter links reset to page 1 (a new filter = a new result set). */
-function oboiFilterUrl(base: string | undefined): string {
-  return base ? `/oboi?base=${encodeURIComponent(base)}` : '/oboi';
-}
-
-function oboiPageUrl(targetPage: number, base: string | undefined): string {
+/** Filter links reset to page 1 (a new filter = a new result set). The
+    active sort is preserved — a filter narrows the SAME ordering. */
+function oboiFilterUrl(base: string | undefined, sort: string): string {
   const params = new URLSearchParams();
   if (base) params.set('base', base);
+  if (sort !== '') params.set('sort', sort);
+  const qs = params.toString();
+  return qs !== '' ? `/oboi?${qs}` : '/oboi';
+}
+
+function oboiPageUrl(
+  targetPage: number,
+  base: string | undefined,
+  sort: string
+): string {
+  const params = new URLSearchParams();
+  if (base) params.set('base', base);
+  if (sort !== '') params.set('sort', sort);
   if (targetPage > 1) params.set('page', String(targetPage));
   const qs = params.toString();
   return qs !== '' ? `/oboi?${qs}` : '/oboi';
@@ -84,17 +96,33 @@ function baseValueOf(rawBase: string | undefined): string | undefined {
   return rawBase && rawBase.trim() !== '' ? rawBase : undefined;
 }
 
+/** ?sort= whitelist; ABSENT → 'name_asc' — the DEFAULT wallpaper order is
+    alphabetical (owner 2026-09-12), so the bare canonical /oboi is the
+    sorted view. 'newest' = the in-stock-first contract, same as catalog. */
+const SORT_VALUES: readonly CatalogSort[] = [
+  'newest',
+  'price_asc',
+  'price_desc',
+  'name_asc',
+];
+
+function sortParamOf(rawParams: { sort?: string | string[] }): string {
+  const raw = firstParam(rawParams.sort);
+  return SORT_VALUES.includes(raw as CatalogSort) ? raw : '';
+}
+
 /** Indexable with canonical /oboi on page 1; deeper pages and spec-filtered
     views are noindex,follow duplicates (same policy as catalog — seo.ts). */
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: SearchParams
+  searchParams: SearchParams;
 }): Promise<Metadata> {
   const rawParams = await searchParams;
   return buildWallpapersMetadata(
     parsePageParam(rawParams.page),
-    baseParamOf(rawParams)
+    baseParamOf(rawParams),
+    sortParamOf(rawParams)
   );
 }
 
@@ -106,9 +134,16 @@ export default async function OboiPage({
   const rawParams = await searchParams;
   const page = parsePageParam(rawParams.page);
   const base = baseValueOf(baseParamOf(rawParams));
+  const sortParam = sortParamOf(rawParams);
 
   const [catalog, categories] = await Promise.all([
-    fetchWallpaperProducts({ page, size: CATALOG_PAGE_SIZE, base }),
+    fetchWallpaperProducts({
+      page,
+      size: CATALOG_PAGE_SIZE,
+      base,
+      // Default (absent ?sort=) IS the alphabetical order.
+      sort: (sortParam === '' ? 'name_asc' : sortParam) as CatalogSort,
+    }),
     fetchActiveCategories(),
   ]);
   const products = catalog.products;
@@ -130,6 +165,11 @@ export default async function OboiPage({
             <span className="text-sm text-gray-500">Знайдено: {total}</span>
           </div>
 
+          {/* Sort — default «Назва А–Я» (absent ?sort= IS alphabetical). */}
+          <div className="mb-4 flex items-center gap-2 justify-end">
+            <span className="text-sm text-gray-500">Сортування:</span>
+            <OboiSortSelect />
+          </div>
 
 
           {/* Subcategory chips — deep links into the wallpaper-scoped
@@ -158,7 +198,7 @@ export default async function OboiPage({
             <ul className="flex flex-wrap gap-2">
               <li>
                 <Link
-                  href={oboiFilterUrl(undefined)}
+                  href={oboiFilterUrl(undefined, sortParam)}
                   aria-current={base === undefined ? 'true' : undefined}
                   className={`${filterChipClass} ${
                     base === undefined
@@ -172,7 +212,7 @@ export default async function OboiPage({
               {WALLPAPER_BASE_VALUES.map((value) => (
                 <li key={value}>
                   <Link
-                    href={oboiFilterUrl(value)}
+                    href={oboiFilterUrl(value, sortParam)}
                     aria-current={base === value ? 'true' : undefined}
                     className={`${filterChipClass} ${
                       base === value ? filterChipActiveClass : filterChipIdleClass
@@ -217,7 +257,7 @@ export default async function OboiPage({
           {maxPage > 1 && (
             <nav className="mt-6 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
               {currentPage > 1 ? (
-                <Link href={oboiPageUrl(currentPage - 1, base)} className={paginationControlClass}>
+                <Link href={oboiPageUrl(currentPage - 1, base, sortParam)} className={paginationControlClass}>
                   ← Назад
                 </Link>
               ) : (
@@ -245,7 +285,7 @@ export default async function OboiPage({
                 ) : (
                   <Link
                     key={`page-${item}`}
-                    href={oboiPageUrl(item, base)}
+                    href={oboiPageUrl(item, base, sortParam)}
                     aria-label={`Сторінка ${item}`}
                     className={pageNumberLinkClass}
                   >
@@ -258,7 +298,7 @@ export default async function OboiPage({
                 <span className="text-gray-400"> · знайдено {total}</span>
               </span>
               {currentPage < maxPage ? (
-                <Link href={oboiPageUrl(currentPage + 1, base)} className={paginationControlClass}>
+                <Link href={oboiPageUrl(currentPage + 1, base, sortParam)} className={paginationControlClass}>
                   Далі →
                 </Link>
               ) : (
