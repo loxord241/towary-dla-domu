@@ -190,8 +190,12 @@ def image_mat(name, img_path, non_color=()):
     nt = mat.node_tree
     bsdf = nt.nodes["Principled BSDF"]
     img = bpy.data.images.load(img_path)
+    # Smart-интерполяция: при сильном минифицировании (мелкий узор на 4-м
+    # стене) Linear+денойз дают кашу, Smart сохраняет читаемость узора.
+    img.colorspace_settings.name = "sRGB"
     tex = nt.nodes.new("ShaderNodeTexImage")
     tex.image = img
+    tex.interpolation = "Smart"
     tex.extension = "REPEAT"
     return mat, nt, bsdf, tex, img
 
