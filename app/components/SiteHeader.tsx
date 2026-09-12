@@ -45,15 +45,28 @@ export default function SiteHeader({
           </form>
 
           <div className="flex items-center space-x-1">
-            <a
-              href="tel:+380973144221"
-              className="mr-2 hidden text-right text-sm leading-tight text-gray-600 hover:text-blue-600 md:block"
-            >
+            {/* Два номера менеджерів: кожен — окремий tel:, щоб тап
+                набирав саме цей номер. */}
+            <div className="mr-2 hidden text-right text-sm leading-tight text-gray-600 md:block">
               <span className="block text-xs text-gray-500">
-                Телефон для консультації
+                Телефони для консультації
               </span>
-              <span className="font-medium">+380 (97) 314 42 21</span>
-            </a>
+              <a
+                href="tel:+380973144221"
+                className="font-medium hover:text-blue-600"
+              >
+                +380 (97) 314 42 21
+              </a>
+              <span className="mx-1 text-gray-300" aria-hidden>
+                ·
+              </span>
+              <a
+                href="tel:+380983584958"
+                className="font-medium hover:text-blue-600"
+              >
+                +380 (98) 358 49 58
+              </a>
+            </div>
             {/* Мобільна іконка-телефон: компактний тап-таргет поруч з
                 бейджами, поки текстовий tel: схований за md. */}
             <a

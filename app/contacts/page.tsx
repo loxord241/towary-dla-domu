@@ -21,14 +21,21 @@ export default function Page() {
         </p>
         <p>{`Час роботи: 7:30–16:00`}</p>
         <p>
-          {`Телефон: `}
-          {/* Displayed number matches the header format; tel: makes it
+          {`Телефони: `}
+          {/* Displayed numbers match the header format; tel: makes each
               one-tap callable. */}
           <a
             href="tel:+380973144221"
             className="font-medium text-blue-600 hover:text-blue-800 hover:underline underline-offset-2"
           >
             {`+380 (97) 314 42 21`}
+          </a>
+          {`, `}
+          <a
+            href="tel:+380983584958"
+            className="font-medium text-blue-600 hover:text-blue-800 hover:underline underline-offset-2"
+          >
+            {`+380 (98) 358 49 58`}
           </a>
         </p>
         <p>

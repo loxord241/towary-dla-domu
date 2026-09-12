@@ -55,6 +55,13 @@ export default function Page() {
             >
               +380 (97) 314 42 21
             </a>
+            {`, `}
+            <a
+              href="tel:+380983584958"
+              className="whitespace-nowrap font-medium text-blue-600 hover:underline"
+            >
+              +380 (98) 358 49 58
+            </a>
           </p>
         </section>
       </div>
