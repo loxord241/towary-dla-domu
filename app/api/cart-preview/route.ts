@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getPublicImageUrl } from '@/app/lib/supabase-storage';
 import { enforceRateLimit } from '@/app/lib/rate-limit';
+import { assertSameOrigin } from '@/app/lib/request-origin';
 import type { CartPreviewLine, PreviewRequestItem } from '@/app/lib/cart-preview';
 
 /**
@@ -27,6 +28,13 @@ const UUID_RE =
 export async function POST(request: Request) {
   const limited = enforceRateLimit(request, 'cartPreview');
   if (limited) return limited;
+
+  // Same-origin gate (audit P1): a cross-site browser POST always carries
+  // an Origin that cannot match the deployment host — reject before any
+  // parse/DB work (see app/lib/request-origin.ts).
+  if (!assertSameOrigin(request)) {
+    return Response.json({ error: 'forbidden_origin' }, { status: 403 });
+  }
 
   let body: unknown;
   try {

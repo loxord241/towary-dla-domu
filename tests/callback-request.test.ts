@@ -273,6 +273,12 @@ const normalizeUaPhoneDigits = phoneMod.normalizeUaPhoneDigits;
       rlLoader
     )
     .replace(
+      /import\s*\{\s*assertSameOrigin\s*\}\s*from\s*'@\/app\/lib\/request-origin';/,
+      // Tests post without an Origin header — the real gate admits that
+      // (see tests/csrf-origin.test.ts for the gate's own coverage).
+      'const assertSameOrigin = (_request: unknown): boolean => true;'
+    )
+    .replace(
       /import\s*\{\s*normalizeUaPhoneDigits\s*\}\s*from\s*'@\/app\/lib\/phone';/,
       ''
     )

@@ -2,6 +2,7 @@ import { NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { orderAccessToken } from '@/app/lib/order-token';
 import { enforceRateLimit } from '@/app/lib/rate-limit';
+import { assertSameOrigin } from '@/app/lib/request-origin';
 import { sanitizeDelivery } from '@/app/lib/checkout-delivery';
 import { parseIdempotencyKey } from '@/app/lib/idempotency';
 import { sendTelegramOrderNotification } from '@/app/lib/notifications/telegram';
@@ -68,6 +69,13 @@ function sanitizeShippingInfo(raw: unknown): Record<string, string> | null {
 export async function POST(request: Request) {
   const limited = enforceRateLimit(request, 'orders');
   if (limited) return limited;
+
+  // Same-origin gate (audit P1): a cross-site browser POST always carries
+  // an Origin that cannot match the deployment host — reject before any
+  // parse/DB work (see app/lib/request-origin.ts).
+  if (!assertSameOrigin(request)) {
+    return Response.json({ error: 'forbidden_origin' }, { status: 403 });
+  }
 
   // F2 idempotency: optional Idempotency-Key header. Missing/empty keeps
   // the legacy path; an invalid key is rejected before any DB work. The

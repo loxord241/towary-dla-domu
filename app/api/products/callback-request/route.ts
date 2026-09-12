@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { enforceRateLimit } from '@/app/lib/rate-limit';
+import { assertSameOrigin } from '@/app/lib/request-origin';
 import { normalizeUaPhoneDigits } from '@/app/lib/phone';
 import { sendTelegramText } from '@/app/lib/notifications/telegram';
 
@@ -64,6 +65,13 @@ function serviceClient() {
 export async function POST(request: Request) {
   const limited = enforceRateLimit(request, 'callbackRequest');
   if (limited) return limited;
+
+  // Same-origin gate (audit P1): a cross-site browser POST always carries
+  // an Origin that cannot match the deployment host — reject before any
+  // parse/DB work (see app/lib/request-origin.ts).
+  if (!assertSameOrigin(request)) {
+    return Response.json({ error: 'forbidden_origin' }, { status: 403 });
+  }
 
   let body: unknown;
   try {
