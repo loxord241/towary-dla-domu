@@ -13,7 +13,8 @@ for (const line of readFileSync('.env.local', 'utf8').split('\n')) {
   if (m && m[1] && m[2] !== undefined && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
 }
 
-const BUCKET = 'product_images';
+// Отдельный публичный bucket (product_images принимает только картинки).
+const BUCKET = 'vizualizator';
 const PREFIX = 'vizualizator';
 const ROOMS = (process.argv[2] ?? '').split(',').filter(Boolean);
 if (ROOMS.length === 0) {
