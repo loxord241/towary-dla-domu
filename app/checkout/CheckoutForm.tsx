@@ -11,6 +11,7 @@ import {
 } from '@/app/lib/cart-preview';
 import { normalizeUaPhoneDigits, toE164Ua } from '@/app/lib/phone';
 import { formatPrice } from '@/app/lib/format';
+import { PICKUP_POINTS } from '@/app/lib/checkout-delivery';
 import { ANALYTICS_EVENTS } from '@/app/lib/analytics';
 import { track } from '@vercel/analytics';
 
@@ -68,18 +69,21 @@ type DeliveryType =
   | 'nova_poshta_warehouse'
   | 'nova_poshta_locker'
   | 'nova_poshta_courier'
-  | 'ukrposhta_warehouse';
+  | 'ukrposhta_warehouse'
+  | 'pickup';
 
 // Two-step delivery choice (2026-09 redesign of the flat 4-card grid):
 // first a carrier block («Нова Пошта» / «Укрпошта»), then — revealed under
 // the chosen block — a row of that carrier's service types. The final
-// submitted value is still one of the 4 DeliveryType service_types
-// (sanitizeDelivery contract unchanged).
-type Carrier = 'nova_poshta' | 'ukrposhta';
+// submitted value is still one of the DeliveryType service_types
+// (sanitizeDelivery contract unchanged). «Самовивіз» is a pseudo-carrier
+// with a single service type: no carrier dictionaries, just a point pick.
+type Carrier = 'nova_poshta' | 'ukrposhta' | 'pickup';
 
 const CARRIERS: { value: Carrier; label: string }[] = [
   { value: 'nova_poshta', label: 'Нова Пошта' },
   { value: 'ukrposhta', label: 'Укрпошта' },
+  { value: 'pickup', label: 'Самовивіз, Кривий Ріг' },
 ];
 
 // The ONLY place the carrier → service_type mapping lives. Keep in sync
@@ -95,7 +99,12 @@ const CARRIER_SERVICE_TYPES: Record<
     { value: 'nova_poshta_courier', label: 'Кур’єр' },
   ],
   ukrposhta: [{ value: 'ukrposhta_warehouse', label: 'Відділення' }],
+  pickup: [{ value: 'pickup', label: 'Заберу сам' }],
 };
+
+// Pickup payment intents (pickup only — carrier orders stay online-only
+// LiqPay after checkout). Server whitelist: PICKUP_PAYMENT_INTENTS.
+type PickupPaymentIntent = 'online' | 'cash_on_pickup';
 
 // Only these two Nova Post types load NP divisions; the Ukrposhta branch
 // uses its own settlement/office state against the /ukrposhta/* routes.
@@ -245,6 +254,9 @@ export default function CheckoutForm() {
   const [building, setBuilding] = useState('');
   const [flat, setFlat] = useState('');
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  // --- Самовивіз (Кривий Ріг) — no dictionaries, just point + payment ---
+  const [pickupPointId, setPickupPointId] = useState('');
+  const [paymentIntent, setPaymentIntent] = useState<PickupPaymentIntent>('online');
   // Separate debouncers: a shared ref let typing in one field cancel the
   // other field's in-flight debounce timer.
   const settlementDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -314,6 +326,21 @@ export default function CheckoutForm() {
   // silent 0.00 as if it were the real total (the server stays the pricing
   // authority — submit is NOT blocked, the user is just warned).
   const [previewError, setPreviewError] = useState(false);
+
+  // Домен кошика для самовивоза (власник 2026-09-12): шпалери (slug wc-*)
+  // видаються на Серафимовича 83А, техніка — на Мазепи 87А; змішаний кошик
+  // пропонує ОБИДВІ точки з попередженням. Поки превʼю не завантажено —
+  // безпечний дефолт: обидві.
+  const cartHasWallpapers = lines.some((l) => l.slug?.startsWith('wc-') === true);
+  // Всё, что не шпалеры (включая позиции без slug) — техника: точка Мазепы.
+  const cartHasTech = lines.some((l) => l.slug?.startsWith('wc-') !== true);
+  const availablePickupPoints = PICKUP_POINTS.filter((p) =>
+    lines.length === 0
+      ? true
+      : p.domains.includes('wallpaper')
+        ? cartHasWallpapers
+        : cartHasTech
+  );
 
   // Server-side prices for the summary panel (display only — place_order
   // remains the final pricing authority). Time-bounded fetch; a stalled
@@ -519,7 +546,21 @@ export default function CheckoutForm() {
 
   /** Strict delivery object for shipping_info.delivery; null when incomplete. */
   const deliveryObject = (): Record<string, unknown> | null => {
-    // Ukrposhta branch first: the NP gate below must not consume UP types.
+    // Pickup branch first: no carrier fields at all (server rejects them).
+    if (deliveryType === 'pickup') {
+      const point = availablePickupPoints.find((p) => p.id === pickupPointId);
+      if (!point) return null;
+      return {
+        serviceType: 'pickup',
+        settlementName: point.city,
+        pickupPointId: point.id,
+        // Server re-derives the display address from PICKUP_POINTS —
+        // the client value is informational only.
+        pickupPointName: `${point.city}, ${point.address}`,
+        paymentIntent,
+      };
+    }
+    // Ukrposhta branch: the NP gate below must not consume UP types.
     if (deliveryType === 'ukrposhta_warehouse') {
       if (!upSettlement || !upOffice) return null;
       const tail = [upOffice.postIndex, upOffice.address]
@@ -562,6 +603,10 @@ export default function CheckoutForm() {
   };
 
   const displayAddress = (): string => {
+    if (deliveryType === 'pickup') {
+      const point = availablePickupPoints.find((p) => p.id === pickupPointId);
+      return point ? `${point.city}, ${point.address}` : '';
+    }
     if (deliveryType === 'ukrposhta_warehouse') {
       if (!upSettlement || !upOffice) return '';
       const tail = [upOffice.postIndex, upOffice.address].filter(Boolean).join(', ');
@@ -628,9 +673,11 @@ export default function CheckoutForm() {
           ? carrier
             ? 'Оберіть тип доставки'
             : 'Оберіть спосіб доставки'
-          : deliveryType === 'nova_poshta_courier'
-            ? 'Оберіть місто та вулицю і вкажіть будинок'
-            : 'Оберіть відділення/поштомат'
+          : deliveryType === 'pickup'
+            ? 'Оберіть точку самовивоза'
+            : deliveryType === 'nova_poshta_courier'
+              ? 'Оберіть місто та вулицю і вкажіть будинок'
+              : 'Оберіть відділення/поштомат'
       );
       return;
     }
@@ -675,7 +722,10 @@ export default function CheckoutForm() {
             phone,
           },
           shipping: {
-            city: settlement?.name ?? '',
+            city:
+              deliveryType === 'pickup'
+                ? 'Кривий Ріг'
+                : settlement?.name ?? '',
             address: displayAddress(),
             notes,
             delivery,
@@ -968,10 +1018,84 @@ export default function CheckoutForm() {
               })}
             </div>
 
+            {/* Самовивіз: точки під обраний домен кошика + спосіб оплати.
+                Без довідників — статичний список PICKUP_POINTS; адресу
+                точки сервер ще раз виводить канонічно. */}
+            {deliveryType === 'pickup' && (
+              <div className="mt-3 space-y-3">
+                {cartHasWallpapers && cartHasTech && (
+                  <p
+                    className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+                    role="note"
+                  >
+                    У кошику товари обох напрямків — усе замовлення буде
+                    чекати на обраній точці.
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {availablePickupPoints.map((p) => {
+                    const selected = pickupPointId === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setPickupPointId(p.id)}
+                        aria-pressed={selected}
+                        className={`min-h-[44px] w-full rounded-md border px-3 py-2 text-left text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                          selected
+                            ? 'border-blue-600 bg-blue-50 font-medium text-blue-700'
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                        }`}
+                      >
+                        <span className="block">{p.address}</span>
+                        <span className="block text-xs text-gray-500">
+                          {p.city} · безкоштовно ·{' '}
+                          {p.domains.includes('wallpaper')
+                            ? 'шпалери'
+                            : 'техніка'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <fieldset>
+                  <legend className="mb-2 text-sm font-medium text-gray-700">
+                    Оплата
+                  </legend>
+                  <div className="space-y-2">
+                    <label className="flex min-h-[44px] items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm">
+                      <input
+                        type="radio"
+                        name="pickup-payment"
+                        value="online"
+                        checked={paymentIntent === 'online'}
+                        onChange={() => setPaymentIntent('online')}
+                        className="h-4 w-4 text-blue-600"
+                      />
+                      Карткою онлайн (LiqPay) після оформлення
+                    </label>
+                    <label className="flex min-h-[44px] items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm">
+                      <input
+                        type="radio"
+                        name="pickup-payment"
+                        value="cash_on_pickup"
+                        checked={paymentIntent === 'cash_on_pickup'}
+                        onChange={() => setPaymentIntent('cash_on_pickup')}
+                        className="h-4 w-4 text-blue-600"
+                      />
+                      Готівкою при отриманні на точці
+                    </label>
+                  </div>
+                </fieldset>
+              </div>
+            )}
+
             {/* Settlement — NP dictionary id is the identifier; the text is display only.
                 Rendered only once a Nova Post service type is chosen; the Ukrposhta
-                branch has its own city field. */}
-            {deliveryType !== '' && deliveryType !== 'ukrposhta_warehouse' && (
+                branch has its own city field. Pickup has no dictionaries at all. */}
+            {deliveryType !== '' &&
+              deliveryType !== 'ukrposhta_warehouse' &&
+              deliveryType !== 'pickup' && (
             <div className="relative mb-4">
               <label htmlFor="co-settlement" className="label">
                 Населений пункт *
@@ -1417,10 +1541,14 @@ export default function CheckoutForm() {
             />
           </div>
 
-          <p className="text-xs text-gray-400">
-            Після оформлення замовлення ви зможете одразу сплатити його онлайн
-            через LiqPay.
-          </p>
+          {/* LiqPay-подсказка не нужна, когда выбрана оплата наличными на
+              точке (самовывоз) — честное состояние для обоих путей. */}
+          {paymentIntent !== 'cash_on_pickup' && (
+            <p className="text-xs text-gray-400">
+              Після оформлення замовлення ви зможете одразу сплатити його
+              онлайн через LiqPay.
+            </p>
+          )}
 
           <button
             type="submit"
@@ -1531,7 +1659,11 @@ export default function CheckoutForm() {
                  </div>
                  <div className="flex justify-between text-gray-600">
                    <dt>Доставка</dt>
-                   <dd>за тарифами перевізника</dd>
+                   <dd>
+                     {deliveryType === 'pickup'
+                       ? 'Безкоштовно (самовивіз)'
+                       : 'за тарифами перевізника'}
+                   </dd>
                  </div>
                  <div className="flex justify-between pt-1 text-base font-bold text-gray-900">
                    <dt>До сплати</dt>

@@ -2,12 +2,13 @@
  * Checkout carrier-select contract (2026-09 redesign).
  *
  * The flat 4-card delivery grid («Нова Пошта — Відділення / — Поштомат /
- * — Кур’єр / Укрпошта — Відділення») was replaced by 2 carrier blocks
- * («Нова Пошта», «Укрпошта»); clicking a block reveals its service-type
- * buttons directly underneath. Static pins (node:test cannot mount JSX —
+ * — Кур’єр / Укрпошта — Відділення») was replaced by carrier blocks
+ * («Нова Пошта», «Укрпошта», з 2026-09-12 — «Самовивіз, Кривий Ріг»);
+ * clicking a block reveals its service-type buttons directly underneath.
+ * Static pins (node:test cannot mount JSX —
  * the established CheckoutForm pattern):
  *
- *   - exactly 2 carrier blocks;
+ *   - exactly 3 carrier blocks;
  *   - Nova Post sub-buttons map exactly to
  *     nova_poshta_{warehouse,locker,courier}, Ukrposhta — to
  *     ukrposhta_warehouse (sanitizeDelivery contract untouched);
@@ -41,18 +42,19 @@ function fnBody(name: string): string {
 }
 
 // ------------------------------------------------------------------
-// Exactly 2 carrier blocks
+// Exactly 3 carrier blocks (Нова Пошта / Укрпошта / Самовивіз)
 // ------------------------------------------------------------------
 
-test('CARRIER: exactly two carrier blocks — Нова Пошта and Укрпошта', () => {
+test('CARRIER: exactly three carrier blocks — Нова Пошта, Укрпошта, Самовивіз', () => {
   const start = FORM.indexOf('const CARRIERS');
   const end = FORM.indexOf('];', start);
   const carriers = FORM.slice(start, end);
   assert.match(carriers, /value: 'nova_poshta', label: 'Нова Пошта'/);
   assert.match(carriers, /value: 'ukrposhta', label: 'Укрпошта'/);
-  // exactly two entries, no others
-  assert.equal((carriers.match(/value: '/g) ?? []).length, 2);
-  // a single render site drives both blocks
+  assert.match(carriers, /value: 'pickup', label: 'Самовивіз, Кривий Ріг'/);
+  // exactly three entries, no others
+  assert.equal((carriers.match(/value: '/g) ?? []).length, 3);
+  // a single render site drives all blocks
   assert.equal((FORM.match(/toggleCarrier\(c\.value\)/g) ?? []).length, 1);
 });
 
@@ -65,7 +67,7 @@ test('CARRIER: Nova Post sub-buttons map exactly to warehouse/locker/courier', (
   const end = FORM.indexOf('\n};', start);
   const mapping = FORM.slice(start, end);
   const np = mapping.slice(mapping.indexOf('nova_poshta: ['), mapping.indexOf('ukrposhta: ['));
-  const up = mapping.slice(mapping.indexOf('ukrposhta: ['));
+  const up = mapping.slice(mapping.indexOf('ukrposhta: ['), mapping.indexOf('pickup: ['));
   assert.match(np, /value: 'nova_poshta_warehouse', label: 'Відділення'/);
   assert.match(np, /value: 'nova_poshta_locker', label: 'Поштомат'/);
   assert.match(np, /value: 'nova_poshta_courier', label: 'Кур’єр'/);
@@ -73,7 +75,11 @@ test('CARRIER: Nova Post sub-buttons map exactly to warehouse/locker/courier', (
   // Ukrposhta exposes exactly one service type
   assert.match(up, /value: 'ukrposhta_warehouse', label: 'Відділення'/);
   assert.equal((up.match(/value: '/g) ?? []).length, 1, 'UP has exactly 1 service type');
-  // the 4 service_types are unchanged (sanitizeDelivery contract)
+  // Pickup exposes exactly one «Заберу сам» (no dictionaries — point pick)
+  const pickup = mapping.slice(mapping.indexOf('pickup: ['));
+  assert.match(pickup, /value: 'pickup', label: 'Заберу сам'/);
+  assert.equal((pickup.match(/value: '/g) ?? []).length, 1, 'pickup has exactly 1 service type');
+  // the carrier service_types are unchanged (sanitizeDelivery contract)
   assert.doesNotMatch(FORM, /ukrposhta_courier/);
 });
 

@@ -84,10 +84,19 @@ const SERVICE_LABELS: Record<string, string> = {
   nova_poshta_warehouse: 'Нова Пошта — відділення',
   nova_poshta_locker: 'Нова Пошта — поштомат',
   nova_poshta_courier: 'Нова Пошта — кур’єр',
+  ukrposhta_warehouse: 'Укрпошта — відділення',
+  pickup: 'Самовивіз',
 };
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+/** Cash-on-pickup intent from shipping_info.delivery (pickup orders only). */
+export function deliveryPaymentIntent(
+  delivery: Record<string, unknown> | null
+): string {
+  return asString(delivery?.paymentIntent);
 }
 
 /** Human-readable delivery line from shipping_info.delivery (or null). */
@@ -95,6 +104,18 @@ export function describeDelivery(delivery: Record<string, unknown> | null): stri
   if (!delivery) return 'не вказано';
   const parts: string[] = [];
   const serviceType = asString(delivery.serviceType);
+  // Pickup: the canonical point name already carries «місто, адреса».
+  if (serviceType === 'pickup') {
+    parts.push(SERVICE_LABELS[serviceType] ?? 'Самовивіз');
+    const point = asString(delivery.pickupPointName);
+    if (point) {
+      parts.push(point);
+    } else {
+      const settlement = asString(delivery.settlementName);
+      if (settlement) parts.push(settlement);
+    }
+    return parts.join(', ');
+  }
   parts.push(SERVICE_LABELS[serviceType] ?? 'Нова Пошта');
   const settlement = asString(delivery.settlementName);
   if (settlement) parts.push(settlement);
@@ -129,7 +150,13 @@ export function buildOrderNotificationMessage(
   lines.push(`№: ${data.orderNumber}`);
   lines.push(`Сума: ${formatPrice(data.total, data.currency)}`);
   lines.push(
-    `Оплата: ${data.paymentMethod ? data.paymentMethod : 'не вибрано (після оформлення)'}`
+    `Оплата: ${
+      data.paymentMethod
+        ? data.paymentMethod
+        : deliveryPaymentIntent(data.delivery) === 'cash_on_pickup'
+          ? 'готівка при отриманні (на точці самовивоза)'
+          : 'не вибрано (після оформлення)'
+    }`
   );
   lines.push(`Доставка: ${describeDelivery(data.delivery)}`);
   lines.push('');

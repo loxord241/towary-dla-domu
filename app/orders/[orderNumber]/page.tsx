@@ -93,12 +93,15 @@ export default async function GuestOrderViewPage({
   const orderRes = await supabase
     .from('orders')
     .select(
-      'id, order_number, status, payment_status, subtotal, shipping_total, total_amount, currency, created_at, updated_at'
+      'id, order_number, status, payment_status, subtotal, shipping_total, total_amount, currency, created_at, updated_at, shipping_info'
     )
     .eq('order_number', orderNumber)
     .maybeSingle();
 
-  const orderData = (orderRes.data ?? null) as (OrderRow & { id: string }) | null;
+  const orderData = (orderRes.data ?? null) as (OrderRow & {
+    id: string;
+    shipping_info: unknown;
+  }) | null;
   if (!orderData) {
     return <NotFound />;
   }
@@ -129,6 +132,17 @@ export default async function GuestOrderViewPage({
   const pendingStale =
     order.payment_status === 'pending' && isPendingAttemptStale(orderData.updated_at);
 
+  // Самовивіз з оплатою на місці: LiqPay-кнопка не показується взагалі —
+  // оплата відбувається готівкою на точці видачі (намір їде в
+  // shipping_info.delivery.paymentIntent, санитайзер whitelist-ить значення).
+  const shippingInfo = orderData.shipping_info as Record<string, unknown> | null;
+  const deliveryInfo =
+    shippingInfo && typeof shippingInfo === 'object'
+      ? (shippingInfo.delivery as Record<string, unknown> | null)
+      : null;
+  const cashOnPickup =
+    deliveryInfo?.paymentIntent === 'cash_on_pickup';
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="card mx-auto max-w-xl overflow-hidden">
@@ -148,15 +162,21 @@ export default async function GuestOrderViewPage({
         </div>
 
         <div className="px-6 pb-4">
-          {(order.payment_status === 'unpaid' ||
-            order.payment_status === 'failed' ||
-            pendingStale) && (
+          {cashOnPickup && (
+            <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-800">
+              Оплата при отриманні: готівкою на точці самовивоза.
+            </div>
+          )}
+          {!cashOnPickup &&
+            (order.payment_status === 'unpaid' ||
+              order.payment_status === 'failed' ||
+              pendingStale) && (
             <PayWithLiqPayButton
               orderNumber={order.order_number}
               accessToken={typeof t === 'string' ? t : ''}
             />
           )}
-          {order.payment_status === 'pending' && (
+          {!cashOnPickup && order.payment_status === 'pending' && (
             <div className={`rounded-lg bg-amber-50 p-4 text-sm ${pendingStale ? 'mt-3' : ''}`}>
               <p className="font-semibold text-amber-900">Оплату обробляється</p>
               {pendingStale && (
