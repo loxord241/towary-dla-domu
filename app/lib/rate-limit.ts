@@ -139,6 +139,14 @@ export const RATE_RULES = {
   // of attempts at most (a typo retry), so a tight burst over a 10-minute
   // window; no hourly ceiling — the valid-email gate already bounds abuse.
   restockNotify: [{ max: 5, windowMs: 10 * 60_000 }],
+  // callback request («Передзвоніть мені», PDP): every ACCEPTED request
+  // pings the owner's Telegram directly (v1 — no table, no queue), so it is
+  // tighter than restockNotify — a 3-per-10-min burst (typo retry headroom)
+  // plus an hourly ceiling.
+  callbackRequest: [
+    { max: 3, windowMs: 10 * 60_000 },
+    { max: 8, windowMs: 60 * 60_000 },
+  ],
   // read-only catalog preview: generous, abuse-only ceiling
   cartPreview: [{ max: 120, windowMs: 60_000 }],
   // search autocomplete (GET /api/search/suggest): a typing user fires a

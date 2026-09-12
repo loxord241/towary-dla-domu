@@ -15,6 +15,7 @@ import ProductSpecifications from '@/app/components/ProductSpecifications'
 import ProductReviews from '@/app/components/ProductReviews'
 import RollCalculator from '@/app/components/RollCalculator'
 import RestockNotify from '@/app/components/RestockNotify'
+import CallbackRequest from '@/app/components/CallbackRequest'
 import { parseRollSize } from '@/app/lib/wallpapers/parse'
 import RecentProducts from '@/app/components/RecentProducts'
 import RecentlyViewedTracker from '@/app/components/RecentlyViewedTracker'
@@ -369,6 +370,11 @@ export default async function ProductPage({
             {product.availability_status === 'out_of_stock' && (
               <RestockNotify productId={product.id} />
             )}
+
+            {/* «Передзвоніть мені» — для КОЖНОГО товару (без гейта
+                availability: консультація потрібна і «в наявності»).
+                v1: ім'я + телефон → Telegram власнику, нічого не зберігаємо. */}
+            <CallbackRequest productId={product.id} />
 
             {/* Калькулятор рулонів — для КОЖНОЇ шпалери (wc-*). rollSize=null
                 (розміру немає в назві 1С) не ховає блок: покупець обирає
