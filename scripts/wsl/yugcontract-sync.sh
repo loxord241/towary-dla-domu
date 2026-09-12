@@ -18,18 +18,28 @@
 # scripts/wsl/install-yugcontract-timer.sh) or manually.
 #
 # Exit codes:
-#   0   sync OK (or skipped because another sync is already running)
-#   1   importer exited non-zero (propagated)
-#   2   node not found
-#   3   node too old (need v24+, native TS support)
-#   4   .env.local missing in repo root
-#   5   importer script missing
-#   6  cannot cd into repo root
-#   10  cannot create logs dir
+#   0    sync OK (or skipped: another sync is running, or the importer's 48h
+#        DB gate skipped the products phase — gate skips never stamp success)
+#   1    importer exited non-zero (propagated)
+#   2    node not found
+#   3    node too old (need v24+, native TS support)
+#   4    .env.local missing in repo root
+#   5    importer script missing
+#   6    cannot cd into repo root
+#   7    coreutils 'timeout' not found
+#   10   cannot create logs dir
+#   124  a phase exceeded its hard timeout and was killed (GNU timeout code);
+#        explicit log message + non-zero exit so systemd OnFailure / CI callers
+#        see the failure instead of a hung flock
 #
 # Usage: yugcontract-sync.sh [--force]
 #   --force bypasses the 48h interval gate (explicit owner request); flock,
 #   logging and all other guards still apply. Default keeps the gate.
+#
+# Timeouts: every importer phase runs under `timeout` (default 30m, override
+# with YUGCONTRACT_SYNC_TIMEOUT_SECS). A full sync takes minutes (see
+# docs/wsl-sync.md §7); 30m leaves a wide margin while guaranteeing the flock
+# is eventually released.
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -103,21 +113,63 @@ echo "[yugcontract-sync] log: $LOG"
 # Defensive scrub so no env-like or token-bearing line can reach the log/journal.
 set -o pipefail
 log_pipe() {
+    # Optional $1: extra capture file (receives ONLY redacted lines) so the
+    # launcher can inspect phase output without re-reading the daily log.
     awk '{
         if ($0 ~ /^[A-Z0-9_]+[ \t]*=/) print "[redacted env-like line]";
         else if (tolower($0) ~ /requesttoken|authtoken|authorization|bearer[[:space:]]|token=|bot[0-9]+:/) print "[redacted token-bearing line]";
         else print;
-    }' | tee -a "$LOG"
+    }' | tee -a "$LOG" "${1:-/dev/null}"
 }
 
-node scripts/yugcontract-import-run.ts --run ${FORCE:+--force} 2>&1 | log_pipe
+# Hard per-phase timeout. Without it a hung importer kept the flock forever
+# and every later trigger silently exited 0 (owner never learned the sync was
+# stuck). 1800s default: a full sync takes minutes (docs/wsl-sync.md §7), so
+# 30m is a wide margin. `timeout` exits 124 when it kills the process.
+SYNC_TIMEOUT_SECS="${YUGCONTRACT_SYNC_TIMEOUT_SECS:-1800}"
+command -v timeout >/dev/null 2>&1 || { echo "[yugcontract-sync] FAILED: coreutils 'timeout' not found (needed for the per-phase timeout guard)"; exit 7; }
+run_phase() {
+    # run_phase <capture-file> <cmd...> — streams output through log_pipe and
+    # returns the command's own exit code (124 on timeout).
+    local capture="$1"; shift
+    timeout "$SYNC_TIMEOUT_SECS" "$@" 2>&1 | log_pipe "$capture"
+    return "${PIPESTATUS[0]}"
+}
 
-RC=${PIPESTATUS[0]}
+# Phase timed out → loud, non-zero failure (systemd OnFailure / CI see it).
+phase_timeout_exit() {
+    echo "[yugcontract-sync] FAILED: $1 TIMED OUT after ${SYNC_TIMEOUT_SECS}s and was killed"
+    echo "[yugcontract-sync] (a hung run used to hold the flock forever; the next trigger would silently skip)"
+    echo "[yugcontract-sync] crashed runs can be resumed with:"
+    echo "    $2"
+    exit 124
+}
+
+# The importer's 48h DB gate prints this marker and exits 0 WITHOUT doing any
+# work (scripts/yugcontract-import-run.ts). The last-success stamp must NOT be
+# refreshed for such runs, otherwise the real working-sync interval stretches
+# to ~4 days (stamp re-arms 47h + DB gate another 47h).
+GATE_SKIP_MARKER='skipping (< 48h interval):'
+CAPTURE="$(mktemp "$LOGS/.yugcontract-sync-capture.XXXXXX")"
+trap 'rm -f "$CAPTURE"' EXIT
+
+run_phase "$CAPTURE" node scripts/yugcontract-import-run.ts --run ${FORCE:+--force}
+
+RC=$?
+if [ "$RC" -eq 124 ]; then
+    phase_timeout_exit "products importer" "node scripts/yugcontract-import-run.ts --run --resume <RUN_ID from log>"
+fi
 if [ "$RC" -ne 0 ]; then
     echo "[yugcontract-sync] importer exited with code $RC"
     echo "[yugcontract-sync] crashed runs can be resumed with:"
     echo "    node scripts/yugcontract-import-run.ts --run --resume <RUN_ID from log>"
     exit "$RC"
+fi
+
+GATE_SKIPPED=0
+if grep -qF "$GATE_SKIP_MARKER" "$CAPTURE"; then
+    GATE_SKIPPED=1
+    echo "[yugcontract-sync] products phase skipped by the importer's 48h DB gate — last-success stamp will NOT be updated"
 fi
 
 # --- content phase (description + specifications) ------------------------------
@@ -132,8 +184,11 @@ fi
 # stale snapshot on top of a failed refresh. Products phase failure above
 # already exits before this point.
 echo "[yugcontract-sync] content phase: fetch --stage"
-node scripts/yugcontract-content-fetch.ts --stage 2>&1 | log_pipe
-FETCH_RC=${PIPESTATUS[0]}
+run_phase /dev/null node scripts/yugcontract-content-fetch.ts --stage
+FETCH_RC=$?
+if [ "$FETCH_RC" -eq 124 ]; then
+    phase_timeout_exit "content fetch" "node scripts/yugcontract-content-fetch.ts --stage"
+fi
 if [ "$FETCH_RC" -ne 0 ]; then
     echo "[yugcontract-sync] content fetch exited with code $FETCH_RC — apply skipped"
     echo "[yugcontract-sync] (products/price phase above DID complete; content will retry on the next sync)"
@@ -141,8 +196,11 @@ if [ "$FETCH_RC" -ne 0 ]; then
 fi
 
 echo "[yugcontract-sync] content phase: apply --run"
-node scripts/yugcontract-content-apply.ts --run 2>&1 | log_pipe
-APPLY_RC=${PIPESTATUS[0]}
+run_phase /dev/null node scripts/yugcontract-content-apply.ts --run
+APPLY_RC=$?
+if [ "$APPLY_RC" -eq 124 ]; then
+    phase_timeout_exit "content apply" "node scripts/yugcontract-content-apply.ts --run --resume <RUN_ID from log>"
+fi
 if [ "$APPLY_RC" -ne 0 ]; then
     echo "[yugcontract-sync] content apply exited with code $APPLY_RC"
     echo "[yugcontract-sync] crashed content runs can be resumed with:"
@@ -160,8 +218,11 @@ fi
 # image URLs come from must be a fresh snapshot. Products/content phase
 # failures above already exit before this point.
 echo "[yugcontract-sync] images phase: content-images --run"
-node scripts/yugcontract-content-images.ts --run 2>&1 | log_pipe
-IMAGES_RC=${PIPESTATUS[0]}
+run_phase /dev/null node scripts/yugcontract-content-images.ts --run
+IMAGES_RC=$?
+if [ "$IMAGES_RC" -eq 124 ]; then
+    phase_timeout_exit "images importer" "node scripts/yugcontract-content-images.ts --run --resume <RUN_ID from log>"
+fi
 if [ "$IMAGES_RC" -ne 0 ]; then
     echo "[yugcontract-sync] images importer exited with code $IMAGES_RC"
     echo "[yugcontract-sync] (products/content phases above DID complete; images will retry on the next sync)"
@@ -170,9 +231,16 @@ if [ "$IMAGES_RC" -ne 0 ]; then
     exit "$IMAGES_RC"
 fi
 
-# stamp success for the 48h interval guard — only when ALL phases succeeded
-# (failed runs are NOT stamped, so the next daily trigger will retry; the
+# Stamp success for the 48h interval guard — ONLY when the products import
+# actually RAN and all phases succeeded. A run skipped by the importer's 48h
+# DB gate did no work; stamping it would re-arm the local gate from "now" and
+# stretch the real working-sync interval to ~4 days (47h stamp + 47h DB gate).
+# Failed runs are also NOT stamped, so the next daily trigger will retry (the
 # products re-run is diff-aware and costs ~2 min).
+if [ "$GATE_SKIPPED" -eq 1 ]; then
+    echo "[yugcontract-sync] done OK (products phase was 48h-gate-skipped; last-success stamp NOT updated)"
+    exit 0
+fi
 date +%s > "$LAST_STAMP"
 echo "[yugcontract-sync] done OK"
 exit 0

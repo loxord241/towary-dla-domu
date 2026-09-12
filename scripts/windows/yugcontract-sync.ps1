@@ -104,15 +104,15 @@ try {
 $ErrorActionPreference = 'Continue'
 $importerArgs = @('--run')
 if ($Force) { $importerArgs += '--force' }
-& node $importer @importerArgs 2>&1 |
+$importerOutput = & node $importer @importerArgs 2>&1 |
     ForEach-Object {
         $line = "$_"
         # defensive scrub: never let env-like or token-bearing lines reach the log
         if ($line -match '^\s*[A-Z0-9_]+\s*=') { '[redacted env-like line]' }
         elseif ($line -match '(?i)requestToken|authToken|Authorization|bearer\s|token=|bot\d+:') { '[redacted token-bearing line]' }
         else { $line }
-    } | Tee-Object -FilePath $logPath -Append | Out-String -Width 4096 |
-    Write-Output
+    } | Tee-Object -FilePath $logPath -Append | Out-String -Width 4096
+Write-Output $importerOutput
 
 $importerExit = $LASTEXITCODE
 $ErrorActionPreference = 'Stop'
@@ -121,6 +121,12 @@ if ($importerExit -ne 0) {
     Write-Output ("[yugcontract-sync] importer exited with code " + $importerExit)
     Write-Output "[yugcontract-sync] if the failure is a crashed run, resume manually with:"
     Write-Output "    node scripts/yugcontract-import-run.ts --run --resume <RUN_ID from log>"
+} elseif ($importerOutput -match [regex]::Escape('skipping (< 48h interval):')) {
+    # The importer exited 0 because its 48h DB gate skipped the run — NO work
+    # was done. Stamping anyway would re-arm the 47h gate from "now" and
+    # stretch the real working-sync interval to ~4 days, so the stamp is
+    # intentionally left untouched (mirrors scripts/wsl/yugcontract-sync.sh).
+    Write-Output "[yugcontract-sync] done (48h DB gate skipped the run - success stamp NOT updated)"
 } else {
     # Stamp the success time for the 48h gate (wall-clock based).
     Set-Content -LiteralPath $stampPath -Value ([DateTimeOffset]::Now.ToUnixTimeSeconds())
