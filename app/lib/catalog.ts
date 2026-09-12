@@ -5,8 +5,6 @@ import { cache } from 'react';
 import { collectSubtreeIds } from './category-tree.ts';
 import { WALLPAPER_CATEGORY_MAP, WALLPAPER_ROOT } from './wallpapers/categories.ts';
 import { WALLPAPER_BASE_SPEC_NAME } from './wallpapers/filters.ts';
-import { parseRollSize } from './wallpapers/parse.ts';
-import { getPublicImageUrl } from './supabase-storage.ts';
 
 // unstable_cache is resolved dynamically: the bare 'next/cache' specifier
 // does not resolve under plain-node ESM (no ./cache subpath in next's
@@ -2237,66 +2235,3 @@ const fetchRelatedProductsStore = cachePublicRead(
     return collectRelated([sameCategory, sameBrand, newest], identity.id, limit);
   }
 );
-
-
-
-// ---------------------------------------------------------------------------
-// /vizualizator — образцы шпалер для страницы-примерочной (бриф владельца
-// 2026-09-11: «выбираешь — и они сами клеятся», без ручек и калькулятора).
-
-export interface WallpaperSwatch {
-  slug: string;
-  name: string;
-  price: number;
-  currency: string;
-  imageUrl: string;
-  /** Ширина рулона из названия; null — название размер не указывает (53). */
-  rollWidthCm: 53 | 106 | null;
-}
-
-/**
- * Активные wc-* с фото — самый тонкий срез для панели образцов:
- * главное фото (is_main, затем sort_order), имя, цена, ширина рулона.
- */
-export async function fetchWallpaperSwatches(): Promise<WallpaperSwatch[]> {
-  const { data, error } = await supabase
-    .from('products')
-    .select(
-      'slug, name, price, currency, images:product_images!inner(image_url, is_main, sort_order)',
-    )
-    .like('sku', WALLPAPER_SKU_LIKE)
-    .eq('is_active', true)
-    .order('name', { ascending: true })
-    .order('id', { ascending: true })
-    .limit(500);
-
-  if (error) {
-    throw new Error(`Failed to load wallpaper swatches: ${error.message}`);
-  }
-
-  const rows = (data ?? []) as {
-    slug: string;
-    name: string;
-    price: number;
-    currency: string;
-    images: { image_url: string; is_main: boolean | null; sort_order: number | null }[];
-  }[];
-
-  return rows
-    .map((row) => {
-      const sorted = [...(row.images ?? [])].sort(
-        (a, b) =>
-          Number(b.is_main ?? false) - Number(a.is_main ?? false) ||
-          (a.sort_order ?? 0) - (b.sort_order ?? 0),
-      );
-      return {
-        slug: row.slug,
-        name: row.name,
-        price: row.price,
-        currency: row.currency,
-        imageUrl: getPublicImageUrl(sorted[0]?.image_url ?? '') ?? '',
-        rollWidthCm: parseRollSize(row.name)?.widthCm ?? null,
-      };
-    })
-    .filter((swatch) => swatch.imageUrl !== '');
-}

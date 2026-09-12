@@ -373,9 +373,8 @@ export default async function ProductPage({
             {/* Калькулятор рулонів — для КОЖНОЇ шпалери (wc-*). rollSize=null
                 (розміру немає в назві 1С) не ховає блок: покупець обирає
                 розмір у select вручну — нічого не вгадується. */}
-            {/* id="roll-calculator" — якір для майбутнього зв'язку з примерочною
-                (сторінка в переробці). Умова монтування лишається ВСЕРЕДИНІ обгортки:
-                статичний пін roll-calculator-тесту матчить блок дослівно. */}
+            {/* Статический пин roll-calculator-тесту матчить блок дослівно:
+                обгортка id="roll-calculator" + умова всередині. */}
             <div id="roll-calculator">
               {isWallpaper && (
                 <RollCalculator productId={product.id} rollSize={rollSize} />
