@@ -39,6 +39,21 @@ test('VISIBILITY: catalog head-count mirrors the eligibility join', () => {
     /\.select\(\s*\n?\s*categoryId \? JUNCTION_COUNT_SELECT : ELIGIBLE_COUNT_SELECT,/,
     'count-запрос каталога должен использовать тот же eligibility join, иначе total не сойдётся с выдачей'
   );
+  // Perf 2026-09-13: the merged no-search request must mirror the SAME
+  // eligibility join — CATALOG_CARD_SELECT carries product_images!inner,
+  // and its exact-count total replaces the head-count (no inflation for
+  // one-to-many inner joins, verified in shared.ts).
+  assert.match(
+    body,
+    /withCount \? \{ count: 'exact' as const \} : undefined/,
+    'merged request must request the exact total'
+  );
+  const mergedBody = body.slice(body.indexOf('const buildDataQuery'));
+  assert.match(
+    mergedBody,
+    /CATALOG_CARD_SELECT[\s\S]{0,200}?pc:product_categories!inner\(category_id\)/,
+    'merged select must keep both the eligibility join and the junction embed'
+  );
 });
 
 test('VISIBILITY: direct slug inherits the filter (hidden → notFound)', () => {

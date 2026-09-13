@@ -175,7 +175,11 @@ const server = http.createServer((req, res) => {
 
   const matched = applyOrder(matchRows(entry.or), entry.order);
 
-  if (entry.method === 'HEAD' || entry.prefer.includes('count=exact')) {
+  // Only HEAD is a count-only request. Perf 2026-09-13: the merged
+  // count+data GET also carries `Prefer: count=exact` — real PostgREST
+  // returns the page rows AND the exact total (Content-Range) for it, so
+  // this fake must do the same instead of collapsing it to a count.
+  if (entry.method === 'HEAD') {
     res.writeHead(200, { 'Content-Range': `*/${matched.length}` });
     res.end();
     return;
@@ -468,11 +472,17 @@ test('RANK: match set wider than the scan cap keeps plain recency order', async 
   assert.notEqual(page.products[0]?.id, 'bulk-exact');
 });
 
-test('RANK: no search → non-search path untouched (recency order)', async () => {
+test('RANK: no search → merged single request, page-sized window, recency order', async () => {
   const before = reqLog.length;
   const page = await fetchCatalogProducts({});
-  const dataCall = dataCalls(before)[0];
-  assert.ok(dataCall !== undefined, 'data request must be logged');
-  assert.equal(dataCall.limit, 12); // page-sized window, not a scan
-  assert.equal(page.products[0]?.id, 't2'); // newest first
+  // Perf 2026-09-13: the no-search path is ONE merged count+data request
+  // (Prefer: count=exact + page window), not a head-count + data pair.
+  const requests = reqLog.slice(before);
+  assert.equal(requests.length, 1, 'one merged count+data request');
+  const merged = requests[0];
+  assert.ok(merged !== undefined, 'request must be logged');
+  assert.ok(merged.prefer.includes('count=exact'), 'total rides on the data request');
+  assert.equal(merged.limit, 12); // page-sized window, not a scan
+  assert.equal(page.products[0]?.id, 't2'); // newest first (in-stock tier)
+  assert.ok(page.total >= page.products.length, 'exact total present on the merged response');
 });
