@@ -137,6 +137,19 @@ export interface BreadcrumbCategoryLike {
   slug: string;
 }
 
+/**
+ * Category URL in the canonical PATH form — `/catalog/<encoded-slug>`.
+ *
+ * Single source for every emitted category URL in this module (SEO package
+ * 2026-09-13): the legacy `/catalog?category=<slug>` query form only
+ * 308-redirects now (proxy.ts → catalogCategoryRedirect), so breadcrumbs
+ * point straight at the path form. The slug is percent-encoded exactly like
+ * the visible nav links (home category cards, PDP trail, /oboi chips).
+ */
+export function catalogCategoryPath(slug: string): string {
+  return `/catalog/${encodeURIComponent(slug)}`;
+}
+
 export function buildProductBreadcrumbJsonLd(
   product: { name: string; slug: string },
   category: BreadcrumbCategoryLike | null,
@@ -157,7 +170,7 @@ export function buildProductBreadcrumbJsonLd(
       '@type': 'ListItem',
       position: items.length + 1,
       name: category.name,
-      item: `${base}/catalog?category=${encodeURIComponent(category.slug)}`,
+      item: `${base}${catalogCategoryPath(category.slug)}`,
     });
   }
   items.push({
@@ -199,7 +212,7 @@ export function buildCatalogBreadcrumbJsonLd(
       '@type': 'ListItem',
       position: items.length + 1,
       name: category.name,
-      item: `${base}/catalog?category=${encodeURIComponent(category.slug)}`,
+      item: `${base}${catalogCategoryPath(category.slug)}`,
     });
   }
   return {

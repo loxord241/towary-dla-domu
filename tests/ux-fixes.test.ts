@@ -84,6 +84,9 @@ test('product: generateMetadata provides unique title/description', () => {
   const product = src('app/product/[slug]/page.tsx');
   assert.match(product, /export async function generateMetadata/);
   assert.match(product, /: Promise<Metadata>/);
+  // SEO package 2026-09-13: the TITLE is the (wallpaper-cleaned) titleName;
+  // og:title keeps the full product name.
+  assert.match(product, /title: `\$\{titleName\} — Товари для дому`/);
   assert.match(product, /title: `\$\{product\.name\} — Товари для дому`/);
 });
 
@@ -92,8 +95,11 @@ test('product: generateMetadata provides unique title/description', () => {
 test('product: brand and category are links, page wrapped in <main>', () => {
   const product = src('app/product/[slug]/page.tsx');
   assert.match(product, /<main/);
+  // Brand stays query-form; the category link moved to the PATH form
+  // (SEO package 2026-09-13): the query shape only 308-redirects now.
   assert.match(product, /\/catalog\?brand=/);
-  assert.match(product, /\/catalog\?category=/);
+  assert.match(product, /\/catalog\/\$\{encodeURIComponent\(product\.category\.slug\)\}/);
+  assert.doesNotMatch(product, /\/catalog\?category=/);
 });
 
 test('product: above-the-fold gallery image is not lazy (priority/eager)', () => {

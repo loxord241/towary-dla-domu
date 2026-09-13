@@ -9,6 +9,7 @@ import SiteFooter from '@/app/components/SiteFooter'
 import Announcements from '@/app/components/Announcements'
 import AddToCartButton from '@/app/components/AddToCartButton'
 import FavoriteButton from '@/app/components/FavoriteButton'
+import ShareButtons from '@/app/components/ShareButtons'
 import ProductGallery from '@/app/components/ProductGallery'
 import ProductDescription from '@/app/components/ProductDescription'
 import ProductSpecifications from '@/app/components/ProductSpecifications'
@@ -17,6 +18,7 @@ import RollCalculator from '@/app/components/RollCalculator'
 import RestockNotify from '@/app/components/RestockNotify'
 import CallbackRequest from '@/app/components/CallbackRequest'
 import { parseRollSize } from '@/app/lib/wallpapers/parse'
+import { cleanWallpaperTitle, isWallpaperNaming } from '@/app/lib/wallpapers/title'
 import RecentProducts from '@/app/components/RecentProducts'
 import RecentlyViewedTracker from '@/app/components/RecentlyViewedTracker'
 import RelatedProducts from '@/app/components/RelatedProducts'
@@ -68,8 +70,17 @@ export async function generateMetadata({
   // shows — only when one exists; no invented or placeholder URLs.
   const canonical = `/product/${slug}`
   const mainImage = getMainPublicImageUrl(product.images)
+
+  // TITLE cleanup for wallpapers (SEO package 2026-09-13): wc-* names are
+  // supplier comma-chains («41704 рожева полоса,шпалери,53см*10м») and the
+  // full-name title overflowed 100 chars. Only <title> is cleaned (junk
+  // tail dropped, ~70-char cap) — H1 and og:title keep the FULL name.
+  const titleName = isWallpaperNaming(product.sku, product.slug)
+    ? cleanWallpaperTitle(product.name)
+    : product.name
+
   return {
-    title: `${product.name} — Товари для дому`,
+    title: `${titleName} — Товари для дому`,
     description,
     alternates: { canonical },
     openGraph: {
@@ -223,7 +234,9 @@ export default async function ProductPage({
             <>
               <span className="mx-1.5 text-gray-300">/</span>
               <Link
-                href={`/catalog?category=${encodeURIComponent(product.category.slug)}`}
+                // Path form (SEO package 2026-09-13): legacy query-form
+                // category URLs only 308-redirect now.
+                href={`/catalog/${encodeURIComponent(product.category.slug)}`}
                 className="hover:text-blue-600 hover:underline"
               >
                 {product.category.name}
@@ -297,6 +310,15 @@ export default async function ProductPage({
               )}
             </div>
 
+            {/* «Поділитися» — Viber / Telegram / копіювання посилання (SEO
+                package 2026-09-13). Клієнтський острів: стан потрібен лише
+                кнопці копіювання. URL на тій самій основі
+                NEXT_PUBLIC_SITE_URL, що й JSON-LD вище. */}
+            <ShareButtons
+              url={`${siteUrl.replace(/\/+$/, '')}/product/${product.slug}`}
+              title={product.name}
+            />
+
             <div className="flex items-center mb-6">
               <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
                 product.availability_status === 'in_stock' ? 'bg-green-100 text-green-800' :
@@ -357,7 +379,7 @@ export default async function ProductPage({
                   <h4 className="font-semibold">Категорія:</h4>
                   <p>
                     <Link
-                      href={`/catalog?category=${encodeURIComponent(product.category.slug)}`}
+                      href={`/catalog/${encodeURIComponent(product.category.slug)}`}
                       className="text-blue-600 hover:underline"
                     >
                       {product.category.name}

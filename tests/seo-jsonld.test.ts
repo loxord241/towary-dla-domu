@@ -188,7 +188,9 @@ test('BreadcrumbList: every URL is absolute; last item is the product URL', () =
   assert.equal(items[1].item, 'https://towary-dla-domu.com/catalog');
   assert.equal(
     items[2].item,
-    'https://towary-dla-domu.com/catalog?category=plyty-kombinovani-1421'
+    // Path form (SEO package 2026-09-13): the legacy query shape only
+    // 308-redirects now, so the breadcrumb points straight at the path.
+    'https://towary-dla-domu.com/catalog/plyty-kombinovani-1421'
   );
   assert.equal(
     items[3].item,
@@ -205,7 +207,7 @@ test('BreadcrumbList: category slug is URL-encoded like the visible nav link', (
   assert.ok(items[2] !== undefined);
   assert.equal(
     items[2].item,
-    'https://towary-dla-domu.com/catalog?category=kat%20z%20probilom'
+    'https://towary-dla-domu.com/catalog/kat%20z%20probilom'
   );
 });
 
@@ -281,7 +283,7 @@ test('JSONLD: catalog breadcrumb emits Головна → Каталог → К�
   assert.ok(items[2] !== undefined);
   assert.equal(
     items[2].item,
-    `${SITE}/catalog?category=mala-kukhonna-tekhnika-69`
+    `${SITE}/catalog/mala-kukhonna-tekhnika-69`
   );
 });
 
