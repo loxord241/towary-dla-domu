@@ -5,6 +5,7 @@ import {
   processLiqPayCallback,
   createSupabaseOrdersGateway,
 } from '@/app/lib/payment/order-payment-update';
+import { sendOwnerErrorAlert } from '@/app/lib/notifications/telegram';
 
 /**
  * POST /api/payment/liqpay/callback — LiqPay server-to-server callback.
@@ -79,6 +80,15 @@ export async function POST(request: Request) {
       if ('log' in res && res.log) {
         console.info(`liqpay/callback: [${res.kind}] ${res.log}`);
       }
+      // Money-integrity anomalies (owner 2026-09-13): the provider claims a
+      // terminal state with mismatched amount/currency, or a payment for an
+      // order we cannot map — the owner learns immediately, reconciliation
+      // decides later. bad-signature/malformed stay log-only (bot noise).
+      if (res.kind === 'amount-mismatch' || res.kind === 'currency-mismatch') {
+        sendOwnerErrorAlert('liqpay/callback: розбіжність суми', res.log ?? '');
+      } else if (res.kind === 'unknown-order') {
+        sendOwnerErrorAlert('liqpay/callback: невідоме замовлення', res.log ?? '');
+      }
       // Автопідтвердження (owner 2026-09-13): оплата пройшла і замовлення ще
       // не підтверджене вручну → просуваємо pending→confirmed тим самим RPC,
       // що й адмінка. Never throws — сбій лише в логах, оплата вже зафіксована.
@@ -92,10 +102,18 @@ export async function POST(request: Request) {
             });
             if (rpcErr && rpcErr.code !== 'P0409') {
               console.error(`liqpay/callback: auto-confirm failed: ${rpcErr.code}`);
+              sendOwnerErrorAlert(
+                'liqpay/callback: оплата пройшла, авто-підтвердження не вдалося',
+                `order ${res.order_id}: ${rpcErr.code}`
+              );
             }
           }
         } catch {
           console.error('liqpay/callback: auto-confirm unexpected failure');
+          sendOwnerErrorAlert(
+            'liqpay/callback: оплата пройшла, авто-підтвердження впало',
+            `order ${res.order_id}`
+          );
         }
       }
       return new NextResponse('ok', { status: 200 });

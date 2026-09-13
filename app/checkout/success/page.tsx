@@ -4,6 +4,7 @@ import {
   verifyOrderAccessToken,
   verifyStoredAccessToken,
 } from '@/app/lib/order-token';
+import { getPublicImageUrl } from '@/app/lib/supabase-storage';
 import OrderDetailsCard from '@/app/components/OrderDetailsCard';
 import OrderStatusBadge, {
   PaymentStatusBadge,
@@ -45,6 +46,7 @@ interface OrderRow {
 }
 
 interface ItemRow {
+  product_id: string | null;
   product_name: string;
   sku: string;
   variant_name: string | null;
@@ -106,10 +108,37 @@ export default async function CheckoutSuccessPage({
 
   const itemsRes = await supabase
     .from('order_items')
-    .select('product_name, sku, variant_name, quantity, price, total')
+    .select('product_id, product_name, sku, variant_name, quantity, price, total')
     .eq('order_id', orderData.id);
 
   const items = (itemsRes.data ?? []) as ItemRow[];
+
+  // Post-order review block (owner request 2026-09-13): each item shows its
+  // photo + an inline star review. One bounded read of main images per
+  // product; a product without photos renders the letter placeholder.
+  const productIds = [
+    ...new Set(items.map((i) => i.product_id).filter((id): id is string => id !== null)),
+  ];
+  const images: Record<string, string | null> = {};
+  if (productIds.length > 0) {
+    const imagesRes = await supabase
+      .from('product_images')
+      .select('product_id, image_url, is_main, sort_order')
+      .in('product_id', productIds)
+      .order('is_main', { ascending: false })
+      .order('sort_order', { ascending: true });
+    if (imagesRes.error) {
+      console.error('success page product_images read failed:', imagesRes.error.message);
+    }
+    for (const row of (imagesRes.data ?? []) as {
+      product_id: string;
+      image_url: string;
+    }[]) {
+      if (images[row.product_id] === undefined) {
+        images[row.product_id] = getPublicImageUrl(row.image_url);
+      }
+    }
+  }
 
   const orderRow: OrderRow = {
     order_number: orderData.order_number,
@@ -179,7 +208,12 @@ export default async function CheckoutSuccessPage({
           )}
         </div>
 
-        <OrderDetailsCard order={orderRow} items={items} />
+        <OrderDetailsCard
+          order={orderRow}
+          items={items}
+          images={images}
+          reviewable
+        />
 
         <div className="flex flex-wrap items-center gap-2 px-6 pb-2">
           <OrderStatusBadge status={orderRow.status} />

@@ -454,14 +454,43 @@ export async function loadOrderNotificationData(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Owner error alerts (owner request 2026-09-13): critical server-side
+// failures push straight to the same Telegram chats as order notifications,
+// so the owner learns about a broken checkout/payment BEFORE the customer
+// calls. Fire-and-forget, never throws, throttled per scope (5 min) so an
+// outage cannot turn into a message storm. Reuses TELEGRAM_BOT_TOKEN +
+// TELEGRAM_ORDER_CHAT_ID — no new configuration.
+// ---------------------------------------------------------------------------
+
+const lastAlertAt = new Map<string, number>();
+const ERROR_ALERT_THROTTLE_MS = 5 * 60_000;
+
+export function sendOwnerErrorAlert(scope: string, detail: string): void {
+  try {
+    const config = resolveTelegramOrderConfig();
+    if (!config.enabled) return;
+    const now = Date.now();
+    if (now - (lastAlertAt.get(scope) ?? 0) < ERROR_ALERT_THROTTLE_MS) return;
+    lastAlertAt.set(scope, now);
+    const text = `🚨 Помилка на сайті\n${scope}\n\n${detail.slice(0, 600)}`;
+    void Promise.all(
+      config.chatIds.map((chatId) =>
+        postTelegramMessage(config.token!, chatId, text)
+      )
+    ).catch(() => {});
+  } catch {
+    // an alerting failure must never become an error itself
+  }
+}
+
 /**
  * Production entry point used by the checkout route. Never throws — any
  * failure resolves as { sent: false } and is logged without secrets.
  */
 export async function sendTelegramOrderNotification(
   orderNumber: string
-): Promise<TelegramSendResult> {
-  try {
+): Promise<TelegramSendResult> {  try {
     const config = resolveTelegramOrderConfig();
     if (!config.enabled) return { sent: false, reason: 'disabled' };
 

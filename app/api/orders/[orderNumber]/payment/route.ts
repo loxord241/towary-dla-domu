@@ -16,6 +16,7 @@ import {
   createSupabaseOrdersGateway,
 } from '@/app/lib/payment/order-payment-update';
 import { fetchLiqPayProviderStatus } from '@/app/lib/payment/liqpay-status-api';
+import { sendOwnerErrorAlert } from '@/app/lib/notifications/telegram';
 
 /**
  * POST /api/orders/[orderNumber]/payment — LiqPay init.
@@ -109,6 +110,11 @@ export async function POST(
   try {
     config = getLiqPayConfig();
   } catch {
+    // Owner alert (2026-09-13): customers cannot pay right now.
+    sendOwnerErrorAlert(
+      'payment: LiqPay не налаштований — оплата недоступна',
+      'getLiqPayConfig threw (LIQPAY_* env missing?)'
+    );
     return NextResponse.json(
       { error: 'Оплата тимчасово недоступна' },
       { status: 503 }

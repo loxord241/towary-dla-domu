@@ -9,7 +9,7 @@ import { enforceRateLimit } from '@/app/lib/rate-limit';
 import { assertSameOrigin } from '@/app/lib/request-origin';
 import { sanitizeDelivery } from '@/app/lib/checkout-delivery';
 import { parseIdempotencyKey } from '@/app/lib/idempotency';
-import { sendTelegramOrderNotification } from '@/app/lib/notifications/telegram';
+import { sendTelegramOrderNotification, sendOwnerErrorAlert } from '@/app/lib/notifications/telegram';
 
 /**
  * POST /api/orders — guest checkout.
@@ -260,6 +260,12 @@ export async function POST(request: Request) {
           { status: 422 }
         );
       default:
+        // Owner alert (2026-09-13): a checkout that died on OUR side must
+        // ring the bell — the customer sees only a generic message.
+        sendOwnerErrorAlert(
+          'checkout: не вдалося створити замовлення',
+          `place_order ${error.code}: ${error.message}`
+        );
         return NextResponse.json(
           { error: 'Не вдалося оформити замовлення. Спробуйте пізніше' },
           { status: 500 }
