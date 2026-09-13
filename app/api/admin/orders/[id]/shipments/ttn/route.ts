@@ -97,7 +97,7 @@ const SHIPMENT_SELECT = `
   warehouse_ref, street_name, building, flat, ttn_ref, ttn_number,
   order_shipment_parcels(parcel_index, cargo_category, actual_weight_grams,
     width_mm, length_mm, height_mm, insurance_cost),
-  order_shipment_items(quantity, order_items(product_name))
+  order_shipment_items!order_shipment_items_shipment_id_fkey(quantity, order_items!fk_order_shipment_items_item_order(product_name))
 `.replace(/\s+/g, ' ');
 
 async function readShipmentRow(

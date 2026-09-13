@@ -10,6 +10,11 @@ import { parseShipmentPlanPayload } from '@/app/lib/admin-shipments';
  *   → order + items with unallocated remainder + shipments (with items and
  *     parcels) + whether the plan is still editable (everything 'planned').
  *
+ * Embeds are FK-disambiguated (!order_shipment_items_shipment_id_fkey):
+ * the fk-fix migration added a second (composite) FK
+ * (shipment_id, order_id) → order_shipments(id, order_id), which made the
+ * bare embed ambiguous (PostgREST PGRST201/300 → 500).
+ *
  * PUT  /api/admin/orders/[id]/shipments  body = full replace-all plan
  *   → validated by admin-shipments.ts, then applied atomically by the
  *     admin_replace_shipment_plan RPC (one transaction; the DEFERRABLE COD
@@ -27,7 +32,7 @@ const SHIPMENT_SELECT = `
   id, shipment_index, service_type, carrier, city_ref, city_name, warehouse_ref,
   warehouse_name, address, street_name, building, flat, status, cod_amount,
   delivery_cost_estimated, ttn_number, ttn_ref, delivery_cost,
-  order_shipment_items(order_item_id, quantity),
+  order_shipment_items!order_shipment_items_shipment_id_fkey(order_item_id, quantity),
   order_shipment_parcels(parcel_index, cargo_category, actual_weight_grams,
     width_mm, length_mm, height_mm, insurance_cost, description)
 `.replace(/\s+/g, ' ');

@@ -260,3 +260,20 @@ test('ADMIN PLANNER: rollback offered only for provider-created TTNs (ttn_ref)',
   assert.match(src('app/api/admin/orders/[id]/shipments/route.ts'), /ttn_number, ttn_ref, delivery_cost/,
     'GET projection exposes ttn_ref for the client-side gate');
 });
+
+
+test('SHIPMENTS API: shipment-item embeds are FK-disambiguated (PGRST201 regression)', () => {
+  // The fk-fix migration added a composite FK (shipment_id, order_id) →
+  // order_shipments, which made the bare order_shipment_items embed
+  // ambiguous (PostgREST 300 → the planner page answered 500).
+  const plan = src('app/api/admin/orders/[id]/shipments/route.ts');
+  assert.match(
+    plan,
+    /order_shipment_items!order_shipment_items_shipment_id_fkey\(order_item_id, quantity\)/
+  );
+  const ttn = src('app/api/admin/orders/[id]/shipments/ttn/route.ts');
+  assert.match(
+    ttn,
+    /order_shipment_items!order_shipment_items_shipment_id_fkey\(quantity, order_items!fk_order_shipment_items_item_order\(product_name\)\)/
+  );
+});
