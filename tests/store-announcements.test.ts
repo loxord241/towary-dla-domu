@@ -158,25 +158,48 @@ test('ANN-VALIDATE: sortOrder falls back to 0 and rejects garbage', () => {
 // ---- storefront lib: security ----
 
 test('ANN-LIB: storefront reads use the publishable key only', () => {
+  // 2026-09-13 perf split: the Supabase client + cached read live in the
+  // server-only store module; announcements.ts stays pure (the 'use client'
+  // admin dashboard imports its constants/types).
+  const store = src('app/lib/announcements-store.ts');
+  assert.match(store, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(store, /SERVICE_ROLE/);
+  // The pure module must not gain server-only wiring back (client boundary).
   const lib = src('app/lib/announcements.ts');
-  assert.match(lib, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
-  assert.doesNotMatch(lib, /SERVICE_ROLE/);
+  assert.doesNotMatch(lib, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(lib, /cachePublicRead|unstable_cache/);
 });
 
 test('ANN-LIB: fetchActiveAnnouncements filters is_active and orders by sort_order', () => {
-  const lib = src('app/lib/announcements.ts');
-  assert.match(lib, /is_active[^\n]*true|eq\('is_active',\s*true\)/);
-  assert.match(lib, /sort_order/);
+  const store = src('app/lib/announcements-store.ts');
+  assert.match(store, /is_active[^\n]*true|eq\('is_active',\s*true\)/);
+  assert.match(store, /sort_order/);
 });
 
 test('ANN-LIB: SSR read carries a deadline — hung upstream never stalls the page (2026-09-04)', () => {
-  const lib = src('app/lib/announcements.ts');
+  const store = src('app/lib/announcements-store.ts');
   // supabase-js queries take no AbortSignal, so the deadline is a race
   // against a timer; the timeout path stays fail-open ([]) and logs.
-  assert.match(lib, /ANNOUNCEMENTS_DEADLINE_MS = 8_000/);
-  assert.match(lib, /Promise\.race\(\[query, deadline\]\)/);
-  assert.match(lib, /console\.error\('store announcements: deadline exceeded/);
-  assert.match(lib, /return \[\];/, 'fail-open contract preserved');
+  assert.match(store, /ANNOUNCEMENTS_DEADLINE_MS = 8_000/);
+  assert.match(store, /Promise\.race\(\[query, deadline\]\)/);
+  assert.match(store, /console\.error\('store announcements: deadline exceeded/);
+  assert.match(store, /return \[\];/, 'fail-open contract preserved');
+});
+
+test('ANN-LIB: storefront read is wrapped in the catalog-public-reads Data Cache (perf 2026-09-13)', () => {
+  const store = src('app/lib/announcements-store.ts');
+  assert.match(store, /cachePublicRead\(/, 'read must go through the shared cachePublicRead helper');
+  assert.match(store, /CATALOG_PUBLIC_READ_TTL_SECONDS/, 'TTL must be the shared public-read constant');
+  assert.match(store, /'announcements:active'/, 'stable cache key prefix');
+  // Failures throw PAST unstable_cache (never cached) and the exported
+  // wrapper converts them to [] — a transient outage must not pin an empty
+  // banner for a full TTL.
+  assert.match(store, /throw new Error\('store announcements: deadline exceeded'\)/);
+  assert.match(
+    store,
+    /catch\s*\{\s*return \[\];\s*\}/,
+    'exported wrapper must stay fail-open'
+  );
 });
 
 // ---- admin route: guard ----

@@ -16,10 +16,21 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { WALLPAPER_FAQ, isWallpaperCategorySlug } from '../app/lib/faq-content.ts';
 import { buildFaqJsonLd, serializeJsonLd } from '../app/lib/schema-org.ts';
-import { splitDescriptionParagraphs } from '../app/lib/category-description.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel: string): string => readFileSync(path.join(root, rel), 'utf8');
+
+// Perf 2026-09-13: category-description.ts now sits on the shared
+// cachePublicRead substrate (app/lib/catalog/shared.ts), which creates its
+// Supabase client at module load and resolves unstable_cache via top-level
+// await — provide the publishable-env placeholders BEFORE that import (no
+// network happens) and the plain-node AsyncLocalStorage baseline, exactly
+// like tests/catalog-cache-wiring.test.ts.
+import { AsyncLocalStorage } from 'node:async_hooks';
+process.env.NEXT_PUBLIC_SUPABASE_URL ??= 'http://localhost:54321';
+process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= 'test-anon-key';
+(globalThis as Record<string, unknown>).AsyncLocalStorage ??= AsyncLocalStorage;
+const { splitDescriptionParagraphs } = await import('../app/lib/category-description.ts');
 
 const EXPECTED_SLUGS = [
   'shpaleri',
@@ -266,4 +277,25 @@ test('description splitter: blank-line paragraphs, whitespace collapse, empty in
     ['Рядок один рядок два.'],
     'single newlines inside a paragraph collapse to spaces'
   );
+});
+
+// ---- bonus: Data Cache layer on the slug lookup (perf 2026-09-13) ----------
+
+test('description reader: React cache() sits ON TOP of the catalog-public-reads Data Cache', () => {
+  const lib = src('app/lib/category-description.ts');
+  assert.match(lib, /cachePublicRead\(/, 'read must go through the shared cachePublicRead helper');
+  assert.match(lib, /'category-description:by-slug'/, 'stable cache key prefix');
+  // Descriptions are admin-authored copy (edited in the admin UI), not
+  // importer data — the TTL is pinned at 600s (inside the 300-600s task
+  // bound), NOT the shared 900s importer constant.
+  assert.match(lib, /CATEGORY_DESCRIPTION_TTL_SECONDS = 600/);
+  // cachePublicRead applies the shared tag; assert the helper import so the
+  // tag contract travels with it.
+  assert.match(lib, /import \{ cachePublicRead \} from '\.\/catalog\/shared\.ts';/);
+  // Transient DB errors throw PAST unstable_cache (never cached) and the
+  // React-cache layer degrades to null per request.
+  assert.match(lib, /throw new Error\(`Failed to load category description/);
+  assert.match(lib, /catch\s*\{[\s\S]*?return null;/, 'degrade-to-null must stay');
+  // React cache() stays the outermost per-request memo.
+  assert.match(lib, /cache\(async \(slug: string\)/);
 });

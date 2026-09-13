@@ -3,7 +3,7 @@
  *
  * Contract (audit 2026-08-31, caching step 2):
  *  - public, user-independent reads are wrapped via unstable_cache
- *    (dictionaries TTL 3600s, everything else 60s);
+ *    (dictionaries TTL 3600s, everything else 900s);
  *  - cache keys include the keyPrefix AND every function argument
  *    (unstable_cache serializes args into the invocation key);
  *  - DB errors are NEVER a cached failure: a throwing read leaves no cache
@@ -152,11 +152,14 @@ test('wiring: DB error is not cached — next call re-executes and succeeds', as
   assert.equal(calls, 2, 'successful read must be cached afterwards');
 });
 
-test('wiring: TTL constants contract (dictionaries 3600s, public reads 60s)', () => {
+test('wiring: TTL constants contract (dictionaries 3600s, public reads 900s)', () => {
   // Dictionaries went 120s -> 3600s (egress audit №2, 2026-09-08): they
   // change only via manual syncs, deployments reset the data cache.
+  // Public reads went 60s -> 900s (perf package 2026-09-13): importer/
+  // moderation-driven data changes far below the 6-hour import cycle;
+  // the catalog-public-reads tag keeps targeted revalidateTag available.
   assert.equal(CATALOG_DICTIONARY_TTL_SECONDS, 3600);
-  assert.equal(CATALOG_PUBLIC_READ_TTL_SECONDS, 60);
+  assert.equal(CATALOG_PUBLIC_READ_TTL_SECONDS, 900);
 });
 
 // ---- structural invariants over app/lib/catalog.ts source ----

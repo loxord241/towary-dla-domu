@@ -2,10 +2,12 @@
  * /oboi spec-filters + PDP photo lightbox (owner task 2026-09-11).
  *
  * Pins:
- *  1. ?base= reaches fetchWallpaperProducts on BOTH the count and the data
- *     query as a PostgREST jsonb contains on products.specifications with
- *     the exact whitelisted element — so the pagination total always matches
- *     the visible grid (runtime fake-PostgREST proof below).
+ *  1. ?base= reaches fetchWallpaperProducts as a PostgREST jsonb contains
+ *     on products.specifications with the exact whitelisted element. Since
+ *     the perf package (2026-09-13) the count and the data page travel in
+ *     ONE request (select with count:'exact', total parsed from
+ *     Content-Range), so the pagination total matches the visible grid by
+ *     construction (runtime fake-PostgREST proof below).
  *  2. Filtered /oboi views (?base=…, junk included) are noindex,follow
  *     WITHOUT a canonical (buildWallpapersMetadata — catalog policy).
  *  3. /oboi renders the «Основа» chips (Усі + dictionary from
@@ -39,7 +41,7 @@ function sliceBetween(
 }
 
 // ---------------------------------------------------------------------------
-// 1. Data layer: the filter must be part of BOTH queries
+// 1. Data layer: the filter reaches the ONE merged count+data request
 // ---------------------------------------------------------------------------
 
 test('FILTER DICT: wallpapers/filters.ts pins the Основа dictionary with the expandable-vocabulary note', () => {
@@ -52,8 +54,12 @@ test('FILTER DICT: wallpapers/filters.ts pins the Основа dictionary with t
   assert.match(src, /DEFERRED/, 'room filter must be documented as deferred');
 });
 
-test('FILTER QUERY: fetchWallpaperProducts applies the jsonb contains to count + data', () => {
+test('FILTER QUERY: fetchWallpaperProducts applies the jsonb contains to the merged count+data request', () => {
   // 2026-09 refactor: the /oboi read lives in app/lib/catalog/wallpaper-listing.ts.
+  // 2026-09 perf: count and data page travel in ONE request — select(...,
+  // { count: 'exact' }) makes PostgREST return the total in Content-Range
+  // next to the rows, so the head-count round-trip is gone and the total
+  // matches the grid by construction.
   const src = read('app/lib/catalog/wallpaper-listing.ts');
   const body = sliceBetween(
     src,
@@ -61,28 +67,31 @@ test('FILTER QUERY: fetchWallpaperProducts applies the jsonb contains to count +
     'Product reviews'
   );
 
+  assert.match(
+    body,
+    /\.select\(CATALOG_CARD_SELECT, \{ count: 'exact' \}\)/,
+    'one merged request must carry the exact total alongside the page rows'
+  );
+  assert.doesNotMatch(body, /head:\s*true/, 'no separate head-count request');
+
   // The filter travels as an exact {name, value} element, stringified to the
   // jsonb array-containment wire form cs.[{"name":…,"value":…}] (a JS array
   // of objects passed directly would serialize as cs.{[object Object]}).
   const contains = body.match(
     /JSON\.stringify\(\[\{ name: WALLPAPER_BASE_SPEC_NAME, value: base \}\]\)/g
   ) ?? [];
-  assert.equal(contains.length, 2,
-    'the count AND the data query must each carry the jsonb contains');
+  assert.equal(contains.length, 1,
+    'the merged count+data query must carry the jsonb contains exactly once');
 
-  // Count section: the like-sku domain filter + contains precede the await.
-  const countPart = sliceBetween(
+  // Merged query section: the like-sku domain filter + contains must precede
+  // the paged window so pagination slices the filtered set.
+  const queryPart = sliceBetween(
     body,
-    '-- total count (identical filters, no pagination) ----',
-    'const { count, error: countError } = await countQuery;'
+    'const buildPagedQuery',
+    '.range('
   );
-  assert.match(countPart, /\.like\('sku', WALLPAPER_SKU_LIKE\)/);
-  assert.match(countPart, /\.contains\(\s*'specifications'/);
-
-  // Data section: the contains must be applied BEFORE the paged window so
-  // pagination slices the filtered set.
-  const dataPart = sliceBetween(body, '// ---- paged data query ----', '.range(');
-  assert.match(dataPart, /\.contains\(\s*'specifications'/);
+  assert.match(queryPart, /\.like\('sku', WALLPAPER_SKU_LIKE\)/);
+  assert.match(queryPart, /\.contains\(\s*'specifications'/);
 
   assert.match(body, /base\?: string/, 'filters accept the raw ?base= value');
   assert.match(body, /filters\.base\?\.trim\(\)/,
@@ -264,10 +273,10 @@ test('GALLERY: main image opens the Lightbox; thumbnails only switch', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 6. Runtime: the contains filter must reach the wire on BOTH requests
+// 6. Runtime: the contains filter must reach the wire on the single request
 // ---------------------------------------------------------------------------
 
-test('RUNTIME: base=Паперова → specifications=cs.[{"name":"Основа",…}] on count+data; absent → no param', async () => {
+test('RUNTIME: base=Паперова → specifications=cs.[{"name":"Основа",…}] on the merged count+data request; absent → no param', async () => {
   const mkRow = (i: number) => ({
     id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
     name: `Шпалери ${i}`,
@@ -286,14 +295,11 @@ test('RUNTIME: base=Паперова → specifications=cs.[{"name":"Основ�
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
     requests.push(url);
-    if (req.method === 'HEAD') {
-      res.writeHead(200, { 'Content-Range': '*/7' });
-      res.end();
-      return;
-    }
     const from = Number(url.searchParams.get('offset') ?? 0);
     const lim = Number(url.searchParams.get('limit') ?? 12);
     const slice = rows.slice(from, from + lim);
+    // The merged request's total is parsed from Content-Range — no
+    // separate head-count request exists anymore.
     res.writeHead(200, {
       'Content-Type': 'application/json',
       'Content-Range': `${slice.length > 0 ? `${from}-${from + slice.length - 1}` : '*/0'}/7`,
@@ -306,45 +312,36 @@ test('RUNTIME: base=Паперова → specifications=cs.[{"name":"Основ�
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= 'test-anon-key';
     const { fetchWallpaperProducts } = await import('../app/lib/catalog.ts');
 
-    // Filtered call: BOTH the head-count and the data window carry the same
-    // exact jsonb contains element.
-    await fetchWallpaperProducts({ page: 1, size: 12, base: 'Паперова' });
+    // Filtered call: the ONE merged count+data request carries the exact
+    // jsonb contains element.
+    const filteredPage = await fetchWallpaperProducts({ page: 1, size: 12, base: 'Паперова' });
     const filtered = requests.splice(0);
-    assert.equal(filtered.length, 2, 'one head-count + one data window');
-    for (const url of filtered) {
-      const raw = url.searchParams.get('specifications');
-      assert.ok(raw, `specifications filter must reach the wire (${req0method(url)})`);
-      assert.ok(raw.startsWith('cs.'), 'contains operator on the wire');
-      assert.deepEqual(
-        JSON.parse(raw.slice('cs.'.length)),
-        [{ name: 'Основа', value: 'Паперова' }],
-        'exact {name, value} element'
-      );
-    }
+    assert.equal(filtered.length, 1, 'one merged count+data request');
+    const raw = filtered[0]?.searchParams.get('specifications');
+    assert.ok(raw, 'specifications filter must reach the wire');
+    assert.ok(raw.startsWith('cs.'), 'contains operator on the wire');
+    assert.deepEqual(
+      JSON.parse(raw.slice('cs.'.length)),
+      [{ name: 'Основа', value: 'Паперова' }],
+      'exact {name, value} element'
+    );
+    assert.equal(filteredPage.total, 7, 'total parsed from Content-Range of the data response');
 
     // Unfiltered call: no specifications param at all.
     const unfiltered = await fetchWallpaperProducts({ page: 1, size: 12 });
     const plain = requests.splice(0);
-    assert.equal(plain.length, 2);
-    for (const url of plain) {
-      assert.equal(url.searchParams.get('specifications'), null);
-    }
+    assert.equal(plain.length, 1);
+    assert.equal(plain[0]?.searchParams.get('specifications'), null);
     assert.equal(unfiltered.total, 7);
 
     // Whitespace-only value degrades to no filter (same as absent).
     await fetchWallpaperProducts({ page: 1, size: 12, base: '   ' });
     const blank = requests.splice(0);
-    assert.equal(blank.length, 2);
-    for (const url of blank) {
-      assert.equal(url.searchParams.get('specifications'), null);
-    }
+    assert.equal(blank.length, 1);
+    assert.equal(blank[0]?.searchParams.get('specifications'), null);
   } finally {
     server.close();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (server as any).closeAllConnections?.();
   }
 });
-
-function req0method(url: URL): string {
-  return url.searchParams.has('limit') ? 'data' : 'count';
-}

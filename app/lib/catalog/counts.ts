@@ -18,7 +18,9 @@ import { fetchActiveCategoriesStore } from './categories.ts';
 // must be noindex'd (lib/seo.ts) and stay out of the sitemap. The counts
 // reuse the exact ELIGIBLE_COUNT_SELECT / JUNCTION_COUNT_SELECT shapes of
 // fetchCatalogProducts, so an «empty» verdict can never disagree with the
-// grid's own total. Cached like the slug lookups (60s) — public and
+// grid's own total. Cached like the slug lookups (900s public TTL — perf
+// package 2026-09-13; importer-driven data, targeted invalidation via the
+// catalog-public-reads tag) — public and
 // identical for every visitor; null = slug unknown/inactive. A DB error is
 // rethrown (callers degrade to «non-empty» so a transient read can never
 // noindex a full page).
@@ -65,7 +67,7 @@ const countCategoryProductsStore = cachePublicRead(
   countCategoryProductsUncached
 );
 
-/** React cache() on top of the 60s Data Cache: one execution per request. */
+/** React cache() on top of the 900s Data Cache: one execution per request. */
 export const fetchCategoryProductCount = cache(countCategoryProductsStore);
 
 async function countBrandProductsUncached(

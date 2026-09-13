@@ -170,9 +170,15 @@ test('WALLPAPER: fetchWallpaperProducts queries ONLY the wc- domain', () => {
     'export async function fetchWallpaperProducts',
     'Product reviews'
   );
+  // Perf 2026-09-13: ONE merged count+data request — the sku like filter
+  // appears exactly once, and the total comes from count:'exact' on the
+  // same request (no separate head-count).
   const likes = body.match(/\.like\('sku', WALLPAPER_SKU_LIKE\)/g) ?? [];
-  assert.equal(likes.length, 2, 'both the count and the data query carry sku like');
-  assert.match(body, /ELIGIBLE_COUNT_SELECT/, 'same eligibility join for the count');
+  assert.equal(likes.length, 1, 'the merged count+data query carries sku like');
+  assert.match(body, /\.select\(CATALOG_CARD_SELECT, \{ count: 'exact' \}\)/,
+    'total travels with the page rows (Content-Range), no head-count');
+  assert.doesNotMatch(body, /head:\s*true/, 'no separate head-count request');
+  // The eligibility join lives inside CATALOG_CARD_SELECT (product_images!inner).
   assert.match(body, /CATALOG_CARD_SELECT/, 'slim card projection for the grid');
   assert.match(body, /\.order\('id'/, 'deterministic tiebreaker kept');
   assert.match(body, /\.range\(\(page - 1\) \* size, page \* size - 1\)/, 'paged window');
@@ -314,19 +320,19 @@ test('RUNTIME: general catalog count+data carry sku=not.like.wc-; /oboi carries 
     const { fetchCatalogProducts, fetchWallpaperProducts, fetchPopularProducts } =
       await import('../app/lib/catalog.ts');
 
-    // General catalog: BOTH the count and the data request exclude wc-*.
+    // General catalog: the merged count+data request excludes wc-*
+    // (perf 2026-09-13: no-search views fetch total + page in ONE request).
     const catalog = await fetchCatalogProducts({ page: 1, size: 12 });
     const catalogRequests = requests.splice(0);
-    assert.equal(catalogRequests.length, 2, 'one head-count + one data window');
-    for (const r of catalogRequests) {
-      assert.equal(r.sku, 'not.like.wc-%', `general listing must exclude wc-* (${r.method})`);
-    }
-    assert.equal(catalog.total, TOTAL);
+    assert.equal(catalogRequests.length, 1, 'one merged count+data window');
+    assert.equal(catalogRequests[0]?.sku, 'not.like.wc-%', 'general listing must exclude wc-*');
+    assert.equal(catalog.total, TOTAL, 'total parsed from Content-Range');
     assert.equal(catalog.products.length, rows.length);
 
     // Search view (owner bug report 2026-09-11 «шукають "шпалери" — немає
     // результатів»): with an active search term NEITHER request may carry
-    // the wc-% exclusion — wallpapers are a live storefront domain.
+    // the wc-% exclusion — wallpapers are a live storefront domain. The
+    // search path keeps the two-query flow (fallbacks need the count first).
     await fetchCatalogProducts({ page: 1, size: 12, search: 'шпалери' });
     const searchRequests = requests.splice(0);
     assert.equal(searchRequests.length, 2, 'one head-count + one data window');
@@ -334,13 +340,11 @@ test('RUNTIME: general catalog count+data carry sku=not.like.wc-; /oboi carries 
       assert.equal(r.sku, null, `search view must keep wc-* (${r.method})`);
     }
 
-    // /oboi: BOTH requests restrict to wc-*.
+    // /oboi: the merged count+data request restricts to wc-*.
     const wallpaper = await fetchWallpaperProducts({ page: 1, size: 12 });
     const wallpaperRequests = requests.splice(0);
-    assert.equal(wallpaperRequests.length, 2, 'one head-count + one data window');
-    for (const r of wallpaperRequests) {
-      assert.equal(r.sku, 'like.wc-%', `/oboi must restrict to wc-* (${r.method})`);
-    }
+    assert.equal(wallpaperRequests.length, 1, 'one merged count+data window');
+    assert.equal(wallpaperRequests[0]?.sku, 'like.wc-%', '/oboi must restrict to wc-*');
     assert.equal(wallpaper.total, TOTAL);
 
     // Home popular shelf: single bounded window with the exclusion.
