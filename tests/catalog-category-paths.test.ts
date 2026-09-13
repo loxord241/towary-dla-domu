@@ -164,3 +164,16 @@ test('PATHS: sitemap lists categories on the path form; brands stay query-form',
   assert.match(sitemapSrc, /\/catalog\/\$\{encodeURIComponent\(category\.slug\)\}/);
   assert.match(sitemapSrc, /\/catalog\?brand=\$\{encodeURIComponent\(brand\.slug\)\}/);
 });
+
+test('PATHS: catalog sort control stays on the category path page', () => {
+  // Regression 2026-09-13 (owner report «в шпалерах сортируешь по цене —
+  // появляются другие товары»): sorting on /catalog/<slug> navigated to
+  // bare /catalog?sort=… — the category dropped out, and the general
+  // catalog (wallpapers excluded there) rendered OTHER products.
+  const sel = src('app/catalog/SortSelect.tsx');
+  assert.match(sel, /basePath\?: string/);
+  assert.match(sel, /router\.push\(qs \? `\$\{basePath\}\?\$\{qs\}` : basePath\)/);
+  assert.doesNotMatch(sel, /`\/catalog\?\$\{qs\}`/, 'no hardcoded bare /catalog');
+  const view = src('app/catalog/CatalogView.tsx');
+  assert.match(view, /<SortSelect basePath=\{linkBase\} \/>/);
+});

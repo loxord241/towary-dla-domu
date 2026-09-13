@@ -541,7 +541,7 @@ export default async function CatalogView({
                   </div>
                 )}
                 <Suspense fallback={null}>
-                  <SortSelect />
+                  <SortSelect basePath={linkBase} />
                 </Suspense>
               </div>
 

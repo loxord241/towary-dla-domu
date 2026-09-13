@@ -13,7 +13,7 @@ const SORT_OPTIONS = [
   { value: 'name_asc', label: 'Назва А–Я' },
 ];
 
-function SortSelectInner() {
+function SortSelectInner({ basePath = '/catalog' }: { basePath?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const current = searchParams.get('sort') ?? 'newest';
@@ -24,9 +24,13 @@ function SortSelectInner() {
       aria-label="Сортування"
       onChange={(e) => {
         // Sort change always resets to page 1 (URL contract lives in the
-        // pure, unit-tested buildSortSearchParams).
+        // pure, unit-tested buildSortSearchParams). Since the category path
+        // URLs (2026-09-13) the sort must stay ON the category page —
+        // dropping to bare /catalog here leaked OTHER products into a
+        // sorted category view (wallpapers excluded from the general
+        // catalog), which is exactly the bug the owner reported.
         const qs = buildSortSearchParams(searchParams, e.target.value);
-        router.push(qs ? `/catalog?${qs}` : '/catalog');
+        router.push(qs ? `${basePath}?${qs}` : basePath);
       }}
       className="p-2 text-base min-h-[44px] w-full sm:w-auto border border-gray-300 rounded"
     >
@@ -39,10 +43,10 @@ function SortSelectInner() {
   );
 }
 
-export default function SortSelect() {
+export default function SortSelect({ basePath }: { basePath?: string }) {
   return (
     <Suspense fallback={<select className="min-h-[44px] w-full rounded border border-gray-300 p-2 text-base sm:w-auto" aria-label="Сортування" />}>
-      <SortSelectInner />
+      <SortSelectInner basePath={basePath} />
     </Suspense>
   );
 }
