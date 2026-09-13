@@ -18,6 +18,20 @@ export function normalizeBrandKey(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+/**
+ * Brand denylist (владелец 2026-09-12): бренд «VIOLET HOUSE» снят с витрины
+ * целиком — его товары удалены, и sync НЕ должен их пересоздавать/обновлять
+ * (они живут в живых выбранных категориях, где обычный category-gate их
+ * пропускает). Сопоставление по normalizeBrandKey — тому же ключу, которым
+ * строка фида связывается с брендом, поэтому фильтр нельзя обойти
+ * другим написанием с другим количеством пробелов.
+ */
+export const EXCLUDED_BRAND_KEYS: ReadonlySet<string> = new Set(['violet house']);
+
+export function isBrandExcluded(brand: string): boolean {
+  return EXCLUDED_BRAND_KEYS.has(normalizeBrandKey(brand));
+}
+
 function bareKey(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9а-яїієґ]/g, '');
 }
@@ -255,6 +269,10 @@ export function mapFeedProducts(
     v !== null && Number.isFinite(v) && v > 0;
 
   for (const p of products) {
+    if (p.brand !== null && EXCLUDED_BRAND_KEYS.has(normalizeBrandKey(p.brand))) {
+      skipped.push({ id: p.externalId, reason: `бренд виключений власником (${p.brand.trim()})` });
+      continue;
+    }
     if (p.externalId === '') {
       skipped.push({ id: '(порожній id)', reason: 'немає external id' });
       continue;

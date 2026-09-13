@@ -18,6 +18,7 @@ import { makeCategoryFilter } from './dry-run.ts';
 import {
   buildBrandPlan,
   buildCategoryPlan,
+  isBrandExcluded,
   mapFeedProducts,
   splitProductWrites,
   type CategoryPlan,
@@ -495,7 +496,11 @@ async function runProductsBatch(
     const ourBrands = await fetchAllRows<ExistingBrandRow>(client, 'brands', 'id,name,slug');
     const brandDisplayByName = new Map<string, string>();
     for (const p of feed) {
-      if (p.brand !== null) brandDisplayByName.set(p.brand.toLowerCase().replace(/\s+/g, ' '), p.brand);
+      // EXCLUDED_BRAND_KEYS-фильтр и здесь: бренд удалённой марки не должен
+      // пересоздаваться пустой строкой (feed в этом месте сырой).
+      if (p.brand !== null && !isBrandExcluded(p.brand)) {
+        brandDisplayByName.set(p.brand.toLowerCase().replace(/\s+/g, ' '), p.brand);
+      }
     }
     const brandPlan = buildBrandPlan([...brandDisplayByName.values()], ourBrands);
     const brandLinks = new Map(brandPlan.links);

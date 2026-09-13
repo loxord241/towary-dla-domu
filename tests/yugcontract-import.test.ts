@@ -17,6 +17,8 @@ const {
   buildBrandPlan,
   mapFeedProducts,
   splitProductWrites,
+  isBrandExcluded,
+  EXCLUDED_BRAND_KEYS,
 } = await import('../app/lib/yugcontract/import-plan.ts');
 
 // ---------------- translit ----------------
@@ -135,6 +137,26 @@ function ycProduct(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+test('mapFeedProducts: EXCLUDED_BRAND_KEYS drops owner-banned brands with a skip reason', () => {
+  // Власник 2026-09-12/13: VIOLET HOUSE знятий з вітрини повністю — sync не
+  // має ні створювати, ні оновлювати його позиції (вони живуть у живих
+  // категоріях, тому category-gate їх не зупиняє).
+  assert.deepEqual([...EXCLUDED_BRAND_KEYS], ['violet house']);
+  assert.equal(isBrandExcluded('VIOLET HOUSE'), true);
+  assert.equal(isBrandExcluded('  violet   house '), true, 'та сама нормалізація, що і звязка бренду');
+  assert.equal(isBrandExcluded('Bosch'), false);
+
+  const { rows, skipped } = mapFeedProducts([
+    ycProduct({ externalId: '200', brand: 'VIOLET HOUSE' }),
+    ycProduct({ externalId: '201', brand: 'violet house' }),
+    ycProduct({ externalId: '202', brand: 'Bosch' }),
+  ] as never[]);
+  assert.deepEqual(rows.map((r: { yugcontract_id: string }) => r.yugcontract_id), ['202']);
+  const vh = skipped.find((s: { id: string }) => s.id === '200');
+  assert.ok(vh !== undefined, 'excluded row must be reported as skipped');
+  assert.match(vh.reason, /бренд виключений/);
+});
 
 test('mapFeedProducts applies rrp-as-price/stock rules and skips broken rows', () => {
   const rows = [
