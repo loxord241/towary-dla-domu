@@ -18,7 +18,8 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const read = (rel: string) => readFileSync(path.join(root, rel), 'utf8');
 
 test('VISIBILITY: PRODUCT_SELECT excludes imageless products via !inner', () => {
-  const src = read('app/lib/catalog.ts');
+  // 2026-09 refactor: the select constants live in app/lib/catalog/shared.ts.
+  const src = read('app/lib/catalog/shared.ts');
   assert.match(
     src,
     /images:product_images!inner\(\*\)/,
@@ -27,7 +28,8 @@ test('VISIBILITY: PRODUCT_SELECT excludes imageless products via !inner', () => 
 });
 
 test('VISIBILITY: catalog head-count mirrors the eligibility join', () => {
-  const src = read('app/lib/catalog.ts');
+  // 2026-09 refactor: fetchCatalogProducts lives in app/lib/catalog/listing.ts.
+  const src = read('app/lib/catalog/listing.ts');
   const start = src.indexOf('export async function fetchCatalogProducts');
   const body = src.slice(start, src.indexOf('\n}', start + 100));
   // Ternary form (2026-08-26): the pc junction embed joins only when a
@@ -40,7 +42,8 @@ test('VISIBILITY: catalog head-count mirrors the eligibility join', () => {
 });
 
 test('VISIBILITY: direct slug inherits the filter (hidden → notFound)', () => {
-  const src = read('app/lib/catalog.ts');
+  // 2026-09 refactor: the slug read lives in app/lib/catalog/product-card.ts.
+  const src = read('app/lib/catalog/product-card.ts');
   const start = src.indexOf('export async function fetchProductBySlug');
   const body = src.slice(start);
   assert.match(body, /\.select\(PRODUCT_SELECT\)/, 'slug-запрос должен идти через PRODUCT_SELECT');

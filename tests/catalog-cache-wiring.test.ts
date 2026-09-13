@@ -161,7 +161,27 @@ test('wiring: TTL constants contract (dictionaries 3600s, public reads 60s)', ()
 
 // ---- structural invariants over app/lib/catalog.ts source ----
 
-const src = readFileSync(path.join(root, 'app/lib/catalog.ts'), 'utf8');
+// 2026-09 refactor: the god-module was split into app/lib/catalog/* — the
+// structural pins below read every fragment (original file order) so the
+// invariants stay whole.
+const CATALOG_LIB_FILES = [
+  'app/lib/catalog/shared.ts',
+  'app/lib/catalog/filters.ts',
+  'app/lib/catalog/slug-lookup.ts',
+  'app/lib/catalog/product-feed.ts',
+  'app/lib/catalog/counts.ts',
+  'app/lib/catalog/listing.ts',
+  'app/lib/catalog/wallpaper-listing.ts',
+  'app/lib/catalog/reviews.ts',
+  'app/lib/catalog/shelves.ts',
+  'app/lib/catalog/categories.ts',
+  'app/lib/catalog/search.ts',
+  'app/lib/catalog/product-card.ts',
+  'app/lib/catalog/related.ts',
+];
+const src = CATALOG_LIB_FILES.map((rel) =>
+  readFileSync(path.join(root, rel), 'utf8')
+).join('\n');
 
 function functionBody(source: string, signature: string): string {
   const start = source.indexOf(signature);

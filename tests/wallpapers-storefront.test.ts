@@ -36,7 +36,25 @@ function sliceBetween(
 }
 
 const EXCLUSION = `.not('sku', 'like', WALLPAPER_SKU_LIKE)`;
-const catalogSrc = () => read('app/lib/catalog.ts');
+// 2026-09 refactor: the catalog god-module was split into app/lib/catalog/* —
+// the pins below read every fragment (original file order).
+const CATALOG_LIB_FILES = [
+  'app/lib/catalog/shared.ts',
+  'app/lib/catalog/filters.ts',
+  'app/lib/catalog/slug-lookup.ts',
+  'app/lib/catalog/product-feed.ts',
+  'app/lib/catalog/counts.ts',
+  'app/lib/catalog/listing.ts',
+  'app/lib/catalog/wallpaper-listing.ts',
+  'app/lib/catalog/reviews.ts',
+  'app/lib/catalog/shelves.ts',
+  'app/lib/catalog/categories.ts',
+  'app/lib/catalog/search.ts',
+  'app/lib/catalog/product-card.ts',
+  'app/lib/catalog/related.ts',
+];
+const catalogSrc = () =>
+  CATALOG_LIB_FILES.map((rel) => read(rel)).join('\n');
 
 // ---- static: general listings exclude wc-* ----
 

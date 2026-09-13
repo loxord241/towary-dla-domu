@@ -19,10 +19,30 @@ import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel: string): string => readFileSync(path.join(root, rel), 'utf8');
 
+// 2026-09 refactor: the catalog god-module was split into app/lib/catalog/* —
+// the lib pins below read every fragment (original file order).
+const CATALOG_LIB_FILES = [
+  'app/lib/catalog/shared.ts',
+  'app/lib/catalog/filters.ts',
+  'app/lib/catalog/slug-lookup.ts',
+  'app/lib/catalog/product-feed.ts',
+  'app/lib/catalog/counts.ts',
+  'app/lib/catalog/listing.ts',
+  'app/lib/catalog/wallpaper-listing.ts',
+  'app/lib/catalog/reviews.ts',
+  'app/lib/catalog/shelves.ts',
+  'app/lib/catalog/categories.ts',
+  'app/lib/catalog/search.ts',
+  'app/lib/catalog/product-card.ts',
+  'app/lib/catalog/related.ts',
+];
+const catalogLib = (): string =>
+  CATALOG_LIB_FILES.map((rel) => src(rel)).join('\n');
+
 // ---- data layer: bounded featured-only fetch ----
 
 test('POPULAR: catalog exports fetchPopularProducts reading real products', () => {
-  const lib = src('app/lib/catalog.ts');
+  const lib = catalogLib();
   assert.match(lib, /export async function fetchPopularProducts/);
   // real table + real eligibility join, no mock/test fixtures
   assert.match(lib, /\.from\('products'\)/);
@@ -30,7 +50,7 @@ test('POPULAR: catalog exports fetchPopularProducts reading real products', () =
 });
 
 test('POPULAR: featured-only leg with stable ordering (NO fallback fill)', () => {
-  const lib = src('app/lib/catalog.ts');
+  const lib = catalogLib();
   const fn = lib.slice(
     lib.indexOf('async function fetchPopularProducts'),
     lib.indexOf('export async function fetchActiveCategories')
@@ -47,7 +67,7 @@ test('POPULAR: featured-only leg with stable ordering (NO fallback fill)', () =>
 });
 
 test('POPULAR: single bounded window, not a paged scan', () => {
-  const lib = src('app/lib/catalog.ts');
+  const lib = catalogLib();
   const fn = lib.slice(
     lib.indexOf('async function fetchPopularProducts'),
     lib.indexOf('export async function fetchActiveCategories')
@@ -59,7 +79,7 @@ test('POPULAR: single bounded window, not a paged scan', () => {
 });
 
 test('POPULAR: limit is clamped to a safe constant (bounded DB read)', () => {
-  const lib = src('app/lib/catalog.ts');
+  const lib = catalogLib();
   const fn = lib.slice(
     lib.indexOf('async function fetchPopularProducts'),
     lib.indexOf('export async function fetchActiveCategories')
@@ -73,7 +93,7 @@ test('POPULAR: excludeIds filters IN SQL, before the bounded window (dedupe + ba
   // not-in filter applied BEFORE .range(), so the window still yields `take`
   // rows (backfilled from the next featured candidates) — and it must stay a
   // SINGLE bounded read.
-  const lib = src('app/lib/catalog.ts');
+  const lib = catalogLib();
   const fn = lib.slice(
     lib.indexOf('async function fetchPopularProducts'),
     lib.indexOf('export async function fetchActiveCategories')
@@ -95,7 +115,7 @@ test('POPULAR: excludeIds filters IN SQL, before the bounded window (dedupe + ba
 });
 
 test('POPULAR: errors propagate honestly (no silent empty shelf)', () => {
-  const lib = src('app/lib/catalog.ts');
+  const lib = catalogLib();
   const fn = lib.slice(
     lib.indexOf('async function fetchPopularProducts'),
     lib.indexOf('export async function fetchActiveCategories')

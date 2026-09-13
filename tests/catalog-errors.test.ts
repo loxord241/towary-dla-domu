@@ -15,10 +15,25 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const catalog = readFileSync(
-  path.join(root, 'app/lib/catalog.ts'),
-  'utf8'
-);
+// 2026-09 refactor: the god-module was split into app/lib/catalog/* — read
+// every fragment (original file order) so the invariant stays whole.
+const catalog = [
+    'app/lib/catalog/shared.ts',
+    'app/lib/catalog/filters.ts',
+    'app/lib/catalog/slug-lookup.ts',
+    'app/lib/catalog/product-feed.ts',
+    'app/lib/catalog/counts.ts',
+    'app/lib/catalog/listing.ts',
+    'app/lib/catalog/wallpaper-listing.ts',
+    'app/lib/catalog/reviews.ts',
+    'app/lib/catalog/shelves.ts',
+    'app/lib/catalog/categories.ts',
+    'app/lib/catalog/search.ts',
+    'app/lib/catalog/product-card.ts',
+    'app/lib/catalog/related.ts',
+  ]
+  .map((rel) => readFileSync(path.join(root, rel), 'utf8'))
+  .join('\n');
 
 test('CATALOG: every `if (error)` guard rethrows — errors never become empty results', () => {
   // one level of brace nesting allowed — template literals like ${error.message}

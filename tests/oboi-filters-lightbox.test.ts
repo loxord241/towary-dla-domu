@@ -53,7 +53,8 @@ test('FILTER DICT: wallpapers/filters.ts pins the Основа dictionary with t
 });
 
 test('FILTER QUERY: fetchWallpaperProducts applies the jsonb contains to count + data', () => {
-  const src = read('app/lib/catalog.ts');
+  // 2026-09 refactor: the /oboi read lives in app/lib/catalog/wallpaper-listing.ts.
+  const src = read('app/lib/catalog/wallpaper-listing.ts');
   const body = sliceBetween(
     src,
     'export async function fetchWallpaperProducts',

@@ -26,7 +26,25 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel: string): string => readFileSync(path.join(root, rel), 'utf8');
 
 const MIGRATION = 'database/migrations/028_product_is_selected.sql';
-const LIB = 'app/lib/catalog.ts';
+// 2026-09 refactor: the god-module was split into app/lib/catalog/* — the
+// lib pins below read every fragment (original file order).
+const LIB = [
+  'app/lib/catalog/shared.ts',
+  'app/lib/catalog/filters.ts',
+  'app/lib/catalog/slug-lookup.ts',
+  'app/lib/catalog/product-feed.ts',
+  'app/lib/catalog/counts.ts',
+  'app/lib/catalog/listing.ts',
+  'app/lib/catalog/wallpaper-listing.ts',
+  'app/lib/catalog/reviews.ts',
+  'app/lib/catalog/shelves.ts',
+  'app/lib/catalog/categories.ts',
+  'app/lib/catalog/search.ts',
+  'app/lib/catalog/product-card.ts',
+  'app/lib/catalog/related.ts',
+];
+const readLib = (): string =>
+  LIB.map((rel) => src(rel)).join('\n');
 const HOME = 'app/(home)/page.tsx';
 const LIST_ROUTE = 'app/api/admin/products/route.ts';
 const ITEM_ROUTE = 'app/api/admin/products/[id]/route.ts';
@@ -50,7 +68,7 @@ test('MIGRATION 028: adds products.is_selected with a partial active index', () 
 });
 
 test('CATALOG: fetchSelectedProducts is a single bounded window (limit 8, no paged loop)', () => {
-  const lib = src(LIB);
+  const lib = readLib();
   assert.match(lib, /export async function fetchSelectedProducts/);
   const fnStart = lib.indexOf('export async function fetchSelectedProducts');
   const fnBody = lib.slice(fnStart, fnStart + 1600);
@@ -77,7 +95,7 @@ test('CATALOG: fetchSelectedProducts is a single bounded window (limit 8, no pag
 });
 
 test('CATALOG: Product type carries both independent flags', () => {
-  const lib = src(LIB);
+  const lib = readLib();
   assert.match(lib, /is_featured: boolean;/);
   assert.match(lib, /is_selected: boolean;/);
 });

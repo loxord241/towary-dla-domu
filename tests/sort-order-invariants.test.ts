@@ -9,8 +9,9 @@ function sliceBetween(src: string, startMarker: string, endMarker: string): stri
 }
 
 test('SORT-ORDER: fetchActiveCategories does not use created_at as competing order', () => {
+  // 2026-09 refactor: the dictionaries live in app/lib/catalog/categories.ts.
   const fn = sliceBetween(
-    readFileSync('app/lib/catalog.ts', 'utf8'),
+    readFileSync('app/lib/catalog/categories.ts', 'utf8'),
     'export async function fetchActiveCategories',
     'export async function fetchActiveBrands'
   );
