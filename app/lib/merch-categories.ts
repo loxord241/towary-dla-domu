@@ -3,10 +3,14 @@
  * (Task #28 internal linking, 2026-09). Pure and runtime-dependency-free so
  * node:test loads it without Supabase (category-seo.ts pattern).
  *
- * Slugs point to the closest existing categories (the first two labels are
- * merchandising names, not rows in the categories table). «Господарчі
- * товари» (TDD_CATEGORY_SLUG in category-seo.ts) carries the commercial
- * intent «товари для дому» and matches the shop brand.
+ * Slugs point to the closest existing categories (the labels are
+ * merchandising names, not rows in the categories table).
+ *
+ * The former third anchor «Господарчі товари» (hospodarchi-tovary-1451,
+ * the TDD_CATEGORY_SLUG in category-seo.ts) was removed by the owner on
+ * 2026-09-12 — the category row is gone from the DB, so the anchor led to
+ * a 404. The pinned SEO intent anchor was repointed to
+ * mala-kukhonna-tekhnika-69 (see category-seo.ts).
  */
 
 export interface MerchCategory {
@@ -17,7 +21,6 @@ export interface MerchCategory {
 export const MERCH_CATEGORIES: readonly MerchCategory[] = [
   { slug: 'mala-kukhonna-tekhnika-69', label: 'Дрібна побутова техніка' },
   { slug: 'velyka-pobutova-tekhnika-739', label: 'Велика побутова техніка' },
-  { slug: 'hospodarchi-tovary-1451', label: 'Товари для дому' },
 ] as const;
 
 /** Hard cap so a future category-tree edit can never make the footer endless. */

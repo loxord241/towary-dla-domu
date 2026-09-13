@@ -1,8 +1,10 @@
 /**
- * Category-level SEO package (2026-08): crawlable intent anchor «Товари для
- * дому» in the SSR footer, direct-children links on the category page, a
+ * Category-level SEO package (2026-08): a crawlable merchandising intent
+ * anchor in the SSR footer, direct-children links on the category page, a
  * unique Ukrainian intro for the pinned category, metadata override and a
- * catalog BreadcrumbList. JSX is not executable in node:test (established
+ * catalog BreadcrumbList. The pin originally pointed at «Господарчі товари»
+ * (removed by the owner 2026-09-12) and now points at the live category
+ * mala-kukhonna-tekhnika-69. JSX is not executable in node:test (established
  * pattern), so component invariants are pinned at source level.
  */
 import { test } from 'node:test';
@@ -30,11 +32,14 @@ const src = (rel: string): string => readFileSync(path.join(root, rel), 'utf8');
 test('SEO-CAT: target category resolves the intent override', () => {
   const seo = getCategorySeo(TDD_CATEGORY_SLUG);
   assert.ok(seo, 'override missing for the pinned slug');
-  assert.equal(seo.h1, 'Товари для дому');
-  assert.ok(seo.title.startsWith('Товари для дому'), 'title must lead with the intent keyword');
+  assert.equal(seo.h1, 'Дрібна побутова техніка');
+  assert.ok(
+    seo.title.startsWith('Дрібна побутова техніка'),
+    'title must lead with the intent keyword'
+  );
   assert.ok(seo.title.includes('купити'), 'commercial intent in title');
   assert.ok(seo.title.length <= 80, `title too long: ${seo.title.length}`);
-  assert.ok(seo.description.includes('Товари для дому'));
+  assert.ok(seo.description.includes('Дрібна побутова техніка'));
   assert.ok(seo.description.length >= 70, 'description too thin');
   assert.ok(seo.intro.length >= 1, 'unique intro copy missing');
   assert.ok(seo.intro.every((p) => p.length >= 80), 'intro paragraphs must carry real content');
@@ -43,13 +48,16 @@ test('SEO-CAT: target category resolves the intent override', () => {
 test('SEO-CAT: other slugs get no override (existing metadata behavior)', () => {
   assert.equal(getCategorySeo('blendery-1402'), null);
   assert.equal(getCategorySeo(undefined), null);
-  assert.equal(getCategorySeo('hospodarchi-tovary-1451-lookalike'), null);
+  // The removed «Господарчі товари» slug (owner deleted the category
+  // 2026-09-12) and any prefix-lookalike of the pinned slug stay unoverridden.
+  assert.equal(getCategorySeo('hospodarchi-tovary-1451'), null);
+  assert.equal(getCategorySeo('mala-kukhonna-tekhnika-69-lookalike'), null);
 });
 
 test('SEO-CAT: applyCategorySeoMetadata overrides only title/description', () => {
   const base = {
-    title: 'Господарчі товари — купити в Товари для дому',
-    description: 'Товари у категорії «Господарчі товари» — купити в інтернет-магазині Товари для дому.',
+    title: 'Дрібна побутова техніка — купити в Товари для дому',
+    description: 'Техніка у категорії «Дрібна побутова техніка» — купити в інтернет-магазині Товари для дому.',
     alternates: { canonical: `/catalog?category=${TDD_CATEGORY_SLUG}` },
   };
   const merged = applyCategorySeoMetadata(base, TDD_CATEGORY_SLUG);
@@ -109,10 +117,11 @@ test('SEO-CAT: leaf category has no children', () => {
 
 // ---- crawlable SSR anchor in the footer (source invariants)
 
-test('SEO-CAT: footer renders a crawlable «Товари для дому» anchor to the category', () => {
+test('SEO-CAT: footer renders a crawlable merchandising anchor to a category', () => {
   const footer = src('app/components/SiteFooter.tsx');
   // The crawlable anchors come from merch-categories.ts (Task #28): the
-  // merchandising slugs (incl. hospodarchi-tovary-1451) are its single source.
+  // merchandising slugs are its single source. The former «Господарчі
+  // товари» anchor was removed 2026-09-12 (category deleted by the owner).
   assert.match(
     footer,
     /merch-categories/,
@@ -123,7 +132,7 @@ test('SEO-CAT: footer renders a crawlable «Товари для дому» ancho
     /selectFooterCategories\(/,
     'footer must render the selected hub categories'
   );
-  assert.match(footer, /Товари для дому|footerCategoryLabel/, 'anchor text must be the intent keyword (merch label)');
+  assert.match(footer, /footerCategoryLabel/, 'anchor text must come from the merch label map');
   // inside a real <Link> (SSR anchor), not a button or the drawer
   assert.match(
     footer,

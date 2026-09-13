@@ -6,15 +6,19 @@ import { compareCategories } from './category-tree.ts';
  * Category-level SEO layer (2026-08). Pure and runtime-dependency-free
  * (type-only import from catalog.ts) so node:test loads it without Supabase.
  *
- * The storefront request «товари для дому» matches the shop brand and the
- * domain. The pinned category below already carries the merchandising
- * anchor «Товари для дому» in the nav drawer; this module gives it the
- * matching intent copy, an H1, footer anchor reuse and child-category
- * links. Every other category keeps the generic metadata behavior.
+ * The storefront carries one pinned merchandising category with intent
+ * copy, an H1, footer anchor reuse and child-category links. Every other
+ * category keeps the generic metadata behavior.
+ *
+ * History: the pin originally pointed at «Господарчі товари»
+ * (hospodarchi-tovary-1451). The owner removed that category on 2026-09-12
+ * (row deleted from the DB), so the anchor was repointed to the live
+ * merchandising category mala-kukhonna-tekhnika-69 («Дрібна побутова
+ * техніка», first entry of MERCH_CATEGORIES in merch-categories.ts).
  */
 
-/** The category pinned to the commercial intent «товари для дому». */
-export const TDD_CATEGORY_SLUG = 'hospodarchi-tovary-1451';
+/** The category pinned to the commercial merchandising intent. */
+export const TDD_CATEGORY_SLUG = 'mala-kukhonna-tekhnika-69';
 
 /** Heading above the direct-children link list on NON-pinned categories. */
 export const SUBCATEGORIES_HEADING = 'Підкатегорії';
@@ -34,12 +38,13 @@ export interface CategorySeoOverride {
 
 const OVERRIDES: Record<string, CategorySeoOverride> = {
   [TDD_CATEGORY_SLUG]: {
-    h1: 'Товари для дому',
-    title: 'Товари для дому — купити в інтернет-магазині Товари для дому',
+    h1: 'Дрібна побутова техніка',
+    title:
+      'Дрібна побутова техніка — купити в інтернет-магазині Товари для дому',
     description:
-      'Товари для дому в інтернет-магазині «Товари для дому»: господарчі товари для прибирання, зберігання та догляду за оселею. Доставка по всій Україні.',
+      'Дрібна побутова техніка в інтернет-магазині «Товари для дому»: блендери, кавомолки, чайники та інша техніка для кухні. Доставка по всій Україні.',
     intro: [
-      'У цьому розділі зібрані товари для дому, які щодня потрібні в кожній оселі: господарчі дрібниці, приладдя для прибирання, зберігання речей і догляд за кімнатними рослинами. Асортимент підбирається для щоденних господарських задач — від дрібного ремонту до підтримання порядку.',
+      'У цьому розділі зібрана компактна техніка для щоденних кухонних задач: блендери, кавомолки, міксери, електрочайники та інші дрібні побутові прилади. Асортимент підбирається так, щоб закрити типові потреби дому без великої вбудованої техніки.',
       'Щоб швидше знайти потрібне, скористайтеся підкатегоріями нижче або фільтрами в каталозі. Замовлення доставляємо по всій Україні, а ключові характеристики кожної позиції вказані на сторінці товару.',
     ],
     introHeading: 'Підкатегорії',

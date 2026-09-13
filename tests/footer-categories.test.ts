@@ -21,20 +21,23 @@ function cat(
   return { id, name, slug: id, parent_id: parentId };
 }
 
-const TDD = MERCH_CATEGORIES.find((m) => m.slug === 'hospodarchi-tovary-1451')!;
+// First merch entry (mala-kukhonna-tekhnika-69). The former «Товари для
+// дому» anchor (hospodarchi-tovary-1451) was removed 2026-09-12 together
+// with the owner-deleted category row.
+const MERCH_ANCHOR = MERCH_CATEGORIES[0]!;
 
 test('FOOTER-CAT: merchandising anchors come first with merch labels', () => {
   const all = [
     cat('leaf-1', 'top-1'),
     cat('top-1', null, 'Кухонний посуд'),
-    cat('tdd', null, 'Господарчі товари'), // slug matches MERCH below
-  ].map((c) => ({ ...c, slug: c.slug === 'tdd' ? TDD.slug : c.slug }));
+    cat('merch', null, 'Назва з БД'), // slug matches MERCH_ANCHOR below
+  ].map((c) => ({ ...c, slug: c.slug === 'merch' ? MERCH_ANCHOR.slug : c.slug }));
 
   const picked = selectFooterCategories(all);
   const merchAnchor = picked[0];
   assert.ok(merchAnchor !== undefined, 'merch anchor must be picked');
-  assert.equal(merchAnchor.slug, TDD.slug, 'merch anchor must lead the list');
-  assert.equal(footerCategoryLabel(merchAnchor), TDD.label, 'merch label wins over the DB name');
+  assert.equal(merchAnchor.slug, MERCH_ANCHOR.slug, 'merch anchor must lead the list');
+  assert.equal(footerCategoryLabel(merchAnchor), MERCH_ANCHOR.label, 'merch label wins over the DB name');
   assert.equal(picked.length, 2, 'merch slug must not repeat in the top-level list');
 });
 

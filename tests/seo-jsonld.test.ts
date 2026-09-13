@@ -261,7 +261,7 @@ test('BreadcrumbList: Product JSON-LD builder output is untouched', () => {
 
 test('JSONLD: catalog breadcrumb emits Головна → Каталог → Категорія', () => {
   const d = buildCatalogBreadcrumbJsonLd(
-    { name: 'Господарчі товари', slug: 'hospodarchi-tovary-1451' },
+    { name: 'Дрібна побутова техніка', slug: 'mala-kukhonna-tekhnika-69' },
     SITE
   );
   assert.equal(d['@type'], 'BreadcrumbList');
@@ -272,7 +272,7 @@ test('JSONLD: catalog breadcrumb emits Головна → Каталог → К�
   }[];
   assert.deepEqual(
     items.map((i) => i.name),
-    ['Головна', 'Каталог', 'Господарчі товари']
+    ['Головна', 'Каталог', 'Дрібна побутова техніка']
   );
   assert.deepEqual(
     items.map((i) => i.position),
@@ -281,7 +281,7 @@ test('JSONLD: catalog breadcrumb emits Головна → Каталог → К�
   assert.ok(items[2] !== undefined);
   assert.equal(
     items[2].item,
-    `${SITE}/catalog?category=hospodarchi-tovary-1451`
+    `${SITE}/catalog?category=mala-kukhonna-tekhnika-69`
   );
 });
 
