@@ -87,14 +87,19 @@ test('CUSTOMER-NAMES: orders route enforces UA E.164 for non-empty phones', () =
 
 // ---- CheckoutForm ----
 
+// 2026-09-13 mechanical split: the contact inputs render in
+// parts/ContactFields.tsx; validation + submit stay in CheckoutForm.tsx.
+const CONTACT_FIELDS = 'app/checkout/parts/ContactFields.tsx';
+
 test('CUSTOMER-FORM: three structured name fields rendered', () => {
   const f = src('app/checkout/CheckoutForm.tsx');
+  const c = src(CONTACT_FIELDS);
   for (const id of ['co-first-name', 'co-last-name', 'co-patronymic']) {
-    assert.match(f, new RegExp(id), `missing field ${id}`);
+    assert.match(c, new RegExp(id), `missing field ${id}`);
   }
-  assert.match(f, /Ім’я \*/);
-  assert.match(f, /Прізвище \*/);
-  assert.match(f, /По батькові/);
+  assert.match(c, /Ім’я \*/);
+  assert.match(c, /Прізвище \*/);
+  assert.match(c, /По батькові/);
   // Required: first + last; patronymic optional.
   assert.match(f, /errs\.firstName = 'Вкажіть ім’я'/);
   assert.match(f, /errs\.lastName = 'Вкажіть прізвище'/);
@@ -110,11 +115,12 @@ test('CUSTOMER-FORM: composed ПІБ validated against the server-side 120 cap',
 
 test('CUSTOMER-FORM: phone has fixed +380 prefix and E.164 normalization', () => {
   const f = src('app/checkout/CheckoutForm.tsx');
-  assert.match(f, /\+380/);
-  assert.match(f, /normalizeUaPhoneDigits/);
+  const c = src(CONTACT_FIELDS);
+  assert.match(c, /\+380/);
+  assert.match(c, /normalizeUaPhoneDigits/);
   assert.match(f, /toE164Ua/);
   // Prefix is display-only: never part of the typed value.
-  assert.match(f, /aria-label="Номер телефону після \+380"/);
+  assert.match(c, /aria-label="Номер телефону після \+380"/);
   // Incomplete numbers are rejected before submit.
   assert.match(f, /Вкажіть повний номер після \+380/);
 });
@@ -122,7 +128,16 @@ test('CUSTOMER-FORM: phone has fixed +380 prefix and E.164 normalization', () =>
 // ---- settlements autocomplete ----
 
 test('AUTOCOMPLETE: debounce, loading + empty states, dictionary-only ids', () => {
-  const f = src('app/checkout/CheckoutForm.tsx');
+  // 2026-09-13 mechanical split: the NP settlement/street machinery now
+  // lives in parts/NovaPostDelivery.tsx (UI) + delivery-apis.ts (loaders);
+  // the union below is the same code the monolith used to hold.
+  const f = [
+    'app/checkout/CheckoutForm.tsx',
+    'app/checkout/delivery-apis.ts',
+    'app/checkout/parts/NovaPostDelivery.tsx',
+    'app/checkout/parts/UkrposhtaDelivery.tsx',
+  ].map(src)
+    .join('\n');
   // Debounced search (~300ms within the 250-400ms window).
   assert.match(f, /}, 300\)/);
   assert.match(f, /settlementDebounceRef/);

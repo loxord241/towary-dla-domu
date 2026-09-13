@@ -235,9 +235,18 @@ test('launchers forward --force to the importer DB gate (manual GO path)', () =>
 // ---------------------------------------------------------------------------
 
 test('CheckoutForm guards divisions/streets lookups against stale responses', () => {
-  const src = readFileSync(join(root, 'app/checkout/CheckoutForm.tsx'), 'utf8');
-  assert.match(src, /const divisionsRequestSeq = useRef\(0\)/);
-  assert.match(src, /const streetRequestSeq = useRef\(0\)/);
+  // 2026-09-13 mechanical split: the guards' refs/state stay in
+  // CheckoutForm.tsx; the settlement click handler (with two of the four
+  // fetchDivisionsApi guards) moved to parts/NovaPostDelivery.tsx. Counts
+  // run over the combined source so the pin keeps its original strength.
+  const form = readFileSync(join(root, 'app/checkout/CheckoutForm.tsx'), 'utf8');
+  const npPart = readFileSync(
+    join(root, 'app/checkout/parts/NovaPostDelivery.tsx'),
+    'utf8'
+  );
+  const src = `${form}\n${npPart}`;
+  assert.match(form, /const divisionsRequestSeq = useRef\(0\)/);
+  assert.match(form, /const streetRequestSeq = useRef\(0\)/);
   // every divisions fetch callback checks the sequence before setState
   // (definition at line 1 excluded — only call sites count)
   const divisionsCalls = src.match(/(?<!function )fetchDivisionsApi\(/g)?.length ?? 0;
@@ -250,9 +259,9 @@ test('CheckoutForm guards divisions/streets lookups against stale responses', ()
     'each fetchDivisionsApi callback (success+error) must drop stale responses'
   );
   // settlement change resets the previously picked division/street
-  const settle = src.indexOf('setSettlement(s);');
+  const settle = npPart.indexOf('setSettlement(s);');
   assert.ok(settle !== -1, 'settlement list-click handler not found');
-  const after = src.slice(settle, settle + 700);
+  const after = npPart.slice(settle, settle + 700);
   assert.match(after, /setDivision\(null\)/);
   assert.match(after, /setStreet\(null\)/);
 });

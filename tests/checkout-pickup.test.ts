@@ -48,6 +48,13 @@ const src = (rel: string): string => readFileSync(path.join(root, rel), 'utf8');
 
 const FORM = src('app/checkout/CheckoutForm.tsx');
 const ORDER_PAGE = src('app/orders/[orderNumber]/page.tsx');
+// 2026-09-13 mechanical split: the pickup UI (points + payment radios +
+// mixed-cart warning) lives in PickupBlock.tsx, the carrier/service buttons
+// (min-h-[44px]) in DeliveryCarrierPicker.tsx, the cost lines in
+// OrderSummary.tsx. Pins target the file where the pinned code lives.
+const PICKUP_BLOCK = src('app/checkout/parts/PickupBlock.tsx');
+const CARRIER_PICKER = src('app/checkout/parts/DeliveryCarrierPicker.tsx');
+const ORDER_SUMMARY = src('app/checkout/parts/OrderSummary.tsx');
 // NB: do NOT stripJsComments these sources — the naive block-comment
 // regex trips on «(/api/delivery/ukrposhta/*)» in a CheckoutForm comment
 // and swallows half the file. The pins below are comment-tolerant as-is.
@@ -171,16 +178,16 @@ test('PICKUP form: deliveryObject branch — pickup first, wc- domain detection'
   assert.match(formCode, /cartHasTech = lines\.some\(/);
   // Both points offered on a mixed cart…
   assert.match(formCode, /availablePickupPoints = PICKUP_POINTS\.filter\(/);
-  // …with the honest mixed-cart warning.
-  assert.match(formCode, /У кошику товари обох напрямків — усе замовлення буде\s+чекати на обраній точці\./);
+  // …with the honest mixed-cart warning (rendered by PickupBlock).
+  assert.match(PICKUP_BLOCK, /У кошику товари обох напрямків — усе замовлення буде\s+чекати на обраній точці\./);
   // NP city search must NOT render for pickup.
   assert.match(formCode, /deliveryType !== 'pickup' &&/);
 });
 
 test('PICKUP form: payment radios + cash flows through delivery.paymentIntent', () => {
-  assert.match(formCode, /Карткою онлайн \(LiqPay\) після оформлення/);
-  assert.match(formCode, /Готівкою при отриманні на точці/);
-  assert.match(formCode, /name="pickup-payment"/);
+  assert.match(PICKUP_BLOCK, /Карткою онлайн \(LiqPay\) після оформлення/);
+  assert.match(PICKUP_BLOCK, /Готівкою при отриманні на точці/);
+  assert.match(PICKUP_BLOCK, /name="pickup-payment"/);
   const branch = formCode.slice(
     formCode.indexOf("if (deliveryType === 'pickup') {"),
     formCode.indexOf("if (deliveryType === 'ukrposhta_warehouse') {")
@@ -192,16 +199,22 @@ test('PICKUP form: payment radios + cash flows through delivery.paymentIntent', 
 });
 
 test('PICKUP form: mobile contract + cost line pins stay honest', () => {
-  // Tap targets on the point buttons and payment labels.
+  // Tap targets on the point buttons and payment labels. After the split
+  // the same 5 occurrences live across the carrier picker (carrier blocks
+  // + service buttons) and the pickup block (point buttons + labels) —
+  // the combined count must stay ≥5, as before the split.
+  const tapTargets =
+    (CARRIER_PICKER.match(/min-h-\[44px\]/g) ?? []).length +
+    (PICKUP_BLOCK.match(/min-h-\[44px\]/g) ?? []).length;
   assert.equal(
-    (formCode.match(/min-h-\[44px\]/g) ?? []).length >= 5,
+    tapTargets >= 5,
     true,
     'carrier blocks + service buttons + point buttons + payment labels ≥44px'
   );
   // Pickup cost line replaces the carrier one conditionally — both strings
-  // stay in the source (stage2g money pin).
-  assert.match(formCode, /Безкоштовно \(самовивіз\)/);
-  assert.match(formCode, /за тарифами перевізника/);
+  // stay in the source (stage2g money pin), now in OrderSummary.
+  assert.match(ORDER_SUMMARY, /Безкоштовно \(самовивіз\)/);
+  assert.match(ORDER_SUMMARY, /за тарифами перевізника/);
 });
 
 // ---------------------------------------------------------------------------

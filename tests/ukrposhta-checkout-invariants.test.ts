@@ -18,7 +18,23 @@ import { sanitizeDelivery } from '../app/lib/checkout-delivery.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel: string): string => readFileSync(path.join(root, rel), 'utf8');
-const FORM = src('app/checkout/CheckoutForm.tsx');
+// 2026-09-13: CheckoutForm was mechanically split (parts/* + delivery-apis).
+// The union is the same code the monolith held; all pins below keep their
+// original force — match regexes must still hit, count regexes still count
+// the same occurrences, and doesNotMatch pins now cover every split file.
+const CHECKOUT_FILES = [
+  'app/checkout/CheckoutForm.tsx',
+  'app/checkout/delivery-apis.ts',
+  'app/checkout/parts/ContactFields.tsx',
+  'app/checkout/parts/DeliveryCarrierPicker.tsx',
+  'app/checkout/parts/PickupBlock.tsx',
+  'app/checkout/parts/NovaPostDelivery.tsx',
+  'app/checkout/parts/UkrposhtaDelivery.tsx',
+  'app/checkout/parts/LiqPayHint.tsx',
+  'app/checkout/parts/OrderSummary.tsx',
+] as const;
+
+const FORM = CHECKOUT_FILES.map((rel) => src(rel)).join('\n');
 
 // next/server is not resolvable under plain node:test — load the REAL
 // rate-limit source with only the NextResponse import stubbed (the
