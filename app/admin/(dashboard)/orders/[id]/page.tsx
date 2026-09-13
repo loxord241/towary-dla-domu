@@ -69,6 +69,8 @@ interface ServerShipment {
   delivery_cost_estimated: number | null;
   ttn_number: string | null;
   ttn_ref: string | null;
+  np_status: string | null;
+  np_status_checked_at: string | null;
   delivery_cost: number | null;
   order_shipment_items: { order_item_id: string; quantity: number }[];
   order_shipment_parcels: ServerParcel[];
@@ -101,6 +103,7 @@ interface PlanShipment {
   status: string;
   ttn_number: string | null;
   ttn_ref: string | null;
+  np_status: string | null;
   delivery_cost: number | null;
   items: { order_item_id: string; quantity: string }[];
   parcels: PlanParcel[];
@@ -153,6 +156,7 @@ function emptyShipment(): PlanShipment {
     status: 'planned',
     ttn_number: null,
     ttn_ref: null,
+    np_status: null,
     delivery_cost: null,
     items: [],
     parcels: [],
@@ -176,6 +180,7 @@ function shipmentFromServer(s: ServerShipment): PlanShipment {
     status: s.status ?? 'planned',
     ttn_number: s.ttn_number ?? null,
     ttn_ref: s.ttn_ref ?? null,
+    np_status: s.np_status ?? null,
     delivery_cost: s.delivery_cost ?? null,
     items: (s.order_shipment_items ?? []).map((si) => ({
       order_item_id: si.order_item_id,
@@ -807,6 +812,7 @@ export default function ShipmentPlannerPage() {
                     {shipment.delivery_cost !== null &&
                       ` · вартість: ${shipment.delivery_cost} ${order.currency}`}
                     {` · статус: ${shipment.status}`}
+                    {(shipment.np_status ?? '') !== '' && ` · НП: ${shipment.np_status}`}
                   </span>
                 )}
               </h2>

@@ -142,7 +142,9 @@ test('TRACKING PAGE: order_shipments read is whitelisted, scoped, after token ve
   const verifyAt = ORDER_PAGE.indexOf('verifyOrderAccessToken(orderNumber, t)');
   const shipmentsAt = ORDER_PAGE.indexOf(".from('order_shipments')");
   assert.ok(shipmentsAt > verifyAt, 'shipment read must come after token verification');
-  assert.match(ORDER_PAGE, /\.select\('service_type, carrier, ttn_number'\)/,
+  // 2026-09-13: id + NP status cache columns joined the whitelist (live
+  // statuses, migration 048) — still an explicit whitelist, no select *.
+  assert.match(ORDER_PAGE, /select\('id, service_type, carrier, ttn_number, np_status, np_status_checked_at'\)/,
     'explicit column whitelist, no select *');
   assert.match(ORDER_PAGE, /\.eq\('order_id', orderData\.id\)/);
   assert.match(ORDER_PAGE, /SUPABASE_SERVICE_ROLE_KEY/,

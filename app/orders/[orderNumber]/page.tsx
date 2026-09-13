@@ -14,6 +14,10 @@ import {
   carrierLabel,
   trackingUrl,
 } from '@/app/lib/order-tracking';
+import {
+  readNpTrackingApiKey,
+  refreshNpStatuses,
+} from '@/app/lib/np-tracking';
 
 /**
  * Guest order view: /orders/<order_number>?t=<hmac token>.
@@ -52,9 +56,12 @@ interface ItemRow {
 }
 
 interface ShipmentRow {
+  id: string;
   service_type: string;
   carrier: string | null;
   ttn_number: string | null;
+  np_status: string | null;
+  np_status_checked_at: string | null;
 }
 
 function NotFound() {
@@ -120,7 +127,7 @@ export default async function GuestOrderViewPage({
   const orderRes = await supabase
     .from('orders')
     .select(
-      'id, order_number, status, payment_status, subtotal, shipping_total, total_amount, currency, created_at, updated_at, shipping_info'
+      'id, order_number, status, payment_status, subtotal, shipping_total, total_amount, currency, created_at, updated_at, shipping_info, customer_info'
     )
     .eq('order_number', orderNumber)
     .maybeSingle();
@@ -128,6 +135,7 @@ export default async function GuestOrderViewPage({
   const orderData = (orderRes.data ?? null) as (OrderRow & {
     id: string;
     shipping_info: unknown;
+    customer_info: { phone?: unknown } | null;
   }) | null;
   if (!orderData) {
     return <NotFound />;
@@ -145,16 +153,47 @@ export default async function GuestOrderViewPage({
   // server client as the order/items reads (anon SELECT is revoked).
   const shipmentsRes = await supabase
     .from('order_shipments')
-    .select('service_type, carrier, ttn_number')
+    .select('id, service_type, carrier, ttn_number, np_status, np_status_checked_at')
     .eq('order_id', orderData.id)
     .order('shipment_index');
-  const trackingRows = ((shipmentsRes.data ?? []) as ShipmentRow[])
+  const shipmentRows = (shipmentsRes.data ?? []) as ShipmentRow[];
+
+  // Live NP statuses (owner task 2026-09-13): refresh the display cache
+  // when stale, then re-read so the page renders the freshest answer. Any
+  // provider failure degrades silently to the plain tracking link.
+  const customerPhone =
+    (orderData.customer_info as { phone?: unknown } | null)?.phone ?? null;
+  await refreshNpStatuses(
+    shipmentRows.map((s) => ({
+      id: s.id,
+      ttn_number: s.ttn_number,
+      np_status: s.np_status,
+      np_status_checked_at: s.np_status_checked_at,
+      phone: typeof customerPhone === 'string' ? customerPhone : null,
+    })),
+    readNpTrackingApiKey(),
+    async (shipmentId, status, checkedAtIso) => {
+      await supabase
+        .from('order_shipments')
+        .update({ np_status: status, np_status_checked_at: checkedAtIso })
+        .eq('id', shipmentId);
+    }
+  );
+  const freshShipments = await supabase
+    .from('order_shipments')
+    .select('id, service_type, carrier, ttn_number, np_status, np_status_checked_at')
+    .eq('order_id', orderData.id)
+    .order('shipment_index');
+  const rowsSource = ((freshShipments.data ?? null) ?? shipmentRows) as ShipmentRow[];
+
+  const trackingRows = (rowsSource as ShipmentRow[])
     .map((s) => {
       const ttn = (s.ttn_number ?? '').trim();
       return {
         ttn,
         label: carrierLabel(s.service_type, s.carrier ?? null),
         url: trackingUrl(s.service_type, s.carrier ?? null, ttn),
+        status: (s.np_status ?? '').trim(),
       };
     })
     .filter((r) => r.ttn !== '' && r.url !== null);
@@ -223,6 +262,11 @@ export default async function GuestOrderViewPage({
                   >
                     Відстежити на сайті перевізника →
                   </a>
+                  {row.status !== '' && (
+                    <span className="w-full text-indigo-900">
+                      <span className="font-medium">Статус:</span> {row.status}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
