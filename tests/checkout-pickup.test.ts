@@ -173,9 +173,10 @@ test('PICKUP form: deliveryObject branch — pickup first, wc- domain detection'
   const pickupIdx = formCode.indexOf("if (deliveryType === 'pickup') {");
   const upIdx = formCode.indexOf("if (deliveryType === 'ukrposhta_warehouse') {");
   assert.ok(pickupIdx !== -1 && upIdx !== -1 && pickupIdx < upIdx, 'pickup branch first');
-  // Cart-domain detection via slug (the only wc- marker on the client).
-  assert.match(formCode, /cartHasWallpapers = lines\.some\(\(l\) => l\.slug\?\.startsWith\('wc-'\) === true\)/);
-  assert.match(formCode, /cartHasTech = lines\.some\(/);
+  // Cart-domain detection via the shared domains module (2026-09-13: the
+  // inline wc- literal became isWallpaperSlug — single source of truth).
+  assert.match(formCode, /cartHasWallpapers = lines\.some\(\(l\) => isWallpaperSlug\(l\.slug\)\)/);
+  assert.match(formCode, /cartHasTech = lines\.some\(\(l\) => !isWallpaperSlug\(l\.slug\)\)/);
   // Both points offered on a mixed cart…
   assert.match(formCode, /availablePickupPoints = PICKUP_POINTS\.filter\(/);
   // …with the honest mixed-cart warning (rendered by PickupBlock).

@@ -28,10 +28,10 @@ import { getPublicImageUrl } from './supabase-storage.ts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 // Wallpaper sku marker. This module is client-reachable (SearchSuggest
 // imports the fetcher), so it must NOT import catalog.ts (server-only:
-// next/cache cannot enter the client bundle). The literal is kept in sync
-// with the single source of truth WALLPAPER_SKU_PREFIX ('wc-') by the
-// tests/search-suggest.test.ts synchronization assertion.
-export const WALLPAPER_SKU_LIKE = 'wc-%';
+// next/cache cannot enter the client bundle). Since 2026-09-13 the marker
+// comes from app/lib/domains.ts — pure, client-safe, and the single source
+// of truth it used to be kept in sync with by a test assertion.
+export { WALLPAPER_SKU_LIKE } from './domains.ts';
 /** Max suggestions returned per request (dropdown size). */
 export const SUGGEST_LIMIT = 8;
 

@@ -38,9 +38,8 @@
  */
 
 import type { WallpaperRow } from './parse.ts';
+import { WALLPAPER_SKU_PREFIX } from '../domains.ts';
 
-/** Sku prefix that marks a product as owned by the wallpapers feed. */
-const WALLPAPER_SKU_PREFIX = 'wc-';
 
 /** A product row the executor already read from the DB (wc-* domain). */
 export interface ExistingProduct {

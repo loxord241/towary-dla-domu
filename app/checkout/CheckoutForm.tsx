@@ -7,6 +7,7 @@ import { useCart } from '@/app/lib/cart-context';
 import { fetchCartPreview, type CartPreviewLine } from '@/app/lib/cart-preview';
 import { toE164Ua } from '@/app/lib/phone';
 import { PICKUP_POINTS } from '@/app/lib/checkout-delivery';
+import { isWallpaperSlug } from '@/app/lib/domains';
 import { ANALYTICS_EVENTS } from '@/app/lib/analytics';
 import { track } from '@vercel/analytics';
 import {
@@ -135,9 +136,9 @@ export default function CheckoutForm() {
   // видаються на Серафимовича 83А, техніка — на Мазепи 87А; змішаний кошик
   // пропонує ОБИДВІ точки з попередженням. Поки превʼю не завантажено —
   // безпечний дефолт: обидві.
-  const cartHasWallpapers = lines.some((l) => l.slug?.startsWith('wc-') === true);
+  const cartHasWallpapers = lines.some((l) => isWallpaperSlug(l.slug));
   // Всё, что не шпалеры (включая позиции без slug) — техника: точка Мазепы.
-  const cartHasTech = lines.some((l) => l.slug?.startsWith('wc-') !== true);
+  const cartHasTech = lines.some((l) => !isWallpaperSlug(l.slug));
   const availablePickupPoints = PICKUP_POINTS.filter((p) =>
     lines.length === 0
       ? true

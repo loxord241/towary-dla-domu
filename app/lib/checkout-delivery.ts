@@ -73,11 +73,13 @@ export interface CheckoutDelivery {
  * (the whole order waits at the chosen point). Single source of truth for
  * the checkout UI, the sanitizer whitelist and the Telegram notice.
  */
+import type { ProductDomain } from './domains';
+
 export interface PickupPoint {
   id: string;
   city: string;
   address: string;
-  domains: ReadonlyArray<'tech' | 'wallpaper'>;
+  domains: ReadonlyArray<ProductDomain>;
 }
 
 export const PICKUP_POINTS: readonly PickupPoint[] = [

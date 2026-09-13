@@ -238,10 +238,14 @@ export const JUNCTION_COUNT_SELECT = 'id, images:product_images!inner(id), pc:pr
  * shpaleri-* non-emptiness from the SAME wc-* assignments.
  *
  * Single source of truth for the slug list is the importer's category map —
- * no duplicated literals here.
+ * no duplicated literals here. Since 2026-09-13 the PREFIX itself lives in
+ * app/lib/domains.ts (single source for «шпалери vs техніка» across the
+ * checkout, search and catalog) — re-exported here for the SQL consumers.
  */
-export const WALLPAPER_SKU_PREFIX = 'wc-';
-export const WALLPAPER_SKU_LIKE = `${WALLPAPER_SKU_PREFIX}%`;
+export {
+  WALLPAPER_SKU_PREFIX,
+  WALLPAPER_SKU_LIKE,
+} from '../domains.ts';
 
 /** «Шпалери» root + every imported subgroup slug (canonical importer list). */
 export const WALLPAPER_CATEGORY_SLUGS: ReadonlySet<string> = new Set([
