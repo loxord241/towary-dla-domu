@@ -88,7 +88,11 @@ export function decideCatalogIndexing(
   if (categoryValid) {
     return {
       indexable: true,
-      canonicalPath: `/catalog?category=${encodeURIComponent(input.categorySlug!)}`,
+      // 2026-09-13 (owner task): category views moved to human-readable
+      // path URLs — /catalog/<slug> is THE canonical form. The legacy
+      // /catalog?category=<slug> query form 308-redirects to the path
+      // shape (proxy.ts), so both routes emit the path-form canonical.
+      canonicalPath: `/catalog/${encodeURIComponent(input.categorySlug!)}`,
     };
   }
   if (brandValid) {

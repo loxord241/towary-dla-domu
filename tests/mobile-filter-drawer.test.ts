@@ -110,12 +110,13 @@ test('FILTERS: desktop sidebar keeps its always-open md:block behaviour', () => 
 // ---- catalog page regression surface ----
 
 test('FILTERS: catalog page still parses every legacy query param', () => {
-  const page = src('app/catalog/page.tsx');
+  // The parser lives in the shared renderer since 2026-09-13.
+  const page = src('app/catalog/CatalogView.tsx');
   for (const key of ['category', 'brand', 'q', 'min', 'max', 'stock', 'sort', 'page']) {
     assert.match(
       page,
       new RegExp(`raw\\.${key}\\b`),
-      `page.tsx must keep reading ${key}`
+      `catalog view must keep reading ${key}`
     );
   }
 });

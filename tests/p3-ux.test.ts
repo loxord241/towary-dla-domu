@@ -50,13 +50,13 @@ test('P3-R3: fifth category card spans the mobile row (no orphan)', () => {
 });
 
 test('P3-R2: disabled pagination controls carry aria-disabled', () => {
-  const src = read('app/catalog/page.tsx');
+  const src = read('app/catalog/CatalogView.tsx');
   const spans = src.match(/<span aria-disabled="true"/g) ?? [];
   assert.equal(spans.length, 2, 'prev+next inactive sides pinned');
   assert.match(src, /paginationControlClass/);
   // URL/clamp logic untouched: page param handling still present
-  assert.match(src, /catalogPageUrl\(rawParams, page - 1\)/);
-  assert.match(src, /catalogPageUrl\(rawParams, page \+ 1\)/);
+  assert.match(src, /catalogPageUrl\(linkParams, page - 1, linkBase\)/);
+  assert.match(src, /catalogPageUrl\(linkParams, page \+ 1, linkBase\)/);
 });
 
 test('P3-N2: shelves expose the md step between 2-col and lg:4', () => {

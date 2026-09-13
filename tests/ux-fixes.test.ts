@@ -51,7 +51,7 @@ test('SiteHeader: search submit button has a ~44px hit area and the input reserv
 // ---- P4: no Russian leftovers in the touched storefront UI
 
 test('catalog page: pagination label is Ukrainian and filter chips use display names', () => {
-  const catalog = src('app/catalog/page.tsx');
+  const catalog = src('app/catalog/CatalogView.tsx');
   assert.ok(!/Страница/.test(catalog), 'Russian «Страница» must not appear');
   assert.ok(!/·\s*найдено/.test(catalog), 'Russian «найдено» must not appear');
   assert.match(catalog, /Сторінка/);
@@ -71,10 +71,13 @@ test('FavoritesBadge: Ukrainian title and aria-label', () => {
 // ---- P5: SEO metadata + H1
 
 test('catalog: dynamic H1 exists exactly once and metadata is generated', () => {
+  // Since 2026-09-13 the route file keeps generateMetadata and the shared
+  // CatalogView component renders the markup.
   const catalog = src('app/catalog/page.tsx');
+  const view = src('app/catalog/CatalogView.tsx');
   assert.match(catalog, /generateMetadata/);
-  assert.match(catalog, /<h1/);
-  assert.ok(!catalog.match(/<h2[^>]*>Каталог товарів/), 'heading must be promoted to h1');
+  assert.match(view, /<h1/);
+  assert.ok(!view.match(/<h2[^>]*>Каталог товарів/), 'heading must be promoted to h1');
 });
 
 test('product: generateMetadata provides unique title/description', () => {
@@ -101,7 +104,7 @@ test('product: above-the-fold gallery image is not lazy (priority/eager)', () =>
 // ---- P7: mobile collapsible filters (2026-08: superseded by the sheet)
 
 test('catalog: mobile filters live behind a toggle; desktop sidebar stays open', () => {
-  const catalog = src('app/catalog/page.tsx');
+  const catalog = src('app/catalog/CatalogView.tsx');
   const filters = src('app/catalog/CatalogFilters.tsx');
   // the client component owns the open state
   assert.match(filters, /useState/);

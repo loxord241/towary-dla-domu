@@ -414,7 +414,7 @@ test('relaxSearchTerm: variants inherit the or= grammar injection guard', () => 
 });
 
 test('UI: catalog page renders a fallback notice wired to appliedSearch', () => {
-  const page = readFileSync(path.join(root, 'app/catalog/page.tsx'), 'utf8');
+  const page = readFileSync(path.join(root, 'app/catalog/CatalogView.tsx'), 'utf8');
   // notice reads the lib flag…
   assert.match(page, /catalog\.appliedSearch/);
   assert.match(page, /Показані результати для/);

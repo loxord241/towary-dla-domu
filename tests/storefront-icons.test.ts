@@ -31,7 +31,7 @@ const TOUCHED_FILES = [
   'app/components/FavoritesBadge.tsx',
   'app/components/FavoriteButton.tsx',
   'app/components/EmptyState.tsx',
-  'app/catalog/page.tsx',
+  'app/catalog/CatalogView.tsx',
   'app/cart/page.tsx',
   'app/favorites/page.tsx',
   'app/error.tsx',
@@ -146,7 +146,7 @@ test('ICONS: EmptyState accepts ReactNode icons with an SVG default', () => {
 });
 
 test('ICONS: empty-state pages pass sized SVG icons', () => {
-  assert.match(src('app/catalog/page.tsx'), /<SearchIcon className="h-10 w-10"/);
+  assert.match(src('app/catalog/CatalogView.tsx'), /<SearchIcon className="h-10 w-10"/);
   assert.match(src('app/cart/page.tsx'), /<CartIcon className="h-10 w-10"/);
   const favorites = src('app/favorites/page.tsx');
   assert.match(favorites, /<HeartIcon className="h-10 w-10"/);

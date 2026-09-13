@@ -27,7 +27,7 @@ const src = (rel: string): string =>
 // ---- item 1: badge excludes the search chip ----
 
 test('BADGE: «Фільтри» activeCount counts filter chips only, not q', () => {
-  const catalog = src('app/catalog/page.tsx');
+  const catalog = src('app/catalog/CatalogView.tsx');
   assert.match(catalog, /removeKey !== 'q'/,
     'badge count must exclude the search chip');
   assert.match(catalog, /activeCount=\{filterChipCount\}/,
@@ -49,7 +49,7 @@ test('RESET: «Скинути» preserves q via buildFilterUrl with an empty dra
 });
 
 test('RESET: full reset (incl. search) stays on the page as «Скинути всі»', () => {
-  const catalog = src('app/catalog/page.tsx');
+  const catalog = src('app/catalog/CatalogView.tsx');
   assert.match(catalog, /Скинути всі/);
   assert.match(catalog, /href="\/catalog"/);
 });

@@ -288,7 +288,7 @@ test('ANN-UI: geometry is centered fit-content, NOT full container width', () =>
 });
 
 test('ANN-UI: mounted on home, catalog and PDP', () => {
-  for (const page of ['app/(home)/page.tsx', 'app/catalog/page.tsx', 'app/product/[slug]/page.tsx']) {
+  for (const page of ['app/(home)/page.tsx', 'app/catalog/CatalogView.tsx', 'app/product/[slug]/page.tsx']) {
     const s = src(page);
     assert.match(s, /Announcements/, `${page} must render the banner`);
     assert.match(s, /<Announcements\s*\/>/, `${page} must render <Announcements />`);

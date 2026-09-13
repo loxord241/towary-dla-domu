@@ -10,7 +10,9 @@ import { readFileSync } from 'node:fs';
 
 const PAGES: [string, string][] = [
   ['home hero', 'app/(home)/page.tsx'],
-  ['catalog', 'app/catalog/page.tsx'],
+  // Since 2026-09-13 the catalog markup lives in the shared renderer used
+  // by /catalog and /catalog/<slug>.
+  ['catalog', 'app/catalog/CatalogView.tsx'],
   ['product', 'app/product/[slug]/page.tsx'],
   ['not-found', 'app/not-found.tsx'],
 ];
@@ -24,7 +26,7 @@ for (const [label, file] of PAGES) {
 }
 
 test('H1: catalog heading covers category/brand/search views via one variable', () => {
-  const src = readFileSync('app/catalog/page.tsx', 'utf8');
+  const src = readFileSync('app/catalog/CatalogView.tsx', 'utf8');
   assert.match(src, /function catalogHeading\(/);
   assert.match(src, /\{heading\}/, 'single heading variable must be rendered');
 });

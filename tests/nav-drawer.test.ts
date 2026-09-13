@@ -73,8 +73,9 @@ test('DRAWER: shop section targets existing routes only', () => {
 
 test('DRAWER: categories and brands link through catalog filters', () => {
   const drawer = src('app/components/NavDrawer.tsx');
-  // Pinned categories are hardcoded links: /catalog?category=<slug>
-  assert.match(drawer, /\/catalog\?category=/);
+  // Pinned categories are hardcoded links on the human-readable path form
+  // (owner task 2026-09-13): /catalog/<slug>; brands keep the query form.
+  assert.match(drawer, /\/catalog\/\$\{m\.slug\}/);
   assert.match(drawer, /\/catalog\?brand=/);
   assert.match(drawer, /Усі категорії/, 'all-categories overflow link missing');
   assert.match(drawer, /Усі бренди/, 'all-brands overflow link missing');

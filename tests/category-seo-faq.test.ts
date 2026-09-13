@@ -181,7 +181,7 @@ test('FAQ: isWallpaperCategorySlug matches the shpaleri% subtree only', () => {
 // ---- 4. catalog page wiring -----------------------------------------------
 
 test('FAQ: catalog page mounts FAQ + JSON-LD only for shpaleri% on page 1', () => {
-  const page = src('app/catalog/page.tsx');
+  const page = src('app/catalog/CatalogView.tsx');
   assert.match(page, /import FaqSection from '@\/app\/components\/FaqSection'/);
   assert.match(page, /import FaqJsonLd from '@\/app\/components\/FaqJsonLd'/);
   // the gate: wallpaper subtree AND first page (clamped), nothing else
