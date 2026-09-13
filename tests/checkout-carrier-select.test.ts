@@ -27,8 +27,16 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// 2026-09-13 mechanical split: the carrier blocks + service-type buttons
+// (with the CARRIERS / CARRIER_SERVICE_TYPES constants) now live in
+// DeliveryCarrierPicker.tsx; the handlers and the section heading stay in
+// CheckoutForm.tsx. Pins target the file where the pinned code lives.
 const FORM = readFileSync(
   path.join(root, 'app/checkout/CheckoutForm.tsx'),
+  'utf8'
+);
+const PICKER = readFileSync(
+  path.join(root, 'app/checkout/parts/DeliveryCarrierPicker.tsx'),
   'utf8'
 );
 
@@ -46,16 +54,16 @@ function fnBody(name: string): string {
 // ------------------------------------------------------------------
 
 test('CARRIER: exactly three carrier blocks — Нова Пошта, Укрпошта, Самовивіз', () => {
-  const start = FORM.indexOf('const CARRIERS');
-  const end = FORM.indexOf('];', start);
-  const carriers = FORM.slice(start, end);
+  const start = PICKER.indexOf('const CARRIERS');
+  const end = PICKER.indexOf('];', start);
+  const carriers = PICKER.slice(start, end);
   assert.match(carriers, /value: 'nova_poshta', label: 'Нова Пошта'/);
   assert.match(carriers, /value: 'ukrposhta', label: 'Укрпошта'/);
   assert.match(carriers, /value: 'pickup', label: 'Самовивіз, Кривий Ріг'/);
   // exactly three entries, no others
   assert.equal((carriers.match(/value: '/g) ?? []).length, 3);
   // a single render site drives all blocks
-  assert.equal((FORM.match(/toggleCarrier\(c\.value\)/g) ?? []).length, 1);
+  assert.equal((PICKER.match(/toggleCarrier\(c\.value\)/g) ?? []).length, 1);
 });
 
 // ------------------------------------------------------------------
@@ -63,9 +71,9 @@ test('CARRIER: exactly three carrier blocks — Нова Пошта, Укрпо�
 // ------------------------------------------------------------------
 
 test('CARRIER: Nova Post sub-buttons map exactly to warehouse/locker/courier', () => {
-  const start = FORM.indexOf('const CARRIER_SERVICE_TYPES');
-  const end = FORM.indexOf('\n};', start);
-  const mapping = FORM.slice(start, end);
+  const start = PICKER.indexOf('const CARRIER_SERVICE_TYPES');
+  const end = PICKER.indexOf('\n};', start);
+  const mapping = PICKER.slice(start, end);
   const np = mapping.slice(mapping.indexOf('nova_poshta: ['), mapping.indexOf('ukrposhta: ['));
   const up = mapping.slice(mapping.indexOf('ukrposhta: ['), mapping.indexOf('pickup: ['));
   assert.match(np, /value: 'nova_poshta_warehouse', label: 'Відділення'/);
@@ -80,6 +88,7 @@ test('CARRIER: Nova Post sub-buttons map exactly to warehouse/locker/courier', (
   assert.match(pickup, /value: 'pickup', label: 'Заберу сам'/);
   assert.equal((pickup.match(/value: '/g) ?? []).length, 1, 'pickup has exactly 1 service type');
   // the carrier service_types are unchanged (sanitizeDelivery contract)
+  assert.doesNotMatch(PICKER, /ukrposhta_courier/);
   assert.doesNotMatch(FORM, /ukrposhta_courier/);
 });
 
@@ -88,14 +97,14 @@ test('CARRIER: Nova Post sub-buttons map exactly to warehouse/locker/courier', (
 // ------------------------------------------------------------------
 
 test('CARRIER: service buttons render ONLY under the selected carrier, below it', () => {
-  const btn = FORM.indexOf('aria-pressed={selected}'); // carrier button
+  const btn = PICKER.indexOf('aria-pressed={selected}'); // carrier button
   // 2026-09 animation rework: the sub-row wrapper is always mounted (CSS
   // grid-rows disclosure). "Only under the selected carrier" is now the
   // expanded/collapsed class pair on `#carrier-services-*`, not a
   // conditional `{selected && (…)` render.
-  const wrapper = FORM.indexOf('grid-rows-[0fr] invisible');
-  const expanded = FORM.indexOf('grid-rows-[1fr] visible');
-  const row = FORM.indexOf('CARRIER_SERVICE_TYPES[c.value].map');
+  const wrapper = PICKER.indexOf('grid-rows-[0fr] invisible');
+  const expanded = PICKER.indexOf('grid-rows-[1fr] visible');
+  const row = PICKER.indexOf('CARRIER_SERVICE_TYPES[c.value].map');
   assert.ok(
     btn !== -1 && wrapper !== -1 && expanded !== -1 && row !== -1
   );
@@ -105,7 +114,7 @@ test('CARRIER: service buttons render ONLY under the selected carrier, below it'
     'sub-row must be gated on the selected carrier'
   );
   // "немного ниже" the block: margin-top on the sub-row
-  assert.match(FORM, /className="mt-2 flex flex-wrap gap-2"/);
+  assert.match(PICKER, /className="mt-2 flex flex-wrap gap-2"/);
 });
 
 // ------------------------------------------------------------------
@@ -115,25 +124,25 @@ test('CARRIER: service buttons render ONLY under the selected carrier, below it'
 test('CARRIER: sub-row disclosure animates via grid-rows, keyboard-safe when collapsed', () => {
   // wrapper animates grid-template-rows AND visibility
   assert.match(
-    FORM,
+    PICKER,
     /transition-\[grid-template-rows,visibility\] duration-200 ease-out/,
     'smooth open/close transition classes on the wrapper'
   );
   // project pattern: animations disabled for prefers-reduced-motion
-  const wrapperStart = FORM.indexOf(
+  const wrapperStart = PICKER.indexOf(
     'grid transition-[grid-template-rows,visibility]'
   );
   assert.notEqual(wrapperStart, -1, 'always-mounted wrapper must exist');
-  const wrapper = FORM.slice(
+  const wrapper = PICKER.slice(
     wrapperStart,
-    FORM.indexOf('<div className="min-h-0 overflow-hidden">')
+    PICKER.indexOf('<div className="min-h-0 overflow-hidden">')
   );
   assert.match(wrapper, /motion-reduce:transition-none/);
   // collapsed: 0fr + visibility:hidden (out of tab order / a11y tree)
   assert.match(wrapper, /selected\s*\?\s*'grid-rows-\[1fr\] visible'/);
   assert.match(wrapper, /:\s*'grid-rows-\[0fr\] invisible'/);
   // inner row clips content and may shrink to zero
-  assert.match(FORM, /<div className="min-h-0 overflow-hidden">/);
+  assert.match(PICKER, /<div className="min-h-0 overflow-hidden">/);
 });
 
 // ------------------------------------------------------------------
@@ -187,18 +196,20 @@ test('CARRIER: picking a service type goes through the reset + strict gates', ()
 
 test('CARRIER: accessible toggles with visible selection, motion-reduce safe', () => {
   // carrier block: pressed + expanded disclosure
-  assert.match(FORM, /aria-pressed=\{selected\}/);
-  assert.match(FORM, /aria-expanded=\{selected\}/);
+  assert.match(PICKER, /aria-pressed=\{selected\}/);
+  assert.match(PICKER, /aria-expanded=\{selected\}/);
   // service button: pressed
-  assert.match(FORM, /aria-pressed=\{deliveryType === t\.value\}/);
+  assert.match(PICKER, /aria-pressed=\{deliveryType === t\.value\}/);
   // transitions are color-only and disabled for prefers-reduced-motion
-  assert.match(FORM, /transition-colors motion-reduce:transition-none/);
+  assert.match(PICKER, /transition-colors motion-reduce:transition-none/);
   // visible selection styling reuses the card/blue accents
-  assert.match(FORM, /border-blue-600 ring-1 ring-blue-600/);
+  assert.match(PICKER, /border-blue-600 ring-1 ring-blue-600/);
 });
 
 test('CARRIER: the old flat radio grid is gone; the section heading stays', () => {
   assert.doesNotMatch(FORM, /DELIVERY_TYPES/);
+  assert.doesNotMatch(PICKER, /DELIVERY_TYPES/);
   assert.doesNotMatch(FORM, /name="deliveryType"/);
+  assert.doesNotMatch(PICKER, /name="deliveryType"/);
   assert.match(FORM, /2\. Доставка/);
 });

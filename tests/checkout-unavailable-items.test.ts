@@ -32,6 +32,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel: string): string => readFileSync(path.join(root, rel), 'utf8');
 
 const form = (): string => src('app/checkout/CheckoutForm.tsx');
+// 2026-09-13 mechanical split: the summary aside (unavailable-items block,
+// remove control, preview-error notices) lives in parts/OrderSummary.tsx.
+const summary = (): string => src('app/checkout/parts/OrderSummary.tsx');
 
 // ---- 1. availability definition (reused from the cart page) ----
 
@@ -60,7 +63,7 @@ test('F1: a missing preview is UNKNOWN, never unavailable (previewError contract
   // The documented contract stays: preview failure alone does not block submit.
   assert.match(f, /previewError/);
   assert.match(
-    f,
+    summary(),
     /Не вдалося завантажити( частину)? цін/,
     'previewError notice must remain'
   );
@@ -70,21 +73,23 @@ test('F1: a missing preview is UNKNOWN, never unavailable (previewError contract
 
 test('F1: unavailable lines are rendered visibly, not silently hidden', () => {
   const f = form();
+  // the rule is computed in CheckoutForm, rendered by OrderSummary
   assert.match(f, /unavailableItems/);
+  assert.match(summary(), /unavailableItems/);
   // visible block with an explicit reason for the user
-  assert.match(f, /більше недоступн/);
+  assert.match(summary(), /більше недоступн/);
 });
 
 test('F1: each unavailable line has a remove button wired to cart-context removeItem', () => {
-  const f = form();
+  const s = summary();
   assert.match(
-    f,
+    s,
     /removeItem/,
     'CheckoutForm must use the existing cart removeItem(), not a new mechanism'
   );
-  assert.match(f, /Видалити/);
+  assert.match(s, /Видалити/);
   assert.match(
-    f,
+    s,
     /removeItem\(\s*item\.productId\s*,\s*item\.variantId\s*\)/
   );
 });

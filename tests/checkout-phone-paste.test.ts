@@ -55,14 +55,21 @@ test('PHONE-PASTE: E.164 is emitted only for a complete 9-digit value', () => {
 });
 
 test('PHONE-PASTE: CheckoutForm has no maxLength on the phone input', () => {
+  // 2026-09-13 mechanical split: the phone input renders in
+  // parts/ContactFields.tsx; the submit-side normalizer usage stays in
+  // CheckoutForm.tsx. The no-maxLength pin now covers BOTH files.
   const f = src('app/checkout/CheckoutForm.tsx');
+  const c = src('app/checkout/parts/ContactFields.tsx');
   // The ONLY historical maxLength={9} was the phone field; its removal is
   // the paste fix. The normalizer caps the value, so no length cap is needed.
-  assert.ok(!f.includes('maxLength={9}'), 'phone input must not truncate paste');
+  assert.ok(
+    !f.includes('maxLength={9}') && !c.includes('maxLength={9}'),
+    'phone input must not truncate paste'
+  );
   // Still wired to the shared normalizers (not re-implemented inline).
-  assert.match(f, /normalizeUaPhoneDigits/);
+  assert.match(c, /normalizeUaPhoneDigits/);
   assert.match(f, /toE164Ua/);
-  assert.match(f, /from '@\/app\/lib\/phone'/);
+  assert.match(c, /from '@\/app\/lib\/phone'/);
 });
 
 test('PHONE-PASTE: server-side UA E.164 validation is intact', () => {

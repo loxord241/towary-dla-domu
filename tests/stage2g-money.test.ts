@@ -39,11 +39,16 @@ test('MONEY-2G: orders route has no money path for delivery', () => {
 });
 
 test('MONEY-2G: checkout does not add delivery cost to the payable total', () => {
+  // 2026-09-13 mechanical split: the summary (payable rows) now lives in
+  // parts/OrderSummary.tsx — the no-delivery-cost pin covers BOTH files.
   const form = src('app/checkout/CheckoutForm.tsx');
+  const summary = src('app/checkout/parts/OrderSummary.tsx');
   // The payable row stays goods-only: subtotal, never a delivery addition
-  assert.doesNotMatch(form, /delivery_cost/i);
-  assert.doesNotMatch(form, /shipping_total/);
-  assert.match(form, /за тарифами перевізника/);
+  for (const part of [form, summary]) {
+    assert.doesNotMatch(part, /delivery_cost/i);
+    assert.doesNotMatch(part, /shipping_total/);
+  }
+  assert.match(summary, /за тарифами перевізника/);
 });
 
 test('MONEY-2G: payerType=Recipient is fixed server-side in the calculation lib', () => {

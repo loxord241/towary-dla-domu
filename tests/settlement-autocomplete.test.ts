@@ -21,10 +21,22 @@ import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel: string): string => readFileSync(path.join(root, rel), 'utf8');
 
-const FORM = 'app/checkout/CheckoutForm.tsx';
+// 2026-09-13: CheckoutForm was mechanically split — the NP/UP dictionary
+// UI now lives in app/checkout/parts/* and the loaders in delivery-apis.ts.
+// The union below is the same code the monolith used to hold; every pin
+// below keeps its original force against that union.
+const CHECKOUT_FILES = [
+  'app/checkout/CheckoutForm.tsx',
+  'app/checkout/delivery-apis.ts',
+  'app/checkout/parts/DeliveryCarrierPicker.tsx',
+  'app/checkout/parts/NovaPostDelivery.tsx',
+  'app/checkout/parts/UkrposhtaDelivery.tsx',
+] as const;
+
+const FORM = CHECKOUT_FILES.map((rel) => src(rel)).join('\n');
 
 test('AUTOCOMPLETE: existing settlements API reused with q param and {items} mapping', () => {
-  const f = src(FORM);
+  const f = FORM;
   assert.match(f, /\/api\/delivery\/novapost\/settlements\?q=/);
   assert.match(f, /data\?\.items/, 'response shape { items } consumed');
   // No second settlements endpoint may appear anywhere in the repo.
@@ -33,14 +45,14 @@ test('AUTOCOMPLETE: existing settlements API reused with q param and {items} map
 });
 
 test('AUTOCOMPLETE: search is debounced (~300ms) with its own timer ref', () => {
-  const f = src(FORM);
+  const f = FORM;
   assert.match(f, /settlementDebounceRef/);
   assert.match(f, /settlementDebounceRef\.current = setTimeout/);
   assert.match(f, /}, 300\)/);
 });
 
 test('AUTOCOMPLETE: stale responses are dropped via request sequence guard', () => {
-  const f = src(FORM);
+  const f = FORM;
   assert.match(f, /const settlementRequestSeq = useRef\(0\)/);
   // Captured per request, checked in BOTH success and error callbacks.
   assert.match(f, /const seq = \+\+settlementRequestSeq\.current/);
@@ -51,7 +63,7 @@ test('AUTOCOMPLETE: stale responses are dropped via request sequence guard', () 
 });
 
 test('AUTOCOMPLETE: selection finalizes — in-flight response cannot re-open dropdown', () => {
-  const f = src(FORM);
+  const f = FORM;
   // Click handler bumps the sequence and cancels the pending debounce…
   assert.match(
     f,
@@ -64,12 +76,12 @@ test('AUTOCOMPLETE: selection finalizes — in-flight response cannot re-open dr
 });
 
 test('AUTOCOMPLETE: editing text after selection resets the chosen settlementId', () => {
-  const f = src(FORM);
+  const f = FORM;
   assert.match(f, /setSettlementQuery\(q\);\n\s*setSettlement\(null\)/);
 });
 
 test('AUTOCOMPLETE: free text is never a valid choice — submit gate needs settlement', () => {
-  const f = src(FORM);
+  const f = FORM;
   // deliveryObject() is null without a dictionary-selected settlement.
   assert.match(f, /if \(!deliveryType \|\| !settlement\) return null;/);
   // …and the form blocks submit when the delivery object is incomplete.
@@ -78,14 +90,14 @@ test('AUTOCOMPLETE: free text is never a valid choice — submit gate needs sett
 });
 
 test('AUTOCOMPLETE: loading and empty states are rendered', () => {
-  const f = src(FORM);
+  const f = FORM;
   assert.match(f, /setSettlementLoading\(true\)/);
   assert.match(f, /Шукаємо…/);
   assert.match(f, /Нічого не знайдено/);
 });
 
 test('AUTOCOMPLETE: street search untouched — own debouncer and loader intact', () => {
-  const f = src(FORM);
+  const f = FORM;
   assert.match(f, /streetDebounceRef\.current = setTimeout/);
   assert.match(f, /searchStreetsApi/);
   assert.match(f, /\/api\/delivery\/novapost\/streets\?settlementId=/);
