@@ -125,17 +125,68 @@ export interface CatalogViewMetadataArgs {
   input: CatalogIndexInput;
   categoryName?: string;
   brandName?: string;
+  /**
+   * Admin-authored description of the requested category
+   * (categories.description, PLAIN text — see category-description.ts).
+   * When non-blank, the category branch uses its first ≤160 chars
+   * (word-boundary cut, truncateMetaDescription) as the meta description
+   * instead of the generic template; every other view keeps the template.
+   * Callers pass it from the React-cache()d fetchCategoryDescription — the
+   * SAME call the page body makes, so the metadata pass adds no extra DB
+   * read in the same render.
+   */
+  categoryDescription?: string | null;
 }
 
 type ViewMetadata = Pick<
   Metadata,
-  'title' | 'description' | 'robots' | 'alternates'
+  'title' | 'description' | 'robots' | 'alternates' | 'openGraph'
 >;
+
+/**
+ * Page-level openGraph REPLACES the root layout's whole openGraph object
+ * (shallow metadata merge — generate-metadata docs), so catalog/oboi views
+ * must repeat locale/type/siteName AND the default image: without them a
+ * category link shared in Viber/Telegram would lose og:image entirely
+ * (audit 2026-09-13 — the repost showed the bare layout default because the
+ * views set no og fields at all). `url` is intentionally omitted — the
+ * canonical URL lives in `alternates` (the decision above stays the single
+ * source). Image = the same committed static /og-image.png the root layout
+ * and homepage pin (tests/og-metadata.test.ts).
+ */
+function buildViewOpenGraph(
+  title: string,
+  description: string
+): NonNullable<ViewMetadata['openGraph']> {
+  return {
+    title,
+    description,
+    locale: 'uk_UA',
+    type: 'website',
+    siteName: SITE_NAME,
+    images: ['/og-image.png'],
+  };
+}
+
+/**
+ * Meta-description cap for the admin category copy: first ≤max chars cut on
+ * a WORD boundary (a word chopped mid-way reads broken in SERP/messenger
+ * snippets). Whitespace runs collapse first (admin prose is plain text that
+ * may carry newlines); a single word longer than the cap falls back to a
+ * hard slice so the cap is always honored.
+ */
+export function truncateMetaDescription(text: string, max = 160): string {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  if (flat.length <= max) return flat;
+  const window = flat.slice(0, max + 1);
+  const cut = window.lastIndexOf(' ');
+  return (cut > 0 ? window.slice(0, cut) : flat.slice(0, max)).trim();
+}
 
 export function buildCatalogViewMetadata(
   args: CatalogViewMetadataArgs
 ): ViewMetadata {
-  const { input, categoryName, brandName } = args;
+  const { input, categoryName, brandName, categoryDescription } = args;
   const decision = decideCatalogIndexing(input);
 
   let title = `Каталог товарів | ${SITE_NAME}`;
@@ -148,7 +199,15 @@ export function buildCatalogViewMetadata(
     description = `Результати пошуку за запитом «${q}» в інтернет-магазині ${SITE_NAME}.`;
   } else if (input.categorySlug && categoryName) {
     title = `${categoryName} — купити в ${SITE_NAME}`;
-    description = `Товари у категорії «${categoryName}» — купити в інтернет-магазині ${SITE_NAME}.`;
+    // Unique admin copy first (audit 2026-09-13 — the template was shared by
+    // every category while the pages carry unique intro texts); the generic
+    // template stays the fallback for categories without a description.
+    const adminCopy = categoryDescription
+      ? truncateMetaDescription(categoryDescription)
+      : '';
+    description =
+      adminCopy ||
+      `Товари у категорії «${categoryName}» — купити в інтернет-магазині ${SITE_NAME}.`;
   } else if (input.brandSlug && brandName) {
     title = `${brandName} — купити в ${SITE_NAME}`;
     description = `Товари бренду ${brandName} — купити в інтернет-магазині ${SITE_NAME}.`;
@@ -157,6 +216,9 @@ export function buildCatalogViewMetadata(
   return {
     title,
     description,
+    // og on noindex views (search/filtered) is harmless and keeps messenger
+    // previews meaningful; the canonical decision above is untouched.
+    openGraph: buildViewOpenGraph(title, description),
     ...(decision.indexable ? {} : { robots: { index: false, follow: true } }),
     ...(decision.canonicalPath
       ? { alternates: { canonical: decision.canonicalPath } }
@@ -196,6 +258,7 @@ export function buildWallpapersMetadata(
     return {
       title,
       description,
+      openGraph: buildViewOpenGraph(title, description),
       robots: { index: false, follow: true },
     };
   }
@@ -203,6 +266,7 @@ export function buildWallpapersMetadata(
   return {
     title,
     description,
+    openGraph: buildViewOpenGraph(title, description),
     alternates: { canonical: OBOI_CANONICAL_PATH },
   };
 }

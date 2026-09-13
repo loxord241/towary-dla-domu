@@ -39,8 +39,11 @@ export interface CategorySeoOverride {
 const OVERRIDES: Record<string, CategorySeoOverride> = {
   [TDD_CATEGORY_SLUG]: {
     h1: 'Дрібна побутова техніка',
-    title:
-      'Дрібна побутова техніка — купити в інтернет-магазині Товари для дому',
+    // Audit 2026-09-13: the previous tail «— купити в інтернет-магазині
+    // Товари для дому» pushed the title to 69 chars (SERP truncation);
+    // the brand-only tail fits the ~55-char window with the full intent
+    // keyword leading.
+    title: 'Дрібна побутова техніка — Товари для дому',
     description:
       'Дрібна побутова техніка в інтернет-магазині «Товари для дому»: блендери, кавомолки, чайники та інша техніка для кухні. Доставка по всій Україні.',
     intro: [
@@ -62,15 +65,31 @@ export function getCategorySeo(
 /**
  * Merge the SEO copy override into already-built catalog view metadata.
  * Indexability/robots/canonical fields are never touched here — the
- * decision stays exclusively in lib/seo.ts.
+ * decision stays exclusively in lib/seo.ts. When the built metadata
+ * carries openGraph, the override reaches og:title/og:description too:
+ * a page-level og object REPLACES the layout default (shallow metadata
+ * merge), so leaving the generic og behind would make the messenger card
+ * disagree with the SERP snippet on the pinned category.
  */
 export function applyCategorySeoMetadata<
-  M extends Partial<Pick<Metadata, 'title' | 'description'>>,
+  M extends Partial<Pick<Metadata, 'title' | 'description' | 'openGraph'>>,
 >(metadata: M, categorySlug: string | undefined): M {
   const seo = getCategorySeo(categorySlug);
-  return seo
-    ? ({ ...metadata, title: seo.title, description: seo.description } as M)
-    : metadata;
+  if (!seo) return metadata;
+  return {
+    ...metadata,
+    title: seo.title,
+    description: seo.description,
+    ...(metadata.openGraph
+      ? {
+          openGraph: {
+            ...metadata.openGraph,
+            title: seo.title,
+            description: seo.description,
+          },
+        }
+      : {}),
+  } as M;
 }
 
 /**

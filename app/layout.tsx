@@ -58,6 +58,13 @@ export const metadata: Metadata = {
     // same origin as the site itself. Resolved against metadataBase.
     images: ['/og-image.png'],
   },
+  // Audit 2026-09-13: twitter:card was missing, so X/Telegram/Viber reposts
+  // fell back to a bare link preview. Only the card type is declared here —
+  // twitter:title/description/image inherit from openGraph per segment
+  // (pages that override og — home/PDP/catalog/oboi — carry their own cards).
+  twitter: {
+    card: 'summary_large_image',
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
