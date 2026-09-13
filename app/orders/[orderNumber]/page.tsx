@@ -10,6 +10,10 @@ import OrderStatusBadge, {
 } from '@/app/components/OrderStatusBadge';
 import PayWithLiqPayButton from '@/app/components/PayWithLiqPayButton';
 import { isPendingAttemptStale } from '@/app/lib/payment/order-payment-update';
+import {
+  carrierLabel,
+  trackingUrl,
+} from '@/app/lib/order-tracking';
 
 /**
  * Guest order view: /orders/<order_number>?t=<hmac token>.
@@ -45,6 +49,12 @@ interface ItemRow {
   quantity: number;
   price: number;
   total: number;
+}
+
+interface ShipmentRow {
+  service_type: string;
+  carrier: string | null;
+  ttn_number: string | null;
 }
 
 function NotFound() {
@@ -130,6 +140,25 @@ export default async function GuestOrderViewPage({
 
   const items = (itemsRes.data ?? []) as ItemRow[];
 
+  // Parcel tracking (owner 2026-09-13): every shipment with a non-empty
+  // ttn_number gets a tracking link. Column whitelist, same service-role
+  // server client as the order/items reads (anon SELECT is revoked).
+  const shipmentsRes = await supabase
+    .from('order_shipments')
+    .select('service_type, carrier, ttn_number')
+    .eq('order_id', orderData.id)
+    .order('shipment_index');
+  const trackingRows = ((shipmentsRes.data ?? []) as ShipmentRow[])
+    .map((s) => {
+      const ttn = (s.ttn_number ?? '').trim();
+      return {
+        ttn,
+        label: carrierLabel(s.service_type, s.carrier ?? null),
+        url: trackingUrl(s.service_type, s.carrier ?? null, ttn),
+      };
+    })
+    .filter((r) => r.ttn !== '' && r.url !== null);
+
   const order: OrderRow = {
     order_number: orderData.order_number,
     status: orderData.status,
@@ -172,6 +201,33 @@ export default async function GuestOrderViewPage({
         </div>
 
         <OrderDetailsCard order={order} items={items} />
+
+        {trackingRows.length > 0 && (
+          <div className="px-6 pb-4">
+            <div className="rounded-lg bg-indigo-50 border border-indigo-100 p-4">
+              <h2 className="text-sm font-semibold text-indigo-900 mb-2">
+                Відстеження посилки
+              </h2>
+              {trackingRows.map((row, i) => (
+                <div
+                  key={`${row.ttn}-${i}`}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1 text-sm"
+                >
+                  <span className="text-gray-600">{row.label}:</span>
+                  <span className="font-mono font-semibold text-gray-900">{row.ttn}</span>
+                  <a
+                    href={row.url!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-700 underline font-medium hover:text-indigo-900"
+                  >
+                    Відстежити на сайті перевізника →
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-2 px-6 pb-2 text-xs text-gray-500">
           <OrderStatusBadge status={order.status} />

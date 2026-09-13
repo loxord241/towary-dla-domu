@@ -6,14 +6,16 @@ import { useRouter } from 'next/navigation';
 
 /**
  * Guest order lookup: the capability pair is (order number, email).
- * On success the API returns an HMAC token and we redirect to
- * /orders/<number>?t=<token> — the durable view URL.
+ * On success the API returns an HMAC token and we redirect immediately to
+ * /orders/<number>?t=<token> — the durable view URL — with a short
+ * «Замовлення знайдено» status while the navigation runs (owner 2026-09-13).
  */
 export default function OrderLookupPage() {
   const router = useRouter();
   const [orderNumber, setOrderNumber] = useState('');
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [found, setFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
@@ -30,6 +32,8 @@ export default function OrderLookupPage() {
       if (!res.ok || !data?.orderNumber || !data?.accessToken) {
         throw new Error(data?.error || 'Замовлення не знайдено');
       }
+      // Success: straight to the order view — no intermediate link screen.
+      setFound(true);
       router.push(
         `/orders/${encodeURIComponent(data.orderNumber)}?t=${data.accessToken}`
       );
@@ -46,6 +50,12 @@ export default function OrderLookupPage() {
         <p className="text-gray-600 mb-6 text-sm text-center">
           Вкажіть номер замовлення та email, вказаний при оформленні.
         </p>
+
+        {found && (
+          <div role="status" className="mb-4 px-4 py-3 rounded bg-green-100 border border-green-300 text-green-800 text-sm">
+            Замовлення знайдено — відкриваємо…
+          </div>
+        )}
 
         {error && (
           <div role="alert" className="mb-4 px-4 py-3 rounded bg-red-100 border border-red-300 text-red-700 text-sm">
@@ -69,7 +79,7 @@ export default function OrderLookupPage() {
               spellCheck={false}
               value={orderNumber}
               onChange={(e) => setOrderNumber(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              className="w-full px-3 py-2 min-h-[44px] text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
             />
           </div>
 
@@ -87,20 +97,26 @@ export default function OrderLookupPage() {
               spellCheck={false}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 min-h-[44px] text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <button
             type="submit"
-            disabled={submitting}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition disabled:opacity-50"
+            disabled={submitting || found}
+            className="w-full bg-blue-600 text-white py-2 min-h-[44px] text-base px-4 rounded-md hover:bg-blue-700 transition disabled:opacity-50"
           >
-            {submitting ? 'Пошук…' : 'Знайти замовлення'}
+            {found ? 'Відкриваємо…' : submitting ? 'Пошук…' : 'Знайти замовлення'}
           </button>
         </form>
 
         <p className="mt-4 text-sm text-gray-500 text-center">
+          Потрібна допомога?{' '}
+          <a href="tel:+380973144221" className="text-blue-600 hover:underline whitespace-nowrap">
+            +380 (97) 314 42 21
+          </a>
+        </p>
+        <p className="mt-2 text-sm text-gray-500 text-center">
           <Link href="/catalog" className="text-blue-600 hover:underline">
             До каталогу
           </Link>
