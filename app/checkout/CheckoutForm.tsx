@@ -2,219 +2,29 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/app/lib/cart-context';
-import {
-  fetchCartPreview,
-  type CartPreviewLine,
-} from '@/app/lib/cart-preview';
-import { normalizeUaPhoneDigits, toE164Ua } from '@/app/lib/phone';
-import { formatPrice } from '@/app/lib/format';
+import { fetchCartPreview, type CartPreviewLine } from '@/app/lib/cart-preview';
+import { toE164Ua } from '@/app/lib/phone';
 import { PICKUP_POINTS } from '@/app/lib/checkout-delivery';
 import { ANALYTICS_EVENTS } from '@/app/lib/analytics';
 import { track } from '@vercel/analytics';
+import {
+  fetchDivisionsApi, fetchUkrposhtaOfficesApi, isNpWarehouseType,
+  type Carrier, type DeliveryType, type NpDivision, type NpSettlement,
+  type NpStreet, type PickupPaymentIntent, type UpUaOffice, type UpUaSettlement,
+} from './delivery-apis';
+import { inputClass } from './parts/form-styles';
+import ContactFields, { type CheckoutFieldErrors } from './parts/ContactFields';
+import DeliveryCarrierPicker from './parts/DeliveryCarrierPicker';
+import LiqPayHint from './parts/LiqPayHint';
+import NovaPostDelivery from './parts/NovaPostDelivery';
+import OrderSummary from './parts/OrderSummary';
+import PickupBlock from './parts/PickupBlock';
+import UkrposhtaDelivery from './parts/UkrposhtaDelivery';
 
 interface SubmitResult {
-  orderNumber: string;
-  total?: number;
-  currency?: string;
-  accessToken: string;
-}
-
-interface NpSettlement {
-  id: number;
-  name: string;
-  regionName: string | null;
-  regionParentName: string | null;
-}
-
-interface NpDivision {
-  id: number;
-  name: string;
-  shortName: string | null;
-  address: string | null;
-  number: string | null;
-  category: string | null;
-}
-
-interface NpStreet {
-  id: number;
-  name: string;
-  settlementId: number;
-}
-
-// --- Ukrposhta Address Classifier shapes (/api/delivery/ukrposhta/*) ---
-interface UpUaSettlement {
-  id: number;
-  name: string;
-  shortType: string | null;
-  districtName: string | null;
-  regionName: string | null;
-  katottg: string | null;
-  koatuu: string | null;
-}
-
-interface UpUaOffice {
-  id: number;
-  shortName: string | null;
-  longName: string | null;
-  postIndex: string | null;
-  address: string | null;
-  phone: string | null;
-  typeAcronym: string | null;
-}
-
-type DeliveryType =
-  | 'nova_poshta_warehouse'
-  | 'nova_poshta_locker'
-  | 'nova_poshta_courier'
-  | 'ukrposhta_warehouse'
-  | 'pickup';
-
-// Two-step delivery choice (2026-09 redesign of the flat 4-card grid):
-// first a carrier block («Нова Пошта» / «Укрпошта»), then — revealed under
-// the chosen block — a row of that carrier's service types. The final
-// submitted value is still one of the DeliveryType service_types
-// (sanitizeDelivery contract unchanged). «Самовивіз» is a pseudo-carrier
-// with a single service type: no carrier dictionaries, just a point pick.
-type Carrier = 'nova_poshta' | 'ukrposhta' | 'pickup';
-
-const CARRIERS: { value: Carrier; label: string }[] = [
-  { value: 'nova_poshta', label: 'Нова Пошта' },
-  { value: 'ukrposhta', label: 'Укрпошта' },
-  { value: 'pickup', label: 'Самовивіз, Кривий Ріг' },
-];
-
-// The ONLY place the carrier → service_type mapping lives. Keep in sync
-// with SERVICE_TYPES in app/lib/checkout-delivery.ts (Ukrposhta exposes
-// office delivery only — deliberately no courier branch).
-const CARRIER_SERVICE_TYPES: Record<
-  Carrier,
-  { value: DeliveryType; label: string }[]
-> = {
-  nova_poshta: [
-    { value: 'nova_poshta_warehouse', label: 'Відділення' },
-    { value: 'nova_poshta_locker', label: 'Поштомат' },
-    { value: 'nova_poshta_courier', label: 'Кур’єр' },
-  ],
-  ukrposhta: [{ value: 'ukrposhta_warehouse', label: 'Відділення' }],
-  pickup: [{ value: 'pickup', label: 'Заберу сам' }],
-};
-
-// Pickup payment intents (pickup only — carrier orders stay online-only
-// LiqPay after checkout). Server whitelist: PICKUP_PAYMENT_INTENTS.
-type PickupPaymentIntent = 'online' | 'cash_on_pickup';
-
-// Only these two Nova Post types load NP divisions; the Ukrposhta branch
-// uses its own settlement/office state against the /ukrposhta/* routes.
-const isNpWarehouseType = (t: DeliveryType): boolean =>
-  t === 'nova_poshta_warehouse' || t === 'nova_poshta_locker';
-
-// The live /divisions divisionCategory value for parcel lockers is
-// "Postomat" (live-verified 2026-08-28); branches are PostBranch /
-// CargoBranch. Match case-insensitively as a safety net.
-const isLockerCategory = (category: string | null): boolean =>
-  typeof category === 'string' && /postomat/i.test(category);
-
-// Module-scope loaders (project react-hooks pattern): state updates happen
-// inside async callbacks, never synchronously in an effect body.
-
-// Phone normalizers live in app/lib/phone.ts (shared with regression tests).
-async function searchSettlementsApi(
-  q: string,
-  onData: (items: NpSettlement[]) => void,
-  onError: () => void
-) {
-  try {
-    const res = await fetch(
-      `/api/delivery/novapost/settlements?q=${encodeURIComponent(q)}`,
-      // A hung dictionary fetch must not spin "Шукаємо…" forever — 12 s
-      // matches the cart-preview PREVIEW_TIMEOUT_MS convention.
-      { signal: AbortSignal.timeout(12_000) }
-    );
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error('search failed');
-    onData((data?.items as NpSettlement[]) ?? []);
-  } catch {
-    onError();
-  }
-}
-
-async function fetchDivisionsApi(
-  settlementId: number,
-  onData: (items: NpDivision[]) => void,
-  onError: () => void
-) {
-  try {
-    const res = await fetch(
-      `/api/delivery/novapost/divisions?settlementId=${settlementId}`,
-      { signal: AbortSignal.timeout(12_000) }
-    );
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error('divisions failed');
-    onData((data?.items as NpDivision[]) ?? []);
-  } catch {
-    onError();
-  }
-}
-
-async function searchStreetsApi(
-  settlementId: number,
-  name: string,
-  onData: (items: NpStreet[]) => void,
-  onError: () => void
-) {
-  try {
-    const res = await fetch(
-      `/api/delivery/novapost/streets?settlementId=${settlementId}&name=${encodeURIComponent(name)}`,
-      { signal: AbortSignal.timeout(12_000) }
-    );
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error('streets failed');
-    onData((data?.items as NpStreet[]) ?? []);
-  } catch {
-    onError();
-  }
-}
-
-// Same loader pattern for the Ukrposhta branch: server-side proxy against
-// the open Address Classifier; integer CITY_ID / office ID from a list
-// click are the only valid choices (free text is never a chosen value).
-async function searchUkrposhtaSettlementsApi(
-  q: string,
-  onData: (items: UpUaSettlement[]) => void,
-  onError: () => void
-) {
-  try {
-    const res = await fetch(
-      `/api/delivery/ukrposhta/settlements?q=${encodeURIComponent(q)}`,
-      { signal: AbortSignal.timeout(12_000) }
-    );
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error('search failed');
-    onData((data?.items as UpUaSettlement[]) ?? []);
-  } catch {
-    onError();
-  }
-}
-
-async function fetchUkrposhtaOfficesApi(
-  cityId: number,
-  onData: (items: UpUaOffice[]) => void,
-  onError: () => void
-) {
-  try {
-    const res = await fetch(
-      `/api/delivery/ukrposhta/offices?cityId=${cityId}`,
-      { signal: AbortSignal.timeout(12_000) }
-    );
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error('offices failed');
-    onData((data?.items as UpUaOffice[]) ?? []);
-  } catch {
-    onError();
-  }
+  orderNumber: string; total?: number; currency?: string; accessToken: string;
 }
 
 export default function CheckoutForm() {
@@ -292,12 +102,12 @@ export default function CheckoutForm() {
   const upSettlementRequestSeq = useRef(0);
   const upOfficesRequestSeq = useRef(0);
 
-  // Drop pending debounce timers when the form unmounts.
+  // Drop pending debounce timers when the form unmounts. The ref objects
+  // are captured as-is (same objects the setters mutate — no value copy).
   useEffect(() => {
+    const debounceRefs = [settlementDebounceRef, streetDebounceRef, upSettlementDebounceRef];
     return () => {
-      if (settlementDebounceRef.current) clearTimeout(settlementDebounceRef.current);
-      if (streetDebounceRef.current) clearTimeout(streetDebounceRef.current);
-      if (upSettlementDebounceRef.current) clearTimeout(upSettlementDebounceRef.current);
+      for (const ref of debounceRefs) if (ref.current) clearTimeout(ref.current);
     };
   }, []);
 
@@ -314,13 +124,7 @@ export default function CheckoutForm() {
   // resubmit), so the server deduplicates at the DB level — the same
   // logical request can never create two orders.
   const idempotencyKeyRef = useRef<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{
-    firstName?: string;
-    lastName?: string;
-    patronymic?: string;
-    email?: string;
-    phone?: string;
-  }>({});
+  const [fieldErrors, setFieldErrors] = useState<CheckoutFieldErrors>({});
   const [lines, setLines] = useState<CartPreviewLine[]>([]);
   // True when the cart-preview fetch failed: the summary must not present a
   // silent 0.00 as if it were the real total (the server stays the pricing
@@ -425,13 +229,6 @@ export default function CheckoutForm() {
       </div>
     );
   }
-
-  const divisionsForType =
-    deliveryType === 'nova_poshta_locker'
-      ? divisions.filter((d) => isLockerCategory(d.category))
-      : deliveryType === 'nova_poshta_warehouse'
-        ? divisions.filter((d) => !isLockerCategory(d.category))
-        : [];
 
   /** Drops every pending/selected Ukrposhta choice (stale guards bumped). */
   const resetUkrposhtaState = () => {
@@ -629,13 +426,7 @@ export default function CheckoutForm() {
     setError(null);
 
     // Client-side pass for instant feedback; the server re-validates.
-    const errs: {
-      firstName?: string;
-      lastName?: string;
-      patronymic?: string;
-      email?: string;
-      phone?: string;
-    } = {};
+    const errs: CheckoutFieldErrors = {};
     const firstTrimmed = firstName.trim();
     const lastTrimmed = lastName.trim();
     const patronymicTrimmed = patronymic.trim();
@@ -685,7 +476,7 @@ export default function CheckoutForm() {
 
     // F1 guard: never POST while an unavailable line is in the cart — the
     // server would 422 and the user had no way to fix it here. Removing the
-    // line re-enables submit (the summary block below offers the control).
+    // line re-enables submit (the summary block offers the control).
     if (unavailableItems.length > 0) {
       setError(
         'У кошику є недоступні товари. Видаліть недоступні товари, щоб оформити замовлення.'
@@ -769,9 +560,6 @@ export default function CheckoutForm() {
     }
   };
 
-  const inputClass =
-    'w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent';
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="mb-6 text-2xl font-bold tracking-tight text-gray-900">
@@ -792,150 +580,14 @@ export default function CheckoutForm() {
               1. Контактні дані
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="co-first-name" className="label">
-                  Ім’я *
-                </label>
-                <input
-                  id="co-first-name"
-                  type="text"
-                  required
-                  maxLength={120}
-                  autoComplete="given-name"
-                  autoCorrect="off"
-                  value={firstName}
-                  onChange={(e) => {
-                    setFirstName(e.target.value);
-                    if (fieldErrors.firstName)
-                      setFieldErrors((prev) => ({ ...prev, firstName: undefined }));
-                  }}
-                  aria-invalid={Boolean(fieldErrors.firstName)}
-                  aria-describedby={fieldErrors.firstName ? 'err-first-name' : undefined}
-                  className={inputClass}
-                />
-                {fieldErrors.firstName && (
-                  <p id="err-first-name" className="field-error">{fieldErrors.firstName}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="co-last-name" className="label">
-                  Прізвище *
-                </label>
-                <input
-                  id="co-last-name"
-                  type="text"
-                  required
-                  maxLength={120}
-                  autoComplete="family-name"
-                  autoCorrect="off"
-                  value={lastName}
-                  onChange={(e) => {
-                    setLastName(e.target.value);
-                    if (fieldErrors.lastName)
-                      setFieldErrors((prev) => ({ ...prev, lastName: undefined }));
-                  }}
-                  aria-invalid={Boolean(fieldErrors.lastName)}
-                  aria-describedby={fieldErrors.lastName ? 'err-last-name' : undefined}
-                  className={inputClass}
-                />
-                {fieldErrors.lastName && (
-                  <p id="err-last-name" className="field-error">{fieldErrors.lastName}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="co-patronymic" className="label">
-                  По батькові
-                </label>
-                <input
-                  id="co-patronymic"
-                  type="text"
-                  maxLength={120}
-                  autoComplete="additional-name"
-                  autoCorrect="off"
-                  value={patronymic}
-                  onChange={(e) => {
-                    setPatronymic(e.target.value);
-                    if (fieldErrors.patronymic)
-                      setFieldErrors((prev) => ({ ...prev, patronymic: undefined }));
-                  }}
-                  aria-invalid={Boolean(fieldErrors.patronymic)}
-                  aria-describedby={fieldErrors.patronymic ? 'err-patronymic' : undefined}
-                  className={inputClass}
-                />
-                {fieldErrors.patronymic && (
-                  <p id="err-patronymic" className="field-error">{fieldErrors.patronymic}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="co-email" className="label">
-              Email *
-            </label>
-            <input
-              id="co-email"
-              type="email"
-              required
-              maxLength={254}
-              autoComplete="email"
-              autoCorrect="off"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (fieldErrors.email)
-                  setFieldErrors((prev) => ({ ...prev, email: undefined }));
-              }}
-              aria-invalid={Boolean(fieldErrors.email)}
-              aria-describedby={fieldErrors.email ? 'err-email' : undefined}
-              className={inputClass}
+            <ContactFields
+              firstName={firstName} lastName={lastName} patronymic={patronymic}
+              email={email} phoneDigits={phoneDigits}
+              fieldErrors={fieldErrors}
+              setFirstName={setFirstName} setLastName={setLastName}
+              setPatronymic={setPatronymic} setEmail={setEmail}
+              setPhoneDigits={setPhoneDigits} setFieldErrors={setFieldErrors}
             />
-            {fieldErrors.email && (
-              <p id="err-email" className="field-error">{fieldErrors.email}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="co-phone" className="label">
-              Телефон
-            </label>
-            {/* Fixed +380 prefix: the user only ever types the 9 national
-                digits. Paste/autofill of "+380971234567" / "0971234567" is
-                normalized by normalizeUaPhoneDigits; the submitted value is
-                E.164. No maxLength: it would truncate a pasted number BEFORE
-                onChange and the normalizer would strip a partial "380"
-                prefix, silently losing digits (paste regression fix). */}
-            <div className="flex items-stretch w-full border border-gray-300 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
-              <span
-                aria-hidden="true"
-                className="flex items-center px-3 bg-gray-100 text-gray-500 border-r border-gray-300 select-none"
-              >
-                +380
-              </span>
-              <input
-                id="co-phone"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel-national"
-                aria-label="Номер телефону після +380"
-                placeholder="XX XXX XX XX"
-                value={phoneDigits}
-                onChange={(e) => {
-                  setPhoneDigits(normalizeUaPhoneDigits(e.target.value));
-                  if (fieldErrors.phone)
-                    setFieldErrors((prev) => ({ ...prev, phone: undefined }));
-                }}
-                aria-invalid={Boolean(fieldErrors.phone)}
-                aria-describedby={fieldErrors.phone ? 'err-phone' : undefined}
-                className="min-w-0 flex-1 p-2 outline-none border-0 focus:ring-0"
-              />
-            </div>
-            {fieldErrors.phone && (
-              <p id="err-phone" className="field-error">{fieldErrors.phone}</p>
-            )}
           </div>
 
           <div className="pt-2 border-t border-gray-100 mt-2">
@@ -943,589 +595,68 @@ export default function CheckoutForm() {
               2. Доставка
             </p>
 
-            {/* Two carrier blocks; the chosen one reveals its service-type
-                buttons directly underneath. aria-pressed marks the visible
-                selection, aria-expanded the disclosure. */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 items-start gap-2 mb-4">
-              {CARRIERS.map((c) => {
-                const selected = carrier === c.value;
-                return (
-                  <div
-                    key={c.value}
-                    className={`rounded-lg border p-3 transition-colors motion-reduce:transition-none ${
-                      selected
-                        ? 'border-blue-600 ring-1 ring-blue-600'
-                        : 'border-gray-300'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggleCarrier(c.value)}
-                      aria-pressed={selected}
-                      aria-expanded={selected}
-                      aria-controls={
-                        selected ? `carrier-services-${c.value}` : undefined
-                      }
-                      className={`min-h-[44px] w-full rounded-md px-1 py-2.5 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                        selected ? 'text-blue-700' : 'text-gray-700'
-                      }`}
-                    >
-                      <span className="flex items-center justify-between">
-                        {c.label}
-                        <span
-                          aria-hidden="true"
-                          className="text-xs text-gray-500"
-                        >
-                          {selected ? '▴' : '▾'}
-                        </span>
-                      </span>
-                    </button>
-                    {/* Service buttons render under the expanded carrier,
-                        a step below its block. The disclosure animates with
-                        the CSS grid-rows trick: the wrapper is always
-                        mounted and its single row interpolates 0fr <-> 1fr.
-                        `visibility` is transitioned too — per CSS
-                        transitions it stays visible for the whole collapse
-                        (flips to hidden at the end) and is visible from the
-                        start on expand — so collapsed buttons leave the tab
-                        order / a11y tree without JS measurement. */}
-                    <div
-                      id={`carrier-services-${c.value}`}
-                      className={`grid transition-[grid-template-rows,visibility] duration-200 ease-out motion-reduce:transition-none ${
-                        selected
-                          ? 'grid-rows-[1fr] visible'
-                          : 'grid-rows-[0fr] invisible'
-                      }`}
-                    >
-                      <div className="min-h-0 overflow-hidden">
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {CARRIER_SERVICE_TYPES[c.value].map((t) => (
-                            <button
-                              key={t.value}
-                              type="button"
-                              onClick={() => applyServiceType(t.value)}
-                              aria-pressed={deliveryType === t.value}
-                              className={`min-h-[44px] rounded-md border px-3 py-2 text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                                deliveryType === t.value
-                                  ? 'border-blue-600 bg-blue-50 font-medium text-blue-700'
-                                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                              }`}
-                            >
-                              {t.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <DeliveryCarrierPicker
+              carrier={carrier} deliveryType={deliveryType}
+              toggleCarrier={toggleCarrier} applyServiceType={applyServiceType}
+            />
 
-            {/* Самовивіз: точки під обраний домен кошика + спосіб оплати.
-                Без довідників — статичний список PICKUP_POINTS; адресу
-                точки сервер ще раз виводить канонічно. */}
+            {/* Самовивіз: точки під обраний домен кошика + спосіб оплати. */}
             {deliveryType === 'pickup' && (
-              <div className="mt-3 space-y-3">
-                {cartHasWallpapers && cartHasTech && (
-                  <p
-                    className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-                    role="note"
-                  >
-                    У кошику товари обох напрямків — усе замовлення буде
-                    чекати на обраній точці.
-                  </p>
-                )}
-                <div className="space-y-2">
-                  {availablePickupPoints.map((p) => {
-                    const selected = pickupPointId === p.id;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setPickupPointId(p.id)}
-                        aria-pressed={selected}
-                        className={`min-h-[44px] w-full rounded-md border px-3 py-2 text-left text-sm transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                          selected
-                            ? 'border-blue-600 bg-blue-50 font-medium text-blue-700'
-                            : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                        }`}
-                      >
-                        <span className="block">{p.address}</span>
-                        <span className="block text-xs text-gray-500">
-                          {p.city} · безкоштовно ·{' '}
-                          {p.domains.includes('wallpaper')
-                            ? 'шпалери'
-                            : 'техніка'}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <fieldset>
-                  <legend className="mb-2 text-sm font-medium text-gray-700">
-                    Оплата
-                  </legend>
-                  <div className="space-y-2">
-                    <label className="flex min-h-[44px] items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm">
-                      <input
-                        type="radio"
-                        name="pickup-payment"
-                        value="online"
-                        checked={paymentIntent === 'online'}
-                        onChange={() => setPaymentIntent('online')}
-                        className="h-4 w-4 text-blue-600"
-                      />
-                      Карткою онлайн (LiqPay) після оформлення
-                    </label>
-                    <label className="flex min-h-[44px] items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm">
-                      <input
-                        type="radio"
-                        name="pickup-payment"
-                        value="cash_on_pickup"
-                        checked={paymentIntent === 'cash_on_pickup'}
-                        onChange={() => setPaymentIntent('cash_on_pickup')}
-                        className="h-4 w-4 text-blue-600"
-                      />
-                      Готівкою при отриманні на точці
-                    </label>
-                  </div>
-                </fieldset>
-              </div>
+              <PickupBlock
+                availablePickupPoints={availablePickupPoints}
+                pickupPointId={pickupPointId} paymentIntent={paymentIntent}
+                setPickupPointId={setPickupPointId} setPaymentIntent={setPaymentIntent}
+                cartHasWallpapers={cartHasWallpapers} cartHasTech={cartHasTech}
+              />
             )}
 
-            {/* Settlement — NP dictionary id is the identifier; the text is display only.
-                Rendered only once a Nova Post service type is chosen; the Ukrposhta
-                branch has its own city field. Pickup has no dictionaries at all. */}
+            {/* NP dictionary fields render only once a Nova Post service
+                type is chosen; UP has its own city field, pickup — none. */}
             {deliveryType !== '' &&
               deliveryType !== 'ukrposhta_warehouse' &&
               deliveryType !== 'pickup' && (
-            <div className="relative mb-4">
-              <label htmlFor="co-settlement" className="label">
-                Населений пункт *
-              </label>
-              <input
-                id="co-settlement"
-                type="text"
-                autoComplete="off"
-                maxLength={100}
-                placeholder="Почніть вводити назву міста…"
-                value={
-                  settlement && settlementQuery === settlement.name
-                    ? settlement.name
-                    : settlementQuery
-                }
-                onChange={(e) => {
-                  const q = e.target.value;
-                   setSettlementQuery(q);
-                   setSettlement(null);
-                   setDivision(null);
-                   setDivisions([]);
-                   setDivisionsLoading(false);
-                   setStreet(null);
-                  setStreetQuery('');
-                  setStreetResults([]);
-                  setSettlementOpen(true);
-                  if (settlementDebounceRef.current) clearTimeout(settlementDebounceRef.current);
-                  if (q.trim().length >= 2) {
-                    setSettlementLoading(true);
-                    const seq = ++settlementRequestSeq.current;
-                    settlementDebounceRef.current = setTimeout(() => {
-                      searchSettlementsApi(
-                        q.trim(),
-                        (found) => {
-                          if (seq !== settlementRequestSeq.current) return; // stale response
-                          setSettlementResults(found);
-                          setSettlementOpen(true);
-                          setSettlementLoading(false);
-                        },
-                        () => {
-                          if (seq !== settlementRequestSeq.current) return; // stale response
-                          setSettlementResults([]);
-                          setSettlementLoading(false);
-                        }
-                      );
-                    }, 300);
-                  } else {
-                    // Query invalidated (too short): bump the sequence so any
-                    // in-flight response is dropped, and reset list state.
-                    settlementRequestSeq.current += 1;
-                    setSettlementLoading(false);
-                    setSettlementResults([]);
-                  }
-                }}
-                className={inputClass}
-              />
-              {/* Autocomplete states: results, loading, empty — free text is
-                  never treated as a chosen settlement (id comes only from a
-                  list click, so the submit gate stays strict). */}
-              {settlementOpen && !settlement && settlementQuery.trim().length >= 2 && (
-                settlementLoading ? (
-                  <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-500 shadow-lg" role="status">
-                    Шукаємо…
-                  </p>
-                ) : settlementResults.length > 0 ? (
-                  <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                    {settlementResults.map((s) => (
-                      <li key={s.id}>
-                        <button
-                          type="button"
-                          className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
-                          onClick={() => {
-                            // Selection is final: drop any in-flight search
-                            // response so it can't re-open the dropdown.
-                            settlementRequestSeq.current += 1;
-                            if (settlementDebounceRef.current) clearTimeout(settlementDebounceRef.current);
-                            setSettlement(s);
-                            setSettlementQuery(s.name);
-                            setSettlementOpen(false);
-                            setSettlementResults([]);
-                            setSettlementLoading(false);
-                            // Division/street belong to the chosen settlement:
-                            // keep a previously picked division/street from the
-                            // old settlement from riding along in the order.
-                            setDivision(null);
-                            setStreet(null);
-                            setStreetQuery('');
-                            setStreetResults([]);
-                            setStreetOpen(false);
-                            setBuilding('');
-                            setFlat('');
-                            divisionsRequestSeq.current += 1;
-                            streetRequestSeq.current += 1;
-                             if (deliveryType && isNpWarehouseType(deliveryType)) {
-                               const seq = divisionsRequestSeq.current;
-                               setDivisionsLoading(true);
-                               fetchDivisionsApi(
-                                 s.id,
-                                 (items) => {
-                                   if (seq !== divisionsRequestSeq.current) return; // stale response
-                                   setDivisions(items);
-                                   setDivisionsLoading(false);
-                                 },
-                                 () => {
-                                   if (seq !== divisionsRequestSeq.current) return;
-                                   setDivisions([]);
-                                   setDivisionsLoading(false);
-                                 }
-                               );
-                             }
-                          }}
-                        >
-                          <span className="block">{s.name}</span>
-                          {(s.regionName || s.regionParentName) && (
-                            <span className="block text-xs text-gray-500">
-                              {[s.regionParentName, s.regionName].filter(Boolean).join(', ')}
-                            </span>
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-500 shadow-lg">
-                    Нічого не знайдено — спробуйте іншу назву
-                  </p>
-                )
+            <NovaPostDelivery
+              deliveryType={deliveryType}
+              settlement={settlement} settlementQuery={settlementQuery}
+              settlementResults={settlementResults} settlementOpen={settlementOpen}
+              settlementLoading={settlementLoading}
+              divisions={divisions} divisionsLoading={divisionsLoading}
+              division={division}
+              street={street} streetQuery={streetQuery} streetResults={streetResults}
+              streetOpen={streetOpen} building={building} flat={flat}
+              setSettlement={setSettlement} setSettlementQuery={setSettlementQuery}
+              setSettlementResults={setSettlementResults} setSettlementOpen={setSettlementOpen}
+              setSettlementLoading={setSettlementLoading}
+              setDivision={setDivision} setDivisions={setDivisions}
+              setDivisionsLoading={setDivisionsLoading}
+              setStreet={setStreet} setStreetQuery={setStreetQuery}
+              setStreetResults={setStreetResults} setStreetOpen={setStreetOpen}
+              setBuilding={setBuilding} setFlat={setFlat}
+              setDeliveryError={setDeliveryError}
+              settlementDebounceRef={settlementDebounceRef}
+              settlementRequestSeq={settlementRequestSeq}
+              divisionsRequestSeq={divisionsRequestSeq}
+              streetDebounceRef={streetDebounceRef} streetRequestSeq={streetRequestSeq}
+            />
               )}
-            </div>
-            )}
 
-            {/* Branch / parcel locker */}
-            {(deliveryType === 'nova_poshta_warehouse' ||
-              deliveryType === 'nova_poshta_locker') && (
-              <div className="mb-4">
-                <label htmlFor="co-division" className="label">
-                  {deliveryType === 'nova_poshta_locker' ? 'Поштомат *' : 'Відділення *'}
-                </label>
-                {settlement ? (
-                  divisionsLoading ? (
-                    <p className="text-sm text-gray-500" role="status">
-                      Завантажуємо варіанти…
-                    </p>
-                  ) : divisionsForType.length > 0 ? (
-                    <select
-                      id="co-division"
-                      value={division ? String(division.id) : ''}
-                      onChange={(e) => {
-                        const d = divisionsForType.find(
-                          (x) => String(x.id) === e.target.value
-                        );
-                        setDivision(d ?? null);
-                        setDeliveryError(null);
-                      }}
-                      className={inputClass}
-                    >
-                      <option value="">
-                        — оберіть {deliveryType === 'nova_poshta_locker' ? 'поштомат' : 'відділення'} —
-                      </option>
-                      {divisionsForType.map((d) => (
-                        <option key={d.id} value={String(d.id)}>
-                          {d.name}
-                          {d.address ? ` (${d.address})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p className="text-sm text-gray-500">
-                      Немає доступних варіантів у цьому місті
-                    </p>
-                  )
-                ) : (
-                  <p className="text-sm text-gray-500">спочатку оберіть населений пункт</p>
-                )}
-              </div>
-            )}
-
-            {/* Courier address */}
-            {deliveryType === 'nova_poshta_courier' && (
-              <div className="space-y-4">
-                <div className="relative">
-                  <label htmlFor="co-street" className="label">
-                    Вулиця *
-                  </label>
-                  <input
-                    id="co-street"
-                    type="text"
-                    autoComplete="off"
-                    maxLength={100}
-                    disabled={!settlement}
-                    placeholder={
-                      settlement ? 'Почніть вводити назву вулиці…' : 'спочатку оберіть населений пункт'
-                    }
-                    value={street && streetQuery === street.name ? street.name : streetQuery}
-                    onChange={(e) => {
-                      const q = e.target.value;
-                      setStreetQuery(q);
-                      setStreet(null);
-                      setStreetOpen(true);
-                      if (streetDebounceRef.current) clearTimeout(streetDebounceRef.current);
-                      if (settlement && q.trim().length >= 2) {
-                        const seq = ++streetRequestSeq.current;
-                        streetDebounceRef.current = setTimeout(() => {
-                          if (seq !== streetRequestSeq.current) return; // superseded while debouncing
-                          searchStreetsApi(
-                            settlement.id,
-                            q.trim(),
-                            (found) => {
-                              if (seq !== streetRequestSeq.current) return; // stale response
-                              setStreetResults(found);
-                              setStreetOpen(true);
-                            },
-                            () => {
-                              if (seq !== streetRequestSeq.current) return;
-                              setStreetResults([]);
-                            }
-                          );
-                        }, 300);
-                      } else {
-                        streetRequestSeq.current += 1;
-                        setStreetResults([]);
-                      }
-                    }}
-                    className={inputClass}
-                  />
-                  {streetOpen && streetResults.length > 0 && !street && (
-                    <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                      {streetResults.map((st) => (
-                        <li key={st.id}>
-                          <button
-                            type="button"
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
-                            onClick={() => {
-                              setStreet(st);
-                              setStreetQuery(st.name);
-                              setStreetOpen(false);
-                              setStreetResults([]);
-                              setDeliveryError(null);
-                            }}
-                          >
-                            {st.name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="co-building" className="label">
-                      Будинок *
-                    </label>
-                    <input
-                      id="co-building"
-                      type="text"
-                      maxLength={100}
-                      value={building}
-                      onChange={(e) => setBuilding(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="co-flat" className="label">
-                      Квартира
-                    </label>
-                    <input
-                      id="co-flat"
-                      type="text"
-                      maxLength={10}
-                      value={flat}
-                      onChange={(e) => setFlat(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Ukrposhta — Відділення: city autocomplete + office select
-                against the open Address Classifier proxy routes. */}
             {deliveryType === 'ukrposhta_warehouse' && (
-              <>
-                <div className="relative mb-4">
-                  <label htmlFor="co-up-settlement" className="label">
-                    Населений пункт *
-                  </label>
-                  <input
-                    id="co-up-settlement"
-                    type="text"
-                    autoComplete="off"
-                    maxLength={100}
-                    placeholder="Почніть вводити назву міста…"
-                    value={
-                      upSettlement && upSettlementQuery === upSettlement.name
-                        ? upSettlement.name
-                        : upSettlementQuery
-                    }
-                    onChange={(e) => {
-                      const q = e.target.value;
-                      setUpSettlementQuery(q);
-                      setUpSettlement(null);
-                      setUpOffice(null);
-                      setUpOffices([]);
-                      setUpOfficesLoading(false);
-                      setUpSettlementOpen(true);
-                      if (upSettlementDebounceRef.current) clearTimeout(upSettlementDebounceRef.current);
-                      if (q.trim().length >= 2) {
-                        setUpSettlementLoading(true);
-                        const seq = ++upSettlementRequestSeq.current;
-                        upSettlementDebounceRef.current = setTimeout(() => {
-                          searchUkrposhtaSettlementsApi(
-                            q.trim(),
-                            (found) => {
-                              if (seq !== upSettlementRequestSeq.current) return; // stale response
-                              setUpSettlementResults(found);
-                              setUpSettlementOpen(true);
-                              setUpSettlementLoading(false);
-                            },
-                            () => {
-                              if (seq !== upSettlementRequestSeq.current) return; // stale response
-                              setUpSettlementResults([]);
-                              setUpSettlementLoading(false);
-                            }
-                          );
-                        }, 300);
-                      } else {
-                        // Query invalidated (too short): bump the sequence so
-                        // any in-flight response is dropped, reset the list.
-                        upSettlementRequestSeq.current += 1;
-                        setUpSettlementLoading(false);
-                        setUpSettlementResults([]);
-                      }
-                    }}
-                    className={inputClass}
-                  />
-                  {upSettlementOpen && !upSettlement && upSettlementQuery.trim().length >= 2 && (
-                    upSettlementLoading ? (
-                      <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-500 shadow-lg" role="status">
-                        Шукаємо…
-                      </p>
-                    ) : upSettlementResults.length > 0 ? (
-                      <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                        {upSettlementResults.map((s) => (
-                          <li key={s.id}>
-                            <button
-                              type="button"
-                              className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
-                              onClick={() => {
-                                // Selection is final: drop any in-flight
-                                // search response so it can't re-open the
-                                // dropdown, and drop any in-flight office
-                                // list for the previous city.
-                                upSettlementRequestSeq.current += 1;
-                                if (upSettlementDebounceRef.current) clearTimeout(upSettlementDebounceRef.current);
-                                setUpSettlement(s);
-                                setUpSettlementQuery(s.name);
-                                setUpSettlementOpen(false);
-                                setUpSettlementResults([]);
-                                setUpSettlementLoading(false);
-                                // The office belongs to the chosen city:
-                                // keep a previously picked office of the old
-                                // city from riding along in the order.
-                                setUpOffice(null);
-                                loadUkrposhtaOffices(s.id);
-                              }}
-                            >
-                              <span className="block">{s.name}</span>
-                              {(s.regionName || s.districtName) && (
-                                <span className="block text-xs text-gray-500">
-                                  {[s.regionName, s.districtName].filter(Boolean).join(', ')}
-                                </span>
-                              )}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-500 shadow-lg">
-                        Нічого не знайдено — спробуйте іншу назву
-                      </p>
-                    )
-                  )}
-                </div>
-
-                <div className="mb-4">
-                  <label htmlFor="co-up-office" className="label">
-                    Відділення *
-                  </label>
-                  {upSettlement ? (
-                    upOfficesLoading ? (
-                      <p className="text-sm text-gray-500" role="status">
-                        Завантажуємо варіанти…
-                      </p>
-                    ) : upOffices.length > 0 ? (
-                      <select
-                        id="co-up-office"
-                        value={upOffice ? String(upOffice.id) : ''}
-                        onChange={(e) => {
-                          const o = upOffices.find(
-                            (x) => String(x.id) === e.target.value
-                          );
-                          setUpOffice(o ?? null);
-                          setDeliveryError(null);
-                        }}
-                        className={inputClass}
-                      >
-                        <option value="">— оберіть відділення —</option>
-                        {upOffices.map((o) => (
-                          <option key={o.id} value={String(o.id)}>
-                            {[o.shortName ?? o.longName, [o.postIndex, o.address].filter(Boolean).join(', ')]
-                              .filter(Boolean)
-                              .join(', ')}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <p className="text-sm text-gray-500">
-                        Немає доступних відділень у цьому місті
-                      </p>
-                    )
-                  ) : (
-                    <p className="text-sm text-gray-500">спочатку оберіть населений пункт</p>
-                  )}
-                </div>
-              </>
+              <UkrposhtaDelivery
+                upSettlement={upSettlement} upSettlementQuery={upSettlementQuery}
+                upSettlementResults={upSettlementResults} upSettlementOpen={upSettlementOpen}
+                upSettlementLoading={upSettlementLoading}
+                upOffices={upOffices} upOfficesLoading={upOfficesLoading}
+                upOffice={upOffice}
+                setUpSettlement={setUpSettlement} setUpSettlementQuery={setUpSettlementQuery}
+                setUpSettlementResults={setUpSettlementResults} setUpSettlementOpen={setUpSettlementOpen}
+                setUpSettlementLoading={setUpSettlementLoading}
+                setUpOffices={setUpOffices} setUpOfficesLoading={setUpOfficesLoading}
+                setUpOffice={setUpOffice}
+                setDeliveryError={setDeliveryError}
+                loadUkrposhtaOffices={loadUkrposhtaOffices}
+                upSettlementDebounceRef={upSettlementDebounceRef}
+                upSettlementRequestSeq={upSettlementRequestSeq}
+              />
             )}
 
             {deliveryError && <p className="field-error">{deliveryError}</p>}
@@ -1545,17 +676,7 @@ export default function CheckoutForm() {
             />
           </div>
 
-          {/* LiqPay-подсказка не нужна, когда оформляется самовывоз с
-              оплатой наличными на точке. Условие привязано К ДОСТАВКЕ, а не
-              только к radio: пользователь мог выбрать готівку, потом
-              переключиться на перевозчика — stale intent не должен прятать
-              подсказку (аудит P2). */}
-          {!(deliveryType === 'pickup' && paymentIntent === 'cash_on_pickup') && (
-            <p className="text-xs text-gray-500">
-              Після оформлення замовлення ви зможете одразу сплатити його
-              онлайн через LiqPay.
-            </p>
-          )}
+          <LiqPayHint deliveryType={deliveryType} paymentIntent={paymentIntent} />
 
           <button
             type="submit"
@@ -1567,148 +688,11 @@ export default function CheckoutForm() {
         </fieldset>
         </form>
 
-        {/* Order summary. order-first keeps it ABOVE the submit button on
-            mobile (DOM order puts the aside after the whole form there);
-            lg:order-none restores the natural two-column layout. */}
-        <aside
-          className="card order-first w-full p-6 lg:order-none lg:sticky lg:top-24 lg:w-96"
-          aria-label="Склад замовлення"
-        >
-          <h2 className="mb-4 text-lg font-semibold">Ваше замовлення</h2>
-
-          {items.length === 0 ? (
-            <p className="text-sm text-gray-500">Кошик порожній</p>
-          ) : previewError && purchasable.length === 0 ? (
-            <p
-              className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-              role="status"
-            >
-              Не вдалося завантажити ціни товарів. Оформіть замовлення — точну
-              суму підтвердить менеджер.
-            </p>
-          ) : (
-            <>
-              {unavailableItems.length > 0 && (
-                <div
-                  className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2"
-                  role="status"
-                >
-                  <p className="text-sm font-medium text-red-800">
-                    Ці товари більше недоступні:
-                  </p>
-                  <ul className="mt-2 space-y-2">
-                    {unavailableItems.map(({ item, preview }) => (
-                      <li
-                        key={`${item.productId}::${item.variantId ?? ''}`}
-                        className="flex items-center justify-between gap-2 text-sm"
-                      >
-                        <span className="min-w-0 flex-1 truncate text-red-700">
-                          {preview?.found
-                            ? (preview.name ?? 'Товар')
-                            : 'Товар більше не доступний у каталозі'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            removeItem(item.productId, item.variantId)
-                          }
-                          className="shrink-0 rounded-md border border-red-300 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 transition"
-                        >
-                          Видалити
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <ul className="mb-4 space-y-3 text-sm">
-                {purchasable.map(({ item, preview }) => (
-                  <li key={`${item.productId}::${item.variantId ?? ''}`} className="flex gap-3">
-                    {preview?.imageUrl && (
-                      <Image
-                        src={preview.imageUrl}
-                        alt={preview.name ?? ''}
-                        width={48}
-                        height={48}
-                        sizes="48px"
-                        className="h-12 w-12 rounded-lg border border-gray-100 object-cover"
-                      />
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className="block line-clamp-2 font-medium">{preview?.name}</span>
-                      {preview?.variantName && (
-                        <span className="block text-xs text-gray-500">{preview.variantName}</span>
-                      )}
-                      <span className="text-xs text-gray-500">{item.quantity} шт</span>
-                    </span>
-                     <span className="whitespace-nowrap font-medium">
-                       {formatPrice(
-                         (preview?.unitPrice ?? 0) * item.quantity,
-                         preview?.currency ?? currency
-                       )}
-                     </span>
-                  </li>
-                ))}
-              </ul>
-               <dl className="space-y-1 border-t border-gray-100 pt-3 text-sm">
-                 <div className="flex justify-between text-gray-600">
-                   <dt>Товари</dt>
-                   <dd>
-                     {subtotalByCurrency.size <= 1
-                       ? formatPrice(
-                           [...subtotalByCurrency.values()][0] ?? 0,
-                           currency
-                         )
-                       : [...subtotalByCurrency.entries()]
-                           .map(([cur, sum]) => formatPrice(sum, cur))
-                           .join(' + ')}
-                   </dd>
-                 </div>
-                 <div className="flex justify-between text-gray-600">
-                   <dt>Доставка</dt>
-                   <dd>
-                     {deliveryType === 'pickup'
-                       ? 'Безкоштовно (самовивіз)'
-                       : 'за тарифами перевізника'}
-                   </dd>
-                 </div>
-                 <div className="flex justify-between pt-1 text-base font-bold text-gray-900">
-                   <dt>До сплати</dt>
-                   <dd>
-                     {subtotalByCurrency.size <= 1
-                       ? formatPrice(
-                           [...subtotalByCurrency.values()][0] ?? 0,
-                           currency
-                         )
-                       : [...subtotalByCurrency.entries()]
-                           .map(([cur, sum]) => formatPrice(sum, cur))
-                           .join(' + ')}
-                   </dd>
-                 </div>
-               </dl>
-              {previewError && (
-                <p
-                  className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-                  role="status"
-                >
-                  Не вдалося завантажити частину цін — точну суму підтвердить
-                  менеджер.
-                </p>
-              )}
-              <p className="mt-3 border-t border-gray-100 pt-3 text-xs leading-relaxed text-gray-500">
-                Для оформлення купівлі товару в оплату частинами від
-                ПриватБанку, А-Банку та Пумб Банку звертатися за номером
-                телефону{' '}
-                <a
-                  href="tel:+380973144221"
-                  className="whitespace-nowrap font-medium text-blue-600 hover:underline"
-                >
-                  +380 (97) 314 42 21
-                </a>
-              </p>
-            </>
-          )}
-        </aside>
+        <OrderSummary
+          items={items} purchasable={purchasable} unavailableItems={unavailableItems}
+          previewError={previewError} subtotalByCurrency={subtotalByCurrency}
+          currency={currency} deliveryType={deliveryType} removeItem={removeItem}
+        />
       </div>
     </div>
   );
