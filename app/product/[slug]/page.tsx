@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { cache } from 'react'
 import type { Metadata } from 'next'
-import { fetchProductBySlug, fetchPublishedReviews, fetchReviewSummary, fetchRelatedProducts, fetchActiveCategories, type ReviewsPageData, type ReviewSummary, type CatalogCardProduct } from '@/app/lib/catalog'
+import { fetchProductBySlug, fetchPublishedReviews, fetchReviewSummary, fetchRelatedProducts, fetchGlueCrossSell, fetchActiveCategories, type ReviewsPageData, type ReviewSummary, type CatalogCardProduct } from '@/app/lib/catalog'
 import { getPublicImageUrls, getMainPublicImageUrl } from '@/app/lib/supabase-storage'
 import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
@@ -20,6 +20,7 @@ import { parseRollSize } from '@/app/lib/wallpapers/parse'
 import RecentProducts from '@/app/components/RecentProducts'
 import RecentlyViewedTracker from '@/app/components/RecentlyViewedTracker'
 import RelatedProducts from '@/app/components/RelatedProducts'
+import GlueCrossSell from '@/app/components/GlueCrossSell'
 import ProductJsonLd from '@/app/components/ProductJsonLd'
 import { buildProductJsonLd, buildProductBreadcrumbJsonLd } from '@/app/lib/schema-org'
 import { buildProductMetaDescription } from '@/app/lib/seo'
@@ -112,17 +113,24 @@ export default async function ProductPage({
   // Reviews page 1 is always server-rendered (Task #5B): pagination beyond
   // the first page is client-side (GET /api/reviews) so the route stays ISR.
 
+  // Wallpaper domain gate (sku prefix single source of truth 'wc-'): drives
+  // the roll calculator AND the glue cross-sell shelf below.
+  const isWallpaper = product.sku.startsWith('wc-')
+
   // Supplementary content (perf audit Step 2 2026-08-28): reviews, summary
   // and related products depend ONLY on `product`, so they all run in ONE
   // parallel wave instead of reviews-first-then-related waterfall. Each part
   // keeps its own degradation contract: a reviews failure degrades to an
   // empty state, a related failure hides the block — neither breaks the page.
-  const [reviewsSettled, relatedSettled, categoriesSettled] = await Promise.allSettled([
+  const [reviewsSettled, relatedSettled, gluesSettled, categoriesSettled] = await Promise.allSettled([
     Promise.all([
       fetchReviewSummary(product.id),
       fetchPublishedReviews(product.id, 1),
     ]),
     fetchRelatedProducts(product),
+    // «Клей для шпалер» shelf: wallpapers only (owner 2026-09-13); any other
+    // PDP skips the read entirely (no query, no cache entry).
+    isWallpaper ? fetchGlueCrossSell() : Promise.resolve<CatalogCardProduct[]>([]),
     // Footer category links (2026-09 audit): the PDP footer used to fall
     // back to a single «Каталог» link because no categories were passed.
     // The page is a server component and the dictionary read is React
@@ -153,6 +161,15 @@ export default async function ProductPage({
     console.error('related products unavailable:', relatedSettled.reason)
   }
 
+  // Glue cross-sell: same degradation contract — a failed read hides the
+  // shelf (never the page).
+  let glueProducts: CatalogCardProduct[] = []
+  if (gluesSettled.status === 'fulfilled') {
+    glueProducts = gluesSettled.value
+  } else {
+    console.error('glue cross-sell unavailable:', gluesSettled.reason)
+  }
+
   // Footer categories: a failed read degrades to the single-link fallback
   // (SiteFooter renders the fallback for an empty array).
   const footerCategories =
@@ -175,7 +192,6 @@ export default async function ProductPage({
   // placeholder with a hint, so nothing is guessed (bug report 2026-09-11:
   // 198 of 327 active wallpaper names carry no size; hiding the calculator
   // for all of them hid it from most of the assortment).
-  const isWallpaper = product.sku.startsWith('wc-')
   const rollSize = isWallpaper ? parseRollSize(product.name) : null
 
   // Structured data from REAL fields only; review summary is the try/catch
@@ -438,6 +454,10 @@ export default async function ProductPage({
 
         {/* Схожі товари — bounded discovery shelf; hidden when empty. */}
         <RelatedProducts products={relatedProducts} />
+
+        {/* «Клей для шпалер» — cross-sell on wallpaper PDPs only
+            (owner 2026-09-13); hidden when the glue category is empty. */}
+        {isWallpaper && <GlueCrossSell products={glueProducts} />}
 
         {/* Відгуки (published only, moderated) */}
         <ProductReviews

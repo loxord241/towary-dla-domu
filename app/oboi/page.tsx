@@ -4,6 +4,7 @@ import {
   fetchWallpaperProducts,
   fetchActiveCategories,
   CATALOG_PAGE_SIZE,
+  GLUE_CATEGORY_SLUG,
   type CatalogSort,
 } from '@/app/lib/catalog'
 import { buildWallpapersMetadata } from '@/app/lib/seo'
@@ -174,7 +175,9 @@ export default async function OboiPage({
 
           {/* Subcategory chips — deep links into the wallpaper-scoped
               /catalog views (shpaleri-*), which render the same wc-*
-              domain. One source of truth: the importer's category map. */}
+              domain. One source of truth: the importer's category map.
+              The glue chip (owner 2026-09-13) targets its own category —
+              a GENERAL catalog view (wc-* stay excluded there, gl-* shown). */}
           <ul className="mb-6 flex flex-wrap gap-2">
             {WALLPAPER_SUBCATEGORIES.map((subcategory) => (
               <li key={subcategory.slug}>
@@ -186,6 +189,14 @@ export default async function OboiPage({
                 </Link>
               </li>
             ))}
+            <li>
+              <Link
+                href={`/catalog?category=${encodeURIComponent(GLUE_CATEGORY_SLUG)}`}
+                className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-blue-700 transition hover:bg-blue-50"
+              >
+                Клеї для шпалер
+              </Link>
+            </li>
           </ul>
 
           {/* Основа filter chips — server-filtered via a jsonb contains on

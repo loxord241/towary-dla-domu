@@ -59,3 +59,8 @@ export {
 export { fetchActiveBrands, fetchActiveCategories } from './catalog/categories.ts';
 export { fetchProductBySlug } from './catalog/product-card.ts';
 export { RELATED_LIMIT, collectRelated, fetchRelatedProducts } from './catalog/related.ts';
+export {
+  GLUE_CATEGORY_SLUG,
+  GLUE_CROSS_SELL_LIMIT,
+  fetchGlueCrossSell,
+} from './catalog/glues.ts';
