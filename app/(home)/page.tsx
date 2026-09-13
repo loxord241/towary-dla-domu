@@ -183,7 +183,10 @@ export default async function Home() {
               {categories.slice(0, 5).map((category, idx) => (
                 <Link
                   key={category.id}
-                  href={`/catalog?category=${encodeURIComponent(category.slug)}`}
+                  // Path form (SEO package 2026-09-13): legacy query-form
+                  // category URLs only 308-redirect now, so internal links
+                  // point straight at /catalog/<slug>.
+                  href={`/catalog/${encodeURIComponent(category.slug)}`}
                   // 5th card spans the full row on the 2-col mobile grid so
                   // the layout never ends on an orphan half-width card.
                   className={`card group p-5 transition-shadow hover:shadow-md ${

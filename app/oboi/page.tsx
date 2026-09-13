@@ -24,7 +24,7 @@ import OboiSortSelect from './SortSelect'
 // wc-* domain (fetchWallpaperProducts) — the general /catalog excludes it.
 // Like /catalog the route reads searchParams (?page=N), so it renders
 // dynamically per request; there is deliberately NO search UI in v1 and the
-// subcategory chips deep-link into /catalog?category=shpaleri-* views
+// subcategory chips deep-link into the /catalog/shpaleri-* path views
 // (fetchCatalogProducts keeps the wallpaper domain for exactly those views).
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>
@@ -182,7 +182,9 @@ export default async function OboiPage({
             {WALLPAPER_SUBCATEGORIES.map((subcategory) => (
               <li key={subcategory.slug}>
                 <Link
-                  href={`/catalog?category=${encodeURIComponent(subcategory.slug)}`}
+                  // Path form (SEO package 2026-09-13): legacy query-form
+                  // category URLs only 308-redirect — link straight to the path.
+                  href={`/catalog/${encodeURIComponent(subcategory.slug)}`}
                   className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-blue-700 transition hover:bg-blue-50"
                 >
                   {subcategory.name}
@@ -191,7 +193,7 @@ export default async function OboiPage({
             ))}
             <li>
               <Link
-                href={`/catalog?category=${encodeURIComponent(GLUE_CATEGORY_SLUG)}`}
+                href={`/catalog/${encodeURIComponent(GLUE_CATEGORY_SLUG)}`}
                 className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-blue-700 transition hover:bg-blue-50"
               >
                 Клеї для шпалер

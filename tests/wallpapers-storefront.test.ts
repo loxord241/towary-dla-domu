@@ -187,8 +187,8 @@ test('OBOI: page exists with exactly one h1, chips, grid and pagination', () => 
   assert.match(page, /<h1 className="text-2xl font-bold">Шпалери<\/h1>/);
   assert.match(page, /buildWallpapersMetadata/, 'metadata from the seo policy');
   assert.match(page, /WALLPAPER_CATEGORY_MAP/, 'chips come from the importer map');
-  assert.match(page, /\/catalog\?category=\$\{encodeURIComponent\(subcategory\.slug\)\}/,
-    'chips deep-link into the wallpaper-scoped /catalog views');
+  assert.match(page, /\/catalog\/\$\{encodeURIComponent\(subcategory\.slug\)\}/,
+    'chips deep-link into the wallpaper-scoped /catalog views (path form)');
   assert.match(page, /fetchWallpaperProducts/, 'wc-* domain data source');
   assert.match(page, /<ProductCard/, 'reuses ProductCard');
   assert.match(page, /buildPageWindow/, 'catalog-style page window');
