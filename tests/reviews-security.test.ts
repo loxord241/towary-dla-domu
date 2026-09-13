@@ -12,6 +12,26 @@ import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (rel: string): string => readFileSync(path.join(root, rel), 'utf8');
 
+// 2026-09 refactor: the catalog god-module was split into app/lib/catalog/* —
+// the lib pins below read every fragment (original file order).
+const CATALOG_LIB_FILES = [
+  'app/lib/catalog/shared.ts',
+  'app/lib/catalog/filters.ts',
+  'app/lib/catalog/slug-lookup.ts',
+  'app/lib/catalog/product-feed.ts',
+  'app/lib/catalog/counts.ts',
+  'app/lib/catalog/listing.ts',
+  'app/lib/catalog/wallpaper-listing.ts',
+  'app/lib/catalog/reviews.ts',
+  'app/lib/catalog/shelves.ts',
+  'app/lib/catalog/categories.ts',
+  'app/lib/catalog/search.ts',
+  'app/lib/catalog/product-card.ts',
+  'app/lib/catalog/related.ts',
+];
+const catalogLib = (): string =>
+  CATALOG_LIB_FILES.map((rel) => src(rel)).join('\n');
+
 // ---- migration: table shape, RLS, no PII ----
 
 test('REVIEWS MIGRATION: table exists with rating/text/status constraints', () => {
@@ -74,7 +94,7 @@ test('REVIEWS API: dedicated rate-limit rule set exists', () => {
 // ---- storefront readers: published-only, bounded, tiebroken ----
 
 test('REVIEWS CATALOG: public reader filters published and paginates deterministically', () => {
-  const lib = src('app/lib/catalog.ts');
+  const lib = catalogLib();
   const fn = lib.slice(
     lib.indexOf('async function fetchPublishedReviews'),
     lib.indexOf('export interface ReviewSummary')
@@ -88,7 +108,7 @@ test('REVIEWS CATALOG: public reader filters published and paginates determinist
 });
 
 test('REVIEWS CATALOG: summary uses one aggregated read (no row payload)', () => {
-  const lib = src('app/lib/catalog.ts');
+  const lib = catalogLib();
   const fn = lib.slice(
     lib.indexOf('async function fetchReviewSummary'),
     lib.indexOf('export async function fetchFeaturedProducts')
@@ -111,7 +131,7 @@ test('REVIEWS CATALOG: summary uses one aggregated read (no row payload)', () =>
 });
 
 test('REVIEWS CATALOG: page size constant is 10', () => {
-  const lib = src('app/lib/catalog.ts');
+  const lib = catalogLib();
   assert.match(lib, /export const REVIEWS_PAGE_SIZE = 10/);
 });
 

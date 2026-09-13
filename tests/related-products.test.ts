@@ -51,7 +51,8 @@ test('RELATED: empty candidates yield an empty list (block hides itself)', () =>
 });
 
 test('RELATED: fetch layer is bounded and mirrors eligibility (source-level)', () => {
-  const src = readFileSync('app/lib/catalog.ts', 'utf8');
+  // 2026-09 refactor: the related-products code lives in app/lib/catalog/related.ts.
+  const src = readFileSync('app/lib/catalog/related.ts', 'utf8');
   const start = src.indexOf('async function fetchRelatedStage');
   const end = src.indexOf('export async function fetchRelatedProducts');
   assert.ok(start !== -1 && end > start, 'stage helper must exist');

@@ -12,7 +12,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const src = readFileSync('app/lib/catalog.ts', 'utf8');
+// 2026-09 refactor: the related-products code lives in app/lib/catalog/related.ts.
+const src = readFileSync('app/lib/catalog/related.ts', 'utf8');
 // Strip comments first: prose mentions of PRODUCT_SELECT elsewhere in the
 // file must not mask (or falsely trigger) a regression inside the stage.
 const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');

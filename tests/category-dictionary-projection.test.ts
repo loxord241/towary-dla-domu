@@ -12,7 +12,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const src = readFileSync('app/lib/catalog.ts', 'utf8');
+// 2026-09 refactor: the dictionary now lives in app/lib/catalog/categories.ts.
+const src = readFileSync('app/lib/catalog/categories.ts', 'utf8');
 // Strip comments first: prose mentions elsewhere in the file must not mask
 // (or falsely trigger) a regression inside the dictionary block.
 const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');

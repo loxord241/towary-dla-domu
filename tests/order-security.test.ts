@@ -193,6 +193,23 @@ test('ORDER-SEC: service-role key is referenced by NO client component', () => {
 });
 
 test('ORDER-SEC: storefront catalog layer has zero order/customer references', () => {
-  const c = src('app/lib/catalog.ts');
+  // 2026-09 refactor: the catalog layer now spans app/lib/catalog/*.
+  const c = [
+    'app/lib/catalog/shared.ts',
+    'app/lib/catalog/filters.ts',
+    'app/lib/catalog/slug-lookup.ts',
+    'app/lib/catalog/product-feed.ts',
+    'app/lib/catalog/counts.ts',
+    'app/lib/catalog/listing.ts',
+    'app/lib/catalog/wallpaper-listing.ts',
+    'app/lib/catalog/reviews.ts',
+    'app/lib/catalog/shelves.ts',
+    'app/lib/catalog/categories.ts',
+    'app/lib/catalog/search.ts',
+    'app/lib/catalog/product-card.ts',
+    'app/lib/catalog/related.ts',
+  ]
+    .map((rel) => src(rel))
+    .join('\n');
   assert.doesNotMatch(c, /from\(['"](orders|order_items|customers)['"]/);
 });

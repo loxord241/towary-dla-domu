@@ -245,7 +245,10 @@ test('INVARIANT F11: pageAll closures remain ordered and bounded (regression)', 
  *    ORDER BY is supplied by every caller's make() closure (verified).
  */
 const ORDER_EXEMPT: { file: string; anchor: string }[] = [
-  { file: 'app/lib/catalog.ts', anchor: 'query.range((page - 1)' },
+  // 2026-09 refactor: app/lib/catalog.ts was split — the clamped-page range
+  // windows now live in the listing modules.
+  { file: 'app/lib/catalog/listing.ts', anchor: 'query.range((page - 1)' },
+  { file: 'app/lib/catalog/wallpaper-listing.ts', anchor: 'query.range((page - 1)' },
   { file: 'scripts/yugcontract-verify.ts', anchor: 'make().range(from' },
 ];
 
@@ -308,8 +311,12 @@ test('INVARIANT: every multi-page .range() reader has a stable .order() on its c
 });
 
 test('INVARIANT: allowlisted pagers keep their .order() contracts', () => {
-  // catalog.ts: each sort branch must chain .order('id') tiebreaker.
-  const catalog = readFileSync(path.join(root, 'app/lib/catalog.ts'), 'utf8');
+  // catalog listing: each sort branch must chain .order('id') tiebreaker
+  // (2026-09 refactor: the sort switch lives in app/lib/catalog/listing.ts).
+  const catalog = readFileSync(
+    path.join(root, 'app/lib/catalog/listing.ts'),
+    'utf8'
+  );
   const tiebreakers = catalog.match(/\.order\('id'/g) ?? [];
   assert.ok(
     tiebreakers.length >= 4,
@@ -359,7 +366,25 @@ test('INVARIANT F4: admin products featured/active branches are paged with deter
 });
 
 test('INVARIANT F5: catalog fetchProducts is paged with deterministic order and kept filters', () => {
-  const src = readFileSync(path.join(root, 'app/lib/catalog.ts'), 'utf8');
+  // 2026-09 refactor: fetchProducts lives in app/lib/catalog/product-feed.ts;
+  // the slice end anchor (sanitizeSearchTerm docblock) lives in search.ts.
+  const src = [
+    'app/lib/catalog/shared.ts',
+    'app/lib/catalog/filters.ts',
+    'app/lib/catalog/slug-lookup.ts',
+    'app/lib/catalog/product-feed.ts',
+    'app/lib/catalog/counts.ts',
+    'app/lib/catalog/listing.ts',
+    'app/lib/catalog/wallpaper-listing.ts',
+    'app/lib/catalog/reviews.ts',
+    'app/lib/catalog/shelves.ts',
+    'app/lib/catalog/categories.ts',
+    'app/lib/catalog/search.ts',
+    'app/lib/catalog/product-card.ts',
+    'app/lib/catalog/related.ts',
+  ]
+    .map((rel) => readFileSync(path.join(root, rel), 'utf8'))
+    .join('\n');
   const start = src.indexOf('async function fetchProducts');
   assert.ok(start !== -1, 'fetchProducts отсутствует');
   const end = src.indexOf('/** Sanitize a user-supplied search term', start);
