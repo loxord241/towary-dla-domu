@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { prefillShipmentDraft } from '@/app/lib/admin-shipment-prefill';
+import { TTN_NUMBER_RE } from '@/app/lib/order-tracking';
 
 /**
  * Stage 2D — admin shipment planner. The manager manually distributes order
@@ -63,6 +64,7 @@ interface ServerShipment {
   cod_amount: number;
   delivery_cost_estimated: number | null;
   ttn_number: string | null;
+  ttn_ref: string | null;
   delivery_cost: number | null;
   order_shipment_items: { order_item_id: string; quantity: number }[];
   order_shipment_parcels: ServerParcel[];
@@ -94,6 +96,7 @@ interface PlanShipment {
   cod_amount: string;
   status: string;
   ttn_number: string | null;
+  ttn_ref: string | null;
   delivery_cost: number | null;
   items: { order_item_id: string; quantity: string }[];
   parcels: PlanParcel[];
@@ -124,6 +127,11 @@ interface NpDivision {
 
 const CARGO_CATEGORIES = ['parcel', 'documents', 'pallet'] as const;
 
+/** Carrier implied by the shipment's service type (migration 038 pairing). */
+function defaultCarrierFor(serviceType: string): string {
+  return serviceType === 'ukrposhta_warehouse' ? 'ukrposhta' : 'nova_poshta';
+}
+
 function emptyShipment(): PlanShipment {
   return {
     id: null,
@@ -140,6 +148,7 @@ function emptyShipment(): PlanShipment {
     cod_amount: '0',
     status: 'planned',
     ttn_number: null,
+    ttn_ref: null,
     delivery_cost: null,
     items: [],
     parcels: [],
@@ -162,6 +171,7 @@ function shipmentFromServer(s: ServerShipment): PlanShipment {
     cod_amount: String(s.cod_amount ?? '0'),
     status: s.status ?? 'planned',
     ttn_number: s.ttn_number ?? null,
+    ttn_ref: s.ttn_ref ?? null,
     delivery_cost: s.delivery_cost ?? null,
     items: (s.order_shipment_items ?? []).map((si) => ({
       order_item_id: si.order_item_id,
@@ -308,6 +318,10 @@ export default function ShipmentPlannerPage() {
   const [calculating, setCalculating] = useState(false);
   const [calcResults, setCalcResults] = useState<Record<number, CalcOutcome>>({});
   const [ttnBusy, setTtnBusy] = useState<number | null>(null);
+  // Manual TTN attach (owner 2026-09-13): the paper-slip number typed per
+  // planned shipment, keyed by shipment position in the draft.
+  const [manualTtn, setManualTtn] = useState<Record<number, { ttn: string; carrier: string }>>({});
+  const [manualTtnBusy, setManualTtnBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // Order-level quick actions (owner 2026-09-13): confirm / mark-paid /
@@ -533,6 +547,44 @@ export default function ShipmentPlannerPage() {
     }
   };
 
+  const attachManualTtn = async (idx: number) => {
+    const shipment = draft[idx];
+    if (!orderId || !shipment || !shipment.id) return;
+    const entry = manualTtn[idx];
+    const ttn = (entry?.ttn ?? '').trim();
+    if (!TTN_NUMBER_RE.test(ttn)) {
+      setError('ТТН: 5–20 символів, лише латинські літери, цифри та дефіси');
+      return;
+    }
+    setManualTtnBusy(idx);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/shipments/manual-ttn`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shipment_id: shipment.id,
+          ttn_number: ttn,
+          carrier: entry?.carrier || defaultCarrierFor(shipment.service_type),
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Не вдалося прикріпити ТТН');
+      setNotice(`ТТН прикріплено: ${data?.ttn_number ?? ttn}`);
+      setManualTtn((prev) => {
+        const next = { ...prev };
+        delete next[idx];
+        return next;
+      });
+      // Reload authoritative state (status/ttn_number/carrier).
+      fetchPlanApi(orderId, applyData, setError, () => setManualTtnBusy(null));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Невідома помилка');
+      setManualTtnBusy(null);
+    }
+  };
+
   const rollbackTtn = async (idx: number) => {
     const shipment = draft[idx];
     if (!orderId || !shipment || !shipment.id) return;
@@ -753,7 +805,8 @@ export default function ShipmentPlannerPage() {
                     {ttnBusy === idx ? 'Створення…' : 'Створити ТТН'}
                   </button>
                 )}
-                {shipment.id && shipment.ttn_number && shipment.status === 'created' && (
+                {shipment.id && shipment.ttn_number && shipment.status === 'created' &&
+                  shipment.ttn_ref && (
                   <button
                     type="button"
                     onClick={() => rollbackTtn(idx)}
@@ -806,6 +859,58 @@ export default function ShipmentPlannerPage() {
                   <>Помилка розрахунку: {calcResults[idx].reason}
                     {calcResults[idx].message ? ` — ${calcResults[idx].message}` : ''}</>
                 )}
+              </div>
+            )}
+
+            {/* Manual TTN attach (owner 2026-09-13): paper-slip number from
+                the carrier branch office — no Nova Post API call involved. */}
+            {shipment.id && shipment.status === 'planned' && !shipment.ttn_number && (
+              <div className="border border-indigo-100 bg-indigo-50/50 rounded p-2 mb-3">
+                <span className="text-gray-600 block text-xs mb-1">
+                  Ввести ТТН вручну (номер із папірця від перевізника)
+                </span>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <input
+                    type="text"
+                    maxLength={20}
+                    value={manualTtn[idx]?.ttn ?? ''}
+                    placeholder="Номер ТТН"
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(e) =>
+                      setManualTtn((prev) => ({
+                        ...prev,
+                        [idx]: {
+                          ttn: e.target.value,
+                          carrier:
+                            prev[idx]?.carrier ?? defaultCarrierFor(shipment.service_type),
+                        },
+                      }))
+                    }
+                    className="input flex-1 min-w-40 text-base min-h-[44px]"
+                  />
+                  <select
+                    value={manualTtn[idx]?.carrier ?? defaultCarrierFor(shipment.service_type)}
+                    onChange={(e) =>
+                      setManualTtn((prev) => ({
+                        ...prev,
+                        [idx]: { ttn: prev[idx]?.ttn ?? '', carrier: e.target.value },
+                      }))
+                    }
+                    className="input text-base min-h-[44px]"
+                  >
+                    <option value="nova_poshta">Нова Пошта</option>
+                    <option value="ukrposhta">Укрпошта</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => attachManualTtn(idx)}
+                    disabled={manualTtnBusy !== null}
+                    className="min-h-[44px] px-4 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {manualTtnBusy === idx ? 'Прикріплення…' : 'Прикріпити'}
+                  </button>
+                </div>
               </div>
             )}
 
