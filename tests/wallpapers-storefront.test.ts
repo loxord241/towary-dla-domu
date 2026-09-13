@@ -237,6 +237,28 @@ test('OBOI SEO: page 1 is indexable with canonical /oboi', () => {
   assert.deepEqual(meta.alternates, { canonical: '/oboi' });
 });
 
+test('OBOI SEO: page 1 carries og:title/og:description with the full og fields (audit 2026-09-13)', () => {
+  const meta = buildWallpapersMetadata();
+  assert.ok(meta.openGraph, '/oboi must set its own og — the layout default won the repost before');
+  assert.equal(meta.openGraph!.title, 'Шпалери — купити в Товари для дому');
+  assert.equal(meta.openGraph!.description, meta.description);
+  // Page-level og REPLACES the layout object (shallow merge) — locale/
+  // type/siteName and the default image must be repeated here.
+  assert.equal(meta.openGraph!.locale, 'uk_UA');
+  // `.type` sits on one member of Next's OpenGraph union — structural cast.
+  assert.equal((meta.openGraph as unknown as { type: string }).type, 'website');
+  assert.equal(meta.openGraph!.siteName, 'Товари для дому');
+  assert.deepEqual(meta.openGraph!.images, ['/og-image.png']);
+  assert.equal(meta.openGraph!.url, undefined, 'canonical lives in alternates');
+});
+
+test('OBOI SEO: noindex filtered views carry og too (harmless, previews stay meaningful)', () => {
+  const meta = buildWallpapersMetadata(2);
+  assert.ok(meta.openGraph);
+  assert.equal(meta.openGraph!.title, 'Шпалери — купити в Товари для дому');
+  assert.equal(meta.openGraph!.description, meta.description);
+});
+
 test('OBOI SEO: deep pagination is noindex,follow WITHOUT a canonical', () => {
   const meta = buildWallpapersMetadata(2);
   assert.deepEqual(meta.robots, { index: false, follow: true });

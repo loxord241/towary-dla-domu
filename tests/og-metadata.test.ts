@@ -54,3 +54,20 @@ test('OG-IMAGE: static asset is a genuine 1200×630 PNG', () => {
   assert.equal(buf.readUInt32BE(16), 1200, 'width');
   assert.equal(buf.readUInt32BE(20), 630, 'height');
 });
+
+test('OG-IMAGE: catalog/oboi views repeat the default image inside their page-level og', async () => {
+  // Audit 2026-09-13: these views now set openGraph themselves. A page-level
+  // og object REPLACES the layout default wholesale (shallow metadata merge),
+  // so the committed static image must be repeated — otherwise a category
+  // link shared in Viber/Telegram ships without og:image at all.
+  const { buildCatalogViewMetadata, buildWallpapersMetadata } = await import(
+    '../app/lib/seo.ts'
+  );
+  const catalog = buildCatalogViewMetadata({
+    input: { categorySlug: 'blendery-1402', categoryFound: true },
+    categoryName: 'Блендери',
+  });
+  assert.deepEqual(catalog.openGraph!.images, ['/og-image.png']);
+  const oboi = buildWallpapersMetadata();
+  assert.deepEqual(oboi.openGraph!.images, ['/og-image.png']);
+});

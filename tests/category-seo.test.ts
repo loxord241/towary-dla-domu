@@ -37,12 +37,21 @@ test('SEO-CAT: target category resolves the intent override', () => {
     seo.title.startsWith('Дрібна побутова техніка'),
     'title must lead with the intent keyword'
   );
-  assert.ok(seo.title.includes('купити'), 'commercial intent in title');
+  // Audit 2026-09-13: the «купити» tail is gone (title pinned exactly by
+  // the dedicated test below) — the intent keyword lead is the invariant.
   assert.ok(seo.title.length <= 80, `title too long: ${seo.title.length}`);
   assert.ok(seo.description.includes('Дрібна побутова техніка'));
   assert.ok(seo.description.length >= 70, 'description too thin');
   assert.ok(seo.intro.length >= 1, 'unique intro copy missing');
   assert.ok(seo.intro.every((p) => p.length >= 80), 'intro paragraphs must carry real content');
+});
+
+test('SEO-CAT: pinned title keeps the brand-only tail (audit 2026-09-13, ≤55-char SERP window)', () => {
+  const seo = getCategorySeo(TDD_CATEGORY_SLUG)!;
+  // The previous «— купити в інтернет-магазині Товари для дому» tail pushed
+  // the title to 69 chars; the brand-only tail fits the ~55-char window.
+  assert.equal(seo.title, 'Дрібна побутова техніка — Товари для дому');
+  assert.ok(seo.title.length <= 55, `title too long for the SERP window: ${seo.title.length}`);
 });
 
 test('SEO-CAT: other slugs get no override (existing metadata behavior)', () => {
@@ -68,6 +77,35 @@ test('SEO-CAT: applyCategorySeoMetadata overrides only title/description', () =>
   const untouched = applyCategorySeoMetadata(base, 'other-slug');
   assert.equal(untouched.title, base.title);
   assert.equal(untouched.description, base.description);
+});
+
+test('SEO-CAT: applyCategorySeoMetadata reaches og:title/og:description when og is present', () => {
+  // The view-level og object REPLACES the layout default (shallow merge) —
+  // if the override skipped it, the messenger card would keep the generic
+  // copy while the SERP shows the pinned intent copy.
+  const base = {
+    title: 'Дрібна побутова техніка — купити в Товари для дому',
+    description: 'шаблонний опис',
+    openGraph: {
+      title: 'Дрібна побутова техніка — купити в Товари для дому',
+      description: 'шаблонний опис',
+      locale: 'uk_UA',
+      type: 'website',
+      siteName: 'Товари для дому',
+      images: ['/og-image.png'],
+    },
+  };
+  const merged = applyCategorySeoMetadata(base, TDD_CATEGORY_SLUG);
+  const seo = getCategorySeo(TDD_CATEGORY_SLUG)!;
+  assert.equal(merged.openGraph!.title, seo.title, 'og:title must follow the override');
+  assert.equal(merged.openGraph!.description, seo.description, 'og:description must follow the override');
+  // Non-copy og fields survive the merge untouched.
+  assert.equal(merged.openGraph!.locale, 'uk_UA');
+  assert.deepEqual(merged.openGraph!.images, ['/og-image.png']);
+
+  // Views without og stay og-less (nothing invented).
+  const bare = { title: 'x', description: 'y', openGraph: undefined };
+  assert.equal(applyCategorySeoMetadata(bare, TDD_CATEGORY_SLUG).openGraph, undefined);
 });
 
 // ---- direct children (pure tree slice)
