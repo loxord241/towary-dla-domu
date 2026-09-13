@@ -7,6 +7,7 @@ import { CartProvider } from "@/app/lib/cart-context";
 import { FavoritesProvider } from "@/app/lib/favorites-context";
 import TrafficSourceTracker from "@/app/components/TrafficSourceTracker";
 import OrganizationJsonLd from "@/app/components/OrganizationJsonLd";
+import WebAnalytics from "@/app/components/WebAnalytics";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -81,6 +82,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <FavoritesProvider>{children}</FavoritesProvider>
         </CartProvider>
         <TrafficSourceTracker />
+        {/* Пакет А (владелец 2026-09-13): GA4 + Clarity, gated on
+            NEXT_PUBLIC_GA4_ID / NEXT_PUBLIC_CLARITY_ID (Vercel env). No-ops
+            when unset. Vercel Analytics остаётся параллельно. */}
+        <WebAnalytics />
         <Analytics />
         <SpeedInsights />
       </body>

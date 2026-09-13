@@ -579,7 +579,10 @@ export default async function CatalogView({
                       key={product.id}
                       product={product}
                       imageUrl={getMainPublicImageUrl(product.images)}
-                      eager={idx < 6}
+                      // Perf audit 2026-09-13: 1–2 eager images on mobile
+                      // (1 card per viewport) — 6 high-priority fetches
+                      // competed with the LCP image.
+                      eager={idx < 2}
                     />
                   ))}
                 </div>

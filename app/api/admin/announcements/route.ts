@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { requireAdminApi, isUuid, dbErrorResponse } from '@/app/lib/admin-api';
 import {
   validateAnnouncementInput,
@@ -32,6 +33,16 @@ async function readJson(request: Request): Promise<Record<string, unknown> | nul
   } catch {
     return null;
   }
+}
+
+
+// Perf 2026-09-13: storefront reads are Data-Cache'd under the
+// `catalog-public-reads` tag — every admin mutation drops it so the
+// storefront sees changes immediately (TTL 900s otherwise).
+function invalidatePublicReads(): void {
+  // Next 16: the second arg is the cacheLife profile — 'max' expires
+  // immediately, so the storefront re-reads on the next request.
+  revalidateTag('catalog-public-reads', 'max');
 }
 
 export async function GET() {
@@ -93,6 +104,7 @@ export async function POST(request: Request) {
     return dbErrorResponse(error, 'Не вдалося створити повідомлення');
   }
 
+  invalidatePublicReads();
   return NextResponse.json({ item: data }, { status: 201 });
 }
 
@@ -127,6 +139,7 @@ export async function PATCH(request: Request) {
       console.error('admin announcements toggle failed:', error.message);
       return dbErrorResponse(error, 'Не вдалося змінити статус повідомлення');
     }
+    invalidatePublicReads();
     return NextResponse.json({ item: data });
   }
 
@@ -158,6 +171,8 @@ export async function PATCH(request: Request) {
     return dbErrorResponse(error, 'Не вдалося зберегти повідомлення');
   }
 
+  
+  invalidatePublicReads();
   return NextResponse.json({ item: data });
 }
 

@@ -26,9 +26,13 @@ test('LCP: home marks the first 4 featured cards, popular stays lazy', () => {
   );
 });
 
-test('LCP: catalog marks the first 6 cards eager', () => {
+test('LCP: catalog marks the first 2 cards eager', () => {
+  // Perf audit 2026-09-13: mobile shows 1 card per viewport — 6
+  // high-priority fetches competed with the LCP image. First 2 cover the
+  // LCP and immediate scroll on desktop.
   const src = readFileSync('app/catalog/CatalogView.tsx', 'utf8');
-  assert.match(src, /eager=\{idx < 6\}/);
+  assert.match(src, /eager=\{idx < 2\}/);
+  assert.doesNotMatch(src, /eager=\{idx < 6\}/);
 });
 
 test('LANDMARK: product page renders exactly one <main>', () => {
