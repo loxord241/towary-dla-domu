@@ -220,11 +220,21 @@ async function loadRoute(): Promise<RouteModule> {
 const rlFs = await import('node:fs');
 const rlOs = await import('node:os');
 const rlUrlMod = await import('node:url');
-const rlSource = rlFs.readFileSync(rlUrlMod.fileURLToPath('${rlUrl}'), 'utf8').replace(
-  /import\\s*\\{\\s*NextResponse\\s*\\}\\s*from\\s*'next\\/server';/,
-  ${JSON.stringify(rlShim)}
-);
+const rlRoot = ${JSON.stringify(root)};
+const rlSource = rlFs.readFileSync(rlUrlMod.fileURLToPath('${rlUrl}'), 'utf8')
+  .replace(
+    /import\\s*\\{\\s*NextResponse\\s*\\}\\s*from\\s*'next\\/server';/,
+    ${JSON.stringify(rlShim)}
+  )
+  // the shared layer rides along (builtins resolve; supabase stays dynamic
+  // and fails OPEN in the sandbox — that is the documented behavior)
+  .replace(/from '\\.\\/rate-limit-shared'/g, "from './rate-limit-shared.mts'");
 const rlDir = rlFs.mkdtempSync(rlOs.tmpdir() + '/callback-rl-');
+const rlSharedFile = rlDir + '/rate-limit-shared.mts';
+rlFs.writeFileSync(
+  rlSharedFile,
+  rlFs.readFileSync(rlRoot + '/app/lib/rate-limit-shared.ts', 'utf8')
+);
 const rlFile = rlDir + '/rate-limit.mts';
 rlFs.writeFileSync(rlFile, rlSource);
 const rlMod = await import(rlUrlMod.pathToFileURL(rlFile).href);

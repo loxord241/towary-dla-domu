@@ -31,7 +31,7 @@ function serviceClient() {
 }
 
 export async function POST(request: Request) {
-  const limited = enforceRateLimit(request, 'reviews');
+  const limited = await enforceRateLimit(request, 'reviews');
   if (limited) return limited;
 
   // Same-origin gate (audit P1): a cross-site browser POST always carries
@@ -131,7 +131,7 @@ export async function GET(request: Request) {
   // (much more generous) ceiling — without it, the endpoint had NO limiter
   // at all and could be hammered independently of the POST budget
   // (security audit 2026-09).
-  const limited = enforceRateLimit(request, 'reviewsGet');
+  const limited = await enforceRateLimit(request, 'reviewsGet');
   if (limited) return limited;
 
   const url = new URL(request.url);

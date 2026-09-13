@@ -40,12 +40,20 @@ let cached: ((request: Request) => string) | undefined;
  */
 async function loadClientIpOf(): Promise<(request: Request) => string> {
   if (cached) return cached;
-  const code = source.replace(
-    /import\s*\{\s*NextResponse\s*\}\s*from\s*'next\/server';/,
-    'const NextResponse = Object;'
-  );
+  const code = source
+    .replace(
+      /import\s*\{\s*NextResponse\s*\}\s*from\s*'next\/server';/,
+      'const NextResponse = Object;'
+    )
+    // the shared layer rides along (builtins resolve; supabase stays
+    // dynamic and is never hit — only clientIpOf is read here)
+    .replace(/from '\.\/rate-limit-shared'/g, "from './rate-limit-shared.mts'");
   const dir = mkdtempSync(path.join(tmpdir(), 'rate-limit-xff-'));
   try {
+    writeFileSync(
+      path.join(dir, 'rate-limit-shared.mts'),
+      readFileSync(path.join(root, 'app/lib/rate-limit-shared.ts'), 'utf8')
+    );
     const file = path.join(dir, 'rate-limit-stubbed.mts');
     writeFileSync(file, code);
     const mod = await import(pathToFileURL(file).href);

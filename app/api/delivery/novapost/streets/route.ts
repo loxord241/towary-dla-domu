@@ -20,7 +20,7 @@ const NOVA_POST_STREETS_FAILED =
   'Не вдалося завантажити вулиці. Спробуйте пізніше';
 
 export async function GET(request: Request) {
-  const limited = enforceRateLimit(request, 'novaPoshtaStreets');
+  const limited = await enforceRateLimit(request, 'novaPoshtaStreets');
   if (limited) return limited;
 
   const parsed = parseStreetsQuery(new URL(request.url).searchParams);

@@ -24,12 +24,20 @@ const FORM = src('app/checkout/CheckoutForm.tsx');
 // rate-limit source with only the NextResponse import stubbed (the
 // established rate-limit-xff pattern) to read the named rules.
 async function loadRateRules(): Promise<Record<string, unknown>> {
-  const rl = src('app/lib/rate-limit.ts').replace(
-    /import\s*\{\s*NextResponse\s*\}\s*from\s*'next\/server';/,
-    'const NextResponse = Object;'
-  );
+  const rl = src('app/lib/rate-limit.ts')
+    .replace(
+      /import\s*\{\s*NextResponse\s*\}\s*from\s*'next\/server';/,
+      'const NextResponse = Object;'
+    )
+    // the shared layer rides along (builtins resolve; supabase stays
+    // dynamic and is never hit — only RATE_RULES is read here)
+    .replace(/from '\.\/rate-limit-shared'/g, "from './rate-limit-shared.mts'");
   const dir = mkdtempSync(path.join(tmpdir(), 'up-rate-rules-'));
   try {
+    writeFileSync(
+      path.join(dir, 'rate-limit-shared.mts'),
+      src('app/lib/rate-limit-shared.ts')
+    );
     const file = path.join(dir, 'rate-limit-stubbed.mts');
     writeFileSync(file, rl);
     return (await import(pathToFileURL(file).href)).RATE_RULES;

@@ -20,7 +20,7 @@ const UKRPOSHTA_OFFICES_FAILED =
   'Не вдалося завантажити відділення. Спробуйте пізніше';
 
 export async function GET(request: Request) {
-  const limited = enforceRateLimit(request, 'ukrposhtaOffices');
+  const limited = await enforceRateLimit(request, 'ukrposhtaOffices');
   if (limited) return limited;
 
   const parsed = parseOfficesQuery(new URL(request.url).searchParams);

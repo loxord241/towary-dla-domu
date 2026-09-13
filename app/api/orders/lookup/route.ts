@@ -57,7 +57,7 @@ async function failedLookupCount(): Promise<number | null> {
 }
 
 export async function POST(request: Request) {
-  const limited = enforceRateLimit(request, 'lookup');
+  const limited = await enforceRateLimit(request, 'lookup');
   if (limited) return limited;
 
   let body: unknown;

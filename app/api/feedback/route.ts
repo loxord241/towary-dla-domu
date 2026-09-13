@@ -31,7 +31,7 @@ function serviceClient() {
 
 export async function POST(request: Request) {
   // Layer 1: per-IP burst protection — transient, in-memory, nothing stored.
-  const limited = enforceRateLimit(request, 'feedback');
+  const limited = await enforceRateLimit(request, 'feedback');
   if (limited) return limited;
 
   // Same-origin gate (audit P1): a cross-site browser POST always carries

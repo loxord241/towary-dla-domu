@@ -71,7 +71,7 @@ function sanitizeShippingInfo(raw: unknown): Record<string, string> | null {
 }
 
 export async function POST(request: Request) {
-  const limited = enforceRateLimit(request, 'orders');
+  const limited = await enforceRateLimit(request, 'orders');
   if (limited) return limited;
 
   // Same-origin gate (audit P1): a cross-site browser POST always carries

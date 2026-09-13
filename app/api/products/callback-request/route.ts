@@ -63,7 +63,7 @@ function serviceClient() {
 }
 
 export async function POST(request: Request) {
-  const limited = enforceRateLimit(request, 'callbackRequest');
+  const limited = await enforceRateLimit(request, 'callbackRequest');
   if (limited) return limited;
 
   // Same-origin gate (audit P1): a cross-site browser POST always carries

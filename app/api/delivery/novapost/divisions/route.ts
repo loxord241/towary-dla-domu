@@ -18,7 +18,7 @@ const NOVA_POST_DIVISIONS_FAILED =
   'Не вдалося завантажити відділення. Спробуйте пізніше';
 
 export async function GET(request: Request) {
-  const limited = enforceRateLimit(request, 'novaPoshtaDivisions');
+  const limited = await enforceRateLimit(request, 'novaPoshtaDivisions');
   if (limited) return limited;
 
   const parsed = parseDivisionsQuery(new URL(request.url).searchParams);

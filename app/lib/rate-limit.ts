@@ -1,17 +1,25 @@
 import { NextResponse } from 'next/server';
+import {
+  type RateDecision,
+  type RateLimitRpc,
+  type RateRule,
+  sharedRateDecision,
+} from './rate-limit-shared';
 
 /**
- * In-process sliding-window rate limiter for public sensitive endpoints.
+ * In-process sliding-window rate limiter for public sensitive endpoints,
+ * now LAYER 1 of two (2026-09-13, owner-approved «общий лимитер»): layer 2
+ * is the shared Postgres window (app/lib/rate-limit-shared.ts +
+ * database/migrations/047_shared_rate_limit.sql) — the authoritative
+ * decision for every request that passes locally.
  *
  * Scope & honest limitations:
- *  - Per-IP state lives in this Node process BY DESIGN: it never persists
+ *  - Per-IP state lives in this Node process: it never persists
  *    identifiers, which keeps anonymous endpoints (feedback) truly
  *    anonymous. It protects a single-server deployment and resets on
- *    restart. Cross-instance protection is provided separately where it
- *    matters: the feedback endpoint additionally enforces a shared daily
- *    cap counted in the DB (identifier-free) — see app/api/feedback/route.ts.
- *    Future sensitive features (e.g. promo validation) should use the same
- *    shared-cap pattern instead of persisting IPs.
+ *    restart. Cross-instance protection is now provided by the shared
+ *    layer for ALL named rules; the feedback endpoint additionally keeps
+ *    its shared daily cap (identifier-free) — see app/api/feedback/route.ts.
  *  - Buckets are keyed by client IP + route name; IP comes from
  *    x-forwarded-for / x-real-ip set by the upstream proxy.
  *    TRUST ASSUMPTION (deployment: Vercel): Vercel's edge OVERWRITES
@@ -41,18 +49,6 @@ function pruneBuckets(now: number) {
     if (!win.hits.some((t) => t > now)) buckets.delete(key);
     if (buckets.size <= MAX_BUCKETS / 2) break;
   }
-}
-
-export interface RateRule {
-  /** max accepted requests per sliding window */
-  max: number;
-  windowMs: number;
-}
-
-export interface RateDecision {
-  ok: boolean;
-  /** seconds until the strictest violated window frees a slot */
-  retryAfterSec: number;
 }
 
 export function checkRateLimit(key: string, rules: RateRule[]): RateDecision {
@@ -191,26 +187,80 @@ export const RATE_RULES = {
  * non-Request contexts where the key is built from headers() instead of a
  * Request object). Returns the raw decision; the caller decides how to
  * surface a rejection (429 JSON, redirect, ...).
+ *
+ * Two layers (2026-09-13, audit follow-up «общий лимитер»):
+ *   1. in-process sliding window (above) — cheap pre-filter, exact per
+ *      instance; a local rejection implies the global count is even higher,
+ *      so rejecting here without touching the DB is conservative-safe;
+ *   2. SHARED Postgres sliding window — the authoritative decision, one
+ *      RPC roundtrip per request that passed locally. Stored identifier is
+ *      an HMAC of the IP (rate-limit:v1), never the IP itself.
+ * The DB layer fails OPEN (the in-memory decision stands) — a transient
+ * Supabase outage must not take the checkout down.
  */
-export function enforceRateLimitByKey(
+export async function enforceRateLimitByKey(
   key: string,
-  routeName: keyof typeof RATE_RULES,
-): RateDecision {
-  return checkRateLimit(
-    `${routeName}:${key}`,
-    RATE_RULES[routeName] as unknown as RateRule[]
+  routeName: keyof typeof RATE_RULES
+): Promise<RateDecision> {
+  const rules = RATE_RULES[routeName] as unknown as RateRule[];
+  const local = checkRateLimit(`${routeName}:${key}`, rules);
+  if (!local.ok) return local;
+  return sharedRateDecision(
+    rateLimitRpc,
+    routeName,
+    rules,
+    key,
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
   );
 }
+
+const rateLimitRpc: RateLimitRpc = async (fn, args) => {
+  // The generated DB types don't include the rate-limit RPC; the loose
+  // call shape is exactly the seam the tests stub.
+  const client = (await sharedSupabase()) as unknown as {
+    rpc(
+      fn: string,
+      args: Record<string, unknown>
+    ): Promise<{ data: unknown; error: { message: string } | null }>;
+  };
+  const res = await client.rpc(fn, args);
+  return { data: res.data, error: res.error };
+};
+
+let sharedClient: ReturnType<typeof loadSupabaseClient> | null = null;
+// Dynamic import: sandbox harnesses load this module outside node_modules;
+// the client is only needed on the (stubbed-in-tests) RPC path.
+async function loadSupabaseClient() {
+  const { createClient } = await import('@supabase/supabase-js');
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+}
+function sharedSupabase() {
+  sharedClient ??= loadSupabaseClient();
+  return sharedClient;
+}
+
+export {
+  type RateRule,
+  type RateDecision,
+  type RateLimitRpc,
+  rateLimitIpHash,
+  sharedRulesPayload,
+  sharedRateDecision,
+} from './rate-limit-shared';
 
 /**
  * Applies named rules; returns a ready-to-send 429 when limited,
  * or null when the request may proceed.
  */
-export function enforceRateLimit(
+export async function enforceRateLimit(
   request: Request,
-  routeName: keyof typeof RATE_RULES,
-): NextResponse | null {
-  const decision = enforceRateLimitByKey(clientIpOf(request), routeName);
+  routeName: keyof typeof RATE_RULES
+): Promise<NextResponse | null> {
+  const decision = await enforceRateLimitByKey(clientIpOf(request), routeName);
   if (decision.ok) return null;
   return NextResponse.json(
     { error: 'Забагато запитів. Спробуйте пізніше' },

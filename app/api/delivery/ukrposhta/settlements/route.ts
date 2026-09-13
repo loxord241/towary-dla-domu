@@ -19,7 +19,7 @@ import {
 const UKRPOSHTA_LOOKUP_FAILED = 'Не вдалося виконати пошук. Спробуйте пізніше';
 
 export async function GET(request: Request) {
-  const limited = enforceRateLimit(request, 'ukrposhtaSettlements');
+  const limited = await enforceRateLimit(request, 'ukrposhtaSettlements');
   if (limited) return limited;
 
   const parsed = parseSettlementsQuery(new URL(request.url).searchParams);

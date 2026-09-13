@@ -18,7 +18,7 @@ import {
  */
 
 export async function POST(request: Request) {
-  const limited = enforceRateLimit(request, 'novaPoshtaDeliveryCost');
+  const limited = await enforceRateLimit(request, 'novaPoshtaDeliveryCost');
   if (limited) return limited;
 
   let body: unknown;

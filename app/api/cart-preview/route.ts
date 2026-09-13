@@ -26,7 +26,7 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request) {
-  const limited = enforceRateLimit(request, 'cartPreview');
+  const limited = await enforceRateLimit(request, 'cartPreview');
   if (limited) return limited;
 
   // Same-origin gate (audit P1): a cross-site browser POST always carries

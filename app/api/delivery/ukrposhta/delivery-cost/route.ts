@@ -25,7 +25,7 @@ const UKRPOSHTA_CALC_FAILED =
   'Не вдалося розрахувати вартість. Спробуйте пізніше';
 
 export async function POST(request: Request) {
-  const limited = enforceRateLimit(request, 'ukrposhtaDeliveryCost');
+  const limited = await enforceRateLimit(request, 'ukrposhtaDeliveryCost');
   if (limited) return limited;
 
   let body: unknown;

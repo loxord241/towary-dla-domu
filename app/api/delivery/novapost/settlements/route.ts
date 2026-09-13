@@ -15,7 +15,7 @@ import {
  */
 
 export async function GET(request: Request) {
-  const limited = enforceRateLimit(request, 'novaPoshtaSettlements');
+  const limited = await enforceRateLimit(request, 'novaPoshtaSettlements');
   if (limited) return limited;
 
   const parsed = parseSettlementsQuery(new URL(request.url).searchParams);

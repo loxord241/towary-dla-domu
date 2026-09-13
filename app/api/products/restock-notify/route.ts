@@ -52,7 +52,7 @@ function serviceClient() {
 }
 
 export async function POST(request: Request) {
-  const limited = enforceRateLimit(request, 'restockNotify');
+  const limited = await enforceRateLimit(request, 'restockNotify');
   if (limited) return limited;
 
   // Same-origin gate (audit P1): a cross-site browser POST always carries

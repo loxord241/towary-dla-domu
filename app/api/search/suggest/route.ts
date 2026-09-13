@@ -30,7 +30,7 @@ const supabase = createClient(
 );
 
 export async function GET(request: Request) {
-  const limited = enforceRateLimit(request, 'searchSuggest');
+  const limited = await enforceRateLimit(request, 'searchSuggest');
   if (limited) return limited;
 
   const rawQuery = new URL(request.url).searchParams.get('q') ?? '';

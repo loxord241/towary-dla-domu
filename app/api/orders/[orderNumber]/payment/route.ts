@@ -55,7 +55,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ orderNumber: string }> }
 ) {
-  const limited = enforceRateLimit(request, 'paymentInit');
+  const limited = await enforceRateLimit(request, 'paymentInit');
   if (limited) return limited;
 
   const { orderNumber: rawNumber } = await params;

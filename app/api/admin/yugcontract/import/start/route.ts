@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   const ctx = await requireAdminApi();
   if (ctx instanceof NextResponse) return ctx;
 
-  const limited = enforceRateLimit(request, 'yugcontractImportStart');
+  const limited = await enforceRateLimit(request, 'yugcontractImportStart');
   if (limited) return limited;
 
   try {

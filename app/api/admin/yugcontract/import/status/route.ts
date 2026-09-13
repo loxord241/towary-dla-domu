@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   const ctx = await requireAdminApi();
   if (ctx instanceof NextResponse) return ctx;
 
-  const limited = enforceRateLimit(request, 'yugcontractImportStatus');
+  const limited = await enforceRateLimit(request, 'yugcontractImportStatus');
   if (limited) return limited;
 
   try {

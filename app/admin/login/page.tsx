@@ -29,7 +29,7 @@ async function handleLogin(formData: FormData) {
   // app/lib/rate-limit.ts). Without a header (local dev) the bucket falls
   // back to the shared 'unknown' key.
   const requestHeaders = await headers();
-  const rateLimit = enforceRateLimitByKey(
+  const rateLimit = await enforceRateLimitByKey(
     ipFromHeaders(requestHeaders),
     'adminLogin'
   );
