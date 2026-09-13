@@ -217,8 +217,9 @@ test('ROUTE webhook: secret gate BEFORE parse; always-200 contract', () => {
   // actions go through the admin RPCs
   assert.match(WH, /admin_set_order_status/);
   assert.match(WH, /admin_cancel_order/);
-  // paid is conditional (never overwrites a paid order)
+  // paid is conditional (never overwrites a paid order); canonical label
   assert.match(WH, /\.neq\('payment_status', 'paid'\)/);
+  assert.match(WH, /payment_method: 'готівка при отриманні'/);
   // no parse_mode anywhere in the webhook
   assert.doesNotMatch(WH, /parse_mode/);
 });
@@ -239,12 +240,18 @@ test('TELEGRAM keyboard: buttons wired into the order send path', () => {
 test('ROUTE mark-paid: admin guard, conditional paid, pending→confirmed RPC', () => {
   assert.match(MP, /requireAdminApi\(\)/);
   assert.match(MP, /isUuid\(id\)/);
-  assert.match(MP, /payment_status: 'paid', payment_method: 'готівка на точці'/);
+  // method whitelist (owner 2026-09-13: оплата по телефону — переказ/IBAN)
+  assert.match(MP, /isManualPaidMethod\(body\.method\)/);
+  assert.match(MP, /payment_status: 'paid', payment_method: method/);
   assert.match(MP, /\.neq\('payment_status', 'paid'\)/);
   assert.match(MP, /admin_set_order_status/);
   assert.match(MP, /p_new_status: 'confirmed'/);
   // unknown order → 404
   assert.match(MP, /Замовлення не знайдено/);
+  const methods = src('app/lib/manual-paid-methods.ts');
+  assert.match(methods, /'готівка при отриманні'/);
+  assert.match(methods, /'карткою \(переказ за реквізитами\)'/);
+  assert.match(methods, /'на рахунок \(IBAN\)'/);
 });
 
 test('LIQPAY auto-confirm: only for paid, through the admin RPC, P0409-tolerant', () => {
@@ -264,12 +271,16 @@ test('ADMIN UI: one-tap actions in the list, modal and order page', () => {
   assert.match(list, /✅ Підтвердити/);
   assert.match(list, /status: 'confirmed'/);
   // modal: mark-paid for unpaid pending/confirmed
-  assert.match(list, /💰 Оплачено \(готівка\)/);
+  assert.match(list, /💰 Оплачено/);
+  assert.match(list, /MANUAL_PAID_METHODS\.map/);
+  assert.match(list, /aria-label="Спосіб оплати"/);
   assert.match(list, /\/mark-paid/);
 
   const card = src('app/admin/(dashboard)/orders/[id]/page.tsx');
   assert.match(card, /✅ Підтвердити замовлення/);
-  assert.match(card, /💰 Оплачено \(готівка\)/);
+  assert.match(card, /💰 Оплачено/);
+  assert.match(card, /MANUAL_PAID_METHODS\.map/);
+  assert.match(card, /aria-label="Спосіб оплати"/);
   assert.match(card, /❌ Скасувати/);
   // mobile contract on the action bar
   assert.match(card, /min-h-\[44px\]/);

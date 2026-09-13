@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { prefillShipmentDraft } from '@/app/lib/admin-shipment-prefill';
+import {
+  DEFAULT_PAID_METHOD,
+  MANUAL_PAID_METHODS,
+} from '@/app/lib/manual-paid-methods';
 
 /**
  * Stage 2D — admin shipment planner. The manager manually distributes order
@@ -313,6 +317,7 @@ export default function ShipmentPlannerPage() {
   // Order-level quick actions (owner 2026-09-13): confirm / mark-paid /
   // cancel without leaving the shipments planner.
   const [orderActionBusy, setOrderActionBusy] = useState<string | null>(null);
+  const [paidMethod, setPaidMethod] = useState<string>(DEFAULT_PAID_METHOD);
 
   // City search + divisions state (per shipment, keyed by shipment position).
   const [cityQuery, setCityQuery] = useState('');
@@ -660,14 +665,29 @@ export default function ShipmentPlannerPage() {
             </button>
           )}
           {order.payment_status !== 'paid' && (
-            <button
-              type="button"
-              disabled={orderActionBusy !== null}
-              onClick={async () => {
-                setOrderActionBusy('paid');
-                setError(null);
-                try {
-                  const res = await fetch(`/api/admin/orders/${order.id}/mark-paid`, { method: 'POST' });
+            <>
+              <select
+                value={paidMethod}
+                onChange={(e) => setPaidMethod(e.target.value)}
+                className="min-h-[44px] rounded-md border border-gray-300 px-2 text-sm"
+                aria-label="Спосіб оплати"
+              >
+                {MANUAL_PAID_METHODS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={orderActionBusy !== null}
+                onClick={async () => {
+                  setOrderActionBusy('paid');
+                  setError(null);
+                  try {
+                    const res = await fetch(`/api/admin/orders/${order.id}/mark-paid`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ method: paidMethod }),
+                    });
                   const data = await res.json().catch(() => null);
                   if (!res.ok) throw new Error(data?.error || 'Не вдалося позначити оплату');
                   setNotice('Оплату позначено ✅');
@@ -680,8 +700,9 @@ export default function ShipmentPlannerPage() {
               }}
               className="min-h-[44px] px-4 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
             >
-              💰 Оплачено (готівка)
+              💰 Оплачено
             </button>
+            </>
           )}
           <button
             type="button"

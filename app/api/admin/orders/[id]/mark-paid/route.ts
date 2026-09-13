@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requireAdminApi, isUuid } from '@/app/lib/admin-api';
+import {
+  DEFAULT_PAID_METHOD,
+  isManualPaidMethod,
+} from '@/app/lib/manual-paid-methods';
 import { createClient } from '@supabase/supabase-js';
 
 /**
@@ -11,7 +15,9 @@ import { createClient } from '@supabase/supabase-js';
  *  - admin-guarded; service-role writes;
  *  - conditional update: an already-paid order is NEVER overwritten (the
  *    same invariant as the LiqPay callback path);
- *  - payment_method is stamped «готівка на точці» unless already set;
+ *  - payment_method is stamped from the optional body { method } (whitelist
+ *    MANUAL_PAID_METHODS — карта переказом / IBAN / готівка), default
+ *    «готівка при отриманні»; never overwritten once set;
  *  - a still-pending order is advanced to `confirmed` via the SAME
  *    admin_set_order_status RPC the PATCH route uses (отметил оплату =
  *    заказ подтверждён) — a forward-only transition, so no forbidden state;
@@ -26,7 +32,7 @@ const supabase = createClient(
 );
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = await requireAdminApi();
@@ -35,6 +41,19 @@ export async function POST(
   const { id } = await params;
   if (!isUuid(id)) {
     return NextResponse.json({ error: 'Некоректний id замовлення' }, { status: 400 });
+  }
+
+  let method = DEFAULT_PAID_METHOD;
+  try {
+    const body = (await request.json()) as { method?: unknown };
+    if (body?.method !== undefined) {
+      if (!isManualPaidMethod(body.method)) {
+        return NextResponse.json({ error: 'Некоректний спосіб оплати' }, { status: 400 });
+      }
+      method = body.method;
+    }
+  } catch {
+    // empty body → default method
   }
 
   try {
@@ -54,7 +73,7 @@ export async function POST(
     if (row.payment_status !== 'paid') {
       const { data: updated, error } = await supabase
         .from('orders')
-        .update({ payment_status: 'paid', payment_method: 'готівка на точці' })
+        .update({ payment_status: 'paid', payment_method: method })
         .eq('id', id)
         .neq('payment_status', 'paid')
         .select('id');

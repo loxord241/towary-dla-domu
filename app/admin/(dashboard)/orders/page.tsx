@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Modal from '@/app/components/Modal';
+import {
+  DEFAULT_PAID_METHOD,
+  MANUAL_PAID_METHODS,
+} from '@/app/lib/manual-paid-methods';
 import OrderStatusBadge, {
   PaymentStatusBadge,
 } from '@/app/components/OrderStatusBadge';
@@ -139,6 +143,7 @@ export default function OrdersAdminPage() {
   // Details modal state.
   const [details, setDetails] = useState<{ order: OrderDetails; items: ItemRow[] } | null>(null);
   const [detailsBusy, setDetailsBusy] = useState(false);
+  const [paidMethod, setPaidMethod] = useState<string>(DEFAULT_PAID_METHOD);
   const [rowBusyId, setRowBusyId] = useState<string | null>(null);
   const [rowNotice, setRowNotice] = useState<string | null>(null);
 
@@ -220,12 +225,17 @@ export default function OrdersAdminPage() {
     }
   };
 
-  /** Manual payment confirmation for cash orders (mark-paid endpoint). */
-  const markOrderPaid = async (id: string) => {
+  /** Manual payment confirmation for cash orders (mark-paid endpoint).
+      Метод вибирається в модалці — по телефону платять і карткою-переказом. */
+  const markOrderPaid = async (id: string, method?: string) => {
     setError(null);
     setDetailsBusy(true);
     try {
-      const res = await fetch(`/api/admin/orders/${id}/mark-paid`, { method: 'POST' });
+      const res = await fetch(`/api/admin/orders/${id}/mark-paid`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(method ? { method } : {}),
+      });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || 'Не вдалося позначити оплату');
       reloadCurrent();
@@ -544,14 +554,26 @@ export default function OrdersAdminPage() {
                   ))}
                   {['pending', 'confirmed'].includes(details.order.status) &&
                     details.order.payment_status !== 'paid' && (
-                      <button
-                        type="button"
-                        disabled={detailsBusy}
-                        onClick={() => markOrderPaid(details.order.id)}
-                        className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
-                      >
-                        💰 Оплачено (готівка)
-                      </button>
+                      <>
+                        <select
+                          value={paidMethod}
+                          onChange={(e) => setPaidMethod(e.target.value)}
+                          className="min-h-[44px] rounded border border-gray-300 px-2 text-sm"
+                          aria-label="Спосіб оплати"
+                        >
+                          {MANUAL_PAID_METHODS.map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          disabled={detailsBusy}
+                          onClick={() => markOrderPaid(details.order.id, paidMethod)}
+                          className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                        >
+                          💰 Оплачено
+                        </button>
+                      </>
                     )}
                   {['pending', 'confirmed'].includes(details.order.status) &&
                     details.order.payment_status !== 'paid' && (

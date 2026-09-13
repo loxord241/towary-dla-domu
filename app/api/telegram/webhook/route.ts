@@ -61,7 +61,7 @@ function gateway(): OrderActionsGateway {
         .from('orders')
         .update({
           payment_status: 'paid',
-          payment_method: 'готівка на точці',
+          payment_method: 'готівка при отриманні',
         })
         .eq('id', orderId)
         .neq('payment_status', 'paid')
