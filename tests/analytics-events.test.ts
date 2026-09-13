@@ -3,7 +3,7 @@
  *
  * Contract:
  * - Exactly 6 events: product_view, add_to_cart, checkout_start,
- *   payment_success, search, traffic_source — via @vercel/analytics track().
+ *   payment_success, search, traffic_source — fanned out via app/lib/track-event.ts (Vercel Analytics + GA4).
  * - No PII: no emails, no phones, no order contents, no contacts.
  * - traffic_source is first-touch only, anonymous, localStorage-only.
  * - payment_success fires ONLY after a server-confirmed paid order
@@ -231,27 +231,28 @@ test('PAYMENT: empty/absent order number never fires', () => {
 
 test('STATIC: product_view fired from RecentlyViewedTracker with product_id only', () => {
   const s = src('app/components/RecentlyViewedTracker.tsx');
-  assert.match(s, /from '@vercel\/analytics'/);
-  assert.match(s, /track\(\s*ANALYTICS_EVENTS\.PRODUCT_VIEW\s*,\s*\{\s*product_id/);
-  // No contact-shaped data in any track() call.
-  assert.doesNotMatch(s, /track\([^)]*(email|phone|name\s*:)/i);
+  // 2026-09-13: events fan out via track-event (Vercel Analytics + GA4).
+  assert.match(s, /from '@\/app\/lib\/track-event'/);
+  assert.match(s, /trackEvent\(\s*ANALYTICS_EVENTS\.PRODUCT_VIEW\s*,\s*\{\s*product_id/);
+  // No contact-shaped data in any trackEvent() call.
+  assert.doesNotMatch(s, /trackEvent\([^)]*(email|phone|name\s*:)/i);
 });
 
 test('STATIC: add_to_cart fired from AddToCartButton with product_id only', () => {
   const s = src('app/components/AddToCartButton.tsx');
-  assert.match(s, /track\(\s*ANALYTICS_EVENTS\.ADD_TO_CART\s*,\s*\{\s*product_id/);
+  assert.match(s, /trackEvent\(\s*ANALYTICS_EVENTS\.ADD_TO_CART\s*,\s*\{\s*product_id/);
   assert.doesNotMatch(s, /ANALYTICS_EVENTS\.(?!ADD_TO_CART)[A-Z_]+/);
 });
 
 test('STATIC: checkout_start fired once on CheckoutForm mount', () => {
   const s = src('app/checkout/CheckoutForm.tsx');
-  assert.match(s, /track\(\s*ANALYTICS_EVENTS\.CHECKOUT_START\s*\)/);
+  assert.match(s, /trackEvent\(\s*ANALYTICS_EVENTS\.CHECKOUT_START\s*\)/);
   assert.doesNotMatch(s, /ANALYTICS_EVENTS\.(?!CHECKOUT_START)[A-Z_]+/);
 });
 
 test('STATIC: search fired from SearchViewTracker with sanitized query + boolean hasResults', () => {
   const s = src('app/components/SearchViewTracker.tsx');
-  assert.match(s, /track\(\s*ANALYTICS_EVENTS\.SEARCH\s*,\s*payload\s*\)/);
+  assert.match(s, /trackEvent\(\s*ANALYTICS_EVENTS\.SEARCH\s*,\s*payload\s*\)/);
   assert.match(
     s,
     /buildSearchEventPayload\(/,
@@ -259,7 +260,7 @@ test('STATIC: search fired from SearchViewTracker with sanitized query + boolean
   );
   assert.match(
     s,
-    /if\s*\(\s*payload\s*\)\s*\{\s*track\(/,
+    /if\s*\(\s*payload\s*\)\s*\{\s*trackEvent\(/,
     'nothing fired when the sanitized query is empty/contact-shaped'
   );
   assert.match(
@@ -302,7 +303,7 @@ test('STATIC: traffic_source captured in root layout via tracker component', () 
   assert.match(tracker, /TRAFFIC_SOURCE_STORAGE_KEY/);
   assert.match(tracker, /classifyTrafficSource\(/);
   assert.match(tracker, /resolveFirstTouchSource\(/);
-  assert.match(tracker, /track\(\s*ANALYTICS_EVENTS\.TRAFFIC_SOURCE\s*,\s*\{\s*source/);
+  assert.match(tracker, /trackEvent\(\s*ANALYTICS_EVENTS\.TRAFFIC_SOURCE\s*,\s*\{\s*source/);
 });
 
 test('STATIC: payment_success rendered by success page, gated on server-confirmed paid', () => {
@@ -313,7 +314,7 @@ test('STATIC: payment_success rendered by success page, gated on server-confirme
   const tracker = src('app/components/PaymentSuccessTracker.tsx');
   // Client guard: nothing fired unless the server confirmed payment.
   assert.match(tracker, /if\s*\(!paid\s*\|\|\s*!orderNumber\)\s*return/);
-  assert.match(tracker, /track\(\s*ANALYTICS_EVENTS\.PAYMENT_SUCCESS\s*\)/, 'no props — no order data sent');
+  assert.match(tracker, /trackEvent\(\s*ANALYTICS_EVENTS\.PAYMENT_SUCCESS\s*\)/, 'no props — no order data sent');
   assert.match(tracker, /shouldFirePaymentSuccess\(/, 'fires at most once per order');
 });
 

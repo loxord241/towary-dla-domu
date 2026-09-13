@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { track } from '@vercel/analytics';
+import { trackEvent } from '@/app/lib/track-event';
 import {
   ANALYTICS_EVENTS,
   TRAFFIC_SOURCE_STORAGE_KEY,
@@ -45,7 +45,7 @@ export default function TrafficSourceTracker() {
 
     const { source, isFirstTouch } = resolveFirstTouchSource(read, write, candidate);
     if (isFirstTouch && source) {
-      track(ANALYTICS_EVENTS.TRAFFIC_SOURCE, { source });
+      trackEvent(ANALYTICS_EVENTS.TRAFFIC_SOURCE, { source });
     }
   }, []);
 

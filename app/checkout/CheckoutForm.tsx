@@ -9,7 +9,7 @@ import { toE164Ua } from '@/app/lib/phone';
 import { PICKUP_POINTS } from '@/app/lib/checkout-delivery';
 import { isWallpaperSlug } from '@/app/lib/domains';
 import { ANALYTICS_EVENTS } from '@/app/lib/analytics';
-import { track } from '@vercel/analytics';
+import { trackEvent } from '@/app/lib/track-event';
 import {
   fetchDivisionsApi, fetchUkrposhtaOfficesApi, isNpWarehouseType,
   type Carrier, type DeliveryType, type NpDivision, type NpSettlement,
@@ -115,7 +115,7 @@ export default function CheckoutForm() {
   // Anonymous checkout-funnel analytics: fires once when the checkout
   // form mounts. No payload — nothing about the cart or the visitor.
   useEffect(() => {
-    track(ANALYTICS_EVENTS.CHECKOUT_START);
+    trackEvent(ANALYTICS_EVENTS.CHECKOUT_START);
   }, []);
 
   const [submitting, setSubmitting] = useState(false);

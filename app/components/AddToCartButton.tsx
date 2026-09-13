@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useCart, MAX_CART_LINES } from '@/app/lib/cart-context';
 import { ANALYTICS_EVENTS } from '@/app/lib/analytics';
-import { track } from '@vercel/analytics';
+import { trackEvent } from '@/app/lib/track-event';
 
 export interface VariantOption {
   id: string;
@@ -165,7 +165,7 @@ export default function AddToCartButton({
           }
           setLimitNotice(false);
           // Anonymous analytics: product UUID only, no PII.
-          track(ANALYTICS_EVENTS.ADD_TO_CART, { product_id: productId });
+          trackEvent(ANALYTICS_EVENTS.ADD_TO_CART, { product_id: productId });
           setAdded(true);
         }}
         title={productName}

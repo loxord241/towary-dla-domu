@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useCart, MAX_ITEM_QUANTITY } from '@/app/lib/cart-context';
 import { ANALYTICS_EVENTS } from '@/app/lib/analytics';
-import { track } from '@vercel/analytics';
+import { trackEvent } from '@/app/lib/track-event';
 import {
   calculateRolls,
   type RollCalculation,
@@ -115,7 +115,7 @@ export default function RollCalculator({
     }
     setLimitNotice(false);
     // Anonymous analytics: product UUID only, no PII (same as AddToCartButton).
-    track(ANALYTICS_EVENTS.ADD_TO_CART, { product_id: productId });
+    trackEvent(ANALYTICS_EVENTS.ADD_TO_CART, { product_id: productId });
     setAdded(true);
   };
 

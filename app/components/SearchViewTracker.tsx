@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { track } from '@vercel/analytics';
+import { trackEvent } from '@/app/lib/track-event';
 import { ANALYTICS_EVENTS, buildSearchEventPayload } from '@/app/lib/analytics';
 
 /**
@@ -27,7 +27,7 @@ export default function SearchViewTracker({
     if (!query) return;
     const payload = buildSearchEventPayload(query, hasResults);
     if (payload) {
-      track(ANALYTICS_EVENTS.SEARCH, payload);
+      trackEvent(ANALYTICS_EVENTS.SEARCH, payload);
     }
   }, [query, hasResults]);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { track } from '@vercel/analytics';
+import { trackEvent } from '@/app/lib/track-event';
 import {
   ANALYTICS_EVENTS,
   PAID_ORDERS_STORAGE_KEY,
@@ -43,7 +43,7 @@ export default function PaymentSuccessTracker({
     };
 
     if (shouldFirePaymentSuccess(read, write, orderNumber)) {
-      track(ANALYTICS_EVENTS.PAYMENT_SUCCESS);
+      trackEvent(ANALYTICS_EVENTS.PAYMENT_SUCCESS);
     }
   }, [paid, orderNumber]);
 

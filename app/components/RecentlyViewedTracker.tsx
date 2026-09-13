@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { track } from '@vercel/analytics';
+import { trackEvent } from '@/app/lib/track-event';
 import {
   readRecentlyViewed,
   writeRecentlyViewed,
@@ -18,7 +18,7 @@ import { ANALYTICS_EVENTS } from '@/app/lib/analytics';
 export default function RecentlyViewedTracker({ productId }: { productId: string }) {
   useEffect(() => {
     // Anonymous page-view analytics: product UUID only, no PII.
-    track(ANALYTICS_EVENTS.PRODUCT_VIEW, { product_id: productId });
+    trackEvent(ANALYTICS_EVENTS.PRODUCT_VIEW, { product_id: productId });
 
     const current = readRecentlyViewed((key) => {
       try {
