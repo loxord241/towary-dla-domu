@@ -166,7 +166,8 @@ export default function OrderSummary({
               className="whitespace-nowrap font-medium text-blue-600 hover:underline"
             >
               +380 (97) 314 42 21
-            </a>
+            </a>{' '}
+            (приймаємо дзвінки до 16:00).
           </p>
         </>
       )}

@@ -188,6 +188,11 @@ export default function ContactFields({
         {fieldErrors.phone && (
           <p id="err-phone" className="field-error">{fieldErrors.phone}</p>
         )}
+        {/* Owner request 2026-09-13: expectations about call hours right
+            where the customer leaves their number. */}
+        <p className="mt-1 text-xs text-gray-500">
+          Приймаємо дзвінки та передзвонюємо до 16:00
+        </p>
       </div>
     </>
   );

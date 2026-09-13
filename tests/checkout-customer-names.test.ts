@@ -105,6 +105,16 @@ test('CUSTOMER-FORM: three structured name fields rendered', () => {
   assert.match(f, /errs\.lastName = 'Вкажіть прізвище'/);
 });
 
+// Owner request 2026-09-13: call-hours expectation right where the
+// customer leaves their number (field hint) and on the summary's
+// installments line.
+test('CUSTOMER-FORM: call hours «до 16:00» shown at the phone field and summary', () => {
+  const c = src(CONTACT_FIELDS);
+  assert.match(c, /Приймаємо дзвінки та передзвонюємо до 16:00/);
+  const summary = src('app/checkout/parts/OrderSummary.tsx');
+  assert.match(summary, /\(приймаємо дзвінки до 16:00\)\./);
+});
+
 test('CUSTOMER-FORM: composed ПІБ validated against the server-side 120 cap', () => {
   const f = src('app/checkout/CheckoutForm.tsx');
   // Per-field ≤120 checks alone let a joined name exceed the server limit
