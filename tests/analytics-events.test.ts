@@ -287,7 +287,7 @@ test('buildSearchEventPayload: hasResults true/false, no event for empty sanitiz
 });
 
 test('STATIC: catalog page passes boolean hasResults derived from result total', () => {
-  const page = src('app/catalog/page.tsx');
+  const page = src('app/catalog/CatalogView.tsx');
   assert.match(
     page,
     /<SearchViewTracker\s+query=\{filters\.search\}\s+hasResults=\{total\s*>\s*0\}\s*\/>/,

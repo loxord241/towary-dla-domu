@@ -27,7 +27,7 @@ test('LCP: home marks the first 4 featured cards, popular stays lazy', () => {
 });
 
 test('LCP: catalog marks the first 6 cards eager', () => {
-  const src = readFileSync('app/catalog/page.tsx', 'utf8');
+  const src = readFileSync('app/catalog/CatalogView.tsx', 'utf8');
   assert.match(src, /eager=\{idx < 6\}/);
 });
 

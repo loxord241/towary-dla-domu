@@ -1,0 +1,655 @@
+import Link from 'next/link'
+import { Suspense } from 'react'
+import type { Metadata } from 'next'
+import {
+  fetchCatalogProducts,
+  fetchActiveCategories,
+  fetchActiveBrands,
+  fetchCategoryBySlug,
+  fetchBrandBySlug,
+  type CatalogFilters as CatalogFilterOptions,
+  type CatalogSort,
+} from '@/app/lib/catalog'
+import { getMainPublicImageUrl } from '@/app/lib/supabase-storage'
+import { buildCatalogViewMetadata } from '@/app/lib/seo'
+import {
+  fetchCategoryProductCount,
+  fetchBrandProductCount,
+} from '@/app/lib/catalog'
+import {
+  getCategorySeo,
+  applyCategorySeoMetadata,
+  listDirectChildren,
+  isPureCategoryView,
+  filterNonEmptyChildren,
+  SUBCATEGORIES_HEADING,
+} from '@/app/lib/category-seo'
+import {
+  buildCatalogBreadcrumbJsonLd,
+} from '@/app/lib/schema-org'
+import SiteHeader from '@/app/components/SiteHeader'
+import SiteFooter from '@/app/components/SiteFooter'
+import Announcements from '@/app/components/Announcements'
+import ProductJsonLd from '@/app/components/ProductJsonLd'
+import FaqJsonLd from '@/app/components/FaqJsonLd'
+import FaqSection from '@/app/components/FaqSection'
+import SearchViewTracker from '@/app/components/SearchViewTracker'
+import {
+  WALLPAPER_FAQ,
+  isWallpaperCategorySlug,
+} from '@/app/lib/faq-content'
+import {
+  fetchCategoryDescription,
+  splitDescriptionParagraphs,
+} from '@/app/lib/category-description'
+import CatalogFilters from './CatalogFilters'
+import SortSelect from './SortSelect'
+import { CATALOG_PAGE_SIZE } from '@/app/lib/catalog'
+import { buildPageWindow } from '@/app/lib/pagination'
+import { formatPrice } from '@/app/lib/format'
+import ProductCard from '@/app/components/ProductCard'
+import EmptyState from '@/app/components/EmptyState'
+import { SearchIcon } from '@/app/components/icons'
+
+/**
+ * Shared server renderer for BOTH catalog routes (owner task 2026-09-13):
+ * /catalog (slug arrives as the legacy ?category= query value) and
+ * /catalog/<slug> (slug arrives validated from the path segment). The
+ * rendered markup and the data flow are IDENTICAL — only the URL form the
+ * slug came from differs.
+ */
+export interface CatalogViewProps {
+  /**
+   * Category slug taken from the URL path (/catalog/<slug>). The [category]
+   * route resolves it through fetchCategoryBySlug and calls notFound() for
+   * unknown/inactive slugs BEFORE rendering, so a value here is always a
+   * live category. Undefined on /catalog — the slug then comes from the
+   * ?category= query inside `rawParams` (legacy shape, unchanged).
+   */
+  categorySlug?: string;
+  /** Resolved searchParams of the request (the view never re-reads them). */
+  rawParams: Record<string, string | string[] | undefined>;
+}
+
+const SORT_VALUES: CatalogSort[] = ['newest', 'price_asc', 'price_desc', 'name_asc'];
+
+function firstParam(value: string | string[] | undefined): string {
+  return (Array.isArray(value) ? value[0] : value) ?? '';
+}
+
+function parsePageParam(raw: string | string[] | undefined): number {
+  const n = Number(firstParam(raw));
+  return Number.isInteger(n) && n > 0 ? Math.min(n, 10_000) : 1;
+}
+
+/** Copy of rawParams without one key (used to keep ?category= out of the
+ * link URLs on the path route — the slug is already in the path). */
+function omitParam(
+  rawParams: Record<string, string | string[] | undefined>,
+  key: string
+): Record<string, string | string[] | undefined> {
+  const rest = { ...rawParams };
+  delete rest[key];
+  return rest;
+}
+
+interface ActiveChip {
+  label: string;
+  removeKey: string;
+}
+
+/** Shared geometry for prev/next; the disabled span only drops hover. */
+const paginationControlClass =
+  'px-4 py-2 rounded-md border border-gray-300 text-sm text-gray-700 transition-colors aria-disabled:border-gray-200 aria-disabled:text-gray-400 aria-disabled:cursor-not-allowed';
+
+const pageNumberLinkClass =
+  'inline-flex min-w-[44px] items-center justify-center rounded-md border border-gray-300 px-2 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50';
+
+const pageNumberCurrentClass =
+  'inline-flex min-w-[44px] items-center justify-center rounded-md border border-blue-600 bg-blue-600 px-2 py-2 text-sm font-semibold text-white';
+
+function buildActiveChips(
+  filters: CatalogFilterOptions,
+  names: { categoryName?: string; brandName?: string }
+): ActiveChip[] {
+  const chips: ActiveChip[] = [];
+  if (filters.search) chips.push({ label: `«${filters.search}»`, removeKey: 'q' });
+  if (filters.categorySlug) {
+    chips.push({
+      label: `Категорія: ${names.categoryName ?? filters.categorySlug}`,
+      removeKey: 'category',
+    });
+  }
+  if (filters.brandSlug) {
+    chips.push({
+      label: `Бренд: ${names.brandName ?? filters.brandSlug}`,
+      removeKey: 'brand',
+    });
+  }
+  // Price chips speak the same UAH dialect as the «Ціна (UAH)» filter label
+  // and formatPrice everywhere else — the raw ₴ symbol is gone from the UI.
+  if (filters.minPrice !== undefined)
+    chips.push({ label: `від ${formatPrice(filters.minPrice, 'UAH')}`, removeKey: 'min' });
+  if (filters.maxPrice !== undefined)
+    chips.push({ label: `до ${formatPrice(filters.maxPrice, 'UAH')}`, removeKey: 'max' });
+  if (filters.inStockOnly) chips.push({ label: 'Тільки в наявності', removeKey: 'stock' });
+  return chips;
+}
+
+/** H1 for the current catalog view (exactly one h1 per page). */
+function catalogHeading(
+  filters: CatalogFilterOptions,
+  names: { categoryName?: string; brandName?: string },
+  h1Override?: string
+): string {
+  if (filters.search) return `Пошук: «${filters.search}»`;
+  if (filters.categorySlug && names.categoryName) return h1Override ?? names.categoryName;
+  if (filters.brandSlug && names.brandName) return `Бренд ${names.brandName}`;
+  return 'Каталог товарів';
+}
+
+/**
+ * Shared generateMetadata body for both catalog routes. `categorySlug` is
+ * the PATH slug on /catalog/<slug> (undefined on /catalog, where the slug
+ * still arrives as the ?category= query value). The canonical/noindex
+ * decision itself lives in lib/seo.ts; since 2026-09-13 a valid category
+ * gets the PATH-form canonical /catalog/<slug> there, so both routes emit
+ * it from the same chain without route-specific overrides.
+ */
+export async function catalogViewMetadata({
+  categorySlug,
+  rawParams,
+}: {
+  categorySlug?: string;
+  rawParams: Record<string, string | string[] | undefined>;
+}): Promise<Metadata> {
+  const effectiveParams = categorySlug
+    ? { ...rawParams, category: categorySlug }
+    : rawParams;
+  const { filters } = parseCatalogSearchParams(effectiveParams);
+
+  const [category, brand] = await Promise.all([
+    filters.categorySlug ? fetchCategoryBySlug(filters.categorySlug) : null,
+    filters.brandSlug ? fetchBrandBySlug(filters.brandSlug) : null,
+  ]);
+
+  // Task #14 (2026-09): an EMPTY view (0 eligible products) is noindex'd.
+  // The fact comes from the SAME count shapes the grid uses
+  // (fetchCategoryProductCount/fetchBrandProductCount); a read failure
+  // degrades to «has products» so a transient error can never noindex a
+  // full page (the decision itself stays in lib/seo.ts).
+  const [categoryCount, brandCount] = await Promise.all([
+    category && filters.categorySlug
+      ? fetchCategoryProductCount(filters.categorySlug).catch(() => null)
+      : Promise.resolve(null),
+    brand && filters.brandSlug
+      ? fetchBrandProductCount(filters.brandSlug).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+
+  // SEO copy override (category-seo.ts) touches ONLY title/description —
+  // the indexability/canonical decision from buildCatalogViewMetadata stays.
+  return applyCategorySeoMetadata(
+    buildCatalogViewMetadata({
+      input: {
+        search: filters.search,
+        categorySlug: filters.categorySlug,
+        brandSlug: filters.brandSlug,
+        categoryFound: category !== null,
+        brandFound: brand !== null,
+        categoryHasProducts: category && categoryCount === 0 ? false : undefined,
+        brandHasProducts: brand && brandCount === 0 ? false : undefined,
+        minPrice: filters.minPrice,
+        maxPrice: filters.maxPrice,
+        inStockOnly: filters.inStockOnly,
+        sort: filters.sort,
+        page: filters.page,
+      },
+      categoryName: category?.name,
+      brandName: brand?.name,
+    }),
+    filters.categorySlug
+  );
+}
+
+function removeParamUrl(
+  rawParams: Record<string, string | string[] | undefined>,
+  key: string,
+  linkBase: string
+): string {
+  // Removing the category itself always resets to the bare /catalog root:
+  // on /catalog the query value is dropped by the loop below (legacy
+  // behavior), on the path route the slug lives in the base, not in the
+  // query — so removal must leave the path form behind.
+  const base = key === 'category' ? '/catalog' : linkBase;
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(rawParams)) {
+    if (k === key || k === 'page') continue;
+    const val = Array.isArray(v) ? v[0] : v;
+    if (val) sp.set(k, val);
+  }
+  const qs = sp.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+/** Builds a catalog URL for a target page preserving all other params. */
+function catalogPageUrl(
+  rawParams: Record<string, string | string[] | undefined>,
+  targetPage: number,
+  linkBase: string
+): string {
+  const sp = new URLSearchParams();
+  for (const [key, value] of Object.entries(rawParams)) {
+    if (key === 'page') continue;
+    const val = Array.isArray(value) ? value[0] : value;
+    if (val) sp.set(key, val);
+  }
+  if (targetPage > 1) sp.set('page', String(targetPage));
+  const qs = sp.toString();
+  return qs ? `${linkBase}?${qs}` : linkBase;
+}
+
+interface ParsedCatalog {
+  filters: CatalogFilterOptions;
+  hasActiveFilters: boolean;
+}
+
+function parseCatalogSearchParams(
+  raw: Record<string, string | string[] | undefined>
+): ParsedCatalog {
+  const categorySlug = firstParam(raw.category).trim();
+  const brandSlug = firstParam(raw.brand).trim();
+  const search = firstParam(raw.q).trim();
+  const stock = firstParam(raw.stock) === '1';
+
+  const minRaw = Number(firstParam(raw.min));
+  const maxRaw = Number(firstParam(raw.max));
+  const minPrice =
+    firstParam(raw.min).trim() !== '' && Number.isFinite(minRaw) && minRaw >= 0
+      ? minRaw
+      : undefined;
+  const maxPrice =
+    firstParam(raw.max).trim() !== '' && Number.isFinite(maxRaw) && maxRaw >= 0
+      ? maxRaw
+      : undefined;
+
+  const sortRaw = firstParam(raw.sort);
+  const sort: CatalogSort = SORT_VALUES.includes(sortRaw as CatalogSort)
+    ? (sortRaw as CatalogSort)
+    : 'newest';
+
+  const filters: CatalogFilterOptions = {
+    categorySlug: categorySlug || undefined,
+    brandSlug: brandSlug || undefined,
+    search: search || undefined,
+    minPrice,
+    maxPrice,
+    inStockOnly: stock,
+    sort,
+    page: parsePageParam(raw.page),
+    size: CATALOG_PAGE_SIZE,
+  };
+
+  const hasActiveFilters = Boolean(
+    filters.categorySlug ||
+      filters.brandSlug ||
+      filters.search ||
+      filters.minPrice !== undefined ||
+      filters.maxPrice !== undefined ||
+      filters.inStockOnly
+  );
+
+  return { filters, hasActiveFilters };
+}
+
+export default async function CatalogView({
+  categorySlug: pathCategorySlug,
+  rawParams,
+}: CatalogViewProps) {
+  // The path slug wins over any stray ?category= value: injecting it into
+  // the parsed params keeps ONE parse path for both routes. On /catalog
+  // this is a no-op and parsing behaves exactly as before.
+  const effectiveParams = pathCategorySlug
+    ? { ...rawParams, category: pathCategorySlug }
+    : rawParams;
+  const { filters, hasActiveFilters } = parseCatalogSearchParams(effectiveParams);
+  // Link builders never re-emit ?category= alongside the path form.
+  const linkParams = pathCategorySlug
+    ? omitParam(rawParams, 'category')
+    : rawParams;
+  // Path-form base for in-view links (pagination, filter chips): the
+  // [category] route keeps page/sort navigation on readable URLs; /catalog
+  // keeps the legacy query form unchanged.
+  const linkBase = pathCategorySlug
+    ? `/catalog/${encodeURIComponent(pathCategorySlug)}`
+    : '/catalog';
+
+  const [catalog, categories, brands] = await Promise.all([
+    fetchCatalogProducts(filters),
+    fetchActiveCategories(),
+    fetchActiveBrands(),
+  ])
+  const products = catalog.products
+  const total = catalog.total
+  // When the typo fallback produced the results, the UI must say so.
+  const appliedSearch = catalog.appliedSearch ?? null
+  // Server returns the CLAMPED page — out-of-range requests render the last
+  // real page instead of an empty grid.
+  const page = catalog.page
+  const maxPage = Math.max(1, Math.ceil(total / catalog.size))
+
+  // Display names resolved from the same dictionaries that feed the filter
+  // dropdowns — chips and H1 must show «Склокерамічні», not a raw slug.
+  const categoryName = filters.categorySlug
+    ? categories.find((c) => c.slug === filters.categorySlug)?.name
+    : undefined;
+  const brandName = filters.brandSlug
+    ? brands.find((b) => b.slug === filters.brandSlug)?.name
+    : undefined;
+  const names = { categoryName, brandName };
+  const chips = buildActiveChips(filters, names);
+  // The «Фільтри» badge counts filter chips only — the search term is its
+  // own axis with its own removable chip (Audit 2026-09-05, item 1).
+  const filterChipCount = chips.filter((chip) => chip.removeKey !== 'q').length;
+
+  // Category-level SEO (category-seo.ts): intent copy for the pinned
+  // category only (no search).
+  const seo =
+    !filters.search && filters.categorySlug
+      ? getCategorySeo(filters.categorySlug)
+      : null;
+  const activeCategory = filters.categorySlug
+    ? categories.find((c) => c.slug === filters.categorySlug)
+    : undefined;
+  // Crawlable path to mid/leaf categories (storefront audit 2026-09, P1):
+  // EVERY pure, indexable category view (not just the pinned one) lists its
+  // direct non-empty children as crawlable anchors. Children are sliced
+  // from the already-fetched active list; the eligible-product counts come
+  // from fetchCategoryProductCount (React cache()d per request + 60s Data
+  // Cache, head-only) so a linked child view can never be the empty,
+  // noindex state. On leaf views and on filtered/noindex views the list is
+  // empty — zero extra reads there.
+  const directChildren =
+    activeCategory && isPureCategoryView(filters)
+      ? listDirectChildren(categories, activeCategory.id)
+      : [];
+  const childCategories = await filterNonEmptyChildren(
+    directChildren,
+    (slug) => fetchCategoryProductCount(slug).catch(() => null)
+  );
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+  const breadcrumbJsonLd = activeCategory
+    ? buildCatalogBreadcrumbJsonLd(
+        { name: activeCategory.name, slug: activeCategory.slug },
+        siteUrl
+      )
+    : null;
+  // Admin-authored category description (seeded by
+  // data/category-seo-texts.sql, editable in the admin UI): plain text read
+  // for ONE slug, only on category page-1 views — paginated pages must not
+  // duplicate the copy. `page` is the server-clamped page, so an
+  // out-of-range request that renders page 1 behaves like page 1.
+  const showCategoryDescription =
+    Boolean(filters.categorySlug) && page === 1;
+  const descriptionParagraphs = showCategoryDescription
+    ? splitDescriptionParagraphs(
+        await fetchCategoryDescription(filters.categorySlug as string)
+      )
+    : [];
+  // FAQ block: wallpaper categories only (slug 'shpaleri%' — root and all
+  // subgroups), page 1 only, same clamped-page reasoning as above.
+  const showWallpaperFaq =
+    page === 1 && isWallpaperCategorySlug(filters.categorySlug);
+  const heading = catalogHeading(filters, names, seo?.h1);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <SiteHeader searchQuery={filters.search} />
+      <Announcements />
+      {/* BreadcrumbList for category views — ProductJsonLd is the sanctioned
+          JSON-LD script sink (same serializeJsonLd escaping). */}
+      <ProductJsonLd data={breadcrumbJsonLd} />
+      {/* FAQPage structured data — rendered ONLY for wallpaper categories
+          (shpaleri%) on page 1, mirroring the visible FaqSection below. */}
+      {showWallpaperFaq && <FaqJsonLd questions={WALLPAPER_FAQ} />}
+      {/* Anonymous search analytics: rendered only when a search term is
+          applied; the tracker sanitizes the term (PII guard) before firing.
+          hasResults is a deliberate boolean (total > 0 — the rendered view
+          had products, typo-fallback hits included), never a count. */}
+      <SearchViewTracker query={filters.search} hasResults={total > 0} />
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Filters Sidebar — mobile opens it as a sheet behind a
+              «Фільтри» button; desktop (md+) keeps it always open */}
+          <aside className="md:w-1/4 lg:sticky lg:top-24 lg:self-start">
+            <Suspense fallback={<div className="card mb-4 h-14 md:h-40" aria-hidden />}>
+              <CatalogFilters
+                categories={categories}
+                brands={brands}
+                initial={{
+                  categorySlug: filters.categorySlug,
+                  brandSlug: filters.brandSlug,
+                  minPrice: filters.minPrice,
+                  maxPrice: filters.maxPrice,
+                  inStockOnly: filters.inStockOnly,
+                }}
+                activeCount={filterChipCount}
+              />
+            </Suspense>
+          </aside>
+
+          {/* Products Grid */}
+          <main className="md:w-3/4">
+            <div className="bg-white rounded-lg shadow p-6 mb-6">
+              <div className="mb-2 flex items-baseline justify-between gap-4 flex-wrap">
+                <h1 className="min-w-0 wrap-anywhere text-2xl font-bold">{heading}</h1>
+                <span className="text-sm text-gray-500">
+                  Знайдено: {total}
+                </span>
+              </div>
+
+              {/* Typo fallback notice: the results do NOT match the raw
+                  query, so the user must see which term was actually
+                  applied. Hidden when the original query matched. */}
+              {appliedSearch && (
+                <p
+                  data-testid="fallback-notice"
+                  className="mb-4 text-sm text-gray-600"
+                >
+                  Показані результати для{' '}
+                  <strong className="wrap-anywhere">«{appliedSearch}»</strong> — за запитом «
+                  {filters.search}» нічого не знайдено.
+                </p>
+              )}
+
+              {/* Unique category intro (pinned category only — see
+                  app/lib/category-seo.ts). */}
+              {seo && (
+                <div className="mb-6 text-sm leading-relaxed text-gray-600">
+                  {seo.intro.map((paragraph) => (
+                    <p key={paragraph.slice(0, 24)} className="mb-2">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* Admin-authored category description: PLAIN TEXT from the
+                  admin UI — paragraphs render as React text children (no
+                  HTML parsing); muted style, page 1 only. */}
+              {descriptionParagraphs.length > 0 && (
+                <div className="mb-6 text-sm leading-relaxed text-gray-600">
+                  {descriptionParagraphs.map((paragraph) => (
+                    <p key={paragraph.slice(0, 24)} className="mb-2">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* Crawlable subcategory links — rendered on every pure,
+                  indexable category view (page 1, default sort, no filters),
+                  not just the pinned one, so mid/leaf levels are reachable
+                  by following links. childCategories is already filtered to
+                  non-empty children (their views carry ≥1 eligible product;
+                  empty views are noindex and are never linked). Links use
+                  the human-readable path form (owner task 2026-09-13). */}
+              {childCategories.length > 0 && (
+                <div className="mb-6 text-sm leading-relaxed text-gray-600">
+                  <h2 className="mb-2 mt-4 text-lg font-bold text-gray-900">
+                    {seo?.introHeading ?? SUBCATEGORIES_HEADING}
+                  </h2>
+                  <ul className="flex flex-wrap gap-2">
+                    {childCategories.map((child) => (
+                      <li key={child.id}>
+                        <Link
+                          href={`/catalog/${encodeURIComponent(child.slug)}`}
+                          className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-blue-700 transition hover:bg-blue-50"
+                        >
+                          {child.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="mb-4 flex items-center justify-between gap-4 flex-wrap">
+                {hasActiveFilters && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs uppercase tracking-wide text-gray-400">
+                      Фільтри:
+                    </span>
+                    {chips.map((chip) => (
+                      <Link
+                        key={chip.removeKey}
+                        href={removeParamUrl(linkParams, chip.removeKey, linkBase)}
+                        className="inline-flex min-w-0 items-center gap-1 [overflow-wrap:anywhere] rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                        aria-label={`Прибрати фільтр ${chip.label}`}
+                      >
+                        {chip.label}
+                        <span aria-hidden className="ml-0.5">×</span>
+                      </Link>
+                    ))}
+                    <Link
+                      href="/catalog"
+                      className="inline-flex items-center px-3 py-2 text-xs text-gray-500 underline hover:text-red-600"
+                    >
+                      Скинути всі
+                    </Link>
+                  </div>
+                )}
+                <Suspense fallback={null}>
+                  <SortSelect />
+                </Suspense>
+              </div>
+
+              {products.length === 0 ? (
+                <EmptyState
+                  icon={<SearchIcon className="h-10 w-10" />}
+                  title={
+                    hasActiveFilters
+                      ? 'Нічого не знайдено'
+                      : 'Каталог поки що порожній'
+                  }
+                  description={
+                    hasActiveFilters
+                      ? 'Спробуйте змінити або скинути фільтри.'
+                      : 'Товари з’являться тут незабаром.'
+                  }
+                  ctaHref={hasActiveFilters ? '/catalog' : undefined}
+                  ctaLabel={hasActiveFilters ? 'Скинути фільтри' : undefined}
+                />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                  {products.map((product, idx) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      imageUrl={getMainPublicImageUrl(product.images)}
+                      eager={idx < 6}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Pagination — both controls share one geometry; the inactive
+                  side is a span with aria-disabled (not focusable, announced
+                  as unavailable) so keyboard order and semantics stay correct
+                  without touching URL/clamp logic (P3-R2). Numbers come from
+                  the pure buildPageWindow (±2 around current + first/last);
+                  the current page is aria-current, not a link. */}
+              {maxPage > 1 && (
+                <nav className="mt-6 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                  {page > 1 ? (
+                    <Link
+                      href={catalogPageUrl(linkParams, page - 1, linkBase)}
+                      className={paginationControlClass}
+                    >
+                      ← Назад
+                    </Link>
+                  ) : (
+                    <span aria-disabled="true" className={paginationControlClass}>
+                      ← Назад
+                    </span>
+                  )}
+                  {buildPageWindow(page, maxPage).map((item, idx) =>
+                    item === 'ellipsis' ? (
+                      <span
+                        key={`gap-${idx}`}
+                        aria-hidden="true"
+                        className="px-1 text-sm text-gray-400"
+                      >
+                        …
+                      </span>
+                    ) : item === page ? (
+                      <span
+                        key={`page-${item}`}
+                        aria-current="page"
+                        className={pageNumberCurrentClass}
+                      >
+                        {item}
+                      </span>
+                    ) : (
+                      <Link
+                        key={`page-${item}`}
+                        href={catalogPageUrl(linkParams, item, linkBase)}
+                        aria-label={`Сторінка ${item}`}
+                        className={pageNumberLinkClass}
+                      >
+                        {item}
+                      </Link>
+                    )
+                  )}
+                  <span className="hidden text-sm text-gray-600 sm:inline">
+                    Сторінка {page} із {maxPage}
+                    <span className="text-gray-400"> · знайдено {total}</span>
+                  </span>
+                  {page < maxPage ? (
+                    <Link
+                      href={catalogPageUrl(linkParams, page + 1, linkBase)}
+                      className={paginationControlClass}
+                    >
+                      Далі →
+                    </Link>
+                  ) : (
+                    <span aria-disabled="true" className={paginationControlClass}>
+                      Далі →
+                    </span>
+                  )}
+                </nav>
+              )}
+
+              {/* «Часті питання» — wallpaper categories only, page 1 only
+                  (gates computed above); mirrors FaqJsonLd in the head. */}
+              {showWallpaperFaq && <FaqSection />}
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <SiteFooter categories={categories} />
+    </div>
+  )
+}

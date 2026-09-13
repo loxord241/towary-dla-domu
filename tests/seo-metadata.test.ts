@@ -27,7 +27,9 @@ test('SEO: bare /catalog is indexable with self canonical', () => {
 test('SEO: single valid category view is indexable, canonical carries encoded slug', () => {
   const r = dec({ categorySlug: 'blendery-1402', categoryFound: true });
   assert.equal(r.indexable, true);
-  assert.equal(r.canonicalPath, '/catalog?category=blendery-1402');
+  // 2026-09-13: path form is THE canonical; the ?category= query form
+  // 308-redirects to /catalog/<slug> (proxy.ts).
+  assert.equal(r.canonicalPath, '/catalog/blendery-1402');
 });
 
 test('SEO: single valid brand view is indexable', () => {
@@ -68,7 +70,7 @@ test('SEO: empty brand (0 eligible products) → noindex without canonical', () 
 
 test('SEO: non-empty category/brand stay indexable when the fact is present', () => {
   const c = dec({ categorySlug: 'blendery-1402', categoryFound: true, categoryHasProducts: true });
-  assert.deepEqual(c, { indexable: true, canonicalPath: '/catalog?category=blendery-1402' });
+  assert.deepEqual(c, { indexable: true, canonicalPath: '/catalog/blendery-1402' });
   const b = dec({ brandSlug: 'tefal', brandFound: true, brandHasProducts: true });
   assert.deepEqual(b, { indexable: true, canonicalPath: '/catalog?brand=tefal' });
 });
@@ -76,7 +78,7 @@ test('SEO: non-empty category/brand stay indexable when the fact is present', ()
 test('SEO: missing product-count fact keeps legacy behavior (undefined = treated non-empty)', () => {
   const c = dec({ categorySlug: 'blendery-1402', categoryFound: true });
   assert.equal(c.indexable, true);
-  assert.equal(c.canonicalPath, '/catalog?category=blendery-1402');
+  assert.equal(c.canonicalPath, '/catalog/blendery-1402');
 });
 
 test('SEO: metadata builder emits noindex for the empty-category fact', () => {
@@ -120,7 +122,7 @@ test('SEO: metadata builder — category title follows «X — купити в �
   assert.equal(m.title, 'Блендери — купити в Товари для дому');
   assert.ok(String(m.description).includes('Блендери'));
   assert.ok(!m.robots, 'indexable view emits no robots override');
-  assert.deepEqual(m.alternates, { canonical: '/catalog?category=blendery-1402' });
+  assert.deepEqual(m.alternates, { canonical: '/catalog/blendery-1402' });
 });
 
 test('SEO: metadata builder — brand title and search title', () => {

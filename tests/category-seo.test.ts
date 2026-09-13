@@ -58,7 +58,7 @@ test('SEO-CAT: applyCategorySeoMetadata overrides only title/description', () =>
   const base = {
     title: 'Дрібна побутова техніка — купити в Товари для дому',
     description: 'Техніка у категорії «Дрібна побутова техніка» — купити в інтернет-магазині Товари для дому.',
-    alternates: { canonical: `/catalog?category=${TDD_CATEGORY_SLUG}` },
+    alternates: { canonical: `/catalog/${TDD_CATEGORY_SLUG}` },
   };
   const merged = applyCategorySeoMetadata(base, TDD_CATEGORY_SLUG);
   assert.equal(merged.title, getCategorySeo(TDD_CATEGORY_SLUG)!.title);
@@ -133,22 +133,23 @@ test('SEO-CAT: footer renders a crawlable merchandising anchor to a category', (
     'footer must render the selected hub categories'
   );
   assert.match(footer, /footerCategoryLabel/, 'anchor text must come from the merch label map');
-  // inside a real <Link> (SSR anchor), not a button or the drawer
+  // inside a real <Link> (SSR anchor), not a button or the drawer.
+  // Path form (owner task 2026-09-13); the query form 308-redirects to it.
   assert.match(
     footer,
-    /<Link[^>]*catalog\?category=[\s\S]{0,120}>[\s\S]{0,120}\{footerCategoryLabel\(category\)\}/
+    /<Link[^>]*catalog\/\$\{encodeURIComponent\(category\.slug\)\}[\s\S]{0,200}>[\s\S]{0,120}\{footerCategoryLabel\(category\)\}/
   );
 });
 
 test('SEO-CAT: catalog page renders subcategory links and unique intro for the pinned category', () => {
-  const page = src('app/catalog/page.tsx');
+  const page = src('app/catalog/CatalogView.tsx');
   assert.match(page, /listDirectChildren\(/, 'direct children must be rendered as links');
   assert.match(page, /getCategorySeo\(/, 'intro copy must come from the SEO map');
   assert.match(page, /buildCatalogBreadcrumbJsonLd\(/, 'catalog breadcrumb JSON-LD missing');
 });
 
 test('SEO-CAT: catalog page keeps exactly one h1 literal (h1 invariant preserved)', () => {
-  const page = src('app/catalog/page.tsx');
+  const page = src('app/catalog/CatalogView.tsx');
   assert.equal((page.match(/<h1/g) ?? []).length, 1);
 });
 
@@ -200,7 +201,7 @@ test('SEO-CAT: filterNonEmptyChildren short-circuits on leaf views — zero coun
 });
 
 test('SEO-CAT: catalog page wires the subcategory block to pure views + non-empty children', () => {
-  const page = src('app/catalog/page.tsx');
+  const page = src('app/catalog/CatalogView.tsx');
   assert.match(
     page,
     /isPureCategoryView\(filters\)/,
@@ -228,8 +229,8 @@ test('SEO-CAT: catalog page wires the subcategory block to pure views + non-empt
   );
   assert.match(
     page,
-    /href=\{`\/catalog\?category=\$\{encodeURIComponent\(child\.slug\)\}`\}/,
-    'children must be server-rendered <a> anchors (next/link), not a client select'
+    /href=\{`\/catalog\/\$\{encodeURIComponent\(child\.slug\)\}`\}/,
+    'children must be server-rendered <a> anchors on the path form (next/link)'
   );
 });
 
@@ -237,7 +238,7 @@ test('SEO-CAT: SiteFooter comment states the real mid/leaf linking mechanism', (
   const footer = src('app/components/SiteFooter.tsx');
   assert.match(
     footer,
-    /category-seo\.ts \+\s*\n \* app\/catalog\/page\.tsx/,
+    /category-seo\.ts \+\s*\n \* app\/catalog\/CatalogView\.tsx/,
     'the comment must point to the module that renders the child links'
   );
   assert.ok(

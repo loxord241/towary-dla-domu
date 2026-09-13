@@ -42,8 +42,8 @@ export { CONTACT_EMAIL };
  * client-only). Mid/leaf levels stay reachable by links through their
  * parent hubs: every pure, indexable category view lists its direct
  * non-empty children as crawlable anchors (app/lib/category-seo.ts +
- * app/catalog/page.tsx), and PDP breadcrumbs add the parent chain — no
- * link farm.
+ * app/catalog/CatalogView.tsx), and PDP breadcrumbs add the parent chain —
+ * no link farm.
  */
 export default function SiteFooter({ categories }: SiteFooterProps) {
   const footerCategories = categories
@@ -69,7 +69,9 @@ export default function SiteFooter({ categories }: SiteFooterProps) {
                 {footerCategories.map((category) => (
                   <li key={category.id}>
                     <Link
-                      href={`/catalog?category=${encodeURIComponent(category.slug)}`}
+                      // Human-readable path form (owner task 2026-09-13);
+                      // the legacy ?category= query form 308-redirects to it.
+                      href={`/catalog/${encodeURIComponent(category.slug)}`}
                       className="hover:text-white"
                     >
                       {footerCategoryLabel(category)}

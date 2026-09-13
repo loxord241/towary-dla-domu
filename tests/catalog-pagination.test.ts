@@ -15,7 +15,7 @@ import { buildPageWindow } from '../app/lib/pagination.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pageSrc = () =>
-  readFileSync(path.join(root, 'app/catalog/page.tsx'), 'utf8');
+  readFileSync(path.join(root, 'app/catalog/CatalogView.tsx'), 'utf8');
 
 // ---- pure window builder ----
 
@@ -55,13 +55,14 @@ test('PAGES: the window never exceeds 9 items (single row on desktop)', () => {
   }
 });
 
-// ---- page.tsx wiring (source invariants) ----
+// ---- CatalogView wiring (source invariants; since 2026-09-13 the
+// renderer is shared by /catalog and /catalog/<slug>) ----
 
-test('PAGES: page.tsx renders numbers via buildPageWindow + catalogPageUrl', () => {
+test('PAGES: CatalogView renders numbers via buildPageWindow + catalogPageUrl', () => {
   const src = pageSrc();
   assert.match(src, /import \{ buildPageWindow \} from '@\/app\/lib\/pagination'/);
   assert.match(src, /buildPageWindow\(page, maxPage\)/);
-  assert.match(src, /catalogPageUrl\(rawParams, item\)/,
+  assert.match(src, /catalogPageUrl\(linkParams, item, linkBase\)/,
     'number links must reuse the shared page-URL builder');
 });
 
@@ -76,6 +77,6 @@ test('PAGES: P3-R2 contract survives — two aria-disabled spans, prev/next inta
   const src = pageSrc();
   const spans = src.match(/<span aria-disabled="true"/g) ?? [];
   assert.equal(spans.length, 2, 'prev+next inactive sides pinned');
-  assert.match(src, /catalogPageUrl\(rawParams, page - 1\)/);
-  assert.match(src, /catalogPageUrl\(rawParams, page \+ 1\)/);
+  assert.match(src, /catalogPageUrl\(linkParams, page - 1, linkBase\)/);
+  assert.match(src, /catalogPageUrl\(linkParams, page \+ 1, linkBase\)/);
 });

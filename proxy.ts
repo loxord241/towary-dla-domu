@@ -1,7 +1,29 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { catalogCategoryRedirect } from '@/app/lib/catalog-paths';
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // The matcher includes /catalog for the canonicalizing redirect above.
+  // EVERY non-admin path must return before the admin session gate below —
+  // otherwise anonymous storefront visitors would be bounced to
+  // /admin/login. The admin gate itself (matcher '/admin/:path*') behaves
+  // exactly as before this route was added.
+  if (!pathname.startsWith('/admin')) {
+    const redirectPath = catalogCategoryRedirect(
+      pathname,
+      request.nextUrl.searchParams,
+      request.method
+    );
+    if (redirectPath) {
+      return NextResponse.redirect(new URL(redirectPath, request.url), 308);
+    }
+    return NextResponse.next();
+  }
+
+  // ----- admin gate (unchanged; only /admin paths reach this point) -----
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -32,7 +54,6 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
   const isLoginPage = pathname === '/admin/login' || pathname.startsWith('/admin/login/');
 
   if (isLoginPage) {
@@ -60,5 +81,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin/:path*', '/catalog'],
 };

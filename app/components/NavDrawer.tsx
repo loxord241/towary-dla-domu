@@ -45,10 +45,12 @@ const SHOP_LINKS = [
 /**
  * Pinned merchandising categories shown first in the drawer, above the
  * dictionary list. Single source of truth in app/lib/merch-categories.ts
- * (the footer reuses the same slugs as its crawlable anchors).
+ * (the footer reuses the same slugs as its crawlable anchors). Links use
+ * the human-readable path form (owner task 2026-09-13); brands below keep
+ * the query form (?brand=).
  */
 const PINNED_CATEGORIES = MERCH_CATEGORIES.map((m) => ({
-  href: `/catalog?category=${m.slug}`,
+  href: `/catalog/${m.slug}`,
   label: m.label,
 }));
 

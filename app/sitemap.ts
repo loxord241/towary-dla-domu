@@ -138,7 +138,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const categoryEntries: MetadataRoute.Sitemap = categories
     .filter((category) => nonEmptyCategoryIds.has(category.id))
     .map((category) => ({
-    url: `${base}/catalog?category=${encodeURIComponent(category.slug)}`,
+    // Human-readable path form (owner task 2026-09-13): /catalog/<slug> is
+    // the canonical of a valid category (lib/seo.ts) and the legacy
+    // ?category= query form 308-redirects to it, so the sitemap must list
+    // the path shape to keep the «indexable set = sitemap set» invariant.
+    // Brand views keep the query form (no path route for brands).
+    url: `${base}/catalog/${encodeURIComponent(category.slug)}`,
     lastModified: new Date(category.updated_at),
     changeFrequency: 'daily',
     priority: 0.7,
