@@ -65,10 +65,13 @@ test('PAY-SUCCESS: pending shows processing state with status refresh link', () 
     'pending must offer a fresh DB re-read via reload');
 });
 
-test('PAY-SUCCESS: still verifies capability token before DB read and stays server-side', () => {
-  const verifyAt = success.indexOf('verifyOrderAccessToken(orderNumber, t)');
-  const readAt = success.indexOf(".from('orders')");
-  assert.ok(verifyAt >= 0 && readAt > verifyAt);
+test('PAY-SUCCESS: hash-first dual verify, item reads gated, stays server-side', () => {
+  // 2026-09-13 rotation regression: hash-first dual verify (the legacy-only
+  // check rejected every new order's rotating token right after checkout).
+  const verifyAt = success.indexOf('verifyStoredAccessToken(t, storedHash)');
+  const itemsAt = success.indexOf(".from('order_items')");
+  assert.ok(verifyAt >= 0 && itemsAt > verifyAt);
+  assert.match(success, /access_token_hash/);
   assert.ok(!success.includes("'use client'"));
 });
 
@@ -88,7 +91,9 @@ test('PAY-INIT-ROUTE: POST-only semantics, rate-limited, token-first, DB-sourced
   assert.match(init, /export async function POST/);
   assert.doesNotMatch(init, /export async function GET/);
   assert.match(init, /enforceRateLimit\(request, ['"]paymentInit['"]\)/);
-  const verifyAt = init.indexOf('verifyOrderAccessToken(orderNumber, token)');
+  // Rotating tokens (migration 045): hash-first dual verify, still before
+  // the payment orchestration.
+  const verifyAt = init.indexOf('verifyStoredAccessToken(incoming, storedHash)');
   const dbAt = init.indexOf("createSupabaseOrdersGateway");
   assert.ok(verifyAt >= 0 && dbAt >= 0);
   // Client contract carries NOTHING except the capability token

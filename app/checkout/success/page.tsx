@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
-import { verifyOrderAccessToken } from '@/app/lib/order-token';
+import {
+  verifyOrderAccessToken,
+  verifyStoredAccessToken,
+} from '@/app/lib/order-token';
 import OrderDetailsCard from '@/app/components/OrderDetailsCard';
 import OrderStatusBadge, {
   PaymentStatusBadge,
@@ -12,9 +15,11 @@ import { isPendingAttemptStale } from '@/app/lib/payment/order-payment-update';
 
 /**
  * Order confirmation page. The total/currency/items shown here are ALWAYS
- * re-read from the database server-side after verifying an HMAC capability
- * token — nothing is trusted from the query string except the order number
- * plus its unguessable token pair.
+ * re-read from the database server-side after verifying a capability token —
+ * the rotating random token whose SHA-256 hash lives in
+ * orders.access_token_hash (migration 045), or the legacy deterministic
+ * HMAC for rows never rotated. Nothing is trusted from the query string
+ * except the order number plus its unguessable token pair.
  */
 
 // Service role stays server-side; used here only to read the confirmed order.
@@ -68,22 +73,34 @@ export default async function CheckoutSuccessPage({
 }) {
   const { order, t } = await searchParams;
   const orderNumber = typeof order === 'string' ? order : '';
-
-  if (!verifyOrderAccessToken(orderNumber, t)) {
+  if (!orderNumber) {
     return <NotFound />;
   }
 
-  // Fresh read from the DB — never trust anything client-side.
+  // Fresh read from the DB — never trust anything client-side. The token
+  // check needs the row: rotating tokens (migration 045) verify ONLY
+  // against the stored hash; NULL-hash rows keep the legacy deterministic
+  // HMAC. Unknown number and bad token answer the same NotFound view.
   const orderRes = await supabase
     .from('orders')
     .select(
-      'id, order_number, status, payment_status, subtotal, shipping_total, total_amount, currency, email, created_at, updated_at'
+      'id, order_number, status, payment_status, subtotal, shipping_total, total_amount, currency, email, created_at, updated_at, access_token_hash'
     )
     .eq('order_number', orderNumber)
     .maybeSingle();
 
-  const orderData = (orderRes.data ?? null) as (OrderRow & { id: string }) | null;
+  const orderData = (orderRes.data ?? null) as
+    | (OrderRow & { id: string; access_token_hash?: string | null })
+    | null;
   if (!orderData) {
+    return <NotFound />;
+  }
+
+  const storedHash = orderData.access_token_hash ?? null;
+  const tokenOk = storedHash
+    ? verifyStoredAccessToken(t, storedHash)
+    : verifyOrderAccessToken(orderNumber, t);
+  if (!tokenOk) {
     return <NotFound />;
   }
 

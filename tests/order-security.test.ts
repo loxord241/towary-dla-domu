@@ -63,11 +63,17 @@ test('ORDER-SEC: /orders/[orderNumber] verifies the token BEFORE any page-data r
 
 // ---- checkout success page ----
 
-test('ORDER-SEC: /checkout/success verifies token first and whitelists columns', () => {
+test('ORDER-SEC: /checkout/success hash-first dual verify and whitelisted columns', () => {
   const p = src('app/checkout/success/page.tsx');
-  const verifyAt = p.indexOf('verifyOrderAccessToken(orderNumber, t)');
-  const readAt = p.indexOf(".from('orders')");
-  assert.ok(verifyAt >= 0 && readAt > verifyAt);
+  // 2026-09-13 rotation regression: the page verified only the legacy HMAC,
+  // so every new order's rotating token was rejected — checkout ended in
+  // «Замовлення не знайдено» instead of the payment page.
+  const verifyAt = p.indexOf('verifyStoredAccessToken(t, storedHash)');
+  const itemsAt = p.indexOf(".from('order_items')");
+  assert.ok(verifyAt >= 0, 'dual verify missing');
+  assert.ok(itemsAt > verifyAt, 'item read must come after verification');
+  assert.match(p, /verifyOrderAccessToken\(orderNumber, t\)/,
+    'NULL-hash rows keep the legacy HMAC');
   assert.doesNotMatch(p, /select\('\*'\)/);
   assert.match(p, /from\('order_items'\)/);
   assert.ok(!p.includes("'use client'"), 'must stay a server component');

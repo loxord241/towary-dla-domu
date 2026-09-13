@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   orderAccessToken,
   verifyOrderAccessToken,
+  verifyStoredAccessToken,
 } from '@/app/lib/order-token';
 import { enforceRateLimit } from '@/app/lib/rate-limit';
 import {
@@ -19,10 +20,11 @@ import { fetchLiqPayProviderStatus } from '@/app/lib/payment/liqpay-status-api';
 /**
  * POST /api/orders/[orderNumber]/payment — LiqPay init.
  *
- * Authorization: the HMAC capability token (same mechanism as the guest
- * order pages), verified BEFORE any database read. Amount/currency are read
- * EXCLUSIVELY from the orders row; the client may send nothing but its
- * token.
+ * Authorization: the capability token — the rotating random token whose
+ * SHA-256 hash lives in orders.access_token_hash (migration 045), or the
+ * legacy deterministic HMAC for rows never rotated — verified BEFORE the
+ * payment orchestration. Amount/currency are read EXCLUSIVELY from the
+ * orders row; the client may send nothing but its token.
  *
  * Success response: { data, signature, checkoutUrl } — everything the
  * browser needs to POST the generated form to LiqPay's checkout. The
@@ -72,10 +74,30 @@ export async function POST(
   }
 
   const token = (body as Record<string, unknown> | null)?.token;
-  if (
-    !ORDER_NUMBER_RE.test(orderNumber) ||
-    !verifyOrderAccessToken(orderNumber, token)
-  ) {
+  const incoming = typeof token === 'string' ? token : '';
+  if (!ORDER_NUMBER_RE.test(orderNumber)) {
+    return NextResponse.json(
+      { error: 'Замовлення не знайдено' },
+      { status: 404 }
+    );
+  }
+
+  // Rotating tokens (migration 045): a row with a stored hash verifies ONLY
+  // against that hash; NULL-hash rows keep the legacy deterministic HMAC
+  // (links issued before 2026-09-12). Unknown number and bad token answer
+  // the SAME generic 404, so this row read leaks nothing.
+  const hashRes = await supabase
+    .from('orders')
+    .select('access_token_hash')
+    .eq('order_number', orderNumber)
+    .maybeSingle();
+  const storedHash =
+    (hashRes.data as { access_token_hash?: string | null } | null)
+      ?.access_token_hash ?? null;
+  const tokenOk = storedHash
+    ? verifyStoredAccessToken(incoming, storedHash)
+    : verifyOrderAccessToken(orderNumber, incoming);
+  if (!tokenOk) {
     return NextResponse.json(
       { error: 'Замовлення не знайдено' },
       { status: 404 }
@@ -97,8 +119,12 @@ export async function POST(
     {
       gateway: createSupabaseOrdersGateway(supabase),
       config,
-      verifyToken: () => true, // verified above, before any DB read
-      accessToken: (n: string) => orderAccessToken(n),
+      verifyToken: () => true, // verified above against the stored row hash
+      // result_url carries the SAME verified token the caller already holds.
+      // Regression guard: embedding the legacy HMAC here landed paid
+      // customers on «Замовлення не знайдено» on rotated (hashed) rows.
+      accessToken: () =>
+        incoming !== '' ? incoming : orderAccessToken(orderNumber),
       resultUrl: buildResultUrl,
       callbackUrl: buildCallbackUrl,
       // Read-only provider probe (action=status) used ONLY for the

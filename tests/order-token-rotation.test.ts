@@ -80,6 +80,37 @@ test('ROTATE order page: stored hash verifies first; NULL hash → legacy HMAC',
   assert.match(PAGE, /access_token_hash/);
 });
 
+const SUCCESS = src('app/checkout/success/page.tsx');
+const PAYMENT = src('app/api/orders/[orderNumber]/payment/route.ts');
+
+test('ROTATE checkout success page: stored hash verifies; NULL hash → legacy', () => {
+  // Regression 2026-09-13: this page still verified the legacy HMAC only,
+  // so EVERY new order (all get random tokens since migration 045) landed
+  // on «Замовлення не знайдено» right after checkout — no payment button,
+  // nothing. Same dual-verify contract as the guest order page above.
+  assert.match(SUCCESS, /verifyStoredAccessToken\(t, storedHash\)/);
+  assert.match(SUCCESS, /verifyOrderAccessToken\(orderNumber, t\)/);
+  assert.match(SUCCESS, /access_token_hash/);
+  // The row is read before the token check (hash-first, like the order page).
+  const rowAt = SUCCESS.indexOf(".eq('order_number', orderNumber)");
+  const verifyAt = SUCCESS.indexOf('verifyStoredAccessToken(t, storedHash)');
+  assert.ok(rowAt !== -1 && verifyAt !== -1 && verifyAt > rowAt);
+});
+
+test('ROTATE payment init: hash-first verify; result_url reuses the verified token', () => {
+  assert.match(PAYMENT, /\.select\('access_token_hash'\)/);
+  assert.match(PAYMENT, /verifyStoredAccessToken\(incoming, storedHash\)/);
+  assert.match(PAYMENT, /verifyOrderAccessToken\(orderNumber, incoming\)/);
+  // The LiqPay result_url must carry the SAME verified token the caller
+  // already holds. Regression: it embedded the legacy HMAC, which the
+  // success page rejects on rotated rows — the customer paid and then hit
+  // «Замовлення не знайдено».
+  assert.match(
+    PAYMENT,
+    /accessToken: \(\) =>\s+incoming !== '' \? incoming : orderAccessToken\(orderNumber\)/
+  );
+});
+
 test('MIGRATION 045: nullable access_token_hash, no data writes', () => {
   const m = src('database/migrations/045_order_access_token_rotation.sql');
   assert.match(m, /add column if not exists access_token_hash text/i);
