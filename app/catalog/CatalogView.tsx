@@ -178,12 +178,22 @@ export async function catalogViewMetadata({
   // (fetchCategoryProductCount/fetchBrandProductCount); a read failure
   // degrades to «has products» so a transient error can never noindex a
   // full page (the decision itself stays in lib/seo.ts).
-  const [categoryCount, brandCount] = await Promise.all([
+  // The admin category description rides along in the same parallel batch
+  // (audit 2026-09-13: unique meta description instead of the shared
+  // template). fetchCategoryDescription is React-cache()d, so the page
+  // body's own call below reuses THIS read — no extra DB query per render;
+  // it never throws (errors degrade to null → template description), and
+  // the page-1 gate mirrors the visible description block (paginated views
+  // keep the template meta).
+  const [categoryCount, brandCount, categoryDescription] = await Promise.all([
     category && filters.categorySlug
       ? fetchCategoryProductCount(filters.categorySlug).catch(() => null)
       : Promise.resolve(null),
     brand && filters.brandSlug
       ? fetchBrandProductCount(filters.brandSlug).catch(() => null)
+      : Promise.resolve(null),
+    category && filters.categorySlug && filters.page === 1
+      ? fetchCategoryDescription(filters.categorySlug)
       : Promise.resolve(null),
   ]);
 
@@ -207,6 +217,7 @@ export async function catalogViewMetadata({
       },
       categoryName: category?.name,
       brandName: brand?.name,
+      categoryDescription,
     }),
     filters.categorySlug
   );

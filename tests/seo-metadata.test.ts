@@ -13,6 +13,7 @@ import {
   SITE_NAME,
   decideCatalogIndexing,
   truncateQuery,
+  truncateMetaDescription,
   buildCatalogViewMetadata,
 } from '../app/lib/seo.ts';
 
@@ -153,6 +154,120 @@ test('SEO: unknown category falls back to generic catalog copy with noindex', ()
 
 test('SEO: SITE_NAME is the shop brand used across builders', () => {
   assert.equal(SITE_NAME, 'Товари для дому');
+});
+
+// ---- OG on catalog views (audit 2026-09-13: og:title/og:description were
+// missing, so Viber/Telegram reposts showed the bare layout default) ----
+
+test('SEO-OG: indexable category view carries og:title/og:description mirroring the SERP copy', () => {
+  const m = buildCatalogViewMetadata({
+    input: { categorySlug: 'blendery-1402', categoryFound: true },
+    categoryName: 'Блендери',
+  });
+  assert.ok(m.openGraph, 'og object missing on an indexable view');
+  assert.equal(m.openGraph!.title, m.title);
+  assert.equal(m.openGraph!.description, m.description);
+  // og:url is intentionally absent — the canonical lives in alternates.
+  assert.equal(m.openGraph!.url, undefined);
+  assert.deepEqual(m.alternates, { canonical: '/catalog/blendery-1402' });
+});
+
+test('SEO-OG: page-level og REPLACES the layout object, so locale/type/siteName/image are repeated', () => {
+  // Next merges metadata shallowly: a view that sets openGraph without
+  // locale/type/siteName/images would lose the layout default og:image
+  // entirely (generate-metadata docs, «Merging»).
+  const m = buildCatalogViewMetadata({
+    input: { categorySlug: 'blendery-1402', categoryFound: true },
+    categoryName: 'Блендери',
+  });
+  assert.equal(m.openGraph!.locale, 'uk_UA');
+  // `.type` sits on one member of Next's OpenGraph union — structural cast.
+  assert.equal((m.openGraph as unknown as { type: string }).type, 'website');
+  assert.equal(m.openGraph!.siteName, 'Товари для дому');
+  assert.deepEqual(m.openGraph!.images, ['/og-image.png']);
+});
+
+test('SEO-OG: noindex views (search) still carry og — harmless, keeps messenger previews meaningful', () => {
+  const s = buildCatalogViewMetadata({ input: { search: 'мультипіч' } });
+  assert.deepEqual(s.robots, { index: false, follow: true });
+  assert.ok(s.openGraph, 'og missing on a noindex view');
+  assert.equal(s.openGraph!.title, s.title);
+  assert.equal(s.openGraph!.description, s.description);
+});
+
+// ---- unique category meta description from the admin copy (audit
+// 2026-09-13: the template was shared by every category) ----
+
+test('SEO-DESC: admin category description becomes the meta description, capped ≤160 on a word boundary', () => {
+  const long = 'Блендери для кухні — '.repeat(20); // 420 chars of prose
+  const m = buildCatalogViewMetadata({
+    input: { categorySlug: 'blendery-1402', categoryFound: true },
+    categoryName: 'Блендери',
+    categoryDescription: long,
+  });
+  assert.equal(m.description, truncateMetaDescription(long));
+  assert.ok(String(m.description).length <= 160);
+  assert.ok(!String(m.description).endsWith('—'), 'no dangling word fragment');
+});
+
+test('SEO-DESC: short admin copy passes through as-is; blank/null falls back to the template', () => {
+  const short = 'Компактні блендери для смузі та соусів з доставкою по Україні.';
+  const withCopy = buildCatalogViewMetadata({
+    input: { categorySlug: 'blendery-1402', categoryFound: true },
+    categoryName: 'Блендери',
+    categoryDescription: short,
+  });
+  assert.equal(withCopy.description, short);
+
+  for (const blank of [null, undefined, '   ', '\n\n']) {
+    const fallback = buildCatalogViewMetadata({
+      input: { categorySlug: 'blendery-1402', categoryFound: true },
+      categoryName: 'Блендери',
+      categoryDescription: blank as string | null | undefined,
+    });
+    assert.equal(
+      fallback.description,
+      'Товари у категорії «Блендери» — купити в інтернет-магазині Товари для дому.',
+      `blank description (${JSON.stringify(blank)}) must keep the template`
+    );
+  }
+});
+
+test('SEO-DESC: truncateMetaDescription collapses whitespace, cuts on words, honors the cap', () => {
+  assert.equal(truncateMetaDescription('  Опис   з   переносами\n\nрядків. '), 'Опис з переносами рядків.');
+  // 160-char window ends mid-word → the cut steps back to the last space.
+  const words = 'слово '.repeat(60); // 360 chars, spaces at 5,11,...
+  const cut = truncateMetaDescription(words);
+  assert.ok(cut.length <= 160, `cap violated: ${cut.length}`);
+  assert.ok(cut.endsWith('слово'), 'cut must land after a whole word');
+  assert.equal(words.startsWith(cut + ' '), true, 'prefix of the source text');
+  // Single word longer than the cap: hard slice, cap still honored.
+  const long = 'ж'.repeat(300);
+  assert.equal(truncateMetaDescription(long), 'ж'.repeat(160));
+  assert.equal(truncateMetaDescription('короткий опис'), 'короткий опис');
+});
+
+// ---- twitter card + metadata-chain wiring (source pins) ----
+
+test('SEO-TWITTER: root layout declares twitter:card (title/description/image inherit from og)', () => {
+  const layout = readFileSync('app/layout.tsx', 'utf8');
+  assert.match(layout, /twitter:\s*{\s*card:\s*'summary_large_image'/);
+});
+
+test('SEO-DESC: catalogViewMetadata feeds the admin description through the SAME cache()d read', () => {
+  const view = readFileSync('app/catalog/CatalogView.tsx', 'utf8');
+  // The read joins the existing parallel batch in the metadata function…
+  assert.match(
+    view,
+    /category && filters\.categorySlug && filters\.page === 1\s*\?\s*fetchCategoryDescription\(filters\.categorySlug\)/,
+    'metadata must read the description behind the page-1 gate'
+  );
+  // …and reaches the builder as a parameter (no duplicate DB read — the
+  // page body reuses the React-cache()d call).
+  assert.match(view, /categoryDescription,\s*\}\),/);
+  // The chain shape (override wraps the builder) is pinned by
+  // tests/catalog-category-paths.test.ts and stays intact.
+  assert.match(view, /applyCategorySeoMetadata\(\s*buildCatalogViewMetadata\(/);
 });
 
 test('SEO: home metadata is unique vs root layout title (static source check)', () => {
