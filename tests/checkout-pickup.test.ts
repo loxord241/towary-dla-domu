@@ -247,14 +247,16 @@ test('TELEGRAM: cash_on_pickup order announces the cash payment line', () => {
       paymentIntent: 'cash_on_pickup',
     },
   });
-  assert.match(cash, /Оплата: готівка при отриманні \(на точці самовивоза\)/);
+  // 2026-09-13: message rework — cash line now tells the owner what to do.
+  assert.match(cash, /Оплата: 💰 готівка на точці — познач «Оплачено» після отримання коштів/);
+  assert.match(cash, /НОВЕ ЗАМОВЛЕННЯ — підтверди його!/);
   assert.match(cash, /Доставка: Самовивіз, Кривий Ріг, вул\. Серафимовича, 83А/);
   // Online pickup order keeps the honest default line.
   const online = buildOrderNotificationMessage({
     ...BASE_DATA,
     delivery: { serviceType: 'pickup', pickupPointName: 'Кривий Ріг, вул. Гетьмана Івана Мазепи, 87А' },
   });
-  assert.match(online, /Оплата: не вибрано \(після оформлення\)/);
+  assert.match(online, /Оплата: ще не вибрана \(посилання LiqPay у покупця\)/);
 });
 
 test('TELEGRAM: Ukrposhta orders no longer print as Нова Пошта (label bug fix)', () => {

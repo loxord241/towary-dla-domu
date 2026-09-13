@@ -132,7 +132,9 @@ test('MESSAGE: contains order number, total, customer, delivery, payment', () =>
   assert.ok(message.includes('+380501234567'));
   assert.ok(message.includes('ivan@example.com'));
   assert.ok(message.includes('Доставка: Нова Пошта — відділення, Київ, Відділення № 1'));
-  assert.ok(message.includes('Оплата: не вибрано (після оформлення)'));
+  // 2026-09-13: BASE_DATA has no cash intent → online-payment phrasing.
+  assert.ok(message.includes('Оплата: ще не вибрана (посилання LiqPay у покупця)'));
+  assert.ok(message.startsWith('🔔🛒 НОВЕ ЗАМОВЛЕННЯ (оплата онлайн)'));
 });
 
 test('MESSAGE: lists products with quantity and line price, and item count', () => {

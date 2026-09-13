@@ -145,19 +145,27 @@ export function buildOrderNotificationMessage(
   adminBaseUrl?: string
 ): string {
   const lines: string[] = [];
-  lines.push('🛒 НОВЕ ЗАМОВЛЕННЯ');
+  // Помеченные строки (владелец 2026-09-13: «чуть не пропустил заказ») —
+  // первая строка кричит, хвост говорит, что делать. Plain text, никаких
+  // parse_mode (инъекционная безопасность не ослабляется).
+  const cashOnDelivery =
+    !data.paymentMethod &&
+    deliveryPaymentIntent(data.delivery) === 'cash_on_pickup';
+  lines.push(
+    data.paymentMethod || cashOnDelivery
+      ? '🔔🛒 НОВЕ ЗАМОВЛЕННЯ — підтверди його!'
+      : '🔔🛒 НОВЕ ЗАМОВЛЕННЯ (оплата онлайн)'
+  );
   lines.push('');
   lines.push(`№: ${data.orderNumber}`);
   lines.push(`Сума: ${formatPrice(data.total, data.currency)}`);
-  lines.push(
-    `Оплата: ${
-      data.paymentMethod
-        ? data.paymentMethod
-        : deliveryPaymentIntent(data.delivery) === 'cash_on_pickup'
-          ? 'готівка при отриманні (на точці самовивоза)'
-          : 'не вибрано (після оформлення)'
-    }`
-  );
+  if (data.paymentMethod) {
+    lines.push(`Оплата: ${data.paymentMethod} ✅`);
+  } else if (cashOnDelivery) {
+    lines.push('Оплата: 💰 готівка на точці — познач «Оплачено» після отримання коштів');
+  } else {
+    lines.push('Оплата: ще не вибрана (посилання LiqPay у покупця)');
+  }
   lines.push(`Доставка: ${describeDelivery(data.delivery)}`);
   lines.push('');
   lines.push('Клієнт:');
@@ -198,7 +206,10 @@ const TELEGRAM_API_BASE = 'https://api.telegram.org';
 async function postTelegramMessage(
   token: string,
   chatId: string,
-  text: string
+  text: string,
+  /** Optional Telegram reply_markup (inline keyboard) — plain object, the
+      caller owns its shape; never contains secrets. */
+  replyMarkup?: Record<string, unknown>
 ): Promise<TelegramSendResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TELEGRAM_TIMEOUT_MS);
@@ -210,7 +221,11 @@ async function postTelegramMessage(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // Token deliberately NOT in the body — it is part of the endpoint path only.
-        body: JSON.stringify({ chat_id: chatId, text }),
+        body: JSON.stringify(
+          replyMarkup !== undefined
+            ? { chat_id: chatId, text, reply_markup: replyMarkup }
+            : { chat_id: chatId, text }
+        ),
         signal: controller.signal,
       }
     );
@@ -253,6 +268,39 @@ async function postTelegramMessage(
 }
 
 /**
+ * Inline keyboard under the order notification (owner feature 2026-09-13:
+ * обработка заказа в один тап). callback_data формат `ord:<номер>:<действие>`
+ * — разбирается вебхуком /api/telegram/webhook; номер заказа содержит
+ * только [A-Z0-9-], так что ':' — безопасный разделитель (лимит Telegram
+ * 64 байта соблюдён с запасом). «Оплачено» только для cash_on_pickup без
+ * проставленного метода оплаты; онлайн-оплату подтверждает LiqPay-колбэк.
+ */
+export function buildOrderNotificationKeyboard(
+  data: OrderNotificationData,
+  adminBaseUrl?: string
+): Record<string, unknown> {
+  type KbButton = { text: string; callback_data?: string; url?: string };
+  const mainRow: KbButton[] = [
+    { text: '✅ Підтвердити', callback_data: `ord:${data.orderNumber}:confirm` },
+  ];
+  if (
+    deliveryPaymentIntent(data.delivery) === 'cash_on_pickup' &&
+    !data.paymentMethod
+  ) {
+    mainRow.push({ text: '💰 Оплачено', callback_data: `ord:${data.orderNumber}:paid` });
+  }
+  mainRow.push({ text: '❌ Скасувати', callback_data: `ord:${data.orderNumber}:cancel` });
+  const buttons: KbButton[][] = [mainRow];
+  const base = adminBaseUrl?.trim().replace(/\/+$/, '');
+  if (base) {
+    buttons.push([
+      { text: '🌐 Відкрити в адмінці', url: `${base}/admin/orders/${data.orderId}` },
+    ]);
+  }
+  return { inline_keyboard: buttons };
+}
+
+/**
  * Sends the same message to EVERY configured recipient. sent=true only when
  * all recipients succeeded; per-recipient failures are logged (recipient
  * index only — never the chat id, token, message text or customer data).
@@ -267,6 +315,10 @@ export async function sendTelegramOrderMessage(
     data,
     process.env.NEXT_PUBLIC_SITE_URL
   );
+  const keyboard = buildOrderNotificationKeyboard(
+    data,
+    process.env.NEXT_PUBLIC_SITE_URL
+  );
   const total = config.chatIds.length;
   let okCount = 0;
   let firstFailure: TelegramSendResult | undefined;
@@ -274,7 +326,8 @@ export async function sendTelegramOrderMessage(
     const result = await postTelegramMessage(
       config.token!,
       config.chatIds[index]!,
-      text
+      text,
+      keyboard
     );
     if (result.sent) {
       okCount++;

@@ -328,7 +328,7 @@ export type CallbackOutcome =
   | { kind: 'amount-mismatch'; log: string }
   | { kind: 'currency-mismatch'; log: string }
   | { kind: 'already-paid'; log?: string }
-  | { kind: 'updated'; status: PaymentStatus }
+  | { kind: 'updated'; status: PaymentStatus; /** set for 'paid' — drives checkout auto-confirm */ order_id?: string }
   | { kind: 'kept-pending' };
 
 const ORDER_ID_RE = /^[A-Za-z0-9:-]{1,100}$/;
@@ -427,7 +427,7 @@ export async function processLiqPayCallback(
         method: methodOf(payload),
       });
       return res === 'applied'
-        ? { kind: 'updated', status: 'paid' }
+        ? { kind: 'updated', status: 'paid', order_id: order.id }
         : { kind: 'already-paid' };
     }
     case 'failed': {

@@ -139,6 +139,8 @@ export default function OrdersAdminPage() {
   // Details modal state.
   const [details, setDetails] = useState<{ order: OrderDetails; items: ItemRow[] } | null>(null);
   const [detailsBusy, setDetailsBusy] = useState(false);
+  const [rowBusyId, setRowBusyId] = useState<string | null>(null);
+  const [rowNotice, setRowNotice] = useState<string | null>(null);
 
   const applyFilters = (
     next: { status: string; q: string },
@@ -193,6 +195,43 @@ export default function OrdersAdminPage() {
       setDetails(await fetchOrderDetailsApi(id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Невідома помилка');
+    } finally {
+      setDetailsBusy(false);
+    }
+  };
+
+  /** One-tap confirm straight from the list row (owner 2026-09-13). */
+  const confirmOrderInList = async (id: string) => {
+    setRowNotice(null);
+    setRowBusyId(id);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'confirmed' }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Не вдалося підтвердити');
+      reloadCurrent();
+    } catch (err) {
+      setRowNotice(err instanceof Error ? err.message : 'Помилка');
+    } finally {
+      setRowBusyId(null);
+    }
+  };
+
+  /** Manual payment confirmation for cash orders (mark-paid endpoint). */
+  const markOrderPaid = async (id: string) => {
+    setError(null);
+    setDetailsBusy(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}/mark-paid`, { method: 'POST' });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Не вдалося позначити оплату');
+      reloadCurrent();
+      setDetails(await fetchOrderDetailsApi(id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Помилка');
     } finally {
       setDetailsBusy(false);
     }
@@ -286,6 +325,11 @@ export default function OrdersAdminPage() {
           {error}
         </div>
       )}
+      {rowNotice && (
+        <div className="alert alert-error" role="alert">
+          {rowNotice}
+        </div>
+      )}
 
       <div className="bg-white shadow-md rounded-lg overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
@@ -318,6 +362,15 @@ export default function OrdersAdminPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right text-sm font-medium whitespace-nowrap">
+                  {order.status === 'pending' && (
+                    <button
+                      onClick={() => confirmOrderInList(order.id)}
+                      disabled={rowBusyId !== null}
+                      className="mr-3 min-h-[44px] px-3 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {rowBusyId === order.id ? '…' : '✅ Підтвердити'}
+                    </button>
+                  )}
                   <button
                     onClick={() => openDetails(order.id)}
                     className="text-blue-600 hover:text-blue-900 mr-3"
@@ -489,6 +542,17 @@ export default function OrdersAdminPage() {
                       → {next}
                     </button>
                   ))}
+                  {['pending', 'confirmed'].includes(details.order.status) &&
+                    details.order.payment_status !== 'paid' && (
+                      <button
+                        type="button"
+                        disabled={detailsBusy}
+                        onClick={() => markOrderPaid(details.order.id)}
+                        className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                      >
+                        💰 Оплачено (готівка)
+                      </button>
+                    )}
                   {['pending', 'confirmed'].includes(details.order.status) &&
                     details.order.payment_status !== 'paid' && (
                       <button

@@ -310,6 +310,9 @@ export default function ShipmentPlannerPage() {
   const [ttnBusy, setTtnBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Order-level quick actions (owner 2026-09-13): confirm / mark-paid /
+  // cancel without leaving the shipments planner.
+  const [orderActionBusy, setOrderActionBusy] = useState<string | null>(null);
 
   // City search + divisions state (per shipment, keyed by shipment position).
   const [cityQuery, setCityQuery] = useState('');
@@ -619,6 +622,95 @@ export default function ShipmentPlannerPage() {
         <p className="text-xs text-gray-500 mb-4">
           Доставка з замовлення: {Object.entries(order.shipping_info).map(([k, v]) => `${k}: ${v}`).join(', ')}
         </p>
+      )}
+
+      {/* Швидкі дії по замовленню (owner 2026-09-13): підтвердити /
+          позначити оплату / скасувати — без виїзду в список. */}
+      {order && (order.status === 'pending' || order.status === 'confirmed') && (
+        <div className="bg-white rounded-lg shadow p-4 mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-gray-500 mr-2">
+            Швидкі дії:
+          </span>
+          {order.status === 'pending' && (
+            <button
+              type="button"
+              disabled={orderActionBusy !== null}
+              onClick={async () => {
+                setOrderActionBusy('confirm');
+                setError(null);
+                try {
+                  const res = await fetch(`/api/admin/orders/${order.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'confirmed' }),
+                  });
+                  const data = await res.json().catch(() => null);
+                  if (!res.ok) throw new Error(data?.error || 'Не вдалося підтвердити');
+                  setNotice('Замовлення підтверджено ✅');
+                  fetchPlanApi(orderId, applyData, setError, () => setOrderActionBusy(null));
+                  return;
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Невідома помилка');
+                  setOrderActionBusy(null);
+                }
+              }}
+              className="min-h-[44px] px-4 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+            >
+              ✅ Підтвердити замовлення
+            </button>
+          )}
+          {order.payment_status !== 'paid' && (
+            <button
+              type="button"
+              disabled={orderActionBusy !== null}
+              onClick={async () => {
+                setOrderActionBusy('paid');
+                setError(null);
+                try {
+                  const res = await fetch(`/api/admin/orders/${order.id}/mark-paid`, { method: 'POST' });
+                  const data = await res.json().catch(() => null);
+                  if (!res.ok) throw new Error(data?.error || 'Не вдалося позначити оплату');
+                  setNotice('Оплату позначено ✅');
+                  fetchPlanApi(orderId, applyData, setError, () => setOrderActionBusy(null));
+                  return;
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Невідома помилка');
+                  setOrderActionBusy(null);
+                }
+              }}
+              className="min-h-[44px] px-4 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
+            >
+              💰 Оплачено (готівка)
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={orderActionBusy !== null}
+            onClick={async () => {
+              if (!window.confirm('Скасувати замовлення? Сток буде повернено на склад.')) return;
+              setOrderActionBusy('cancel');
+              setError(null);
+              try {
+                const res = await fetch(`/api/admin/orders/${order.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ status: 'cancelled' }),
+                });
+                const data = await res.json().catch(() => null);
+                if (!res.ok) throw new Error(data?.error || 'Не вдалося скасувати');
+                setNotice('Замовлення скасовано, сток повернено');
+                fetchPlanApi(orderId, applyData, setError, () => setOrderActionBusy(null));
+                return;
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Невідома помилка');
+                setOrderActionBusy(null);
+              }
+            }}
+            className="min-h-[44px] px-4 border border-red-300 text-red-700 rounded-md text-sm font-medium hover:bg-red-50 disabled:opacity-50"
+          >
+            ❌ Скасувати
+          </button>
+        </div>
       )}
 
       {error && <div className="alert alert-error mb-4" role="alert">{error}</div>}

@@ -79,6 +79,25 @@ export async function POST(request: Request) {
       if ('log' in res && res.log) {
         console.info(`liqpay/callback: [${res.kind}] ${res.log}`);
       }
+      // Автопідтвердження (owner 2026-09-13): оплата пройшла і замовлення ще
+      // не підтверджене вручну → просуваємо pending→confirmed тим самим RPC,
+      // що й адмінка. Never throws — сбій лише в логах, оплата вже зафіксована.
+      if (res.kind === 'updated' && res.status === 'paid' && typeof res.order_id === 'string') {
+        try {
+          const orderId = res.order_id;
+          if (orderId) {
+            const { error: rpcErr } = await supabase.rpc('admin_set_order_status', {
+              p_order_id: orderId,
+              p_new_status: 'confirmed',
+            });
+            if (rpcErr && rpcErr.code !== 'P0409') {
+              console.error(`liqpay/callback: auto-confirm failed: ${rpcErr.code}`);
+            }
+          }
+        } catch {
+          console.error('liqpay/callback: auto-confirm unexpected failure');
+        }
+      }
       return new NextResponse('ok', { status: 200 });
   }
 }
