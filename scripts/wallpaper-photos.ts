@@ -35,12 +35,15 @@
  *                     bytes), upload to Storage bucket product_images under
  *                     `<sku>/<sanitized>.<ext>` (upload-filename hardening)
  *                     and write the RELATIVE path to product_images.
- *                     ПРАВИЛО 2026-09-11: авто-матч по артикулу для не-slav
- *                     источников разрешён ТОЛЬКО если в артикуле есть
- *                     латинская буква — чисто цифровые («5070», «2164»)
- *                     массово бьются с чужими товарами маркетплейса
- *                     (RTX 5070 у шпалер) и принимаются только по
- *                     проверенному --url-map; 64 таких фото уже удалены.
+ *                     ПРАВИЛО 2026-09-11 (дожим 2026-09-13): авто-матч по
+ *                     артикулу для не-slav источников разрешён ТОЛЬКО по
+ *                     сильному артикулу — латиница + цифра, ≥5 символов
+ *                     («86000BR90») — см. strongArticleTokens. Чисто
+ *                     цифровые («5070», «2164») и общие слова без цифр
+ *                     («vinyl») массово бьются с чужими товарами
+ *                     маркетплейса (RTX 5070 у шпалер) и принимаются
+ *                     только по проверенному --url-map; 64 таких фото уже
+ *                     удалены.
  *       product_images INSERT is diff-aware: existing (product_id,image_url)
  *       pairs are pre-read (`.in` chunks ≤200, windows ≤1000 + .order),
  *       duplicates (23505) are skipped as no-ops, other DB errors stop the
@@ -317,6 +320,24 @@ export function articleTokensForItem(item: PhotoItem): string[] {
   const direct = normalizeArticleToken(item.article ?? '');
   if (direct !== null) return [direct];
   return parseArticleTokens(item.name);
+}
+
+/**
+ * Правило 2026-09-11 в редакции 2026-09-13 («дожим эвристики»): не-slav
+ * авто-матч разрешён ТОЛЬКО по сильному артикулу — токен длиной ≥ 5,
+ * содержащий И латинскую букву, И цифру (например «86000br90»).
+ *
+ * Прежний фильтр «есть латинская буква» пропускал общие слова из
+ * артикульной колонки («vinyl», «bravo»), а matchSourceByUrl матчит по
+ * ЛЮБОМУ токену — такое слово цеплялось за чужой товар (тот же класс
+ * риска, что видеокарта RTX 5070 у шпалер). Слабые токены (чисто цифровые
+ * артикулы, слова без цифр, короткие коды) приравнены к отсутствию:
+ * не-slav источник — только через проверенный --url-map.
+ */
+export function strongArticleTokens(tokens: string[]): string[] {
+  return tokens.filter(
+    (t) => !/\s/.test(t) && t.length >= 5 && /[a-z]/i.test(t) && /\d/.test(t)
+  );
 }
 
 function loadItems(itemsPath: string): PhotoItem[] {
@@ -895,13 +916,14 @@ export async function run(options: RunOptions, deps: CliDeps = {}): Promise<RunT
       if (url === null && source !== 'slav') {
         // 2026-09-11: чисто цифровые артикулы («5070», «2164») на маркет-
         // плейсах бьются с ЧУЖИМИ товарами — у шпалер «5070 квіти» оказалась
-        // фотка видеокарты RTX 5070 с epicentr. Авто-матч не-slav источников
-        // разрешён только по артикулам с латинской буквой («86000BR90»);
-        // цифровые — исключительно через проверенный исследованием --url-map.
-        const tokens = articleTokensForItem(pos.item).filter((t) => /[a-z]/i.test(t));
+        // фотка видеокарты RTX 5070 с epicentr. 2026-09-13 (дожим): авто-
+        // матч не-slav источников разрешён только по сильному артикулу
+        // (латиница + цифра, ≥5 симв., см. strongArticleTokens); всё
+        // слабое — исключительно через проверенный исследованием --url-map.
+        const tokens = strongArticleTokens(articleTokensForItem(pos.item));
         if (tokens.length === 0) {
           log(
-            `[run] ${source}: ${pos.item.code} артикул без латинских букв — ` +
+            `[run] ${source}: ${pos.item.code} нет сильного артикула (латиница+цифра, ≥5 симв.) — ` +
               'авто-матч запрещён (ложные совпадения), нужно --url-map',
           );
         } else {

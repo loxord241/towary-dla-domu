@@ -60,6 +60,7 @@ import {
   run,
   runPhotosCli,
   runSpecs,
+  strongArticleTokens,
   type RunTotals,
   type SpecsRunTotals,
 } from '../scripts/wallpaper-photos.ts';
@@ -638,6 +639,22 @@ test('wallpaper-photos CLI: articleTokensForItem falls back to parseArticleToken
 });
 
 // ---------------------------------------------------------------------------
+// CLI: strongArticleTokens — дожим правила 2026-09-11 (2026-09-13)
+// ---------------------------------------------------------------------------
+
+test('wallpaper-photos CLI: strongArticleTokens держит только артикулы (латиница+цифра, ≥5)', () => {
+  assert.deepEqual(
+    strongArticleTokens(['86000br90', 'ab-12', 'vinyl', '5070', 'pro', 'br90']),
+    ['86000br90', 'ab-12'],
+    'общие слова без цифр и короткие коды отфильтрованы',
+  );
+  // Токены с пробелами никогда не матчатся (склеенные значения из 1С).
+  assert.deepEqual(strongArticleTokens(['br90 12', 'ab-34']), ['ab-34']);
+  // Пустой вход — пустой выход (не-slav ветка потребует --url-map).
+  assert.deepEqual(strongArticleTokens([]), []);
+});
+
+// ---------------------------------------------------------------------------
 // CLI: parseArgs
 // ---------------------------------------------------------------------------
 
@@ -1185,10 +1202,47 @@ test('wallpaper-photos CLI: run() не-slav — чисто цифровой ар
   assert.equal(first.db.uploads.length, 0);
   assert.equal(first.totals.bySource.epicentr?.matched, 0);
   assert.ok(
-    first.logs.some((l) => l.includes('артикул без латинских букв')),
+    first.logs.some((l) => l.includes('нет сильного артикула')),
     first.logs.join('\n'),
   );
   cleanup(first.cacheDir);
+
+  // Дожим 2026-09-13: артикул-СЛОВО без цифр («vinyl») тоже запрещён —
+  // matchSourceByUrl матчит по любому токену и словом цепляется за чужой URL.
+  const vinylPage = 'https://epicentrk.ua/ua/oboi-vinyl-cols.html';
+  const vinyl = await runForTest({
+    items: [{ code: '35991', name: 'шпалери вінилові', article: 'Vinyl' }],
+    sources: ['epicentr'],
+    caches: { epicentr: [vinylPage] },
+    products: [{ id: 'p-y', sku: 'wc-vinyl' }],
+  });
+  assert.equal(vinyl.db.inserted.length, 0);
+  assert.equal(vinyl.totals.bySource.epicentr?.matched, 0);
+  assert.ok(
+    vinyl.logs.some((l) => l.includes('нет сильного артикула')),
+    vinyl.logs.join('\n'),
+  );
+  cleanup(vinyl.cacheDir);
+
+  // Сильный артикул (латиница+цифра, ≥5) продолжает авто-матчиться.
+  const strongPage = 'https://epicentrk.ua/ua/shpaleri-86000br90-bravo.html';
+  const strong = await runForTest({
+    items: [{ code: '35992', name: 'Браво темні', article: '86000BR90' }],
+    sources: ['epicentr'],
+    caches: { epicentr: [strongPage] },
+    fetchPageText: async (url) => {
+      assert.equal(url, strongPage);
+      return pageWithOgImage('/upload/oboi-86000br90.jpg');
+    },
+    fetchImage: async (url) => {
+      assert.equal(url, 'https://epicentrk.ua/upload/oboi-86000br90.jpg');
+      return PNG_BYTES;
+    },
+    products: [{ id: 'p-z', sku: 'wc-86000br90' }],
+  });
+  assert.equal(strong.totals.bySource.epicentr?.matched, 1);
+  assert.equal(strong.db.inserted.length, 1);
+  cleanup(strong.cacheDir);
 
   // Проверенный исследованием --url-map остаётся единственным каналом.
   const second = await runForTest({
