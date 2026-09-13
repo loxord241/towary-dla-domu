@@ -13,7 +13,7 @@
  *  - WIRE — the shelf read reuses CATALOG_CARD_SELECT (the
  *    product_images!inner eligibility join), filters DIRECT junction
  *    assignments only, orders by the catalog default-sort contract and is
- *    wrapped in cachePublicRead (60s public Data Cache);
+ *    wrapped in cachePublicRead (900s public Data Cache);
  *  - the PDP mounts the shelf ONLY for wc-* products (sku gate + the
  *    conditional read that skips non-wallpaper pages entirely);
  *  - /oboi links the glue category as a chip into a GENERAL catalog view.

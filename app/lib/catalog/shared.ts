@@ -38,8 +38,8 @@ const { unstable_cache } = (await import('next/cache').then(
 // results are identical for every visitor. unstable_cache therefore shares
 // one Data Cache entry across users safely.
 //
-// TTL policy: dictionaries change only via the admin UI (120s); products /
-// reviews change via the 6-hour Yugcontract importer or moderation (60s).
+// TTL policy: dictionaries change only via the admin UI (3600s); products /
+// reviews change via the 6-hour Yugcontract importer or moderation (900s).
 // Post-import staleness is bounded by the TTL — invisible against the
 // 6-hour import cycle. DB errors are never cached: unstable_cache writes
 // the entry only after the callback resolves, so a failed read re-executes
@@ -63,8 +63,16 @@ const { unstable_cache } = (await import('next/cache').then(
  * deployments reset the data cache, so a sync followed by a deploy is
  * always immediate.
  */
+/**
+ * Public reads (products/reviews/counts/related) change only through the
+ * 6-hour Yugcontract importer, moderation or the admin UI — 900s bounds
+ * the post-change staleness far below the import cycle while cutting
+ * repeat egress (perf package 2026-09-13, was 60s). The shared
+ * `catalog-public-reads` tag keeps targeted revalidateTag() available, so
+ * an admin save or importer hook can drop entries immediately.
+ */
 export const CATALOG_DICTIONARY_TTL_SECONDS = 3600;
-export const CATALOG_PUBLIC_READ_TTL_SECONDS = 60;
+export const CATALOG_PUBLIC_READ_TTL_SECONDS = 900;
 
 /** Shared tag so a future importer hook can revalidateTag() targeted. */
 const CATALOG_PUBLIC_CACHE_TAG = 'catalog-public-reads';

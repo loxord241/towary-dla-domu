@@ -1,5 +1,5 @@
+import { fetchActiveAnnouncements } from '@/app/lib/announcements-store';
 import {
-  fetchActiveAnnouncements,
   ANNOUNCEMENT_TYPE_META,
   type AnnouncementType,
 } from '@/app/lib/announcements';

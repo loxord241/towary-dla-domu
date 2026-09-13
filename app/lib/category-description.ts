@@ -1,5 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 import { cache } from 'react';
+import { cachePublicRead } from './catalog/shared.ts';
+
+/**
+ * Data Cache TTL for category descriptions (perf package 2026-09-13).
+ * Deliberately NOT CATALOG_PUBLIC_READ_TTL_SECONDS: descriptions are
+ * admin-authored copy edited in the admin UI (not importer data), so the
+ * task spec bounds staleness at 300-600s — 600s keeps an admin edit
+ * storefront-visible within ten minutes while still deduplicating the
+ * per-render slug lookup across requests. The `catalog-public-reads` tag
+ * (applied by cachePublicRead) still allows targeted invalidation.
+ */
+const CATEGORY_DESCRIPTION_TTL_SECONDS = 600;
 
 /**
  * Storefront reader for `categories.description` (plain admin-authored
@@ -55,12 +67,40 @@ async function fetchCategoryDescriptionUncached(
     .returns<{ description: string | null }[]>()
     .maybeSingle();
   // A transient read failure degrades to «no description» — the category
-  // page itself must never break because of this optional copy block.
-  if (error) return null;
+  // page itself must never break because of this optional copy block. The
+  // degradation THROWS here instead of returning null: unstable_cache
+  // persists only resolved values, so a failed read is never cached and
+  // the next request retries (same contract as the other catalog reads).
+  if (error) {
+    throw new Error(`Failed to load category description "${slug}": ${error.message}`);
+  }
   return data?.description ?? null;
 }
 
+/**
+ * Caching layers (perf package 2026-09-13), outermost first:
+ *  1. React `cache()` — one execution per request/render (unchanged);
+ *  2. unstable_cache via cachePublicRead — one Data Cache entry shared
+ *     across requests for CATEGORY_DESCRIPTION_TTL_SECONDS, tag
+ *     `catalog-public-reads`.
+ * The Data Cache entry for a slug without a description is a legit null
+ * (admin simply hasn't authored copy) and is cached like any other value;
+ * DB ERRORS throw past unstable_cache and are converted to null by the
+ * try/catch below, so a transient failure never poisons the cache.
+ */
+const fetchCategoryDescriptionStore = cachePublicRead(
+  'category-description:by-slug',
+  CATEGORY_DESCRIPTION_TTL_SECONDS,
+  fetchCategoryDescriptionUncached
+);
+
 /** Per-request memo — the slug lookup runs at most once per render. */
-const fetchCategoryDescriptionCached = cache(fetchCategoryDescriptionUncached);
+const fetchCategoryDescriptionCached = cache(async (slug: string) => {
+  try {
+    return await fetchCategoryDescriptionStore(slug);
+  } catch {
+    return null;
+  }
+});
 
 export const fetchCategoryDescription = fetchCategoryDescriptionCached;

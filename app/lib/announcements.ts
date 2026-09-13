@@ -1,20 +1,25 @@
 /**
  * Store announcements (migration 031): admin-managed storefront notices.
  *
+ * This module holds the PURE, isomorphic part of the domain: types,
+ * constants, admin-payload validation and the storefront visibility
+ * selector. It is imported by the 'use client' admin dashboard
+ * (app/admin/(dashboard)/announcements/page.tsx), so it must stay free of
+ * any server-only wiring — the Supabase read and its Data Cache live in
+ * app/lib/announcements-store.ts (perf package 2026-09-13).
+ *
  * Two consumers:
  *  - the storefront server component app/components/Announcements.tsx reads
- *    ACTIVE rows through the publishable-key anon client — RLS allows
- *    SELECT of is_active rows only, so drafts never reach the client and
- *    the service role key must never be used here;
+ *    ACTIVE rows through the store module — the publishable-key anon client
+ *    is used there and RLS allows SELECT of is_active rows only, so drafts
+ *    never reach the client and the service role key must never be used;
  *  - the guarded admin route app/api/admin/announcements/route.ts reuses
  *    validateAnnouncementInput for create/edit payloads.
  *
- * Failure policy: fetchActiveAnnouncements never throws — an empty table,
- * a network error or a misconfigured env must render an empty banner, not
- * break home/catalog/PDP/cart.
+ * Failure policy (store module): fetchActiveAnnouncements never throws —
+ * an empty table, a network error or a misconfigured env must render an
+ * empty banner, not break home/catalog/PDP/cart.
  */
-
-import { createClient } from '@supabase/supabase-js';
 
 export const ANNOUNCEMENT_TYPES = ['info', 'warning', 'important', 'success'] as const;
 
@@ -101,51 +106,4 @@ export function selectActiveAnnouncements(rows: Announcement[]): Announcement[] 
   return rows
     .filter((r) => r.is_active)
     .sort((a, b) => a.sort_order - b.sort_order);
-}
-
-// Storefront reads run with the publishable key as the anonymous role —
-// visibility is decided entirely by the RLS policy on the table.
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-  { auth: { persistSession: false } }
-);
-
-/**
- * Fetch the active announcements for the storefront. Resolves to [] on any
- * failure so an empty or unreachable table can never break a page render.
- *
- * Deadline: supabase-js does not accept an AbortSignal on a query builder,
- * so the SELECT is raced against an 8 s timer — a hung upstream must not
- * stall the awaited SSR render of home/catalog/PDP/cart. The timer losing
- * the race logs server-side (fail-open policy unchanged).
- */
-const ANNOUNCEMENTS_DEADLINE_MS = 8_000;
-
-export async function fetchActiveAnnouncements(): Promise<Announcement[]> {
-  try {
-    const query = supabase
-      .from('store_announcements')
-      .select(
-        'id, title, message, type, is_active, sort_order, created_at, updated_at'
-      )
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-      .limit(10);
-
-    const deadline = new Promise<'__timeout__'>((resolve) => {
-      setTimeout(() => resolve('__timeout__'), ANNOUNCEMENTS_DEADLINE_MS);
-    });
-    const raced = await Promise.race([query, deadline]);
-    if (raced === '__timeout__') {
-      console.error('store announcements: deadline exceeded — rendering without them');
-      return [];
-    }
-
-    const { data, error } = raced;
-    if (error || !data) return [];
-    return selectActiveAnnouncements(data as Announcement[]);
-  } catch {
-    return [];
-  }
 }
