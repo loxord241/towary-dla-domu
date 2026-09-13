@@ -267,17 +267,6 @@ export const SELECTED_CATEGORIES: YcSelectedCategory[] = [
         ],
       },
       {
-        id: '1115',
-        name: 'Посуд для зберігання',
-        children: [
-          { id: '1377', name: 'Банки', children: [] },
-          { id: '1380', name: 'Контейнери', children: [] },
-          { id: '1378', name: 'Пляшки', children: [] },
-          { id: '1513', name: 'Пляшки для масла та оцет', children: [] },
-          { id: '1381', name: 'Термокружки та термоси', children: [] },
-        ],
-      },
-      {
         id: '861',
         name: 'Столовий посуд',
         children: [
@@ -296,69 +285,17 @@ export const SELECTED_CATEGORIES: YcSelectedCategory[] = [
           { id: '1480', name: 'Відерця сервірувальні', children: [] },
         ],
       },
-      { id: '1520', name: 'Текстиль для кухні', children: [] },
-      {
-        id: '1205',
-        name: 'Декор',
-        children: [
-          { id: '1258', name: 'Вази', children: [] },
-          { id: '1542', name: 'Підсвічники', children: [] },
-          { id: '545', name: 'Фотоальбоми', children: [] },
-          { id: '1434', name: 'Фоторамки', children: [] },
-          { id: '1313', name: 'Подарункові коробки', children: [] },
-          { id: '1207', name: 'Дизайнерські Рамки і Підрамники FUJIFILM', children: [] },
-        ],
-      },
-      {
-        id: '1609',
-        name: 'Кошики та органайзери',
-        children: [
-          { id: '731', name: 'Кошики та коробки універсальні', children: [] },
-          { id: '1308', name: 'Кошики для білизни', children: [] },
-          { id: '1309', name: 'Кошики для пікніка', children: [] },
-          { id: '1324', name: 'Кошики для сміття', children: [] },
-          { id: '1534', name: 'Органайзери', children: [] },
-        ],
-      },
-      {
-        id: '1451',
-        name: 'Господарчі товари',
-        children: [
-          { id: '1472', name: 'Стойки та вішалки для одягу', children: [] },
-          {
-            id: '1453',
-            name: 'Товари для прибирання',
-            children: [
-              { id: '1628', name: 'Вікномийки', children: [] },
-              { id: '1452', name: 'Відра', children: [] },
-              { id: '1502', name: 'Тази', children: [] },
-              { id: '1505', name: 'Скребки', children: [] },
-              { id: '1503', name: 'Совки', children: [] },
-              { id: '1504', name: 'Швабри', children: [] },
-              { id: '1521', name: 'Щітки', children: [] },
-              { id: '1531', name: 'Запаски', children: [] },
-              { id: '1644', name: 'Набори для прибирання', children: [] },
-            ],
-          },
-          {
-            id: '1447',
-            name: 'Для ванної та туалету',
-            children: [
-              { id: '1509', name: 'Ванночки дитячі', children: [] },
-              { id: '1507', name: 'Горщики дитячі', children: [] },
-              { id: '1510', name: 'Стільчаки', children: [] },
-              { id: '1508', name: 'Аксесуари', children: [] },
-              { id: '1506', name: 'Набори для ванної', children: [] },
-            ],
-          },
-          { id: '1517', name: 'Сушарки для білизни', children: [] },
-          { id: '1518', name: 'Дошки для прасування', children: [] },
-        ],
-      },
     ],
   },
 ];
 
+/**
+ * 2026-09-12 (владелец): ветки «Господарчі товари», «Декор», «Кошики та
+ * органайзери», «Текстиль для кухні», «Посуд для зберігання» УДАЛЕНЫ из
+ * селекции — sync больше не создаёт/не обновляет эти категории и не
+ * привязывает к ним товары. Товары этих веток сняты с витрины, категории
+ * удалены из БД (см. миграцию-бэкап 2026-09-12).
+ */
 /** Depth-first flatten of the selection into unique ids (feed order). */
 export function flattenSelectedIds(
   nodes: YcSelectedCategory[] = SELECTED_CATEGORIES

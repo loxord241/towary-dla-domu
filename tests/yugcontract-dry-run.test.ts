@@ -63,7 +63,11 @@ test('selection flattens to unique ids and counts nodes', () => {
   assert.equal(new Set(ids).size, ids.length);
   assert.ok(countSelectedNodes() >= ids.length);
   assert.ok(ids.includes('1186'));
-  assert.ok(ids.includes('1518'));
+  // 2026-09-12: 5 веток удалены из селекции (владелец) — их id больше
+  // не попадают в расширенное дерево, sync их не подвяжет обратно.
+  for (const removed of ['1451', '1115', '1205', '1609', '1520', '1472', '731']) {
+    assert.ok(!ids.includes(removed), `${removed} must be out of the selection`);
+  }
 });
 
 test('computeDryRunReport counts stock/price/brand/category buckets', () => {
