@@ -74,6 +74,12 @@ export default async function AdminPage() {
       title: 'Повідомлення магазину',
       description: 'Оголошення та попередження для покупців',
     },
+    {
+      href: '/admin/descriptions',
+      icon: '📝',
+      title: 'Чернетки описів товарів',
+      description: 'Згенеровані описи — затвердити або відхилити',
+    },
   ];
 
   return (
