@@ -223,6 +223,31 @@ export function buildCatalogBreadcrumbJsonLd(
 }
 
 /**
+ * schema.org/BreadcrumbList for the /oboi storefront (SEO package
+ * 2026-09-14): Головна → Шпалери — the visible nav mirrors these two
+ * levels. Pure and constant-input: /oboi has no path params, so both item
+ * URLs are the canonical shapes lib/seo.ts already pins (/ and /oboi).
+ */
+export function buildOboiBreadcrumbJsonLd(
+  siteUrl: string
+): Record<string, unknown> {
+  const base = siteUrl.replace(/\/+$/, '');
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Головна', item: `${base}/` },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Шпалери',
+        item: `${base}/oboi`,
+      },
+    ],
+  };
+}
+
+/**
  * schema.org/FAQPage builder (category FAQ, 2026-09-11) — same honesty
  * rules as the other builders: only caller-supplied Q&A pairs are emitted,
  * trimmed; pairs with an empty question or answer are dropped; an empty

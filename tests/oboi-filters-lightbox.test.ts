@@ -132,7 +132,10 @@ test('OBOI SEO: unfiltered contracts survive the filter extension', () => {
 // ---------------------------------------------------------------------------
 
 test('OBOI PAGE: base param reaches fetch + metadata; chips render Усі + dictionary', () => {
-  const page = read('app/oboi/page.tsx');
+  // ISR split (2026-09-14): param reading lives on the dynamic twin
+  // (app/oboi/filtered/page.tsx), the chips markup on the shared
+  // OboiStorefront both /oboi routes render through.
+  const page = read('app/oboi/filtered/page.tsx');
   assert.match(page, /baseParamOf/,
     'base param is read for BOTH metadata and the query');
   assert.match(
@@ -142,44 +145,46 @@ test('OBOI PAGE: base param reaches fetch + metadata; chips render Усі + dict
   );
   assert.match(page, /buildWallpapersMetadata\(\s*parsePageParam\(rawParams\.page\),\s*baseParamOf\(rawParams\),\s*sortParamOf\(rawParams\)/,
     'metadata sees the raw params (junk → noindex)');
-  assert.match(page, /WALLPAPER_BASE_VALUES/,
+  const shelf = read('app/oboi/OboiStorefront.tsx');
+  assert.match(shelf, /WALLPAPER_BASE_VALUES/,
     'chips come from the wallpapers dictionary');
-  assert.match(page, /Усі/, 'reset chip present');
-  assert.match(page, /aria-current=\{base === value \? 'true' : undefined\}/,
+  assert.match(shelf, /Усі/, 'reset chip present');
+  assert.match(shelf, /aria-current=\{base === value \? 'true' : undefined\}/,
     'active chip state is exposed to AT');
-  assert.match(page, /motion-reduce:transition-none/,
+  assert.match(shelf, /motion-reduce:transition-none/,
     'chips carry the motion-reduce opt-out');
   // filtered empty state must not reuse the "coming soon" copy
-  assert.match(page, /За фільтром нічого не знайдено/);
+  assert.match(shelf, /За фільтром нічого не знайдено/);
 });
 
 test('OBOI PAGE: pagination and filter links preserve ?base= and ?sort=', () => {
-  const page = read('app/oboi/page.tsx');
-  const pageUrl = sliceBetween(page, 'function oboiPageUrl', '/** ANY present');
+  const shelf = read('app/oboi/OboiStorefront.tsx');
+  const pageUrl = sliceBetween(shelf, 'function oboiPageUrl', 'export interface');
   assert.match(pageUrl, /params\.set\('base', base\)/,
     'pagination must keep the active filter');
   assert.match(pageUrl, /params\.set\('sort', sort\)/,
     'pagination must keep the active ordering');
-  const filterUrl = sliceBetween(page, 'function oboiFilterUrl', 'function oboiPageUrl');
+  const filterUrl = sliceBetween(shelf, 'function oboiFilterUrl', 'function oboiPageUrl');
   // URLSearchParams.set percent-encodes the uk values on toString().
   assert.match(filterUrl, /params\.set\('base', base\)/,
     'filter chips keep the active ordering (URLSearchParams encodes)');
   // every prev/next/page link passes the filter + sort through
   assert.equal(
-    (page.match(/oboiPageUrl\((?:currentPage - 1|item|currentPage \+ 1), base, sortParam\)/g) ?? []).length,
+    (shelf.match(/oboiPageUrl\((?:currentPage - 1|item|currentPage \+ 1), base, sortParam\)/g) ?? []).length,
     3
   );
 });
 
 test('OBOI PAGE: default sort is alphabetical; explicit sorts are whitelisted', () => {
-  const page = read('app/oboi/page.tsx');
+  const page = read('app/oboi/filtered/page.tsx');
   // absent ?sort= IS name_asc (owner 2026-09-12) — the canonical /oboi is
   // the sorted view; junk values fall back to the default.
   assert.match(page, /sortParam === '' \? 'name_asc' : sortParam/);
   assert.match(page, /SORT_VALUES\.includes\(raw as CatalogSort\)/);
+  const shelf = read('app/oboi/OboiStorefront.tsx');
   // sort control is rendered (client select, mobile contract).
-  assert.match(page, /Сортування:/);
-  assert.match(page, /<OboiSortSelect \/>/);
+  assert.match(shelf, /Сортування:/);
+  assert.match(shelf, /<OboiSortSelect \/>/);
   const select = read('app/oboi/SortSelect.tsx');
   assert.match(select, /^'use client';/m);
   assert.match(select, /Назва А–Я/);

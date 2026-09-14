@@ -1,15 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { catalogCategoryRedirect } from '@/app/lib/catalog-paths';
+import {
+  catalogCategoryRedirect,
+  catalogCategoryFilteredRewrite,
+  oboiFilteredRewrite,
+} from '@/app/lib/catalog-paths';
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // The matcher includes /catalog for the canonicalizing redirect above.
-  // EVERY non-admin path must return before the admin session gate below —
-  // otherwise anonymous storefront visitors would be bounced to
-  // /admin/login. The admin gate itself (matcher '/admin/:path*') behaves
-  // exactly as before this route was added.
+  // The matcher includes /catalog (canonicalizing redirect + ISR rewrite)
+  // and /oboi (ISR rewrite). EVERY non-admin path must return before the
+  // admin session gate below — otherwise anonymous storefront visitors
+  // would be bounced to /admin/login. The admin gate itself (matcher
+  // '/admin/:path*') behaves exactly as before these routes were added.
   if (!pathname.startsWith('/admin')) {
     const redirectPath = catalogCategoryRedirect(
       pathname,
@@ -18,6 +22,18 @@ export async function proxy(request: NextRequest) {
     );
     if (redirectPath) {
       return NextResponse.redirect(new URL(redirectPath, request.url), 308);
+    }
+    // ISR split (perf/SEO audit 2026-09-14): query-carrying requests to the
+    // ISR-rendered paths go to the internal dynamic twin routes so filtered
+    // views never serve the cached pure-view HTML. The query string is
+    // preserved verbatim — only the internal pathname changes.
+    const rewritePath =
+      catalogCategoryFilteredRewrite(pathname, request.nextUrl.search) ??
+      oboiFilteredRewrite(pathname, request.nextUrl.search);
+    if (rewritePath) {
+      const url = request.nextUrl.clone();
+      url.pathname = rewritePath;
+      return NextResponse.rewrite(url);
     }
     return NextResponse.next();
   }
@@ -81,5 +97,8 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/catalog'],
+  // '/catalog/:path*' matches zero or more segments, so bare /catalog (the
+  // 308 redirect) and every /catalog/<slug> shape (the ISR rewrite) are
+  // covered by one pattern; '/oboi' feeds the same rewrite.
+  matcher: ['/admin/:path*', '/catalog/:path*', '/oboi'],
 };

@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { catalogCategoryRedirect } from '../app/lib/catalog-paths.ts';
+import { catalogCategoryRedirect, catalogCategoryFilteredRewrite, oboiFilteredRewrite } from '../app/lib/catalog-paths.ts';
 import {
   decideCatalogIndexing,
   buildCatalogViewMetadata,
@@ -108,15 +108,24 @@ test('PATHS: redirect decision — fall-through cases', () => {
 
 test('PATHS: proxy wires the redirect with 308 and a non-admin early return', () => {
   const proxySrc = src('proxy.ts');
-  // Matcher: the admin pattern unchanged, /catalog added for the redirect.
-  assert.match(proxySrc, /matcher:\s*\[\s*'\/admin\/:path\*',\s*'\/catalog'\s*\]/);
+  // Matcher: the admin pattern unchanged; '/catalog/:path*' covers bare
+  // /catalog (the 308 redirect) AND /catalog/<slug> (the ISR rewrite);
+  // '/oboi' feeds the same rewrite.
+  assert.match(
+    proxySrc,
+    /matcher:\s*\[\s*'\/admin\/:path\*',\s*'\/catalog\/:path\*',\s*'\/oboi'\s*\]/
+  );
   // Permanent redirect (method-preserving), anchored to the request origin.
   assert.match(proxySrc, /NextResponse\.redirect\(\s*new URL\(redirectPath, request\.url\),\s*308\s*\)/);
   // EVERY non-admin path returns before the admin session gate — otherwise
   // anonymous storefront visitors would be bounced to /admin/login.
   assert.match(proxySrc, /if \(!pathname\.startsWith\('\/admin'\)\)/);
-  // The decision is imported (single source), not duplicated inline.
+  // The decisions are imported (single source), not duplicated inline.
   assert.match(proxySrc, /catalogCategoryRedirect\(/);
+  // ISR split wiring: query-carrying requests rewrite to the twin routes.
+  assert.match(proxySrc, /catalogCategoryFilteredRewrite\(/);
+  assert.match(proxySrc, /oboiFilteredRewrite\(/);
+  assert.match(proxySrc, /NextResponse\.rewrite\(/);
 });
 
 test('PATHS: admin gate invariants survive the matcher change', () => {
@@ -132,7 +141,7 @@ test('PATHS: admin gate invariants survive the matcher change', () => {
   assert.match(proxySrc, /redirectResponse\.cookies\.set\(cookie\)/);
 });
 
-// ---- 3. the new route
+// ---- 3. the routes
 
 test('PATHS: /catalog/[category] route exists, 404s bad slugs, renders the shared view', () => {
   const routeSrc = src('app/catalog/[category]/page.tsx');
@@ -145,6 +154,70 @@ test('PATHS: /catalog/[category] route exists, 404s bad slugs, renders the share
   assert.match(routeSrc, /catch/);
   // Renders the shared server component with the PATH slug.
   assert.match(routeSrc, /<CatalogView\s+categorySlug=\{slug\}/);
+});
+
+test('PATHS: ISR — [category] renders ONLY the pure view (no searchParams anywhere)', () => {
+  const routeSrc = src('app/catalog/[category]/page.tsx');
+  // On-demand ISR like the PDP: build-time prerender of the active slugs,
+  // 60s revalidate of every entry (robots metadata included).
+  assert.match(routeSrc, /export const revalidate = 60/);
+  assert.match(routeSrc, /export async function generateStaticParams/);
+  assert.match(routeSrc, /fetchActiveCategories/);
+  // A dictionary read failure must not fail the build — degrade to
+  // on-demand rendering of every slug.
+  assert.match(routeSrc, /catch\s*\{[\s\S]*?return \[\];/);
+  // THE invariant of the split: the ISR route never awaits/passes
+  // searchParams — a dynamic access here would opt the whole route into
+  // dynamic rendering and disable the ISR cache.
+  assert.doesNotMatch(routeSrc, /await searchParams/);
+  assert.doesNotMatch(routeSrc, /rawParams=\{await searchParams\}/);
+  // Metadata reads ONLY params; the pure view's chain runs with {} params.
+  assert.match(routeSrc, /rawParams:\s*\{\}/);
+  assert.match(routeSrc, /rawParams=\{\{\}\}/);
+});
+
+test('PATHS: filtered twin renders query views dynamically with the full metadata chain', () => {
+  const twinSrc = src('app/catalog/[category]/filtered/page.tsx');
+  // Never cached: every filtered/sorted/paginated view renders per request
+  // with its noindex,follow metadata (lib/seo.ts).
+  assert.match(twinSrc, /export const dynamic = 'force-dynamic'/);
+  assert.match(twinSrc, /await searchParams/);
+  assert.match(twinSrc, /fetchCategoryBySlug/);
+  assert.match(twinSrc, /notFound\(\)/);
+  assert.match(twinSrc, /decodeURIComponent/);
+  assert.match(twinSrc, /<CatalogView\s+categorySlug=\{slug\}\s+rawParams=\{await searchParams\}\s*\/>/);
+});
+
+// ---- 3b. the ISR rewrite decisions (pure, same file as the redirect)
+
+test('PATHS: catalog filtered rewrite — query-carrying single-segment paths only', () => {
+  assert.equal(
+    catalogCategoryFilteredRewrite('/catalog/blendery-1402', '?sort=price_asc&page=2'),
+    '/catalog/blendery-1402/filtered'
+  );
+  // The bare path (ISR view) is never rewritten.
+  assert.equal(catalogCategoryFilteredRewrite('/catalog/blendery-1402', ''), null);
+  // Deeper or shallower shapes keep today's routing (404 / bare catalog).
+  assert.equal(catalogCategoryFilteredRewrite('/catalog', '?sort=price_asc'), null);
+  assert.equal(catalogCategoryFilteredRewrite('/catalog/a/b', '?sort=price_asc'), null);
+  // Unrelated paths untouched.
+  assert.equal(catalogCategoryFilteredRewrite('/product/abc', '?x=1'), null);
+  // Garbage percent-encoding falls through to the route's decode guard (404),
+  // and a decoded slug is re-encoded exactly once for the twin route.
+  assert.equal(catalogCategoryFilteredRewrite('/catalog/%zz', '?x=1'), null);
+  assert.equal(
+    catalogCategoryFilteredRewrite('/catalog/kat%20z%20probilom', '?page=2'),
+    '/catalog/kat%20z%20probilom/filtered'
+  );
+});
+
+test('PATHS: oboi filtered rewrite — bare /oboi with a query only', () => {
+  assert.equal(oboiFilteredRewrite('/oboi', '?page=2'), '/oboi/filtered');
+  assert.equal(oboiFilteredRewrite('/oboi', '?base=Флізелінова&sort=price_asc'), '/oboi/filtered');
+  // The ISR view itself is never rewritten; neither are other paths.
+  assert.equal(oboiFilteredRewrite('/oboi', ''), null);
+  assert.equal(oboiFilteredRewrite('/oboi/filtered', '?page=2'), null);
+  assert.equal(oboiFilteredRewrite('/', '?x=1'), null);
 });
 
 test('PATHS: /catalog delegates to CatalogView; the shared renderer keeps the metadata chain', () => {

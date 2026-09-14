@@ -188,21 +188,25 @@ test('WALLPAPER: fetchWallpaperProducts queries ONLY the wc- domain', () => {
 // ---- static: /oboi page, sitemap, home ----
 
 test('OBOI: page exists with exactly one h1, chips, grid and pagination', () => {
-  const page = read('app/oboi/page.tsx');
-  assert.equal((page.match(/<h1/g) ?? []).length, 1, 'exactly one h1');
-  assert.match(page, /<h1 className="text-2xl font-bold">Шпалери<\/h1>/);
-  assert.match(page, /buildWallpapersMetadata/, 'metadata from the seo policy');
-  assert.match(page, /WALLPAPER_CATEGORY_MAP/, 'chips come from the importer map');
-  assert.match(page, /\/catalog\/\$\{encodeURIComponent\(subcategory\.slug\)\}/,
+  // ISR split (2026-09-14): the markup lives on the shared OboiStorefront
+  // both /oboi routes render through; the ISR page owns metadata + data.
+  const shelf = read('app/oboi/OboiStorefront.tsx');
+  assert.equal((shelf.match(/<h1/g) ?? []).length, 1, 'exactly one h1');
+  assert.match(shelf, /<h1 className="text-2xl font-bold">Шпалери<\/h1>/);
+  assert.match(shelf, /WALLPAPER_CATEGORY_MAP/, 'chips come from the importer map');
+  assert.match(shelf, /\/catalog\/\$\{encodeURIComponent\(subcategory\.slug\)\}/,
     'chips deep-link into the wallpaper-scoped /catalog views (path form)');
-  assert.match(page, /fetchWallpaperProducts/, 'wc-* domain data source');
-  assert.match(page, /<ProductCard/, 'reuses ProductCard');
-  assert.match(page, /buildPageWindow/, 'catalog-style page window');
-  assert.equal((page.match(/<span aria-disabled="true"/g) ?? []).length, 2,
+  assert.match(shelf, /<ProductCard/, 'reuses ProductCard');
+  assert.match(shelf, /buildPageWindow/, 'catalog-style page window');
+  assert.equal((shelf.match(/<span aria-disabled="true"/g) ?? []).length, 2,
     'prev+next inactive sides pinned (P3-R2 contract)');
-  assert.match(page, /<Announcements\s*\/>/);
-  assert.doesNotMatch(page, /SearchViewTracker|<form/, 'v1: no search on /oboi');
-  assert.equal((page.match(/<main/g) ?? []).length, 1, 'exactly one main landmark');
+  assert.match(shelf, /<Announcements\s*\/>/);
+  assert.doesNotMatch(shelf, /SearchViewTracker|<form/, 'v1: no search on /oboi');
+  assert.equal((shelf.match(/<main/g) ?? []).length, 1, 'exactly one main landmark');
+
+  const page = read('app/oboi/page.tsx');
+  assert.match(page, /buildWallpapersMetadata/, 'metadata from the seo policy');
+  assert.match(page, /fetchWallpaperProducts/, 'wc-* domain data source');
 });
 
 test('OBOI: sitemap lists /oboi in the static set (indexable set = sitemap set)', () => {
