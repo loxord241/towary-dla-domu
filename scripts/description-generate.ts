@@ -159,7 +159,7 @@ if (mode === 'plan') {
       const p = toSource(raw);
       if (!isDraftTarget(p, { rewrite })) continue;
       counters.targets += 1;
-      const draft = buildDraftContent(p);
+      const draft = buildDraftContent(p, { rewrite });
       if (!draft) continue;
       counters.generatable += 1;
       if (examples.length < 3) {
@@ -201,7 +201,7 @@ for (let from = 0; written < limit; from += DESCRIPTION_DRAFT_BATCH_SIZE) {
     const p = toSource(raw);
     if (!isDraftTarget(p, { rewrite })) continue;
     counters.targets += 1;
-    const draft = buildDraftContent(p);
+    const draft = buildDraftContent(p, { rewrite });
     if (!draft) continue;
     batch.push({
       product_id: p.id,

@@ -106,8 +106,11 @@ function escapeHtml(s: string): string {
  * разметкой), поэтому sanitizer на импорте не нужен — текст по
  * построению плоский и безопасный.
  */
-export function buildDraftContent(row: DraftSourceProduct): DescriptionDraftContent | null {
-  if (!isDraftTarget(row)) return null;
+export function buildDraftContent(
+  row: DraftSourceProduct,
+  opts: { rewrite?: boolean } = {}
+): DescriptionDraftContent | null {
+  if (!isDraftTarget(row, opts)) return null;
 
   const lead = buildLeadParagraph({
     name: row.name,
