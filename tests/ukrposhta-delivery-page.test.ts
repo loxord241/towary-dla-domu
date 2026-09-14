@@ -39,7 +39,7 @@ test('DELIVERY-PAGE: pickup section quotes the canonical pickup points', () => {
   }
   // Domain split matches the checkout (техніка vs шпалери).
   assert.match(page, /Мазепи, 87А — побутова техніка/);
-  assert.match(page, /Серафимовича, 83А — шпалери/);
+  assert.match(page, /Мазепи, 83А — шпалери/);
 });
 
 test('DELIVERY-PAGE: payment is online LiqPay, cash allowed at pickup only', () => {

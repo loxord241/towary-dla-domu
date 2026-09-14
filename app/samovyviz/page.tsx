@@ -12,7 +12,7 @@ import SiteFooter from '@/app/components/SiteFooter';
 export const metadata: Metadata = {
   title: 'Самовивіз у Кривому Розі — Товари для дому',
   description:
-    'Безкоштовний самовивіз у Кривому Розі: побутова техніка й товари для дому — вул. Гетьмана Івана Мазепи, 87А, шпалери — вул. Серафимовича, 83А. Адреси, телефони та фото пунктів видачі.',
+    'Безкоштовний самовивіз у Кривому Розі: побутова техніка й товари для дому — вул. Гетьмана Івана Мазепи, 87А, шпалери — вул. Гетьмана Івана Мазепи, 83А. Адреси, телефони та фото пунктів видачі.',
   alternates: { canonical: '/samovyviz' },
 };
 
@@ -36,9 +36,9 @@ const MAZEPY_PHOTOS = Array.from({ length: 7 }, (_, i) => ({
   alt: `Пункт видачі на вул. Гетьмана Івана Мазепи, 87А — фото ${i + 1}`,
 }));
 
-const SERAFIMOVYCHA_PHOTOS = Array.from({ length: 9 }, (_, i) => ({
-  src: `/pickup/serafimovycha-${i + 1}.jpg`,
-  alt: `Пункт видачі «Затишок — світ шпалер» на вул. Серафимовича, 83А — фото ${i + 1}`,
+const MAZEPY_83A_PHOTOS = Array.from({ length: 9 }, (_, i) => ({
+  src: `/pickup/mazepy-83a-${i + 1}.jpg`,
+  alt: `Пункт видачі «Затишок — світ шпалер» на вул. Гетьмана Івана Мазепи, 83А — фото ${i + 1}`,
 }));
 
 const POINTS: PickupPointCard[] = [
@@ -50,11 +50,11 @@ const POINTS: PickupPointCard[] = [
     photos: MAZEPY_PHOTOS,
   },
   {
-    address: 'вул. Серафимовича, 83А',
+    address: 'вул. Гетьмана Івана Мазепи, 83А',
     specialization: 'Шпалери',
     phoneHref: 'tel:+380983584958',
     phoneLabel: '+380 (98) 358 49 58',
-    photos: SERAFIMOVYCHA_PHOTOS,
+    photos: MAZEPY_83A_PHOTOS,
   },
 ];
 
@@ -71,7 +71,7 @@ export default function SamovyvizPage() {
           <p className="mb-8 text-base leading-relaxed text-gray-600">
             Забрати замовлення можна безкоштовно в одній із двох точок видачі.
             Пункт обирається під час оформлення замовлення: техніка і товари
-            для дому чекають на Мазепи, шпалери — на Серафимовича. Якщо в
+            для дому чекають на Мазепи 87А, шпалери — на Гетьмана Івана Мазепи 83А. Якщо в
             кошику товари обох напрямків — усе замовлення чекатиме на обраній
             точці.
           </p>

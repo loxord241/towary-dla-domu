@@ -68,10 +68,12 @@ export interface CheckoutDelivery {
 }
 
 /**
- * Кривий Ріг pickup points (owner-defined 2026-09-12): техника выдаётся на
- * Мазепы 87А, шпалеры — на Серафимовича 83А; a mixed cart may pick either
- * (the whole order waits at the chosen point). Single source of truth for
- * the checkout UI, the sanitizer whitelist and the Telegram notice.
+ * Кривий Ріг pickup points (owner-defined 2026-09-12; wallpapers point
+ * address updated 2026-09-14 — street renamed to Гетьмана Івана Мазепи):
+ * техника выдаётся на Мазепы 87А, шпалеры — на Мазепы 83А; a mixed cart
+ * may pick either (the whole order waits at the chosen point). Single
+ * source of truth for the checkout UI, the sanitizer whitelist and the
+ * Telegram notice.
  */
 import type { ProductDomain } from './domains';
 
@@ -90,9 +92,9 @@ export const PICKUP_POINTS: readonly PickupPoint[] = [
     domains: ['tech'],
   },
   {
-    id: 'kr-serafimovycha-83a',
+    id: 'kr-mazepy-83a',
     city: 'Кривий Ріг',
-    address: 'вул. Серафимовича, 83А',
+    address: 'вул. Гетьмана Івана Мазепи, 83А',
     domains: ['wallpaper'],
   },
 ];

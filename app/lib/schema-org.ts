@@ -274,7 +274,8 @@ export function serializeJsonLd(data: Record<string, unknown>): string {
  * The logo is /public/og-image.png — the only brand image asset on the
  * origin (the header logo is text-only). Both pickup points are rendered as
  * two Store locations exactly as app/contacts lists them: Мазепи 87А —
- * побутова техніка; Серафимовича 83А — шпалери.
+ * побутова техніка; Мазепи 83А — шпалери (street formerly Серафимовича,
+ * renamed 2026-09-14 per owner).
  *
  * Emitted through serializeJsonLd by OrganizationJsonLd.tsx inside the root
  * layout, so every SSR page carries the graph.
@@ -288,7 +289,7 @@ export const STORE_LOCATIONS: { name: string; streetAddress: string }[] = [
   },
   {
     name: 'Пункт видачі — шпалери',
-    streetAddress: 'вул. Серафимовича, 83А',
+    streetAddress: 'вул. Гетьмана Івана Мазепи, буд. 83А',
   },
 ];
 

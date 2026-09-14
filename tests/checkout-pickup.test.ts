@@ -2,8 +2,9 @@
  * «Самовивіз, Кривий Ріг» — checkout pickup flow (2026-09-12).
  *
  * Two pickup points split by cart domain (owner decision): техника —
- * вул. Гетьмана Івана Мазепи, 87А, шпалери (wc-*) — вул. Серафимовича,
- * 83А; a mixed cart offers BOTH points with a «весь заказ будет ждать на
+ * вул. Гетьмана Івана Мазепи, 87А, шпалери (wc-*) — вул. Гетьмана Івана
+ * Мазепи, 83А (street renamed from Серафимовича 2026-09-14); a mixed cart
+ * offers BOTH points with a «весь заказ будет ждать на
  * обраній точці» warning. Payment: online LiqPay as usual OR cash at the
  * point (paymentIntent in shipping_info.delivery; the order page hides the
  * LiqPay button for cash_on_pickup).
@@ -82,10 +83,11 @@ test('PICKUP sanitize: whitelisted points, canonical address, default online', (
     assert.equal(res.value.paymentIntent, 'online', 'default is online');
     assert.equal(res.value.settlementId, undefined, 'pickup has no carrier ids');
   }
-  // Both owner-defined points exist with the contracted addresses.
+  // Both owner-defined points exist with the contracted addresses
+  // (wallpapers street renamed 2026-09-14: Серафимовича → Мазепи 83А).
   assert.deepEqual(
     PICKUP_POINTS.map((p) => p.address),
-    ['вул. Гетьмана Івана Мазепи, 87А', 'вул. Серафимовича, 83А']
+    ['вул. Гетьмана Івана Мазепи, 87А', 'вул. Гетьмана Івана Мазепи, 83А']
   );
   assert.deepEqual([...PICKUP_PAYMENT_INTENTS], ['online', 'cash_on_pickup']);
 });
@@ -241,10 +243,10 @@ test('TELEGRAM: pickup delivery line carries the point address', () => {
   const line = describeDelivery({
     serviceType: 'pickup',
     settlementName: 'Кривий Ріг',
-    pickupPointName: 'Кривий Ріг, вул. Серафимовича, 83А',
+    pickupPointName: 'Кривий Ріг, вул. Гетьмана Івана Мазепи, 83А',
     paymentIntent: 'cash_on_pickup',
   });
-  assert.equal(line, 'Самовивіз, Кривий Ріг, вул. Серафимовича, 83А');
+  assert.equal(line, 'Самовивіз, Кривий Ріг, вул. Гетьмана Івана Мазепи, 83А');
   // Degraded row (no point name) still names the city.
   assert.equal(
     describeDelivery({ serviceType: 'pickup', settlementName: 'Кривий Ріг' }),
@@ -257,14 +259,14 @@ test('TELEGRAM: cash_on_pickup order announces the cash payment line', () => {
     ...BASE_DATA,
     delivery: {
       serviceType: 'pickup',
-      pickupPointName: 'Кривий Ріг, вул. Серафимовича, 83А',
+      pickupPointName: 'Кривий Ріг, вул. Гетьмана Івана Мазепи, 83А',
       paymentIntent: 'cash_on_pickup',
     },
   });
   // 2026-09-13: message rework — cash line now tells the owner what to do.
   assert.match(cash, /Оплата: 💰 готівка на точці — познач «Оплачено» після отримання коштів/);
   assert.match(cash, /НОВЕ ЗАМОВЛЕННЯ — підтверди його!/);
-  assert.match(cash, /Доставка: Самовивіз, Кривий Ріг, вул\. Серафимовича, 83А/);
+  assert.match(cash, /Доставка: Самовивіз, Кривий Ріг, вул\. Гетьмана Івана Мазепи, 83А/);
   // Online pickup order keeps the honest default line.
   const online = buildOrderNotificationMessage({
     ...BASE_DATA,

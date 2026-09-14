@@ -53,9 +53,10 @@ test('SAMOVYVIZ: exactly one h1, mobile tap targets, phones, calls line', () => 
 // ---------------------------------------------------------------------------
 
 test('SAMOVYVIZ: both pickup points with canonical addresses', () => {
-  // Same canonical forms as PICKUP_POINTS (checkout-delivery.ts whitelist).
+  // Same canonical forms as PICKUP_POINTS (checkout-delivery.ts whitelist;
+  // wallpapers street renamed 2026-09-14: Серафимовича → Мазепи 83А).
   assert.match(PAGE, /вул\. Гетьмана Івана Мазепи, 87А/);
-  assert.match(PAGE, /вул\. Серафимовича, 83А/);
+  assert.match(PAGE, /вул\. Гетьмана Івана Мазепи, 83А/);
   assert.match(PAGE, /Побутова техніка і товари для дому/);
   assert.match(PAGE, /Шпалери/);
   assert.match(PAGE, /Безкоштовно/);
@@ -68,14 +69,15 @@ test('SAMOVYVIZ: next/image photos with width/height, files committed ≤200 KB'
   // The first photo may compete for LCP — exactly one priority on the page.
   assert.equal((PAGE.match(/priority=/g) ?? []).length, 1);
 
-  // Photo sets are generated (7 mazepy + 9 serafimovycha, owner files
-  // «товари для дому N» / «обои N»): pin the generation contract, then
-  // verify every generated file exists on disk within the ≤200 KB cap.
+  // Photo sets are generated (7 mazepy + 9 mazepy-83a — the wallpapers
+  // point, formerly «serafimovycha» files, renamed 2026-09-14): pin the
+  // generation contract, then verify every generated file exists on disk
+  // within the ≤200 KB cap.
   assert.match(PAGE, /Array\.from\(\{ length: 7 \}[\s\S]*?\/pickup\/mazepy-\$\{i \+ 1\}\.jpg/);
-  assert.match(PAGE, /Array\.from\(\{ length: 9 \}[\s\S]*?\/pickup\/serafimovycha-\$\{i \+ 1\}\.jpg/);
+  assert.match(PAGE, /Array\.from\(\{ length: 9 \}[\s\S]*?\/pickup\/mazepy-83a-\$\{i \+ 1\}\.jpg/);
   const referenced = [
     ...Array.from({ length: 7 }, (_, i) => `mazepy-${i + 1}.jpg`),
-    ...Array.from({ length: 9 }, (_, i) => `serafimovycha-${i + 1}.jpg`),
+    ...Array.from({ length: 9 }, (_, i) => `mazepy-83a-${i + 1}.jpg`),
   ];
   for (const name of referenced) {
     const file = path.join(root, 'public', 'pickup', name);

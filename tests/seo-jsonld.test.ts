@@ -338,7 +338,11 @@ test('OrgGraph: builder emits the Organization facts, nothing invented', () => {
   assert.equal(locations.length, 2);
   assert.deepEqual(
     locations.map((l) => l.address.streetAddress).sort(),
-    ['вул. Гетьмана Івана Мазепи, буд. 87А', 'вул. Серафимовича, 83А'].sort()
+    // Обе точки на Мазепы (шпалерная улица переименована 2026-09-14).
+    [
+      'вул. Гетьмана Івана Мазепи, буд. 83А',
+      'вул. Гетьмана Івана Мазепи, буд. 87А',
+    ].sort()
   );
 });
 
@@ -348,7 +352,7 @@ test('OrgGraph: both phones and both pickup addresses survive serialization', ()
     '+380973144221',
     '+380983584958',
     'вул. Гетьмана Івана Мазепи, буд. 87А',
-    'вул. Серафимовича, 83А',
+    'вул. Гетьмана Івана Мазепи, буд. 83А',
     'Кривий Ріг',
     'magazinujut@gmail.com',
   ]) {

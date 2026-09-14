@@ -133,7 +133,7 @@ export default function CheckoutForm() {
   const [previewError, setPreviewError] = useState(false);
 
   // Домен кошика для самовивоза (власник 2026-09-12): шпалери (slug wc-*)
-  // видаються на Серафимовича 83А, техніка — на Мазепи 87А; змішаний кошик
+  // видаються на Мазепи 83А, техніка — на Мазепи 87А; змішаний кошик
   // пропонує ОБИДВІ точки з попередженням. Поки превʼю не завантажено —
   // безпечний дефолт: обидві.
   const cartHasWallpapers = lines.some((l) => isWallpaperSlug(l.slug));
