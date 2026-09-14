@@ -449,8 +449,17 @@ export default function CheckoutForm() {
     const emailTrimmed = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailTrimmed))
       errs.email = 'Вкажіть коректний email';
-    if (phoneDigits.length > 0 && phoneDigits.length < 9)
+    // Телефон обов’язковий ТІЛЬКИ для кур’єра Нової пошти (вирішення
+    // власника 2026-09-14): кур’єр дзвонить отримувачу перед врученням,
+    // тож без номера замовлення не оформлюємо. Відділення/поштомат/
+    // Укрпошта/самовивіз лишають телефон необов’язковим; частково
+    // набраний номер і тут отримує «повний номер».
+    if (phoneDigits.length === 0) {
+      if (deliveryType === 'nova_poshta_courier')
+        errs.phone = 'Вкажіть номер телефону — кур’єр зателефонує вам';
+    } else if (phoneDigits.length < 9) {
       errs.phone = 'Вкажіть повний номер після +380';
+    }
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
       return;
@@ -584,6 +593,9 @@ export default function CheckoutForm() {
             <ContactFields
               firstName={firstName} lastName={lastName} patronymic={patronymic}
               email={email} phoneDigits={phoneDigits}
+              // «*» у телефона появляется только для курьера НП — там он
+              // обязателен (сервер проверяет то же правило).
+              phoneRequired={deliveryType === 'nova_poshta_courier'}
               fieldErrors={fieldErrors}
               setFirstName={setFirstName} setLastName={setLastName}
               setPatronymic={setPatronymic} setEmail={setEmail}

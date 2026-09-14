@@ -18,6 +18,11 @@ interface ContactFieldsProps {
   patronymic: string;
   email: string;
   phoneDigits: string;
+  /** «*» next to the phone label ONLY for nova_poshta_courier (owner
+   * decision 2026-09-14: the courier calls the recipient) — every other
+   * service keeps the phone optional; enforcement lives in the
+   * orchestrator's submit validation + the orders route. */
+  phoneRequired?: boolean;
   fieldErrors: CheckoutFieldErrors;
   setFirstName: (value: string) => void;
   setLastName: (value: string) => void;
@@ -35,6 +40,7 @@ export default function ContactFields({
   patronymic,
   email,
   phoneDigits,
+  phoneRequired = false,
   fieldErrors,
   setFirstName,
   setLastName,
@@ -152,7 +158,7 @@ export default function ContactFields({
 
       <div>
         <label htmlFor="co-phone" className="label">
-          Телефон
+          Телефон{phoneRequired ? ' *' : ''}
         </label>
         {/* Fixed +380 prefix: the user only ever types the 9 national
             digits. Paste/autofill of "+380971234567" / "0971234567" is

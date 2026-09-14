@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import FavoriteButton from './FavoriteButton';
+import CardAddToCartButton from './CardAddToCartButton';
 import { formatPrice } from '@/app/lib/format';
 
 function availabilityLabel(status: string): string {
@@ -22,7 +23,8 @@ export interface ProductCardData {
 
 /**
  * Unified storefront product card used on the home page and the catalog.
- * Pure server component; the favorite toggle is a client island.
+ * Pure server component; the favorite toggle and the compact «У кошик»
+ * add are client islands.
  */
 export default function ProductCard({
   product,
@@ -110,6 +112,21 @@ export default function ProductCard({
           )}
         </div>
       </Link>
+
+      {/* Conversion fix (UI audit 2026-09-14): one-click add straight from
+          the grid card. The island sits OUTSIDE the card Link (no nested
+          interactive elements) and is hidden entirely for out_of_stock —
+          the photo badge already says why. Availability rides in the card
+          projection; the stock level does not, so place_order() stays the
+          real boundary (checkout surfaces unavailable lines). */}
+      {!outOfStock && (
+        <div className="px-4 pb-4 pt-1">
+          <CardAddToCartButton
+            productId={product.id}
+            productName={product.name}
+          />
+        </div>
+      )}
     </div>
   );
 }

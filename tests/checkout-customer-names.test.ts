@@ -8,6 +8,8 @@
  *    compatible with legacy `name`-only payloads;
  *  - /api/orders composes the full name server-side and enforces UA E.164
  *    for non-empty phones (strengthened, never weakened);
+ *  - phone is REQUIRED only for nova_poshta_courier (owner decision
+ *    2026-09-14, client + server), optional everywhere else;
  *  - CheckoutForm renders Ім'я/Прізвище/По батькові, a fixed +380 prefix
  *    phone field, and a debounce + loading/empty-state settlements
  *    autocomplete that only accepts dictionary ids;
@@ -83,6 +85,32 @@ test('CUSTOMER-NAMES: orders route enforces UA E.164 for non-empty phones', () =
   );
   // Optional phone stays optional.
   assert.match(r, /if \(phone\.length > 40\)/);
+});
+
+// Owner decision 2026-09-14: the Nova Poshta courier calls the recipient
+// before handover, so an EMPTY phone blocks a courier order on BOTH sides.
+// Відділення/поштомат/Укрпошта/самовивіз keep the phone optional.
+test('CUSTOMER-FORM: phone required only for the NP courier delivery', () => {
+  const f = src('app/checkout/CheckoutForm.tsx');
+  const r = src('app/api/orders/route.ts');
+  const c = src(CONTACT_FIELDS);
+
+  // Client: empty + courier -> the courier message; a partially typed
+  // number keeps the pre-existing «повний номер» message either way.
+  assert.match(
+    f,
+    /if \(phoneDigits\.length === 0\) \{\s*if \(deliveryType === 'nova_poshta_courier'\)\s*errs\.phone = 'Вкажіть номер телефону — кур’єр зателефонує вам';\s*\} else if \(phoneDigits\.length < 9\) \{\s*errs\.phone = 'Вкажіть повний номер після \+380';/
+  );
+  // Server: the same rule, gated by the sanitized delivery service type.
+  assert.match(
+    r,
+    /delivery\.value\.serviceType === 'nova_poshta_courier'/
+  );
+  assert.match(r, /Вкажіть номер телефону — кур’єр зателефонує вам/);
+  // The «*» marker on the label is courier-driven via the prop.
+  assert.match(f, /phoneRequired=\{deliveryType === 'nova_poshta_courier'\}/);
+  assert.match(c, /phoneRequired\?: boolean/);
+  assert.match(c, /Телефон\{phoneRequired \? ' \*' : ''\}/);
 });
 
 // ---- CheckoutForm ----
