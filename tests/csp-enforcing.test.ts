@@ -59,7 +59,7 @@ test('CSP: required directives are present with audited sources', async () => {
   // without them the analytics hits were CSP-blocked in production.
   assert.equal(
     directives['script-src'],
-    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://static.clarity.ms"
+    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://static.clarity.ms https://scripts.clarity.ms"
   );
   assert.match(directives['script-src'] ?? '', /googletagmanager\.com/);
   assert.equal(directives['style-src'], "style-src 'self' 'unsafe-inline'");

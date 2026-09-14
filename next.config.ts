@@ -37,7 +37,7 @@ const SLAV_IMAGE_ORIGIN = "https://oboi-slav-oboi.com";
  *    development, where React dev tooling uses eval.
  *  - Web analytics (owner task 2026-09-13, пакет А): GA4 loader
  *    (googletagmanager.com), Microsoft Clarity loader (clarity.ms/tag/)
- *    and its chunk host (static.clarity.ms) in script-src; their beacon
+ *    and its chunk host (scripts.clarity.ms) in script-src; their beacon
  *    endpoints in connect-src (google-analytics.com www+region1,
  *    clarity.ms + b.clarity.ms) and pixel fallbacks in img-src.
  *  - style-src 'self' 'unsafe-inline': compiled CSS plus React inline
@@ -60,7 +60,7 @@ function buildCsp(isDev: boolean): string {
     "default-src 'self'",
     // 2026-09-13: GA4 (googletagmanager loader) + Microsoft Clarity
     // (loader at clarity.ms/tag/, chunk from static.clarity.ms).
-    `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://static.clarity.ms${isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://static.clarity.ms https://scripts.clarity.ms${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     [
       "img-src 'self'",
