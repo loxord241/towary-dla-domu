@@ -39,7 +39,7 @@ const SLAV_IMAGE_ORIGIN = "https://oboi-slav-oboi.com";
  *    (googletagmanager.com), Microsoft Clarity loader (clarity.ms/tag/)
  *    and its chunk host (scripts.clarity.ms) in script-src; their beacon
  *    endpoints in connect-src (google-analytics.com www+region1,
- *    clarity.ms + b.clarity.ms) and pixel fallbacks in img-src.
+ *    clarity.ms + b/t.clarity.ms) and pixel fallbacks in img-src.
  *  - style-src 'self' 'unsafe-inline': compiled CSS plus React inline
  *    style attributes (4 sanctioned components). Same nonce/dynamic-
  *    rendering constraint applies; kept minimal and documented.
@@ -83,6 +83,7 @@ function buildCsp(isDev: boolean): string {
       "https://region1.google-analytics.com",
       "https://www.clarity.ms",
       "https://b.clarity.ms",
+      "https://t.clarity.ms",
     ]
       .filter(Boolean)
       .join(" "),
