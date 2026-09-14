@@ -91,6 +91,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/oboi',
     '/delivery',
     '/contacts',
+    // Pickup page (owner task 2026-09-14): static indexable route with a
+    // self-canonical in its metadata, so the «indexable set = sitemap set»
+    // invariant holds.
+    '/samovyviz',
     '/about',
     '/returns',
     '/privacy',
