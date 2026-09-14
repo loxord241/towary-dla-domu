@@ -7,6 +7,16 @@
  * category URLs into the human-readable path form. The canonical side of
  * the same decision lives in lib/seo.ts (decideCatalogIndexing), and the
  * sitemap (app/sitemap.ts) lists the path shape — all three must agree.
+ *
+ * ISR split (perf/SEO audit 2026-09-14): /catalog/<slug> and /oboi render
+ * WITHOUT searchParams and are ISR-cached (revalidate 60). A query string
+ * on those paths must never reach the cached page — the ISR cache key is
+ * the pathname alone, so ?sort/?page/?base views would silently get the
+ * pure view's HTML (wrong order AND wrong robots). proxy.ts therefore
+ * rewrites every query-carrying request to the internal «/filtered» twin
+ * routes, which keep today's per-request rendering and full noindex
+ * metadata. The decisions below are the pure, tested side of that split;
+ * the rewrites are internal (browser URL unchanged).
  */
 
 /**
@@ -36,4 +46,48 @@ export function catalogCategoryRedirect(
   params.delete('category');
   const qs = params.toString();
   return `/catalog/${encodeURIComponent(slug)}${qs ? `?${qs}` : ''}`;
+}
+
+/**
+ * Internal rewrite target for a query-carrying /catalog/<slug> request, or
+ * null when the request must fall through to the ISR-cached category page.
+ *
+ * Rewrites ONLY: exactly one path segment after /catalog (deeper shapes are
+ * today's 404s and stay that way), a NON-EMPTY query string (the bare path
+ * is the ISR view) and a decodable segment (garbage percent-encoding keeps
+ * flowing to the route, whose decode guard 404s it — same as before the
+ * split). The returned path re-encodes the segment so the twin route sees
+ * the same params.category value the [category] route would have; the
+ * caller must preserve the original query string verbatim (the rewrite
+ * never changes it).
+ */
+export function catalogCategoryFilteredRewrite(
+  pathname: string,
+  search: string
+): string | null {
+  if (search === '') return null;
+  const match = /^\/catalog\/([^/]+)$/.exec(pathname);
+  const rawSegment = match?.[1];
+  if (!rawSegment) return null;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(rawSegment);
+  } catch {
+    return null;
+  }
+  return `/catalog/${encodeURIComponent(decoded)}/filtered`;
+}
+
+/**
+ * Internal rewrite target for a query-carrying /oboi request, or null when
+ * the request must fall through to the ISR-cached storefront. Mirror of
+ * catalogCategoryFilteredRewrite for the static /oboi path (?page/?base/
+ * ?sort are all query-only there — see app/oboi/page.tsx).
+ */
+export function oboiFilteredRewrite(
+  pathname: string,
+  search: string
+): string | null {
+  if (pathname !== '/oboi' || search === '') return null;
+  return '/oboi/filtered';
 }

@@ -46,7 +46,9 @@ test('LINKS: home category cards link to /catalog/<slug> (path form)', () => {
 });
 
 test('LINKS: /oboi subcategory + glue chips link to /catalog/<slug>', () => {
-  const page = src('app/oboi/page.tsx');
+  // ISR split (2026-09-14): the chips markup lives on the shared
+  // OboiStorefront both /oboi routes render through.
+  const page = src('app/oboi/OboiStorefront.tsx');
   assert.match(
     page,
     /href=\{`\/catalog\/\$\{encodeURIComponent\(subcategory\.slug\)\}`\}/

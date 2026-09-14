@@ -99,7 +99,9 @@ test('PDP: glue shelf mounts only on wallpaper products', () => {
 });
 
 test('oboi showcase links the glue category as a general catalog view', () => {
-  const source = read('app/oboi/page.tsx');
+  // ISR split (2026-09-14): the chips markup lives on the shared
+  // OboiStorefront both /oboi routes render through.
+  const source = read('app/oboi/OboiStorefront.tsx');
   assert.match(source, /GLUE_CATEGORY_SLUG/);
   assert.match(source, /Клеї для шпалер/);
 });
