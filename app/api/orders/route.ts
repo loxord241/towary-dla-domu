@@ -157,6 +157,22 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+  // Кур’єр Нова пошта без телефона невозможен (вирішення власника
+  // 2026-09-14): кур’єр дзвонить отримувачу перед врученням. Правило
+  // зеркалится в CheckoutForm.submit; відділення/поштомат/Укрпошта/
+  // самовивіз і legacy-контракт без delivery лишають телефон
+  // необов’язковим — проверка E.164 выше по-прежнему применяется только
+  // к непустым номерам.
+  if (
+    delivery.kind === 'ok' &&
+    delivery.value.serviceType === 'nova_poshta_courier' &&
+    phone === ''
+  ) {
+    return NextResponse.json(
+      { error: 'Вкажіть номер телефону — кур’єр зателефонує вам' },
+      { status: 400 }
+    );
+  }
   const shippingStrings: Record<string, unknown> = { ...shippingRaw };
   delete shippingStrings.delivery;
   const shippingInfo = sanitizeShippingInfo(shippingStrings);
