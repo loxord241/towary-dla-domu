@@ -69,12 +69,18 @@ export interface DescriptionDraftContent {
  * пустой/placeholder description. is_active НЕ проверяется здесь — это
  * обязанность запроса (structural filter), не данных строки.
  */
-export function isDraftTarget(row: {
-  description: string | null | undefined;
-  specifications: unknown;
-}): boolean {
+export function isDraftTarget(
+  row: {
+    description: string | null | undefined;
+    specifications: unknown;
+  },
+  /** Rewrite mode (2026-09-15, спека §9 сегмент №2): target is ALSO
+      products with a real (non-placeholder) supplier description — the
+      generated factual text replaces brand boilerplate. */
+  opts: { rewrite?: boolean } = {}
+): boolean {
   if (sanitizeSpecRows(row.specifications).length < LEAD_MIN_SPECS) return false;
-  return isPlaceholderDescription(row.description);
+  return opts.rewrite === true || isPlaceholderDescription(row.description);
 }
 
 /** Escape a text node for embedding into the products.description HTML column. */

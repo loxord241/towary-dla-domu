@@ -52,11 +52,12 @@ const mode = process.argv.includes('--run')
     ? 'plan'
     : null;
 if (!mode) {
-  console.error('Використання: --plan | --run --limit N [--category slug]');
+  console.error('Використання: --plan | --run --limit N [--category slug] [--rewrite]');
   process.exit(1);
 }
 
 const limitIdx = process.argv.indexOf('--limit');
+const rewrite = process.argv.includes('--rewrite');
 const limitRaw = limitIdx !== -1 ? process.argv[limitIdx + 1] : undefined;
 const limit = mode === 'run' ? Math.max(0, Math.floor(Number(limitRaw ?? '200')) || 0) : 0;
 if (mode === 'run' && limit <= 0) {
@@ -156,7 +157,7 @@ if (mode === 'plan') {
     counters.scanned += rows.length;
     for (const raw of rows) {
       const p = toSource(raw);
-      if (!isDraftTarget(p)) continue;
+      if (!isDraftTarget(p, { rewrite })) continue;
       counters.targets += 1;
       const draft = buildDraftContent(p);
       if (!draft) continue;
@@ -198,7 +199,7 @@ for (let from = 0; written < limit; from += DESCRIPTION_DRAFT_BATCH_SIZE) {
   const batch: Array<{ product_id: string; lead: string; description_text: string; source: string }> = [];
   for (const raw of rows) {
     const p = toSource(raw);
-    if (!isDraftTarget(p)) continue;
+    if (!isDraftTarget(p, { rewrite })) continue;
     counters.targets += 1;
     const draft = buildDraftContent(p);
     if (!draft) continue;
