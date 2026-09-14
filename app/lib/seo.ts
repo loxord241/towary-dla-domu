@@ -183,6 +183,17 @@ export function truncateMetaDescription(text: string, max = 160): string {
   return (cut > 0 ? window.slice(0, cut) : flat.slice(0, max)).trim();
 }
 
+/**
+ * Geo tail for the TEMPLATE descriptions (marketing audit 2026-09-14:
+ * generic metas carried no geo). Added to description templates only —
+ * titles stay geo-free (a city tail would push them past the ~60-char
+ * SERP window). Search views keep the bare query echo: they are noindex
+ * duplicates, geo there adds nothing. Admin category copy, when present,
+ * wins unchanged (truncateMetaDescription) — the templates are the
+ * fallback path.
+ */
+const GEO_TAIL = 'з доставкою по Україні та самовивозом у Кривому Розі';
+
 export function buildCatalogViewMetadata(
   args: CatalogViewMetadataArgs
 ): ViewMetadata {
@@ -191,7 +202,7 @@ export function buildCatalogViewMetadata(
 
   let title = `Каталог товарів | ${SITE_NAME}`;
   let description =
-    'Каталог товарів інтернет-магазину Товари для дому з фільтрами та сортуванням.';
+    'Каталог товарів інтернет-магазину Товари для дому з фільтрами та сортуванням — доставка по Україні та самовивіз у Кривому Розі.';
 
   if (input.search) {
     const q = truncateQuery(input.search);
@@ -207,10 +218,10 @@ export function buildCatalogViewMetadata(
       : '';
     description =
       adminCopy ||
-      `Товари у категорії «${categoryName}» — купити в інтернет-магазині ${SITE_NAME}.`;
+      `Товари у категорії «${categoryName}» — купити в інтернет-магазині ${SITE_NAME} ${GEO_TAIL}.`;
   } else if (input.brandSlug && brandName) {
     title = `${brandName} — купити в ${SITE_NAME}`;
-    description = `Товари бренду ${brandName} — купити в інтернет-магазині ${SITE_NAME}.`;
+    description = `Товари бренду ${brandName} — купити в інтернет-магазині ${SITE_NAME} ${GEO_TAIL}.`;
   }
 
   return {
@@ -251,8 +262,9 @@ export function buildWallpapersMetadata(
   const title = `Шпалери — купити в ${SITE_NAME}`;
   // Copy stays factual: the type list mirrors the wallpaper subcategory
   // names the importer creates (app/lib/wallpapers/categories.ts);
-  // «метрові» removed 2026-09-12 together with the category.
-  const description = `Каталог шпалер інтернет-магазину ${SITE_NAME}: вініл, флізелін, дуплекс, шовкографія та інші типи — з доставкою по Україні.`;
+  // «метрові» removed 2026-09-12 together with the category. Geo tail in
+  // the description only (audit 2026-09-14) — the title stays geo-free.
+  const description = `Каталог шпалер інтернет-магазину ${SITE_NAME}: вініл, флізелін, дуплекс, шовкографія та інші типи — ${GEO_TAIL}.`;
 
   if (page > 1 || base !== undefined || (sort !== undefined && sort !== '')) {
     return {

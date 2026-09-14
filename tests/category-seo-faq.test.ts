@@ -7,7 +7,9 @@
  * (buildFaqJsonLd, splitDescriptionParagraphs, WALLPAPER_FAQ) is tested
  * by direct import. The SQL file is a draft seed applied by the
  * orchestrator via MCP — the test pins its coverage contract so the file
- * cannot silently drift from the 11 wallpaper slugs.
+ * cannot silently drift from the 11 wallpaper slugs (2026-09-11) plus the
+ * 20 top non-wallpaper categories (2026-09-14, migration 049, byte-level
+ * seed/migration consistency pinned below).
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -32,7 +34,8 @@ process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= 'test-anon-key';
 (globalThis as Record<string, unknown>).AsyncLocalStorage ??= AsyncLocalStorage;
 const { splitDescriptionParagraphs } = await import('../app/lib/category-description.ts');
 
-const EXPECTED_SLUGS = [
+// The 11 wallpaper slugs (draft 2026-09-11, applied live).
+const WALLPAPER_SLUGS = [
   'shpaleri',
   'shpaleri-akryl',
   'shpaleri-vinyl-10m',
@@ -46,7 +49,58 @@ const EXPECTED_SLUGS = [
   'shpaleri-supermiika',
 ];
 
-// ---- 1. data/category-seo-texts.sql covers exactly the 11 slugs -----------
+// The top-20 non-wallpaper categories (draft 2026-09-14, migration 049) —
+// largest active categories that had no description (marketing audit:
+// 166/176 without copy). Same texts live in the seed file AND in
+// database/migrations/049_category_seo_texts.sql; consistency is pinned
+// below.
+const CONTENT_SLUGS = [
+  'nozhi-1360',
+  'tarilky-salatnyky-bliuda-1382',
+  'skovoridky-ta-soteinyky-1367',
+  'formy-dlia-vypikannia-1368',
+  'kukhonni-aksesuary-1348',
+  'kholodylnyky-490',
+  'kastruli-ta-kovshi-1363',
+  'nabory-nozhiv-1359',
+  'elektrochainyky-1409',
+  'pralni-mashyny-488',
+  'pylosmoky-akumuliatorni-ta-abo-robotyzovani-1247',
+  'prasky-parovi-systemy-103',
+  'mashynky-dlia-stryzhky-1425',
+  'chashky-1391',
+  'stolovi-prybory-1387',
+  'feny-1428',
+  'vytiazhky-1215',
+  'poverkhni-197',
+  'elektroshchitky-zubni-118',
+  'blendery-1402',
+];
+
+const EXPECTED_SLUGS = [...WALLPAPER_SLUGS, ...CONTENT_SLUGS];
+
+/**
+ * Extracts slug → description literal from a SQL file. The capture-group
+ * order differs between the seed's UPDATE (literal, slug) and migration
+ * 049's INSERT (slug, literal), so the caller states both indexes.
+ */
+function extractDescriptions(
+  sql: string,
+  statement: RegExp,
+  literalGroup: number,
+  slugGroup: number
+): Map<string, string> {
+  const map = new Map<string, string>();
+  let match: RegExpExecArray | null;
+  while ((match = statement.exec(sql)) !== null) {
+    const literal = match[literalGroup];
+    const slug = match[slugGroup];
+    if (literal && slug) map.set(slug, literal);
+  }
+  return map;
+}
+
+// ---- 1. data/category-seo-texts.sql covers exactly the 31 slugs -----------
 
 test('SEO-TEXTS: sql file exists with a draft header (date, author, owner-editable note)', () => {
   const sql = src('data/category-seo-texts.sql');
@@ -55,31 +109,30 @@ test('SEO-TEXTS: sql file exists with a draft header (date, author, owner-editab
   assert.match(sql, /владел/i, 'owner-editable note must be in the header');
 });
 
-test('SEO-TEXTS: exactly 11 UPDATEs covering exactly the 11 wallpaper slugs', () => {
+test('SEO-TEXTS: exactly 31 UPDATEs covering exactly the 31 seed slugs', () => {
   const sql = src('data/category-seo-texts.sql');
   const updates = sql.match(/UPDATE categories SET description = '/g) ?? [];
-  assert.equal(updates.length, 11, `expected 11 UPDATE statements, found ${updates.length}`);
+  assert.equal(updates.length, 31, `expected 31 UPDATE statements, found ${updates.length}`);
 
-  const statement = /SET description = '((?:[^']|'')+)' WHERE slug = '([a-z0-9-]+)';/g;
-  const found: string[] = [];
-  const literals: string[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = statement.exec(sql)) !== null) {
-    const literal = match[1];
-    const slug = match[2];
-    if (!literal || !slug) continue;
-    literals.push(literal);
-    found.push(slug);
-  }
-  assert.equal(found.length, 11, 'every UPDATE must address exactly one slug');
+  const seed = extractDescriptions(
+    sql,
+    /SET description = '((?:[^']|'')+)' WHERE slug = '([a-z0-9-]+)';/g,
+    1,
+    2
+  );
+  const found = [...seed.keys()];
+  assert.equal(found.length, 31, 'every UPDATE must address exactly one slug');
   assert.deepEqual([...found].sort(), [...EXPECTED_SLUGS].sort());
-  assert.equal(new Set(found).size, 11, 'no duplicate slugs');
+  assert.equal(new Set(found).size, 31, 'no duplicate slugs');
   // regex round-trip proves single quotes are escaped ('') — a lone ' would
   // have terminated the literal and broken the match above
-  for (const literal of literals) {
-    assert.ok(literal.length >= 200, 'text too thin for a category description');
+  for (const [slug, literal] of seed) {
+    assert.ok(literal.length >= 200, `text too thin for a category description: ${slug}`);
     const paragraphs = literal.split(/\r?\n\s*\r?\n/);
-    assert.equal(paragraphs.length, 2, 'each text must be exactly two paragraphs');
+    assert.ok(
+      paragraphs.length >= 2 && paragraphs.length <= 3,
+      `${slug}: text must be 2–3 paragraphs, got ${paragraphs.length}`
+    );
     for (const paragraph of paragraphs) {
       assert.ok(paragraph.trim().length >= 80, 'each paragraph must carry real content');
     }
@@ -87,7 +140,11 @@ test('SEO-TEXTS: exactly 11 UPDATEs covering exactly the 11 wallpaper slugs', ()
 });
 
 test('SEO-TEXTS: texts are factual — no marketing boilerplate or invented claims', () => {
-  const sql = src('data/category-seo-texts.sql').toLowerCase();
+  // Both the seed file and migration 049 must stay claim-free.
+  const sources = [
+    src('data/category-seo-texts.sql'),
+    src('database/migrations/049_category_seo_texts.sql'),
+  ];
   for (const banned of [
     'років на ринку',
     'найкращ',
@@ -97,7 +154,70 @@ test('SEO-TEXTS: texts are factual — no marketing boilerplate or invented clai
     'топ-якість',
     'гарантія якості',
   ]) {
-    assert.ok(!sql.includes(banned), `marketing claim leaked into seo texts: ${banned}`);
+    for (const source of sources) {
+      assert.ok(
+        !source.toLowerCase().includes(banned),
+        `marketing claim leaked into seo texts: ${banned}`
+      );
+    }
+  }
+});
+
+// ---- 1b. migration 049: the top-20 content batch ---------------------------
+
+const MIGRATION_FILE = 'database/migrations/049_category_seo_texts.sql';
+
+test('SEO-TEXTS: migration 049 exists and covers exactly the 20 content slugs', () => {
+  const mig = src(MIGRATION_FILE);
+  // INSERT ... SELECT ... JOIN (not bare VALUES): Postgres checks NOT NULL
+  // on the proposed tuple BEFORE conflict resolution, so the NOT NULL `name`
+  // must come from the joined existing row — otherwise the whole statement
+  // dies with 23502 even though every slug conflicts.
+  assert.match(mig, /insert into categories \(slug, name, description\)/i);
+  assert.match(mig, /join categories c on c\.slug = v\.slug/i);
+  assert.match(mig, /on conflict \(slug\) do update set description = excluded\.description/i);
+
+  const migMap = extractDescriptions(
+    mig,
+    /\('([a-z0-9-]+)', '((?:[^']|'')+)'(?:\)|,)/g,
+    2,
+    1
+  );
+  const found = [...migMap.keys()];
+  assert.equal(found.length, 20, `expected 20 INSERT pairs, found ${found.length}`);
+  assert.deepEqual([...found].sort(), [...CONTENT_SLUGS].sort());
+  assert.equal(new Set(found).size, 20, 'no duplicate slugs');
+  for (const [slug, literal] of migMap) {
+    assert.ok(
+      literal.length >= 200,
+      `migration text too thin for ${slug}: ${literal.length} chars`
+    );
+  }
+});
+
+test('SEO-TEXTS: seed and migration 049 carry byte-identical texts per slug', () => {
+  const seedMap = extractDescriptions(
+    src('data/category-seo-texts.sql'),
+    /SET description = '((?:[^']|'')+)' WHERE slug = '([a-z0-9-]+)';/g,
+    1,
+    2
+  );
+  const migMap = extractDescriptions(
+    src(MIGRATION_FILE),
+    /\('([a-z0-9-]+)', '((?:[^']|'')+)'(?:\)|,)/g,
+    2,
+    1
+  );
+  for (const slug of CONTENT_SLUGS) {
+    const seedText = seedMap.get(slug);
+    const migText = migMap.get(slug);
+    assert.ok(seedText, `seed missing ${slug}`);
+    assert.ok(migText, `migration missing ${slug}`);
+    assert.equal(
+      seedText,
+      migText,
+      `seed/migration drift on ${slug} — regenerate one from the other`
+    );
   }
 });
 
@@ -181,8 +301,13 @@ test('FAQ: content is 6 unique Q&A with short factual answers (verified facts on
 
 test('FAQ: isWallpaperCategorySlug matches the shpaleri% subtree only', () => {
   assert.equal(isWallpaperCategorySlug('shpaleri'), true);
-  for (const slug of EXPECTED_SLUGS.slice(1)) {
+  for (const slug of WALLPAPER_SLUGS.slice(1)) {
     assert.equal(isWallpaperCategorySlug(slug), true, slug);
+  }
+  // the 2026-09-14 content batch sits OUTSIDE the wallpaper subtree — the
+  // FAQ block must not mount on those categories
+  for (const slug of CONTENT_SLUGS) {
+    assert.equal(isWallpaperCategorySlug(slug), false, slug);
   }
   assert.equal(isWallpaperCategorySlug(undefined), false);
   assert.equal(isWallpaperCategorySlug(''), false);

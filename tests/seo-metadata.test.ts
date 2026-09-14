@@ -15,6 +15,7 @@ import {
   truncateQuery,
   truncateMetaDescription,
   buildCatalogViewMetadata,
+  buildWallpapersMetadata,
 } from '../app/lib/seo.ts';
 
 function dec(over: Partial<Parameters<typeof decideCatalogIndexing>[0]> = {}) {
@@ -227,9 +228,58 @@ test('SEO-DESC: short admin copy passes through as-is; blank/null falls back to 
     });
     assert.equal(
       fallback.description,
-      'Товари у категорії «Блендери» — купити в інтернет-магазині Товари для дому.',
-      `blank description (${JSON.stringify(blank)}) must keep the template`
+      'Товари у категорії «Блендери» — купити в інтернет-магазині Товари для дому з доставкою по Україні та самовивозом у Кривому Розі.',
+      `blank description (${JSON.stringify(blank)}) must keep the geo template`
     );
+  }
+});
+
+// ---- geo in the template descriptions (marketing audit 2026-09-14: generic
+// metas carried no geo; titles stay geo-free, the geo lives in description) ----
+
+test('SEO-GEO: template descriptions carry Ukraine delivery + Kryvyi Rih pickup', () => {
+  // Category fallback template
+  const cat = buildCatalogViewMetadata({
+    input: { categorySlug: 'blendery-1402', categoryFound: true },
+    categoryName: 'Блендери',
+  });
+  assert.ok(String(cat.description).includes('доставкою по Україні'));
+  assert.ok(String(cat.description).includes('самовивозом у Кривому Розі'));
+
+  // Brand fallback template
+  const brand = buildCatalogViewMetadata({
+    input: { brandSlug: 'tefal', brandFound: true },
+    brandName: 'TEFAL',
+  });
+  assert.ok(String(brand.description).includes('доставкою по Україні'));
+  assert.ok(String(brand.description).includes('самовивозом у Кривому Розі'));
+
+  // Bare /catalog template (different grammar — nominative tail)
+  const bare = buildCatalogViewMetadata({ input: {} });
+  assert.ok(String(bare.description).includes('доставка по Україні'));
+  assert.ok(String(bare.description).includes('самовивіз у Кривому Розі'));
+
+  // /oboi template keeps the factual type list and gains the pickup geo
+  const oboi = buildWallpapersMetadata();
+  assert.ok(String(oboi.description).includes('вініл, флізелін, дуплекс, шовкографія'));
+  assert.ok(String(oboi.description).includes('доставкою по Україні'));
+  assert.ok(String(oboi.description).includes('самовивозом у Кривому Розі'));
+});
+
+test('SEO-GEO: titles stay geo-free (city would overflow the ~60-char SERP window)', () => {
+  for (const m of [
+    buildCatalogViewMetadata({ input: {} }),
+    buildCatalogViewMetadata({
+      input: { categorySlug: 'blendery-1402', categoryFound: true },
+      categoryName: 'Блендери',
+    }),
+    buildCatalogViewMetadata({
+      input: { brandSlug: 'tefal', brandFound: true },
+      brandName: 'TEFAL',
+    }),
+    buildWallpapersMetadata(),
+  ]) {
+    assert.ok(!String(m.title).includes('Кривому'), `geo leaked into title: ${m.title}`);
   }
 });
 
