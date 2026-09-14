@@ -55,7 +55,13 @@ test('CSP: required directives are present with audited sources', async () => {
     csp.split(';').map((d) => [d.trim().split(' ')[0], d.trim()])
   );
   assert.equal(directives['default-src'], "default-src 'self'");
-  assert.equal(directives['script-src'], "script-src 'self' 'unsafe-inline'");
+  // 2026-09-13: GA4 + Clarity loaders joined script-src (пакет А) —
+  // without them the analytics hits were CSP-blocked in production.
+  assert.equal(
+    directives['script-src'],
+    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://static.clarity.ms"
+  );
+  assert.match(directives['script-src'] ?? '', /googletagmanager\.com/);
   assert.equal(directives['style-src'], "style-src 'self' 'unsafe-inline'");
   assert.match(directives['img-src'] ?? '', /'self'/);
   assert.match(
