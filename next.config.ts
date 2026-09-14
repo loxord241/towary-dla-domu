@@ -35,6 +35,11 @@ const SLAV_IMAGE_ORIGIN = "https://oboi-slav-oboi.com";
  *    consciously deferred. 'unsafe-eval' is NOT granted in production
  *    (Next/React do not need it there); it is appended ONLY in
  *    development, where React dev tooling uses eval.
+ *  - Web analytics (owner task 2026-09-13, пакет А): GA4 loader
+ *    (googletagmanager.com), Microsoft Clarity loader (clarity.ms/tag/)
+ *    and its chunk host (static.clarity.ms) in script-src; their beacon
+ *    endpoints in connect-src (google-analytics.com www+region1,
+ *    clarity.ms + b.clarity.ms) and pixel fallbacks in img-src.
  *  - style-src 'self' 'unsafe-inline': compiled CSS plus React inline
  *    style attributes (4 sanctioned components). Same nonce/dynamic-
  *    rendering constraint applies; kept minimal and documented.
@@ -53,18 +58,32 @@ const SLAV_IMAGE_ORIGIN = "https://oboi-slav-oboi.com";
 function buildCsp(isDev: boolean): string {
   const directives = [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+    // 2026-09-13: GA4 (googletagmanager loader) + Microsoft Clarity
+    // (loader at clarity.ms/tag/, chunk from static.clarity.ms).
+    `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://static.clarity.ms${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     [
       "img-src 'self'",
       SUPABASE_HOST && `https://${SUPABASE_HOST}`,
       YUGCONTRACT_IMAGE_ORIGIN,
       SLAV_IMAGE_ORIGIN,
+      // GA/Clarity pixel fallbacks.
+      "https://www.google-analytics.com",
+      "https://www.googletagmanager.com",
+      "https://www.clarity.ms",
     ]
       .filter(Boolean)
       .join(" "),
     "font-src 'self'",
-    ["connect-src 'self'", SUPABASE_HOST && `https://${SUPABASE_HOST}`]
+    [
+      "connect-src 'self'",
+      SUPABASE_HOST && `https://${SUPABASE_HOST}`,
+      // GA4 collect beacons (www + region1) and Clarity session beacons.
+      "https://www.google-analytics.com",
+      "https://region1.google-analytics.com",
+      "https://www.clarity.ms",
+      "https://b.clarity.ms",
+    ]
       .filter(Boolean)
       .join(" "),
     "form-action 'self' https://www.liqpay.ua",
