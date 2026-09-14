@@ -11,6 +11,7 @@ import AddToCartButton from '@/app/components/AddToCartButton'
 import FavoriteButton from '@/app/components/FavoriteButton'
 import ShareButtons from '@/app/components/ShareButtons'
 import ProductGallery from '@/app/components/ProductGallery'
+import ProductIntro from '@/app/components/ProductIntro'
 import ProductDescription from '@/app/components/ProductDescription'
 import ProductSpecifications from '@/app/components/ProductSpecifications'
 import ProductReviews from '@/app/components/ProductReviews'
@@ -336,6 +337,21 @@ export default async function ProductPage({
                 </span>
               )}
             </div>
+
+            {/* Epicentr-style intro (spec 2026-09-14, Phase 1): лід-абзац +
+                «Основні характеристики» під H1/ціною; для товарів БЕЗ
+                реального опису — згенерований «Опис» замість заглушки.
+                Рішення (гейти, словарь пріоритету) живуть у
+                description-generator + ProductIntro; сторінка лише збирає.
+                hasRealDescription = той самий gate, що нижче: реальний
+                supplier-опис має пріоритет над генерацією. */}
+            <ProductIntro
+              name={product.name}
+              brandName={product.brand?.name ?? null}
+              specifications={product.specifications}
+              categorySlug={product.category?.slug ?? null}
+              hasRealDescription={renderDescription}
+            />
 
             {/* Task #41: the «Опис» section (heading included) renders only
                 when there is real content — a non-placeholder description or

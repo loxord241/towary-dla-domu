@@ -15,6 +15,7 @@ import {
 export default function ProductSpecifications({
   specifications,
   variant = 'section',
+  heading,
 }: {
   specifications: ProductSpecificationsRow[] | null | undefined;
   /**
@@ -24,9 +25,18 @@ export default function ProductSpecifications({
    * see app/product/[slug]/page.tsx). Empty rows hide BOTH variants.
    */
   variant?: 'section' | 'inline';
+  /**
+   * Optional heading override (Epicentr-style intro, spec 2026-09-14):
+   * ProductIntro reuses the inline markup for «Основні характеристики».
+   * Defaults keep the historical strings — section «Характеристики товару»,
+   * inline «Характеристики».
+   */
+  heading?: string;
 }) {
   const rows = sanitizeSpecRows(specifications);
   if (rows.length === 0) return null;
+
+  const headingText = heading ?? (variant === 'inline' ? 'Характеристики' : 'Характеристики товару');
 
   const table = (
     <table className="w-full table-fixed border-collapse text-sm">
@@ -51,7 +61,7 @@ export default function ProductSpecifications({
   if (variant === 'inline') {
     return (
       <div className="mb-6">
-        <h3 className="mb-2 font-semibold text-gray-900">Характеристики</h3>
+        <h3 className="mb-2 font-semibold text-gray-900">{headingText}</h3>
         {table}
       </div>
     );
@@ -59,7 +69,7 @@ export default function ProductSpecifications({
 
   return (
     <section className="bg-white rounded-lg shadow p-6 mb-8">
-      <h2 className="text-xl font-bold mb-4">Характеристики товару</h2>
+      <h2 className="text-xl font-bold mb-4">{headingText}</h2>
       {table}
     </section>
   );
