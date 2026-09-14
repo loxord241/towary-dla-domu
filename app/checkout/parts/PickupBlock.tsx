@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { PickupPoint } from '@/app/lib/checkout-delivery';
 import type { PickupPaymentIntent } from '../delivery-apis';
 
@@ -63,6 +64,16 @@ export default function PickupBlock({
           );
         })}
       </div>
+      {/* Владелец 2026-09-14: ссылка на страницу точек с фото — адрес,
+          телефоны, график. Точки и пины выше не трогаемы. */}
+      <p className="text-right">
+        <Link
+          href="/samovyviz"
+          className="inline-flex min-h-[44px] items-center text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline underline-offset-2"
+        >
+          Як нас знайти →
+        </Link>
+      </p>
       <fieldset>
         <legend className="mb-2 text-sm font-medium text-gray-700">
           Оплата

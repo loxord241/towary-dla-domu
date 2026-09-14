@@ -19,6 +19,7 @@ const INFO_LINKS = [
   { href: '/oboi', label: 'Шпалери' },
   { href: '/about', label: 'Про нас' },
   { href: '/delivery', label: 'Доставка та оплата' },
+  { href: '/samovyviz', label: 'Самовивіз' },
   { href: '/returns', label: 'Повернення' },
   { href: '/contacts', label: 'Контакти' },
   { href: '/privacy', label: 'Політика конфіденційності' },
