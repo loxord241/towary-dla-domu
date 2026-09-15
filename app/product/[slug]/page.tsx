@@ -338,6 +338,27 @@ export default async function ProductPage({
               )}
             </div>
 
+            {/* Mobile buy-box (UI audit 2026-09-14 #13, owner 2026-09-15):
+                «Додати в кошик» on phones stands ABOVE the intro and the
+                description/specifications — it used to sit below them, so
+                adding to cart meant scrolling past every spec row. Two
+                independent islands are safe: the component owns no DOM ids
+                and the header badge syncs via the shared cart-context. */}
+            <div className="mb-6 md:hidden">
+              <AddToCartButton
+                productId={product.id}
+                productName={product.name}
+                stockQuantity={product.stock_quantity}
+                availabilityStatus={product.availability_status}
+                variants={product.variants.map((v) => ({
+                  id: v.id,
+                  name: v.name,
+                  stockQuantity: v.stock_quantity,
+                  availabilityStatus: v.availability_status,
+                }))}
+              />
+            </div>
+
             {/* Epicentr-style intro (spec 2026-09-14, Phase 1): лід-абзац +
                 «Основні характеристики» під H1/ціною; для товарів БЕЗ
                 реального опису — згенерований «Опис» замість заглушки.
@@ -405,18 +426,22 @@ export default async function ProductPage({
               )}
             </div>
 
-            <AddToCartButton
-              productId={product.id}
-              productName={product.name}
-              stockQuantity={product.stock_quantity}
+            {/* Desktop instance — keeps its audited place below the
+                description; on phones the top buy-box replaces it. */}
+            <div className="hidden md:block">
+              <AddToCartButton
+                productId={product.id}
+                productName={product.name}
+                stockQuantity={product.stock_quantity}
                 availabilityStatus={product.availability_status}
-              variants={product.variants.map((v) => ({
-                id: v.id,
-                name: v.name,
-                stockQuantity: v.stock_quantity,
-                availabilityStatus: v.availability_status,
-              }))}
-            />
+                variants={product.variants.map((v) => ({
+                  id: v.id,
+                  name: v.name,
+                  stockQuantity: v.stock_quantity,
+                  availabilityStatus: v.availability_status,
+                }))}
+              />
+            </div>
 
             {/* Повідомити про наявність — лише для позицій «Немає в наявності»
                 (сервер-гейт за availability_status; v1: Telegram власнику,
