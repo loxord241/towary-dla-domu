@@ -101,11 +101,12 @@ test('migrations are sequentially numbered with no gaps above 030', () => {
     assert.ok(prev !== undefined && curr !== undefined);
     assert.equal(curr, prev + 1, `gap between ${prev} and ${curr}`);
   }
-  // Pinned to the latest migration: 050 (product description drafts)
-  // follows 049 (category SEO description drafts), 048 (NP status cache),
-  // 047 (shared rate limiting), 046 (data-integrity CHECKs),
-  // 045 (orders.access_token_hash), 044 (advisors fixes), 043 (restock FK).
-  assert.equal(nums[nums.length - 1], 50);
+  // Pinned to the latest migration: 051 (category SEO texts, batch 2)
+  // follows 050 (product description drafts), 049 (category SEO texts,
+  // batch 1), 048 (NP status cache), 047 (shared rate limiting),
+  // 046 (data-integrity CHECKs), 045 (orders.access_token_hash),
+  // 044 (advisors fixes), 043 (restock FK).
+  assert.equal(nums[nums.length - 1], 51);
 });
 
 const m032 = readFileSync(
