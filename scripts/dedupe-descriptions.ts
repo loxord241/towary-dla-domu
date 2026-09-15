@@ -16,31 +16,41 @@ import { createClient } from '@supabase/supabase-js';
 try {
   for (const l of readFileSync('.env.local', 'utf8').split('\n')) {
     const m = l.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+    if (m && m[1] && m[2] !== undefined && process.env[m[1]] === undefined) {
+      process.env[m[1]] = m[2];
+    }
   }
 } catch {}
 
 const svc = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
   { auth: { persistSession: false } }
 );
 
 /** Drop consecutive duplicate sentences/items + tidy punctuation. */
 function dedupeHtml(html: string): string {
   const p = html.match(/^<p>([\s\S]*)<\/p>$/);
-  if (p) {
-    const sentences = p[1].split(/(?<=[.!?])\s+/);
+  if (p?.[1]) {
+    const inner = p[1];
+    const sentences = inner.split(/(?<=[.!?])\s+/);
     const kept = sentences.filter((s, i) => i === 0 || s !== sentences[i - 1]);
     let out = `<p>${kept.join(' ')}</p>`;
     out = out.replace(/;+\./g, '.').replace(/\.{2,}/g, '.');
     return out;
   }
   const ul = html.match(/^(<ul>)([\s\S]*)(<\/ul>)$/);
-  if (ul) {
-    const items = ul[2].match(/<li>[\s\S]*?<\/li>/g) ?? [];
-    const kept = items.filter((li, i) => i === 0 || li !== items[i - 1]);
-    let out = `${ul[1]}${kept.join('')}${ul[3]}`;
+  if (ul?.[1] && ul[2] !== undefined && ul[3] !== undefined) {
+    const [open, body, close] = [ul[1], ul[2], ul[3]] as const;
+    const items = body.match(/<li>[\s\S]*?<\/li>/g) ?? [];
+    const kept: string[] = [];
+    let prev: string | undefined;
+    for (const li of items) {
+      if (li === prev) continue;
+      kept.push(li);
+      prev = li;
+    }
+    let out = `${open}${kept.join('')}${close}`;
     out = out.replace(/;+\./g, '.').replace(/\.{2,}/g, '.');
     return out;
   }
