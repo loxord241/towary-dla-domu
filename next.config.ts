@@ -39,7 +39,8 @@ const SLAV_IMAGE_ORIGIN = "https://oboi-slav-oboi.com";
  *    (googletagmanager.com), Microsoft Clarity loader (clarity.ms/tag/)
  *    and its chunk host (scripts.clarity.ms) in script-src; their beacon
  *    endpoints in connect-src (google-analytics.com www+region1,
- *    clarity.ms + b/t.clarity.ms) and pixel fallbacks in img-src.
+ *    clarity.ms + *.clarity.ms wildcard — collector subdomains rotate:
+ *    b/t/z… — and pixel fallbacks in img-src).
  *  - style-src 'self' 'unsafe-inline': compiled CSS plus React inline
  *    style attributes (4 sanctioned components). Same nonce/dynamic-
  *    rendering constraint applies; kept minimal and documented.
@@ -79,11 +80,12 @@ function buildCsp(isDev: boolean): string {
       "connect-src 'self'",
       SUPABASE_HOST && `https://${SUPABASE_HOST}`,
       // GA4 collect beacons (www + region1) and Clarity session beacons.
+      // Collector subdomains rotate (b/t/z… observed) — the wildcard covers
+      // them all; z.clarity.ms was CSP-blocked live on 2026-09-15.
       "https://www.google-analytics.com",
       "https://region1.google-analytics.com",
       "https://www.clarity.ms",
-      "https://b.clarity.ms",
-      "https://t.clarity.ms",
+      "https://*.clarity.ms",
     ]
       .filter(Boolean)
       .join(" "),

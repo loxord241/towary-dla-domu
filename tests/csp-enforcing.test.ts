@@ -74,6 +74,11 @@ test('CSP: required directives are present with audited sources', async () => {
     directives['connect-src'] ?? '',
     /https:\/\/fake-supabase-host\.example\.com/
   );
+  assert.match(
+    directives['connect-src'] ?? '',
+    /https:\/\/\*\.clarity\.ms/,
+    'Clarity collector subdomains rotate (b/t/z…): wildcard, not a per-host list'
+  );
   assert.equal(
     directives['form-action'],
     "form-action 'self' https://www.liqpay.ua",
