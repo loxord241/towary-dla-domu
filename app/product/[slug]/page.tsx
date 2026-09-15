@@ -311,6 +311,22 @@ export default async function ProductPage({
               )}
             </div>
 
+            {/* Buy-box (owner 2026-09-15): ОДНА кнопка «Додати в кошик»,
+                одразу під ціною — на всіх екранах. Решта блоків (поділитись,
+                наявність, intro/характеристики, опис) ідуть нижче. */}
+            <AddToCartButton
+              productId={product.id}
+              productName={product.name}
+              stockQuantity={product.stock_quantity}
+              availabilityStatus={product.availability_status}
+              variants={product.variants.map((v) => ({
+                id: v.id,
+                name: v.name,
+                stockQuantity: v.stock_quantity,
+                availabilityStatus: v.availability_status,
+              }))}
+            />
+
             {/* «Поділитися» — Viber / Telegram / копіювання посилання (SEO
                 package 2026-09-13). Клієнтський острів: стан потрібен лише
                 кнопці копіювання. URL на тій самій основі
@@ -336,32 +352,6 @@ export default async function ProductPage({
                   на складі: {product.stock_quantity} шт
                 </span>
               )}
-            </div>
-
-            {/* Mobile buy-box (UI audit 2026-09-14 #13, owner 2026-09-15):
-                «Додати в кошик» on phones stands ABOVE the intro and the
-                description/specifications — it used to sit below them, so
-                adding to cart meant scrolling past every spec row. The bar
-                is FIXED to the viewport bottom (not sticky: sticky only
-                delays an element AFTER its in-flow position scrolls by, it
-                can never surface it earlier — measured live on prod), so on
-                tall PDPs (84-spec conditioners) the button rides the first
-                screen. Footer carries pb-24 on mobile for the bar's height.
-                Two independent islands are safe: the component owns no DOM
-                ids and the header badge syncs via the shared cart-context. */}
-            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgba(0,0,0,0.08)] md:hidden">
-              <AddToCartButton
-                productId={product.id}
-                productName={product.name}
-                stockQuantity={product.stock_quantity}
-                availabilityStatus={product.availability_status}
-                variants={product.variants.map((v) => ({
-                  id: v.id,
-                  name: v.name,
-                  stockQuantity: v.stock_quantity,
-                  availabilityStatus: v.availability_status,
-                }))}
-              />
             </div>
 
             {/* Epicentr-style intro (spec 2026-09-14, Phase 1): лід-абзац +
@@ -429,23 +419,6 @@ export default async function ProductPage({
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* Desktop instance — keeps its audited place below the
-                description; on phones the top buy-box replaces it. */}
-            <div className="hidden md:block">
-              <AddToCartButton
-                productId={product.id}
-                productName={product.name}
-                stockQuantity={product.stock_quantity}
-                availabilityStatus={product.availability_status}
-                variants={product.variants.map((v) => ({
-                  id: v.id,
-                  name: v.name,
-                  stockQuantity: v.stock_quantity,
-                  availabilityStatus: v.availability_status,
-                }))}
-              />
             </div>
 
             {/* Повідомити про наявність — лише для позицій «Немає в наявності»
