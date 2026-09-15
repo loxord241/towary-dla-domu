@@ -243,9 +243,17 @@ test('PATHS: catalog sort control stays on the category path page', () => {
   // появляются другие товары»): sorting on /catalog/<slug> navigated to
   // bare /catalog?sort=… — the category dropped out, and the general
   // catalog (wallpapers excluded there) rendered OTHER products.
+  // 2026-09-15 (owner report «сортировка через раз работает»): the URL is
+  // still built on the SAME base — but on the ISR path form the navigation
+  // itself must be a DOCUMENT request (see isSortDocumentNavigation in
+  // app/lib/filter-url.ts + tests/catalog-sort-fix.test.ts): Next 16's
+  // client route prediction can render the cached pure page for ?sort=…
+  // without a server request, bypassing the sorting twin rewrite.
   const sel = src('app/catalog/SortSelect.tsx');
   assert.match(sel, /basePath\?: string/);
-  assert.match(sel, /router\.push\(qs \? `\$\{basePath\}\?\$\{qs\}` : basePath\)/);
+  assert.match(sel, /const href = qs \? `\$\{basePath\}\?\$\{qs\}` : basePath;/);
+  assert.match(sel, /isSortDocumentNavigation\(basePath\)/);
+  assert.match(sel, /window\.location\.assign\(href\)/);
   assert.doesNotMatch(sel, /`\/catalog\?\$\{qs\}`/, 'no hardcoded bare /catalog');
   const view = src('app/catalog/CatalogView.tsx');
   assert.match(view, /<SortSelect basePath=\{linkBase\} \/>/);

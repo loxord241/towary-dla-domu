@@ -91,3 +91,27 @@ export function buildSortSearchParams(
   params.set('page', '1');
   return params.toString();
 }
+
+/**
+ * Which KIND of navigation a sort change must use for the given base path.
+ *
+ * Owner bug 2026-09-15 («сортировка через раз работает»): since the ISR
+ * split (b3afd68) /catalog/<slug> is a fully STATIC route whose query views
+ * are rendered by a hidden force-dynamic twin that only proxy.ts rewrites
+ * to. Next 16's client segment cache prefetches static routes IN FULL and
+ * stores their page segments reusable «across all possible search param
+ * values», and its optimistic route prediction (default-on in 16.3.5)
+ * matches a router.push target BY PATHNAME ONLY — so a soft navigation to
+ * /catalog/<slug>?sort=… can render the cached pure page (default order)
+ * without any server request, and the sorting twin never runs. Whether that
+ * prediction fires depends on the ~60s prefetch freshness — hence the
+ * intermittent behavior. A DOCUMENT navigation (window.location.assign)
+ * always reaches the server: proxy rewrites to the twin, which sorts.
+ *
+ * The legacy bare /catalog is a DYNAMIC route (it awaits searchParams), its
+ * prefetch never contains page data for a query-carrying URL, so the router
+ * fetches per request and the cheaper router.push stays correct there.
+ */
+export function isSortDocumentNavigation(basePath: string): boolean {
+  return basePath !== '/catalog';
+}
