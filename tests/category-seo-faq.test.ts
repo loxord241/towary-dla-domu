@@ -36,13 +36,14 @@ process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= 'test-anon-key';
 const { splitDescriptionParagraphs } = await import('../app/lib/category-description.ts');
 
 // The 11 wallpaper slugs (draft 2026-09-11, applied live).
+// shpaleri-metrovi removed 2026-09-12 (category taken off the storefront,
+// owner decision) — its seed text went with it.
 const WALLPAPER_SLUGS = [
   'shpaleri',
   'shpaleri-akryl',
   'shpaleri-vinyl-10m',
   'shpaleri-vinyl-15m',
   'shpaleri-duplex',
-  'shpaleri-metrovi',
   'shpaleri-flizelin',
   'shpaleri-shovkografiya',
   'shpaleri-miika-prosta',
@@ -172,7 +173,7 @@ test('SEO-TEXTS: sql file exists with a draft header (date, author, owner-editab
 test('SEO-TEXTS: exactly 81 UPDATEs covering exactly the 81 seed slugs', () => {
   const sql = src('data/category-seo-texts.sql');
   const updates = sql.match(/UPDATE categories SET description = '/g) ?? [];
-  assert.equal(updates.length, 81, `expected 81 UPDATE statements, found ${updates.length}`);
+  assert.equal(updates.length, 80, `expected 81 UPDATE statements, found ${updates.length}`);
 
   const seed = extractDescriptions(
     sql,
@@ -181,9 +182,9 @@ test('SEO-TEXTS: exactly 81 UPDATEs covering exactly the 81 seed slugs', () => {
     2
   );
   const found = [...seed.keys()];
-  assert.equal(found.length, 81, 'every UPDATE must address exactly one slug');
+  assert.equal(found.length, 80, 'every UPDATE must address exactly one slug');
   assert.deepEqual([...found].sort(), [...EXPECTED_SLUGS].sort());
-  assert.equal(new Set(found).size, 81, 'no duplicate slugs');
+  assert.equal(new Set(found).size, 80, 'no duplicate slugs');
   // regex round-trip proves single quotes are escaped ('') — a lone ' would
   // have terminated the literal and broken the match above
   for (const [slug, literal] of seed) {
