@@ -15,7 +15,7 @@ export interface YcSelectedCategory {
 export const SELECTED_CATEGORIES: YcSelectedCategory[] = [
   {
     id: '1186',
-    name: 'ПОБУТОВА ТЕХНІКА',
+    name: 'Побутова техніка',
     children: [
       {
         id: '740',
@@ -244,7 +244,7 @@ export const SELECTED_CATEGORIES: YcSelectedCategory[] = [
       },
       {
         id: '900',
-        name: 'Ножі та аксессуари',
+        name: 'Ножі та аксесуари',
         children: [
           { id: '1358', name: 'Барбекю', children: [] },
           { id: '1359', name: 'Набори ножів', children: [] },

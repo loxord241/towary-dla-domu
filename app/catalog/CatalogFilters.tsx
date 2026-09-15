@@ -124,14 +124,23 @@ export default function CatalogFilters({
 
   // Audit 2026-09-05: min > max can never match — surface it inline and
   // skip the navigation instead of pushing a dead /catalog?min=..&max=..
+  // Audit 2026-09-14 #9: a negative bound was silently dropped by the
+  // server-side min >= 0 guard. The inline alert now covers it on BOTH
+  // surfaces: the desktop form also gets the native min="0" constraint,
+  // but the sheet's «Застосувати» is type=button, so constraint validation
+  // never fires there.
   const minNum = minPrice.trim() === '' ? null : Number(minPrice);
   const maxNum = maxPrice.trim() === '' ? null : Number(maxPrice);
+  const priceNegative =
+    (minNum !== null && Number.isFinite(minNum) && minNum < 0) ||
+    (maxNum !== null && Number.isFinite(maxNum) && maxNum < 0);
   const priceRangeInvalid =
-    minNum !== null &&
-    maxNum !== null &&
-    Number.isFinite(minNum) &&
-    Number.isFinite(maxNum) &&
-    minNum > maxNum;
+    priceNegative ||
+    (minNum !== null &&
+      maxNum !== null &&
+      Number.isFinite(minNum) &&
+      Number.isFinite(maxNum) &&
+      minNum > maxNum);
 
   // Flat alphabetical brand list for the combobox. The DB already returns
   // name asc, but its collation is not uk-aware — re-sort client-side
@@ -249,7 +258,9 @@ export default function CatalogFilters({
       </div>
       {priceRangeInvalid && (
         <p role="alert" className="mt-2 text-sm text-red-600">
-          Ціна «від» не може бути більшою за ціну «до».
+          {priceNegative
+            ? 'Ціна не може бути від’ємною — введіть значення від 0.'
+            : 'Ціна «від» не може бути більшою за ціну «до».'}
         </p>
       )}
     </div>

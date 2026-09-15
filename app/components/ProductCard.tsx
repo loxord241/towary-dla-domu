@@ -50,7 +50,9 @@ export default function ProductCard({
       </div>
 
       <Link href={`/product/${product.slug}`} className="flex flex-1 flex-col">
-        <div className="relative overflow-hidden rounded-t-xl bg-white">
+        {/* bg-gray-100 подложка: white-background supplier photos (ice trays,
+            porcelain…) were invisible on the white card — UI audit 2026-09-14. */}
+        <div className="relative overflow-hidden rounded-t-xl bg-gray-100">
           {hasDiscount && (
             <span className="absolute left-2 top-2 z-10 rounded-md bg-red-600 px-2 py-1 text-xs font-bold text-white shadow-sm">
               −{Math.round((1 - product.price / product.old_price!) * 100)}%
