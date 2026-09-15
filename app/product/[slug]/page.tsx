@@ -327,6 +327,12 @@ export default async function ProductPage({
               }))}
             />
 
+            {/* «Передзвоніть мені» — для КОЖНОГО товару (без гейта
+                availability: консультація потрібна і «в наявності»).
+                v1: ім'я + телефон → Telegram власнику, нічого не зберігаємо.
+                Owner 2026-09-15: стоїть тут, під кнопкою корзини. */}
+            <CallbackRequest productId={product.id} />
+
             {/* «Поділитися» — Viber / Telegram / копіювання посилання (SEO
                 package 2026-09-13). Клієнтський острів: стан потрібен лише
                 кнопці копіювання. URL на тій самій основі
@@ -427,11 +433,6 @@ export default async function ProductPage({
             {product.availability_status === 'out_of_stock' && (
               <RestockNotify productId={product.id} />
             )}
-
-            {/* «Передзвоніть мені» — для КОЖНОГО товару (без гейта
-                availability: консультація потрібна і «в наявності»).
-                v1: ім'я + телефон → Telegram власнику, нічого не зберігаємо. */}
-            <CallbackRequest productId={product.id} />
 
             {/* Калькулятор рулонів — для КОЖНОЇ шпалери (wc-*). rollSize=null
                 (розміру немає в назві 1С) не ховає блок: покупець обирає

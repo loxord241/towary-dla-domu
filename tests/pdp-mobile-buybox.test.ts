@@ -67,6 +67,15 @@ test('PDP-BUYBOX: повний набір пропсів єдиного інст
   );
 });
 
+test('PDP-BUYBOX: «Передзвоніть мені» стоїть під кнопкою корзини (owner 2026-09-15)', () => {
+  const btnAt = pageSrc.indexOf('<AddToCartButton');
+  const cbAt = pageSrc.indexOf('<CallbackRequest');
+  const shareAt = pageSrc.indexOf('<ShareButtons');
+  assert.ok(cbAt > -1, 'CallbackRequest не знайдено');
+  assert.ok(btnAt > -1 && cbAt > btnAt, 'CallbackRequest має стояти після кнопки корзини');
+  assert.ok(shareAt > -1 && cbAt < shareAt, 'CallbackRequest має стояти до «Поділитися»');
+});
+
 test('PDP-BUYBOX: футер без mobільного pb-24 (fixed-бар прибраний)', () => {
   const footerSrc = readFileSync(path.join(root, 'app/components/SiteFooter.tsx'), 'utf8');
   assert.doesNotMatch(footerSrc, /pb-24/, 'зайвий відступ під бар, якого більше немає');
