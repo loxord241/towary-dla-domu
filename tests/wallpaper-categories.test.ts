@@ -16,15 +16,15 @@ import {
 
 // Ключ = подгруппа из отчёта 1С ТОЧНО как в файле (ru, регистр сохранён).
 const EXPECTED_MAP: Record<string, { name: string; slug: string }> = {
-  Акрил: { name: 'Акрил', slug: 'shpaleri-akryl' },
-  'Винил 10 м': { name: 'Вініл 10 м', slug: 'shpaleri-vinyl-10m' },
-  'Винил 15 м': { name: 'Вініл 15 м', slug: 'shpaleri-vinyl-15m' },
-  Дуплекс: { name: 'Дуплекс', slug: 'shpaleri-duplex' },
-  ФЛИЗЕЛИН: { name: 'Флізелін 1м:1.06м', slug: 'shpaleri-flizelin' },
-  ШЕЛКОГРАФИЯ: { name: 'Шовкографія 1:0.6м', slug: 'shpaleri-shovkografiya' },
-  'Мойка простая': { name: 'Мійка проста', slug: 'shpaleri-miika-prosta' },
+  Акрил: { name: 'Акрилові шпалери', slug: 'shpaleri-akryl' },
+  'Винил 10 м': { name: 'Вінілові шпалери 10 м', slug: 'shpaleri-vinyl-10m' },
+  'Винил 15 м': { name: 'Вінілові шпалери 15 м', slug: 'shpaleri-vinyl-15m' },
+  Дуплекс: { name: 'Дуплексні шпалери', slug: 'shpaleri-duplex' },
+  ФЛИЗЕЛИН: { name: 'Флізелінові шпалери 1м:1.06м', slug: 'shpaleri-flizelin' },
+  ШЕЛКОГРАФИЯ: { name: 'Шовкографічні шпалери 1:0.6м', slug: 'shpaleri-shovkografiya' },
+  'Мойка простая': { name: 'Мийні шпалери (проста мійка)', slug: 'shpaleri-miika-prosta' },
   'Обои простые': { name: 'Прості шпалери', slug: 'shpaleri-prosti' },
-  Супермойка: { name: 'Супермійка', slug: 'shpaleri-supermiika' },
+  Супермойка: { name: 'Супермійні шпалери', slug: 'shpaleri-supermiika' },
 };
 
 function row(
@@ -112,9 +112,9 @@ test('PLAN: идемпотентность — повторный вызов п�
 test('PLAN: reuse — существующие slug+имя переиспользуются (регистр и ru-вариант)', () => {
   const existing: ExistingWallpaperCategory[] = [
     row('root-1', 'shpaleri', 'ШПАЛЕРИ', null), // регистр не важен
-    row('flz-1', 'shpaleri-flizelin', 'Флізелін 1м:1.06м', 'root-1'), // витринное имя
+    row('flz-1', 'shpaleri-flizelin', 'Флізелінові шпалери 1м:1.06м', 'root-1'), // витринное имя (после rename R12)
     row('vin-1', 'shpaleri-vinyl-10m', 'Винил 10 м', 'root-1'), // рус. написание
-    row('shv-1', 'shpaleri-shovkografiya', 'Шовкографія 1:0.6м', 'root-1'), // витринное имя
+    row('shv-1', 'shpaleri-shovkografiya', 'Шовкографічні шпалери 1:0.6м', 'root-1'), // витринное имя (после rename R12)
   ];
   const plan = planCategoryUpsert(existing);
   assert.deepEqual(plan.conflicts, []);

@@ -31,6 +31,10 @@ export interface WallpaperCategoryTarget {
  * Object order mirrors the 1С report order and is preserved by
  * `planCategoryUpsert` creates.
  *
+ * 2026-09-15 (audit R12): storefront names renamed INTO query language
+ * («Вінілові шпалери 10 м» instead of «Вініл 10 м» etc.; slugs UNCHANGED).
+ * The DB rows were renamed in the SAME batch — a sync that runs against a
+ * half-migrated state would report name conflicts (importer never renames).
  * 2026-09-12 (owner): «Метровые» REMOVED — the supplier's «метровые»
  * subgroup must never become a storefront category again (the roll sizes
  * live in the product names). Флізелін/Шовкографія carry the roll-size
@@ -38,15 +42,15 @@ export interface WallpaperCategoryTarget {
  * name-only drift would land in `conflicts` and stop linking).
  */
 export const WALLPAPER_CATEGORY_MAP: Record<string, WallpaperCategoryTarget> = {
-  'Акрил': { name: 'Акрил', slug: 'shpaleri-akryl' },
-  'Винил 10 м': { name: 'Вініл 10 м', slug: 'shpaleri-vinyl-10m' },
-  'Винил 15 м': { name: 'Вініл 15 м', slug: 'shpaleri-vinyl-15m' },
-  'Дуплекс': { name: 'Дуплекс', slug: 'shpaleri-duplex' },
-  'ФЛИЗЕЛИН': { name: 'Флізелін 1м:1.06м', slug: 'shpaleri-flizelin' },
-  'ШЕЛКОГРАФИЯ': { name: 'Шовкографія 1:0.6м', slug: 'shpaleri-shovkografiya' },
-  'Мойка простая': { name: 'Мійка проста', slug: 'shpaleri-miika-prosta' },
+  'Акрил': { name: 'Акрилові шпалери', slug: 'shpaleri-akryl' },
+  'Винил 10 м': { name: 'Вінілові шпалери 10 м', slug: 'shpaleri-vinyl-10m' },
+  'Винил 15 м': { name: 'Вінілові шпалери 15 м', slug: 'shpaleri-vinyl-15m' },
+  'Дуплекс': { name: 'Дуплексні шпалери', slug: 'shpaleri-duplex' },
+  'ФЛИЗЕЛИН': { name: 'Флізелінові шпалери 1м:1.06м', slug: 'shpaleri-flizelin' },
+  'ШЕЛКОГРАФИЯ': { name: 'Шовкографічні шпалери 1:0.6м', slug: 'shpaleri-shovkografiya' },
+  'Мойка простая': { name: 'Мийні шпалери (проста мійка)', slug: 'shpaleri-miika-prosta' },
   'Обои простые': { name: 'Прості шпалери', slug: 'shpaleri-prosti' },
-  'Супермойка': { name: 'Супермійка', slug: 'shpaleri-supermiika' },
+  'Супермойка': { name: 'Супермійні шпалери', slug: 'shpaleri-supermiika' },
 };
 
 export interface ExistingWallpaperCategory {

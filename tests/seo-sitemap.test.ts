@@ -128,3 +128,24 @@ test('SITEMAP: empty-view exclusion is wired into sitemap.ts (source-level)', ()
   // The product URL set itself must keep its existing contract.
   assert.match(src, /DU_REDIRECT_SLUGS\.has/, 'product _du redirect filter unchanged');
 });
+
+// ---- audit R15 2026-09-15: image sitemap -------------------------------------
+
+test('SITEMAP-R15: product entries carry the main product image (image sitemap)', () => {
+  const src = readFileSync('app/sitemap.ts', 'utf8');
+  assert.match(
+    src,
+    /images:product_images!inner\(image_url, is_main\)/,
+    'the product read must fetch the image rows it already joins'
+  );
+  assert.match(
+    src,
+    /getPublicImageUrl/,
+    'image URLs must resolve to absolute public URLs (same resolver as the gallery)'
+  );
+  assert.match(
+    src,
+    /images:\s*\[mainImageUrl\]/,
+    'product entries must carry the images array'
+  );
+});

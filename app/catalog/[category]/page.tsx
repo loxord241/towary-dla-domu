@@ -20,13 +20,18 @@ type Params = Promise<{ category: string }>
  * An ISR cache key is the pathname alone — without the rewrite the query
  * would be silently ignored and the pure view served for ?page=2.
  *
- * An unknown or inactive slug is a real HTTP 404 (notFound) — never an
- * empty catalog rendered on a crawlable path shape. This differs from the
- * legacy query form, where an unknown slug stays a 200 empty state because
- * it is a filter VALUE on the existing /catalog resource (spec decision A).
- * The legacy /catalog?category=<slug> form itself 308-redirects here
- * (proxy.ts), and the canonical of a valid category is this path form
- * (lib/seo.ts, 2026-09-13).
+ * An unknown or inactive slug resolves to notFound(). OWNER DECISION
+ * 2026-09-15 (audit R13): the catalog loading skeleton stays, so the
+ * notFound lands mid-stream — the response is a 200 whose streamed
+ * not-found tree carries <meta name="robots" content="noindex"> (Next
+ * injects it in the HTTPAccessFallback boundary); a crawlable path shape
+ * never renders an empty catalog. The earlier «real HTTP 404» comment no
+ * longer describes runtime behavior.
+ * This differs from the legacy query form, where an unknown slug stays a
+ * 200 empty state because it is a filter VALUE on the existing /catalog
+ * resource (spec decision A). The legacy /catalog?category=<slug> form
+ * itself 308-redirects here (proxy.ts), and the canonical of a valid
+ * category is this path form (lib/seo.ts, 2026-09-13).
  */
 
 /** decodeURIComponent with a guard: garbage percent-encoding (e.g.

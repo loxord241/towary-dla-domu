@@ -104,14 +104,23 @@ test('FEED: price formats with two decimals and ISO currency', () => {
 
 // ---- buildMerchantItems: skips ----
 
-test('FEED: item without any description text is skipped (Google rejects it)', () => {
+test('FEED: no description text falls back to the factual name-based description (audit R10 2026-09-15)', () => {
+  // Previously these rows were SKIPPED (~199 live products lost merchant
+  // coverage). Since R10 the PDP meta fallback phrase is used instead —
+  // the feed set matches the sitemap set.
   const rows: MerchantFeedProductRow[] = [
     { ...baseRow(), description: null, short_description: null },
     { ...baseRow(), description: '', short_description: '' },
     // HTML that strips to whitespace is still "no description".
     { ...baseRow(), description: '<br><p>&nbsp;</p>', short_description: null },
   ];
-  assert.deepEqual(buildMerchantItems(rows, 'https://x.test'), []);
+  const items = buildMerchantItems(rows, 'https://x.test');
+  assert.equal(items.length, 3, 'fallback must keep the row, not skip it');
+  for (const item of items) {
+    assert.ok(item.description.length > 0, 'description must never be empty');
+    assert.match(item.description, /^Купити Сковорода "Bravo & Chef" 24 см/);
+    assert.ok(item.description.endsWith('Товари для дому.'));
+  }
 });
 
 test('FEED: short_description is the fallback when description is empty', () => {

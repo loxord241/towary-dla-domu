@@ -12,18 +12,21 @@ import SiteFooter from '@/app/components/SiteFooter'
 import Announcements from '@/app/components/Announcements'
 import ProductCard from '@/app/components/ProductCard'
 
-// Unique home metadata (SEO package 2026-08-26): previously the page fell
-// through to the root-layout fallback title shared with every other route.
-// Copy reuses the hero text already rendered on this page — nothing invented.
+// Unique home metadata (SEO package 2026-08-26; audit R6 2026-09-15): the
+// title previously duplicated the brand twice and the description carried
+// no quotable fact. The copy now names the three real assortment pillars
+// and the catalog size. The «понад 5 000» fact was true at audit time
+// (5 288 active / 5 021 sitemap-eligible products) — revisit if the catalog
+// ever shrinks below that.
 export const metadata: Metadata = {
-  title: 'Інтернет-магазин товарів для дому | Товари для дому',
+  title: 'Товари для дому — побутова техніка, посуд, шпалери',
   description:
-    'Найкращі товари за найкращими цінами — з доставкою по всій Україні.',
+    'Побутова техніка, кухонний посуд і шпалери — понад 5 000 товарів. Доставка по Україні, самовивіз у Кривому Розі.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'Інтернет-магазин товарів для дому | Товари для дому',
+    title: 'Товари для дому — побутова техніка, посуд, шпалери',
     description:
-      'Найкращі товари за найкращими цінами — з доставкою по всій Україні.',
+      'Побутова техніка, кухонний посуд і шпалери — понад 5 000 товарів. Доставка по Україні, самовивіз у Кривому Розі.',
     locale: 'uk_UA',
     type: 'website',
     siteName: 'Товари для дому',
@@ -177,20 +180,26 @@ export default async function Home() {
           {categories.length === 0 ? (
             <p className="text-gray-500">Категорії відсутні</p>
           ) : (
-            // Only the first 5: the full supplier list (~200) made the home
-            // page an endless wall of cards. The rest lives in /catalog.
+            // Audit R9 2026-09-15: EVERY active top-level category renders —
+            // the old 5-item slice left two hubs (and their whole subtrees)
+            // without a homepage entry point. The rest of the tree lives in
+            // /catalog and the footer as before.
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
-              {categories.slice(0, 5).map((category, idx) => (
+              {categories.map((category, idx) => (
                 <Link
                   key={category.id}
                   // Path form (SEO package 2026-09-13): legacy query-form
                   // category URLs only 308-redirect now, so internal links
                   // point straight at /catalog/<slug>.
                   href={`/catalog/${encodeURIComponent(category.slug)}`}
-                  // 5th card spans the full row on the 2-col mobile grid so
-                  // the layout never ends on an orphan half-width card.
+                  // Odd counts leave an orphan half-width card on the 2-col
+                  // mobile grid: the LAST card spans the full row (the same
+                  // affordance the old slice-5 hack served). sm:col-span-1
+                  // cancels it for the 3-col layout.
                   className={`card group p-5 transition-shadow hover:shadow-md ${
-                    idx === 4 ? 'col-span-2 sm:col-span-1' : ''
+                    idx === categories.length - 1 && categories.length % 2 === 1
+                      ? 'col-span-2 sm:col-span-1'
+                      : ''
                   }`}
                 >
                   <h3 className="font-semibold text-gray-900 transition-colors motion-reduce:transition-none group-hover:text-blue-700">

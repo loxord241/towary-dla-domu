@@ -4,6 +4,19 @@ import InfoPage from '@/app/components/InfoPage';
 export const metadata: Metadata = {
   title: 'Повернення — Товари для дому',
   description: 'Умови повернення та обміну товарів в інтернет-магазині Товари для дому',
+  // Audit R11 2026-09-15: self canonical + full OG card — a page-level og
+  // REPLACES the layout default (shallow metadata merge), so the messenger
+  // preview must repeat locale/type/siteName/image explicitly instead of
+  // showing the generic shop card.
+  alternates: { canonical: '/returns' },
+  openGraph: {
+    title: 'Повернення — Товари для дому',
+    description: 'Умови повернення та обміну товарів в інтернет-магазині Товари для дому',
+    locale: 'uk_UA',
+    type: 'website',
+    siteName: 'Товари для дому',
+    images: ['/og-image.png'],
+  },
 };
 
 export default function Page() {

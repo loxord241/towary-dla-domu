@@ -44,9 +44,12 @@ test('P3-R3: category card affordance is not hover-only', () => {
   assert.match(home, /Переглянути товари →/);
 });
 
-test('P3-R3: fifth category card spans the mobile row (no orphan)', () => {
+test('P3-R3: last category card spans the mobile row on odd counts (no orphan)', () => {
+  // Audit R9 2026-09-15: the home grid renders EVERY top-level category,
+  // so the old hardcoded fifth-card pin became the general odd-count rule.
   const home = read('app/(home)/page.tsx');
-  assert.match(home, /idx === 4 \? 'col-span-2 sm:col-span-1' : ''/);
+  assert.match(home, /idx === categories\.length - 1 && categories\.length % 2 === 1/);
+  assert.match(home, /'col-span-2 sm:col-span-1'/);
 });
 
 test('P3-R2: disabled pagination controls carry aria-disabled', () => {

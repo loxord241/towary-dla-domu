@@ -17,6 +17,9 @@ test('ROBOTS: all private surfaces disallowed for every crawler', () => {
     '/admin',
     '/api/',
     '/checkout',
+    // Audit R19 2026-09-15: the bare path is disallowed too — '/orders/'
+    // alone would not cover a future /orders index page.
+    '/orders',
     '/orders/',
     '/cart',
     '/favorites',

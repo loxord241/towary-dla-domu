@@ -116,12 +116,17 @@ test('SEO: truncateQuery strips control chars, collapses whitespace, caps length
   assert.equal(truncateQuery('%,(")'), '', 'specials-only query collapses to nothing');
 });
 
-test('SEO: metadata builder — category title follows «X — купити в Товари для дому»', () => {
+test('SEO: metadata builder — category title follows «X — Товари для дому» (audit R4 2026-09-15)', () => {
   const m = buildCatalogViewMetadata({
     input: { categorySlug: 'blendery-1402', categoryFound: true },
     categoryName: 'Блендери',
   });
-  assert.equal(m.title, 'Блендери — купити в Товари для дому');
+  assert.equal(m.title, 'Блендери — Товари для дому');
+  // The «купити в Товари для дому» tail (a) read ungrammatically without a
+  // noun after «в» and (b) is already covered by the description template —
+  // the short brand tail keeps the intent word budget for the name itself.
+  assert.ok(!String(m.title).includes('купити'));
+  assert.ok(String(m.description).includes('купити'));
   assert.ok(String(m.description).includes('Блендери'));
   assert.ok(!m.robots, 'indexable view emits no robots override');
   assert.deepEqual(m.alternates, { canonical: '/catalog/blendery-1402' });
@@ -132,12 +137,30 @@ test('SEO: metadata builder — brand title and search title', () => {
     input: { brandSlug: 'tefal', brandFound: true },
     brandName: 'TEFAL',
   });
-  assert.equal(b.title, 'TEFAL — купити в Товари для дому');
+  assert.equal(b.title, 'TEFAL — Товари для дому');
 
   const s = buildCatalogViewMetadata({ input: { search: 'мультипіч tefal' } });
   assert.equal(s.title, 'Пошук: «мультипіч tefal» | Товари для дому');
   assert.deepEqual(s.robots, { index: false, follow: true });
   assert.equal(s.alternates, undefined);
+});
+
+test('SEO-R8: admin brand description becomes the meta description, template stays the fallback', () => {
+  const copy = 'Техніка TEFAL: розумні рішення для кухні та дому з офіційною гарантією.';
+  const withCopy = buildCatalogViewMetadata({
+    input: { brandSlug: 'tefal', brandFound: true },
+    brandName: 'TEFAL',
+    brandDescription: copy,
+  });
+  assert.equal(withCopy.description, copy);
+
+  const fallback = buildCatalogViewMetadata({
+    input: { brandSlug: 'tefal', brandFound: true },
+    brandName: 'TEFAL',
+    brandDescription: null,
+  });
+  assert.ok(String(fallback.description).includes('TEFAL'));
+  assert.ok(String(fallback.description).includes('доставкою по Україні'));
 });
 
 test('SEO: long search query is truncated inside title, never throws', () => {
@@ -313,11 +336,30 @@ test('SEO-DESC: catalogViewMetadata feeds the admin description through the SAME
     'metadata must read the description behind the page-1 gate'
   );
   // …and reaches the builder as a parameter (no duplicate DB read — the
-  // page body reuses the React-cache()d call).
-  assert.match(view, /categoryDescription,\s*\}\),/);
+  // page body reuses the React-cache()d call). R8: brandDescription rides
+  // the same parameter pass.
+  assert.match(view, /categoryDescription,\s*brandDescription,\s*\}\),/);
   // The chain shape (override wraps the builder) is pinned by
   // tests/catalog-category-paths.test.ts and stays intact.
   assert.match(view, /applyCategorySeoMetadata\(\s*buildCatalogViewMetadata\(/);
+});
+
+test('SEO-R8: catalogViewMetadata feeds the brand description the same way (audit R8 2026-09-15)', () => {
+  const view = readFileSync('app/catalog/CatalogView.tsx', 'utf8');
+  assert.match(
+    view,
+    /brand && filters\.brandSlug && filters\.page === 1\s*\?\s*fetchBrandDescription\(filters\.brandSlug\)/,
+    'metadata must read the brand description behind the page-1 gate'
+  );
+  assert.match(view, /brandDescription,\s*\}\),/, 'builder must receive brandDescription');
+});
+
+test('SEO-R8: brand-description reader mirrors the category reader contract', () => {
+  const src = readFileSync('app/lib/brand-description.ts', 'utf8');
+  assert.match(src, /from\('brands'\)/);
+  assert.match(src, /\.eq\('is_active', true\)/);
+  assert.match(src, /splitDescriptionParagraphs/, 'rendering contract is shared');
+  assert.match(src, /cachePublicRead/, 'same Data Cache posture as category copy');
 });
 
 test('SEO: home metadata is unique vs root layout title (static source check)', () => {
@@ -328,4 +370,23 @@ test('SEO: home metadata is unique vs root layout title (static source check)', 
   const layoutTitle = layout.match(/title:\s*[`'"]([^`'"]+)/)?.[1] ?? '';
   assert.ok(homeTitle.length > 0);
   assert.notEqual(homeTitle, layoutTitle);
+});
+
+test('SEO-R6: home title leads with the brand + assortment, desc carries the stock fact', () => {
+  const home = readFileSync('app/(home)/page.tsx', 'utf8');
+  // The old title duplicated the brand twice and the desc said nothing
+  // quotable; the new copy names the three real assortment pillars.
+  assert.match(home, /title:\s*'Товари для дому — побутова техніка, посуд, шпалери'/);
+  assert.match(home, /понад 5 000 товарів/);
+  assert.match(home, /самовивіз у Кривому Розі/);
+  assert.ok(!home.includes('Інтернет-магазин товарів для дому | Товари для дому'));
+});
+
+test('SEO-R9: home links every active top-level category, not a hardcoded 5-item slice', () => {
+  const home = readFileSync('app/(home)/page.tsx', 'utf8');
+  assert.ok(!home.includes('.slice(0, 5)'), 'the 5-item slice is gone');
+  assert.match(home, /categories\.map\(\(category, idx\)/);
+  // Odd counts leave an orphan card on the 2-col mobile grid — the last
+  // card spans the full row (same affordance the old slice-5 hack served).
+  assert.match(home, /categories\.length % 2 === 1/);
 });

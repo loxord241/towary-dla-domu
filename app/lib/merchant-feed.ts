@@ -12,8 +12,10 @@
  *   - `_du` alias slugs that 301-redirect (DU_REDIRECT_SLUGS) are dropped
  *     HERE, in the pure builder, so the exclusion is unit-testable and can
  *     never drift from the redirect list;
- *   - a product without ANY description text is skipped entirely (Google
- *     rejects items with an empty g:description);
+ *   - a product without ANY description text uses the factual name-based
+ *     fallback «Купити {name} в інтернет-магазині Товари для дому.» — the
+ *     same phrase the PDP meta falls back to (audit R10 2026-09-15: the
+ *     former skip silently dropped ~199 products from merchant coverage);
  *   - a product whose image URL cannot be resolved to an absolute http(s)
  *     URL is skipped (g:image_link must be absolute https);
  *   - a product without a positive finite price is skipped (same honesty
@@ -21,9 +23,11 @@
  *
  * Availability is reported HONESTLY: `in_stock` → "in stock", everything
  * else → "out of stock" (g:availability has no "limited" enum value and the
- * conservative mapping can never oversell; ~96% of the catalog is OOS after
- * the supplier incident and those items STAY in the feed — Google requires
- * availability to match the landing page, which shows OOS too).
+ * conservative mapping can never oversell; OOS items STAY in the feed —
+ * Google requires availability to match the landing page, which shows OOS
+ * too). Note: an older comment here claimed «~96% OOS after the supplier
+ * incident» — stale as of 2026-09-15, when OOS was 13% and stock status is
+ * consistent with stock_quantity (verified in the audit).
  *
  * Google file limits — DECISION (single file, no pagination):
  *   Feeds fetched by URL (scheduled fetch in Merchant Center) accept up to
@@ -142,9 +146,11 @@ export function mapAvailability(status: string): 'in stock' | 'out of stock' {
 
 /**
  * Builds feed items from checked product rows. Rows are skipped (not
- * broken) when: _du redirect alias, no description text, no resolvable
- * image, or no positive finite price. baseUrl is the trimmed site origin;
- * trailing slashes are tolerated.
+ * broken) when: _du redirect alias, no resolvable image, or no positive
+ * finite price. A row with no description TEXT uses the factual name-based
+ * fallback (audit R10 2026-09-15) instead of being skipped, so the feed set
+ * matches the sitemap set. baseUrl is the trimmed site origin; trailing
+ * slashes are tolerated.
  */
 export function buildMerchantItems(
   rows: ReadonlyArray<MerchantFeedProductRow>,
@@ -158,17 +164,20 @@ export function buildMerchantItems(
     // data layer) where the invariant is unit-testable.
     if (DU_REDIRECT_SLUGS.has(row.slug)) continue;
 
+    const name = (row.name ?? '').trim();
+    if (!name || !row.id || !row.slug) continue;
+
     const description =
-      stripHtmlToText(row.description) || stripHtmlToText(row.short_description);
-    if (!description) continue;
+      stripHtmlToText(row.description) ||
+      stripHtmlToText(row.short_description) ||
+      // Audit R10: the PDP meta falls back to exactly this phrase, so the
+      // feed stays consistent with the landing page Google cross-checks.
+      `Купити ${name} в інтернет-магазині Товари для дому.`;
 
     const imageUrl = row.image_url ?? '';
     if (!/^https?:\/\//i.test(imageUrl)) continue;
 
     if (!Number.isFinite(row.price) || row.price <= 0) continue;
-
-    const name = (row.name ?? '').trim();
-    if (!name || !row.id || !row.slug) continue;
 
     items.push({
       id: row.id,

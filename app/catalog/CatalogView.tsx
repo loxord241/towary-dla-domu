@@ -42,6 +42,7 @@ import {
   fetchCategoryDescription,
   splitDescriptionParagraphs,
 } from '@/app/lib/category-description'
+import { fetchBrandDescription } from '@/app/lib/brand-description'
 import CatalogFilters from './CatalogFilters'
 import SortSelect from './SortSelect'
 import { CATALOG_PAGE_SIZE } from '@/app/lib/catalog'
@@ -185,7 +186,7 @@ export async function catalogViewMetadata({
   // it never throws (errors degrade to null → template description), and
   // the page-1 gate mirrors the visible description block (paginated views
   // keep the template meta).
-  const [categoryCount, brandCount, categoryDescription] = await Promise.all([
+  const [categoryCount, brandCount, categoryDescription, brandDescription] = await Promise.all([
     category && filters.categorySlug
       ? fetchCategoryProductCount(filters.categorySlug).catch(() => null)
       : Promise.resolve(null),
@@ -194,6 +195,11 @@ export async function catalogViewMetadata({
       : Promise.resolve(null),
     category && filters.categorySlug && filters.page === 1
       ? fetchCategoryDescription(filters.categorySlug)
+      : Promise.resolve(null),
+    // Audit R8 2026-09-15: brand admin copy rides the same parallel batch
+    // (React-cache()d, so the page body reuses this exact read).
+    brand && filters.brandSlug && filters.page === 1
+      ? fetchBrandDescription(filters.brandSlug)
       : Promise.resolve(null),
   ]);
 
@@ -218,6 +224,7 @@ export async function catalogViewMetadata({
       categoryName: category?.name,
       brandName: brand?.name,
       categoryDescription,
+      brandDescription,
     }),
     filters.categorySlug
   );
@@ -407,6 +414,14 @@ export default async function CatalogView({
         await fetchCategoryDescription(filters.categorySlug as string)
       )
     : [];
+  // Audit R8 2026-09-15: brand admin copy renders with the same contract as
+  // the category copy — plain text paragraphs, page-1 brand views only.
+  const showBrandDescription = Boolean(filters.brandSlug) && page === 1;
+  const brandDescriptionParagraphs = showBrandDescription
+    ? splitDescriptionParagraphs(
+        await fetchBrandDescription(filters.brandSlug as string)
+      )
+    : [];
   // FAQ block: wallpaper categories only (slug 'shpaleri%' — root and all
   // subgroups), page 1 only, same clamped-page reasoning as above.
   const showWallpaperFaq =
@@ -492,6 +507,18 @@ export default async function CatalogView({
               {descriptionParagraphs.length > 0 && (
                 <div className="mb-6 text-sm leading-relaxed text-gray-600">
                   {descriptionParagraphs.map((paragraph) => (
+                    <p key={paragraph.slice(0, 24)} className="mb-2">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* Admin-authored brand description (audit R8 2026-09-15):
+                  same plain-text contract as the category copy above. */}
+              {brandDescriptionParagraphs.length > 0 && (
+                <div className="mb-6 text-sm leading-relaxed text-gray-600">
+                  {brandDescriptionParagraphs.map((paragraph) => (
                     <p key={paragraph.slice(0, 24)} className="mb-2">
                       {paragraph}
                     </p>

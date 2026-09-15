@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { fetchActiveCategories, fetchActiveBrands } from '@/app/lib/catalog';
+import { getPublicImageUrl } from '@/app/lib/supabase-storage';
 import { collectPaged, collectNonEmptyCategoryIds, collectNonEmptyBrandIds } from '@/app/lib/seo-sitemap';
 import { DU_REDIRECT_SLUGS } from '@/app/lib/du-redirects';
 
@@ -30,6 +31,8 @@ interface SitemapProductRow {
   slug: string;
   updated_at: string;
   brand_id: string | null;
+  /** Image rows already joined by the eligibility inner join (audit R15). */
+  images: { image_url: string; is_main: boolean | null }[];
   category_ids: string[];
 }
 
@@ -51,12 +54,14 @@ async function fetchEligibleProducts(): Promise<SitemapProductRow[] | null> {
     // The product eligibility join (images!inner) is UNCHANGED — Task #14
     // only rides along on the same rows: brand_id and the plain (non-inner)
     // product_categories embed add the view-emptiness facts without
-    // changing which products qualify.
+    // changing which products qualify. Audit R15 (2026-09-15): the image
+    // rows now carry image_url/is_main so each entry can list its main
+    // image (image sitemap) at zero extra queries.
     return await collectPaged(async (from, limit) => {
       const { data, error } = await supabase
         .from('products')
         .select(
-          'slug, updated_at, brand_id, images:product_images!inner(id), pc:product_categories(category_id)'
+          'slug, updated_at, brand_id, images:product_images!inner(image_url, is_main), pc:product_categories(category_id)'
         )
         .eq('is_active', true)
         .order('id', { ascending: true })
@@ -66,6 +71,12 @@ async function fetchEligibleProducts(): Promise<SitemapProductRow[] | null> {
         slug: row.slug,
         updated_at: row.updated_at,
         brand_id: row.brand_id ?? null,
+        images: (row.images ?? []).map(
+          (image: { image_url: string; is_main: boolean | null }) => ({
+            image_url: image.image_url,
+            is_main: image.is_main,
+          })
+        ),
         category_ids: (row.pc ?? [])
           .map((pc) => pc.category_id)
           .filter((id): id is string => typeof id === 'string'),
@@ -169,12 +180,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // price-diff pairs included, so DU_REDIRECT_SLUGS excludes every one of
     // them from the sitemap.
     .filter((product) => !DU_REDIRECT_SLUGS.has(product.slug))
-    .map((product) => ({
-    url: `${base}/product/${encodeURIComponent(product.slug)}`,
-    lastModified: new Date(product.updated_at),
-    changeFrequency: 'weekly',
-    priority: 0.5,
-  }));
+    .map((product) => {
+      // Audit R15 (2026-09-15): image sitemap — the same main image the
+      // card/gallery shows, resolved through the SAME getPublicImageUrl
+      // resolver (hotlinks pass through; relative paths absolutize against
+      // the Supabase bucket). Main row first, first image as fallback.
+      const mainImage =
+        product.images.find((image) => image.is_main) ?? product.images[0];
+      const mainImageUrl = mainImage ? getPublicImageUrl(mainImage.image_url) : null;
+      return {
+        url: `${base}/product/${encodeURIComponent(product.slug)}`,
+        lastModified: new Date(product.updated_at),
+        changeFrequency: 'weekly' as const,
+        priority: 0.5,
+        ...(mainImageUrl ? { images: [mainImageUrl] } : {}),
+      };
+    });
 
   return [
     ...staticEntries,

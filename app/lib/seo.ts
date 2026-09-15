@@ -136,6 +136,13 @@ export interface CatalogViewMetadataArgs {
    * read in the same render.
    */
   categoryDescription?: string | null;
+  /**
+   * Admin-authored description of the requested brand (brands.description —
+   * audit R8 2026-09-15). Same contract as categoryDescription: non-blank
+   * copy wins, blank/null falls back to the brand template. Fed from the
+   * React-cache()d fetchBrandDescription (lib/brand-description.ts).
+   */
+  brandDescription?: string | null;
 }
 
 type ViewMetadata = Pick<
@@ -197,7 +204,7 @@ const GEO_TAIL = 'з доставкою по Україні та самовив�
 export function buildCatalogViewMetadata(
   args: CatalogViewMetadataArgs
 ): ViewMetadata {
-  const { input, categoryName, brandName, categoryDescription } = args;
+  const { input, categoryName, brandName, categoryDescription, brandDescription } = args;
   const decision = decideCatalogIndexing(input);
 
   let title = `Каталог товарів | ${SITE_NAME}`;
@@ -209,7 +216,16 @@ export function buildCatalogViewMetadata(
     title = `Пошук: «${q}» | ${SITE_NAME}`;
     description = `Результати пошуку за запитом «${q}» в інтернет-магазині ${SITE_NAME}.`;
   } else if (input.categorySlug && categoryName) {
-    title = `${categoryName} — купити в ${SITE_NAME}`;
+    // Audit R4 2026-09-15: the previous tail «— купити в Товари для дому»
+    // read ungrammatically (no noun after «в») and spent the ~60-char SERP
+    // window on a phrase the description template already carries. The
+    // brand-only tail follows the proven pinned-category pattern
+    // (category-seo.ts, «Дрібна побутова техніка — Товари для дому»); the
+    // commercial «купити» intent stays in the description. NOTE: /oboi
+    // deliberately KEEPS its own «Шпалери — купити в …» title so the two
+    // «Шпалери» surfaces (/oboi vs /catalog/shpaleri) stop sharing one
+    // SERP string (audit R5 2026-09-15).
+    title = `${categoryName} — ${SITE_NAME}`;
     // Unique admin copy first (audit 2026-09-13 — the template was shared by
     // every category while the pages carry unique intro texts); the generic
     // template stays the fallback for categories without a description.
@@ -220,8 +236,15 @@ export function buildCatalogViewMetadata(
       adminCopy ||
       `Товари у категорії «${categoryName}» — купити в інтернет-магазині ${SITE_NAME} ${GEO_TAIL}.`;
   } else if (input.brandSlug && brandName) {
-    title = `${brandName} — купити в ${SITE_NAME}`;
-    description = `Товари бренду ${brandName} — купити в інтернет-магазині ${SITE_NAME} ${GEO_TAIL}.`;
+    title = `${brandName} — ${SITE_NAME}`;
+    // Audit R8 2026-09-15: brand admin copy (brands.description) wins like
+    // the category copy above; the template stays the fallback.
+    const brandCopy = brandDescription
+      ? truncateMetaDescription(brandDescription)
+      : '';
+    description =
+      brandCopy ||
+      `Товари бренду ${brandName} — купити в інтернет-магазині ${SITE_NAME} ${GEO_TAIL}.`;
   }
 
   return {
@@ -564,4 +587,103 @@ export function buildProductMetaDescription(
       : undefined) ??
     `Купити ${input.productName} в інтернет-магазині ${SITE_NAME}.`
   );
+}
+
+// ---------------------------------------------------------------------------
+// PDP <title> compaction (audit R3 2026-09-15): supplier names up to ~149
+// chars pushed «name — Товари для дому» far past the ~60-char SERP window
+// (1 934 eligible products over budget at audit time). Builds a shorter
+// title name from the REAL name tokens only — leading type words + brand +
+// the digit-bearing model token — and falls back to a word-boundary
+// truncation when no structure is found. Honesty rule (same as the JSON-LD
+// builders): every emitted token comes from the product name / brand;
+// nothing is invented. The visible H1 and og:title keep the FULL name.
+// ---------------------------------------------------------------------------
+
+/** Name budget so «name — Товари для дому» stays inside the ~60-char window. */
+const PRODUCT_TITLE_NAME_BUDGET = 48;
+
+/** Last token that carries a digit and ≥4 significant chars — model numbers
+ * («FV5718E0», «BCD-456WYR», «(P2947)») live there. Short digit runs
+ * («6», «/19», «60», «12») are sizes/counts, never the model. */
+function modelTokenOf(tokens: readonly string[]): string | null {
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const raw = tokens[i] ?? '';
+    const inner = raw.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+    if (inner.length >= 4 && /\d/.test(inner)) return raw.replace(/[,;]+$/, '');
+  }
+  return null;
+}
+
+function isTypeWord(token: string): boolean {
+  return !/\d/.test(token) && token.length > 1;
+}
+
+export function buildProductTitleName(
+  name: string,
+  opts: { brandName?: string | null } = {}
+): string {
+  const trimmed = name.replace(/\s+/g, ' ').trim();
+  if (trimmed.length <= PRODUCT_TITLE_NAME_BUDGET) return trimmed;
+
+  const tokens = trimmed.split(' ');
+  const model = modelTokenOf(tokens);
+  const brandName = opts.brandName?.trim();
+  const brandIndex =
+    brandName && brandName.length > 0
+      ? tokens.findIndex((token) =>
+          token.toLowerCase().includes(brandName.toLowerCase())
+        )
+      : -1;
+
+  if (brandIndex >= 0 || model) {
+    const brand = brandIndex >= 0 ? (tokens[brandIndex] ?? '') : '';
+    // Type words: up to three non-digit words taken BEFORE the brand when
+    // the name leads with the type («Праска TEFAL …»), or between the brand
+    // and the model for brand-first names («TEFAL Бутербродниця SW383D10»).
+    // With no brand at all, the words before the model serve as the type.
+    const leading = (
+      brandIndex >= 0 ? tokens.slice(0, brandIndex) : []
+    )
+      .filter(isTypeWord)
+      .slice(0, 3);
+    const between: string[] = [];
+    if (brandIndex >= 0 && model) {
+      const modelIndex = tokens.indexOf(model);
+      for (let i = brandIndex + 1; i < modelIndex && between.length < 3; i++) {
+        const token = tokens[i];
+        if (token === undefined) break;
+        if (isTypeWord(token)) between.push(token);
+        else break;
+      }
+    }
+    const beforeModel =
+      brandIndex < 0 && model
+        ? tokens
+            .slice(0, tokens.indexOf(model))
+            .filter(isTypeWord)
+            .slice(-3)
+        : [];
+    let parts: string[];
+    if (leading.length > 0) {
+      parts = [leading.join(' '), brand, model ?? ''];
+    } else if (between.length > 0) {
+      // Brand-first name: the type words FOLLOW the brand in the name.
+      parts = [brand, between.join(' '), model ?? ''];
+    } else if (beforeModel.length > 0) {
+      parts = [beforeModel.join(' '), model ?? ''];
+    } else {
+      parts = [brand, model ?? ''];
+    }
+    const candidate = parts
+      .filter((part) => part.length > 0)
+      .join(' ')
+      .replace(/[\s,;:–—-]+$/, '');
+    if (candidate.length > 0 && candidate.length <= PRODUCT_TITLE_NAME_BUDGET) {
+      return candidate;
+    }
+  }
+
+  // Honest fallback: word-boundary truncation of the real name.
+  return truncateMetaDescription(trimmed, PRODUCT_TITLE_NAME_BUDGET);
 }

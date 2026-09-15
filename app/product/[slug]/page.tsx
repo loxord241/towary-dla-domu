@@ -26,7 +26,7 @@ import RelatedProducts from '@/app/components/RelatedProducts'
 import GlueCrossSell from '@/app/components/GlueCrossSell'
 import ProductJsonLd from '@/app/components/ProductJsonLd'
 import { buildProductJsonLd, buildProductBreadcrumbJsonLd } from '@/app/lib/schema-org'
-import { buildProductMetaDescription } from '@/app/lib/seo'
+import { buildProductMetaDescription, buildProductTitleName } from '@/app/lib/seo'
 import { shouldRenderDescriptionSection } from '@/app/lib/product-description'
 import { formatPrice } from '@/app/lib/format'
 
@@ -72,13 +72,17 @@ export async function generateMetadata({
   const canonical = `/product/${slug}`
   const mainImage = getMainPublicImageUrl(product.images)
 
-  // TITLE cleanup for wallpapers (SEO package 2026-09-13): wc-* names are
-  // supplier comma-chains («41704 рожева полоса,шпалери,53см*10м») and the
-  // full-name title overflowed 100 chars. Only <title> is cleaned (junk
-  // tail dropped, ~70-char cap) — H1 and og:title keep the FULL name.
+  // TITLE compaction for the SERP window (audit R3 2026-09-15): wc-* names
+  // are supplier comma-chains (cleaned by cleanWallpaperTitle, ~70-char cap);
+  // long appliance names («Сервіз LUMINARC DIWALI LIGHT…», up to ~149 chars)
+  // are compacted to «type + brand + model» from the REAL name tokens, with
+  // a word-boundary truncation fallback. Only <title> is compacted —
+  // H1 and og:title keep the FULL name.
   const titleName = isWallpaperNaming(product.sku, product.slug)
     ? cleanWallpaperTitle(product.name)
-    : product.name
+    : buildProductTitleName(product.name, {
+        brandName: product.brand?.name ?? null,
+      })
 
   return {
     title: `${titleName} — Товари для дому`,
@@ -117,7 +121,13 @@ export default async function ProductPage({
   const { slug } = await params
   const product = await getProduct(slug)
 
-  // Unknown or inactive slug must be a real HTTP 404, not a rendered error box.
+  // Unknown or inactive slug → notFound(). OWNER DECISION 2026-09-15
+  // (audit R13): the perf-package loading.tsx skeleton stays, so the notFound
+  // arrives mid-stream — the response is a 200 whose streamed not-found tree
+  // carries <meta name="robots" content="noindex"> (Next injects it in the
+  // HTTPAccessFallback boundary). Consequence: GSC reports these as
+  // noindex/soft-404, not clean 404s — accepted trade-off for the skeleton UX;
+  // the earlier «real HTTP 404» claim no longer holds for this route.
   if (!product) {
     notFound()
   }

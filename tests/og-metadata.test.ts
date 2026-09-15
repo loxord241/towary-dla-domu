@@ -71,3 +71,22 @@ test('OG-IMAGE: catalog/oboi views repeat the default image inside their page-le
   const oboi = buildWallpapersMetadata();
   assert.deepEqual(oboi.openGraph!.images, ['/og-image.png']);
 });
+
+test('OG-R11: info pages carry their own canonical + full OG card (audit R11 2026-09-15)', () => {
+  // These pages are the only sitemap entries without their own canonical/OG:
+  // messenger previews showed the generic layout card whose og:title
+  // disagreed with the page <title>. Each page now pins a self canonical
+  // and repeats locale/type/siteName/image (shallow-merge rule as above).
+  for (const route of ['about', 'contacts', 'delivery', 'returns', 'privacy', 'terms']) {
+    const page = src(`app/${route}/page.tsx`);
+    assert.match(
+      page,
+      new RegExp(`alternates:\\s*{\\s*canonical:\\s*'/${route}'`),
+      `${route}: self canonical missing`
+    );
+    assert.match(page, /openGraph:\s*{/, `${route}: og object missing`);
+    assert.match(page, /locale:\s*'uk_UA'/, `${route}: og.locale missing`);
+    assert.match(page, /siteName:\s*'Товари для дому'/, `${route}: og.siteName missing`);
+    assert.match(page, /images:\s*\['\/og-image\.png'\]/, `${route}: og.image missing`);
+  }
+});
