@@ -1,0 +1,16 @@
+# Normalize line endings: the repo lives on both WSL (Linux) and Windows
+# checkouts — LF everywhere keeps working trees byte-identical and the
+# 2362-test source-pin suite free of CRLF noise. Binaries stay untouched.
+* text=auto eol=lf
+*.png -text
+*.jpg -text
+*.jpeg -text
+*.webp -text
+*.gif -text
+*.ico -text
+*.pdf -text
+*.xls -text
+*.xlsx -text
+*.woff -text
+*.woff2 -text
+*.ttf -text

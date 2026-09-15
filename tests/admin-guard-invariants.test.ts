@@ -82,8 +82,9 @@ function rel(path: string): string {
 test('ADMIN-GUARD: every app/api/admin route file is discovered dynamically', () => {
   const files = listRouteFiles(join(root, 'app/api/admin'));
   assert.ok(files.length > 0, 'admin routes directory must not be empty');
+  // rel() normalizes Windows separators — the suite must stay portable
   assert.ok(
-    files.some((f) => f.endsWith('orders/reconciliation/route.ts')),
+    files.some((f) => rel(f).endsWith('orders/reconciliation/route.ts')),
     'the reconciliation route must exist and be part of the guarded set'
   );
 });

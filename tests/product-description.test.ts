@@ -17,11 +17,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const { resolveProductDescription, shouldRenderDescriptionSection } =
   await import('../app/lib/product-description.ts');
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function walkApp(dir: string): string[] {
   const out: string[] = [];

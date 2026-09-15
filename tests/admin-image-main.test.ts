@@ -11,10 +11,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const { planMainPromotion } = await import('../app/lib/admin-image-main.ts');
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const routeSrc = readFileSync(
   path.join(root, 'app/api/admin/products/[id]/images/[imageId]/route.ts'),
   'utf8'
