@@ -206,6 +206,39 @@ test('prepareRows: freshest export_date wins per code', () => {
   assert.equal(rows[0]?.priceRetail, 60);
 });
 
+test('prepareRows: the feed is ONLY the latest export — older-only codes are dropped (owner 2026-09-15, «исчез из выгрузки = списание в 0»)', () => {
+  const result = prepareRows([
+    raw({ code: '1111', qty: 3, export_date: '2026-09-10' }), // ghost: left the feed
+    raw({ code: '2222', export_date: '2026-09-11' }),
+    raw({ code: '3333', qty: 9, export_date: '2026-09-09' }), // ghost
+    raw({ code: '4444', export_date: '2026-09-11' }),
+  ]);
+  assert.equal(result.latestExportDate, '2026-09-11');
+  assert.deepEqual(
+    [...result.rows.map((r) => r.code)].sort(),
+    ['2222', '4444']
+  );
+  assert.equal(result.olderOnlyCodes, 2);
+});
+
+test('prepareRows: a code present in BOTH an old and the latest export stays in the feed (not counted as older-only)', () => {
+  const result = prepareRows([
+    raw({ code: '1234', qty: 5, export_date: '2026-09-10' }),
+    raw({ code: '1234', qty: 7, export_date: '2026-09-11' }),
+  ]);
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0]?.qty, 7);
+  assert.equal(result.latestExportDate, '2026-09-11');
+  assert.equal(result.olderOnlyCodes, 0);
+});
+
+test('prepareRows: empty staging → empty feed, null latestExportDate', () => {
+  const result = prepareRows([]);
+  assert.deepEqual(result.rows, []);
+  assert.equal(result.latestExportDate, null);
+  assert.equal(result.olderOnlyCodes, 0);
+});
+
 test('prepareRows: export_date tie → later input row wins (append-only staging)', () => {
   const { rows } = prepareRows([
     raw({ code: '1234', price_retail: 50 }),
@@ -215,12 +248,12 @@ test('prepareRows: export_date tie → later input row wins (append-only staging
   assert.equal(rows[0]?.priceRetail, 70);
 });
 
-test('prepareRows: output follows first-appearance order of each code', () => {
+test('prepareRows: output follows first-appearance order of each code (single export)', () => {
   const { rows } = prepareRows([
-    raw({ code: '2222' }),
-    raw({ code: '1111' }),
-    raw({ code: '2222', price_retail: 111, export_date: '2026-09-11' }),
-    raw({ code: '3333' }),
+    raw({ code: '2222', export_date: '2026-09-10' }),
+    raw({ code: '1111', export_date: '2026-09-10' }),
+    raw({ code: '2222', price_retail: 111, export_date: '2026-09-10' }),
+    raw({ code: '3333', export_date: '2026-09-10' }),
   ]);
   assert.deepEqual(
     rows.map((r) => r.code),

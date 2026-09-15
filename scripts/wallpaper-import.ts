@@ -126,6 +126,15 @@ export interface PrepareRowsResult {
   rows: WallpaperRow[];
   /** Rows dropped by the defensive validation (DB CHECKs make this rare). */
   skipped: number;
+  /**
+   * The feed's export window: codes whose FRESHEST staging row is older than
+   * the max export_date are dropped from `rows` (they left the current 1С
+   * export — the planner's missing loop OOS-es their products, spec
+   * «позиція зникла з вивантаження = списання в 0», owner GO 2026-09-15).
+   */
+  olderOnlyCodes: number;
+  /** Max export_date across the staging rows (null when staging is empty). */
+  latestExportDate: string | null;
 }
 
 function toFiniteNumber(value: unknown): number | null {
@@ -144,10 +153,15 @@ function round2(n: number): number {
 }
 
 /**
- * Distinct-on-JS over the paged staging read: the freshest row per 1С code
- * (max export_date; tie → later input row — staging is append-only and a
- * later ingest supersedes an earlier one). Output preserves the
- * first-appearance order of each code, which keeps the planner deterministic.
+ * Distinct-on-JS over the paged staging read, narrowed to the LATEST export:
+ * the freshest row per 1С code (max export_date; tie → later input row —
+ * staging is append-only and a later ingest supersedes an earlier one), then
+ * only codes whose freshest row carries the max export_date survive into
+ * `rows`. Codes last seen in older exports have left the owner's current 1С
+ * export — they are NOT feed rows, so the planner's missing loop zeroes their
+ * products (stock only; is_active is never a sync decision). Output preserves
+ * the first-appearance order of each code, which keeps the planner
+ * deterministic.
  *
  * Migration 041 does not persist the CSV `article` column, so article is
  * always null here (skus derive from codes: `wc-x<code>`); rollSize is
@@ -192,7 +206,28 @@ export function prepareRows(raw: readonly RawStagingRow[]): PrepareRowsResult {
     }
   }
 
-  return { rows: [...byCode.values()].map((e) => e.row), skipped };
+  // The FEED is the latest export only (owner 2026-09-15): staging is
+  // append-only, so without this window a code that left the 1С export would
+  // keep its stale last-known row forever and never reach the planner's
+  // missing → OOS path. Codes whose freshest row is older than the max
+  // export_date are dropped here; existing products for them are zeroed by
+  // the plan (stock only — is_active stays photo-gate territory).
+  let latestExportDate: string | null = null;
+  for (const entry of byCode.values()) {
+    if (latestExportDate === null || entry.exportDate > latestExportDate) {
+      latestExportDate = entry.exportDate;
+    }
+  }
+  const rows: WallpaperRow[] = [];
+  let olderOnlyCodes = 0;
+  if (latestExportDate !== null) {
+    for (const entry of byCode.values()) {
+      if (entry.exportDate === latestExportDate) rows.push(entry.row);
+      else olderOnlyCodes += 1;
+    }
+  }
+
+  return { rows, skipped, olderOnlyCodes, latestExportDate };
 }
 
 /** Exact batch windows of `size` (≤ BATCH_SIZE at every call site). */
@@ -457,12 +492,17 @@ interface PlanStats {
   skipped: number;
   freshCount: number;
   existingCount: number;
+  olderOnlyCodes: number;
+  latestExportDate: string | null;
   categoryMap: { path: string; entries: number } | null;
 }
 
 function printPlan(plan: WallpaperPlan, stats: PlanStats): void {
   console.log(
     `staging: ${stats.rawCount} сирих рядків → ${stats.freshCount} свіжих на код (пропущено ${stats.skipped})`
+  );
+  console.log(
+    `фід = остання вивантаження ${stats.latestExportDate ?? '—'}; лише зі старих вивантажень (→ OOS): ${stats.olderOnlyCodes}`
   );
   console.log(`існуючих wc-* товарів: ${stats.existingCount}`);
   console.log(`creates: ${plan.creates.length}`);
@@ -528,7 +568,7 @@ export async function runImportCli(argv: readonly string[]): Promise<number> {
   }
 
   const rawStaging = await readStagingRaw(client);
-  const { rows, skipped } = prepareRows(rawStaging);
+  const { rows, skipped, olderOnlyCodes, latestExportDate } = prepareRows(rawStaging);
   const existing = await readExistingWallpaperProducts(client);
   const plan = planWallpaperImport(existing, rows);
 
@@ -543,6 +583,8 @@ export async function runImportCli(argv: readonly string[]): Promise<number> {
       skipped,
       freshCount: rows.length,
       existingCount: existing.size,
+      olderOnlyCodes,
+      latestExportDate,
       categoryMap,
     });
     return 0;
