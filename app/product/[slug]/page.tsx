@@ -341,10 +341,15 @@ export default async function ProductPage({
             {/* Mobile buy-box (UI audit 2026-09-14 #13, owner 2026-09-15):
                 «Додати в кошик» on phones stands ABOVE the intro and the
                 description/specifications — it used to sit below them, so
-                adding to cart meant scrolling past every spec row. Two
-                independent islands are safe: the component owns no DOM ids
-                and the header badge syncs via the shared cart-context. */}
-            <div className="mb-6 md:hidden">
+                adding to cart meant scrolling past every spec row. Sticky
+                bottom edge: even on tall PDPs (84-spec conditioners) the
+                button rides the viewport from the first screen until its
+                natural in-flow position scrolls into view. Two independent
+                islands are safe: the component owns no DOM ids and the
+                header badge syncs via the shared cart-context. The details
+                card is p-6 with no overflow-hidden, so the sticky edge
+                spans its full column. */}
+            <div className="sticky bottom-0 z-30 -mx-6 mb-6 border-t border-gray-200 bg-white px-6 py-3 md:hidden">
               <AddToCartButton
                 productId={product.id}
                 productName={product.name}

@@ -12,7 +12,7 @@
  *
  * Контракт:
  *  - РІВНО два <AddToCartButton (мобільний + десктопний);
- *  - мобільний: обгортка <div className="mb-6 md:hidden">, у сирці ДО <ProductIntro;
+ *  - мобільний: обгортка sticky bottom-0 (розширені класи нижче), у сирці ДО <ProductIntro;
  *  - десктопний: обгортка <div className="hidden md:block">, ПІСЛЯ <ProductIntro;
  *  - повний паритет пропсів в обох екземплярів (variants.map /
  *    availability_status зустрічаються мінімум двічі).
@@ -44,9 +44,15 @@ test('PDP-BUYBOX: рівно два інстанси AddToCartButton (мобіл
   );
 });
 
-test('PDP-BUYBOX: мобільний екземпляр — у div.mb-6.md:hidden, ДО ProductIntro', () => {
-  const mobileAt = pageSrc.indexOf('<div className="mb-6 md:hidden">');
-  assert.ok(mobileAt > -1, 'мобільна обгортка <div className="mb-6 md:hidden"> відсутня');
+test('PDP-BUYBOX: мобільний екземпляр — sticky-обгортка, ДО ProductIntro', () => {
+  // owner 2026-09-15 (доопрацювання після прод-заміру): на високих PDP
+  // (84-spec кондиціонер) кнопка навіть у позиції «над характеристиками»
+  // лишалась нижче фолда (~1243px при 844px) — обгортка прилипає до нижнього
+  // краю екрана (sticky bottom-0), поки її природна позиція не доскролена.
+  const MOBILE_WRAP =
+    '<div className="sticky bottom-0 z-30 -mx-6 mb-6 border-t border-gray-200 bg-white px-6 py-3 md:hidden">';
+  const mobileAt = pageSrc.indexOf(MOBILE_WRAP);
+  assert.ok(mobileAt > -1, `мобільна sticky-обгортка відсутня: ${MOBILE_WRAP}`);
   const introAt = pageSrc.indexOf('<ProductIntro');
   assert.ok(introAt > -1, 'ProductIntro не знайдено на сторінці');
   assert.ok(
@@ -55,8 +61,8 @@ test('PDP-BUYBOX: мобільний екземпляр — у div.mb-6.md:hidde
   );
   // обгортка саме обгортає кнопку, а не якийсь сусідній блок (аудит #13)
   assert.match(
-    pageSrc.slice(mobileAt, mobileAt + 240),
-    /^<div className="mb-6 md:hidden">[\s\S]{0,200}?<AddToCartButton/,
+    pageSrc.slice(mobileAt, mobileAt + 320),
+    /^<div className="sticky bottom-0[^"]*">[\s\S]{0,240}?<AddToCartButton/,
     'усередині мобільної обгортки має монтуватися AddToCartButton'
   );
 });
