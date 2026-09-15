@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { isSortDocumentNavigation } from '@/app/lib/filter-url';
 
 /**
  * /oboi sort control (owner task 2026-09-12): the DEFAULT wallpaper order
@@ -33,7 +34,18 @@ function OboiSortSelectInner() {
         if (base) params.set('base', base);
         if (e.target.value !== '') params.set('sort', e.target.value);
         const qs = params.toString();
-        router.push(qs !== '' ? `/oboi?${qs}` : '/oboi');
+        const href = qs !== '' ? `/oboi?${qs}` : '/oboi';
+        // OWNER BUG 2026-09-15 («сортировка через раз работает»): same
+        // shape as app/catalog/SortSelect.tsx — /oboi is an ISR-static
+        // route, and a router.push to ?sort=… can be satisfied by Next 16's
+        // client segment-cache route prediction rendering the cached
+        // default-order page without a server request (intermittent). A
+        // document navigation always reaches the proxy → force-dynamic twin.
+        if (isSortDocumentNavigation('/oboi')) {
+          window.location.assign(href);
+        } else {
+          router.push(href);
+        }
       }}
       className="min-h-[44px] w-full sm:w-auto rounded-md border border-gray-300 p-2 text-base"
     >

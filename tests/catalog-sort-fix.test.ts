@@ -108,3 +108,14 @@ test('SORT-NAV: CatalogView still passes the path-form base to SortSelect', () =
     /linkBase = pathCategorySlug\s*\?\s*`\/catalog\/\$\{encodeURIComponent\(pathCategorySlug\)\}`\s*:\s*'\/catalog'/
   );
 });
+
+test('SORT-NAV: /oboi sort rides the same document-navigation fix', () => {
+  // Same bug shape as the category pages (owner 2026-09-15): /oboi is an
+  // ISR-static route — a router.push to ?sort=… can be answered by the
+  // client segment cache with the cached default-order page.
+  const oboi = src('app/oboi/SortSelect.tsx');
+  assert.match(oboi, /isSortDocumentNavigation\('\/oboi'\)/);
+  assert.match(oboi, /window\.location\.assign\(href\)/);
+  // the «Основа» filter value keeps surviving sort changes
+  assert.match(oboi, /searchParams\.get\('base'\)/);
+});
