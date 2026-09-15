@@ -7,9 +7,10 @@
  * (buildFaqJsonLd, splitDescriptionParagraphs, WALLPAPER_FAQ) is tested
  * by direct import. The SQL file is a draft seed applied by the
  * orchestrator via MCP — the test pins its coverage contract so the file
- * cannot silently drift from the 11 wallpaper slugs (2026-09-11) plus the
- * 20 top non-wallpaper categories (2026-09-14, migration 049, byte-level
- * seed/migration consistency pinned below).
+ * cannot silently drift from the 11 wallpaper slugs (2026-09-11), the
+ * 20 top non-wallpaper categories (2026-09-14, migration 049) and the
+ * next 50 (2026-09-15, migration 051; byte-level seed/migration
+ * consistency pinned below for both content batches).
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -77,7 +78,66 @@ const CONTENT_SLUGS = [
   'blendery-1402',
 ];
 
-const EXPECTED_SLUGS = [...WALLPAPER_SLUGS, ...CONTENT_SLUGS];
+// The next 50 non-wallpaper categories (batch 2, 2026-09-15, migration 051)
+// — ranked by active-product count among categories that still had no
+// description after 049 (shpaleri-* and the 20 slugs above excluded). Same
+// texts live in the seed file AND in
+// database/migrations/051_category_seo_texts_2.sql; consistency is pinned
+// below.
+const CONTENT_SLUGS_2 = [
+  'kavovarky-1408',
+  'kelykhy-fuzhery-kukholi-1371',
+  'svch-pechi-85',
+  'elektrobrytvy-1424',
+  'multypechi-1642',
+  'dukhovi-shafy-202',
+  'vyrivniuvachi-dlia-volossia-1431',
+  'vodonahrivachi-498',
+  'tostery-1417',
+  'kombainy-1401',
+  'kombinovani-1539',
+  'sklianky-1375',
+  'miksery-1403',
+  'hryl-1412',
+  'feny-shchitky-1429',
+  'inshe-1418',
+  'hazovi-1535',
+  'aksesuary-do-klimatychnoi-tekhniky-1332',
+  'morozylni-kamery-ta-lari-217',
+  'buterbrodnytsi-ta-vafelnytsi-1411',
+  'pylosmoky-z-konteinerom-99',
+  'shchyptsi-dlia-zavyvky-1430',
+  'sklokeramichni-1537',
+  'stolovi-servizy-1388',
+  'multyvarky-1406',
+  'sushylni-mashyny-1123',
+  'dlia-sokiv-142',
+  'kholodylnyky-1216',
+  'doshka-dlia-narizannia-1346',
+  'svch-pechi-1217',
+  'aksesuary-do-tekhniky-dlia-domu-1336',
+  'kryshky-1365',
+  'vahy-kukhonni-1420',
+  'kondytsionery-180',
+  'kavomolky-1462',
+  'dlia-posudomyinykh-ta-pralnykh-mashyn-1471',
+  'vahy-106',
+  'zapchastyny-ta-komplektuiuchi-1515',
+  'posudomyini-mashyny-205',
+  'mysky-1350',
+  'posudomyini-mashyny-94',
+  'aksesuary-do-kukhonnoi-tekhniky-1335',
+  'nastilni-plyty-1414',
+  'miasorubky-1404',
+  'epiliatory-1423',
+  'hlechyky-1373',
+  'barbekiu-1358',
+  'komplekty-1646',
+  'pylosmoky-z-mishkom-98',
+  'prynalezhnosti-dlia-nozhiv-1362',
+];
+
+const EXPECTED_SLUGS = [...WALLPAPER_SLUGS, ...CONTENT_SLUGS, ...CONTENT_SLUGS_2];
 
 /**
  * Extracts slug → description literal from a SQL file. The capture-group
@@ -100,7 +160,7 @@ function extractDescriptions(
   return map;
 }
 
-// ---- 1. data/category-seo-texts.sql covers exactly the 31 slugs -----------
+// ---- 1. data/category-seo-texts.sql covers exactly the 81 slugs -----------
 
 test('SEO-TEXTS: sql file exists with a draft header (date, author, owner-editable note)', () => {
   const sql = src('data/category-seo-texts.sql');
@@ -109,10 +169,10 @@ test('SEO-TEXTS: sql file exists with a draft header (date, author, owner-editab
   assert.match(sql, /владел/i, 'owner-editable note must be in the header');
 });
 
-test('SEO-TEXTS: exactly 31 UPDATEs covering exactly the 31 seed slugs', () => {
+test('SEO-TEXTS: exactly 81 UPDATEs covering exactly the 81 seed slugs', () => {
   const sql = src('data/category-seo-texts.sql');
   const updates = sql.match(/UPDATE categories SET description = '/g) ?? [];
-  assert.equal(updates.length, 31, `expected 31 UPDATE statements, found ${updates.length}`);
+  assert.equal(updates.length, 81, `expected 81 UPDATE statements, found ${updates.length}`);
 
   const seed = extractDescriptions(
     sql,
@@ -121,9 +181,9 @@ test('SEO-TEXTS: exactly 31 UPDATEs covering exactly the 31 seed slugs', () => {
     2
   );
   const found = [...seed.keys()];
-  assert.equal(found.length, 31, 'every UPDATE must address exactly one slug');
+  assert.equal(found.length, 81, 'every UPDATE must address exactly one slug');
   assert.deepEqual([...found].sort(), [...EXPECTED_SLUGS].sort());
-  assert.equal(new Set(found).size, 31, 'no duplicate slugs');
+  assert.equal(new Set(found).size, 81, 'no duplicate slugs');
   // regex round-trip proves single quotes are escaped ('') — a lone ' would
   // have terminated the literal and broken the match above
   for (const [slug, literal] of seed) {
@@ -140,10 +200,11 @@ test('SEO-TEXTS: exactly 31 UPDATEs covering exactly the 31 seed slugs', () => {
 });
 
 test('SEO-TEXTS: texts are factual — no marketing boilerplate or invented claims', () => {
-  // Both the seed file and migration 049 must stay claim-free.
+  // The seed file and both content migrations (049, 051) must stay claim-free.
   const sources = [
     src('data/category-seo-texts.sql'),
     src('database/migrations/049_category_seo_texts.sql'),
+    src('database/migrations/051_category_seo_texts_2.sql'),
   ];
   for (const banned of [
     'років на ринку',
@@ -209,6 +270,73 @@ test('SEO-TEXTS: seed and migration 049 carry byte-identical texts per slug', ()
     1
   );
   for (const slug of CONTENT_SLUGS) {
+    const seedText = seedMap.get(slug);
+    const migText = migMap.get(slug);
+    assert.ok(seedText, `seed missing ${slug}`);
+    assert.ok(migText, `migration missing ${slug}`);
+    assert.equal(
+      seedText,
+      migText,
+      `seed/migration drift on ${slug} — regenerate one from the other`
+    );
+  }
+});
+
+// ---- 1c. migration 051: the second content batch (50 categories) ----------
+
+const MIGRATION_FILE_2 = 'database/migrations/051_category_seo_texts_2.sql';
+
+test('SEO-TEXTS: migration 051 exists and covers exactly the 50 content slugs', () => {
+  const mig = src(MIGRATION_FILE_2);
+  // Same INSERT ... SELECT ... JOIN shape as 049 (the header comment in the
+  // migration explains why a bare INSERT VALUES dies with 23502: Postgres
+  // validates NOT NULL `name` on the proposed tuple BEFORE conflict
+  // resolution).
+  assert.match(mig, /insert into categories \(slug, name, description\)/i);
+  assert.match(mig, /join categories c on c\.slug = v\.slug/i);
+  assert.match(mig, /on conflict \(slug\) do update set description = excluded\.description/i);
+
+  const migMap = extractDescriptions(
+    mig,
+    /\('([a-z0-9-]+)', '((?:[^']|'')+)'(?:\)|,)/g,
+    2,
+    1
+  );
+  const found = [...migMap.keys()];
+  assert.equal(found.length, 50, `expected 50 INSERT pairs, found ${found.length}`);
+  assert.deepEqual([...found].sort(), [...CONTENT_SLUGS_2].sort());
+  assert.equal(new Set(found).size, 50, 'no duplicate slugs');
+  for (const [slug, literal] of migMap) {
+    assert.ok(
+      literal.length >= 200,
+      `migration text too thin for ${slug}: ${literal.length} chars`
+    );
+    const paragraphs = literal.split(/\r?\n\s*\r?\n/);
+    assert.ok(
+      paragraphs.length >= 2 && paragraphs.length <= 3,
+      `${slug}: text must be 2–3 paragraphs, got ${paragraphs.length}`
+    );
+    assert.ok(
+      /самовив/.test(literal),
+      `${slug}: delivery/pickup line missing`
+    );
+  }
+});
+
+test('SEO-TEXTS: seed and migration 051 carry byte-identical texts per slug', () => {
+  const seedMap = extractDescriptions(
+    src('data/category-seo-texts.sql'),
+    /SET description = '((?:[^']|'')+)' WHERE slug = '([a-z0-9-]+)';/g,
+    1,
+    2
+  );
+  const migMap = extractDescriptions(
+    src(MIGRATION_FILE_2),
+    /\('([a-z0-9-]+)', '((?:[^']|'')+)'(?:\)|,)/g,
+    2,
+    1
+  );
+  for (const slug of CONTENT_SLUGS_2) {
     const seedText = seedMap.get(slug);
     const migText = migMap.get(slug);
     assert.ok(seedText, `seed missing ${slug}`);
