@@ -849,12 +849,10 @@ product_stock_history
   sanitizeFileName → app/lib/upload-filename.ts: розширення з whitelist,
   примусово = магічно верифікованому MIME (svg/html неможливі). Тести
   tests/storage-hardening.test.ts. public=true збережено (не змінювалось).
-- Auth Leaked Password Protection: НЕ вдалося перевірити/увімкнути
-  програмно (Dashboard-only, Pro plan; /auth/v1/settings та admin config
-  API не експонують стан). ПОТРІБНО ВРУЧНУ — шлях ОНОВЛЕНО 2026-09-16
-  (старий «Authentication → Policies» більше не існує, тому не знаходили):
-  Dashboard → Authentication → Providers → Email (sign in / up) → секція
-  налаштувань пароля → перемикач "Leaked password protection"
-  (HaveIBeenPwned). Джерело: supabase.com/docs/guides/auth/password-security.
-  Application auth flow не змінюється (перевірка лише при
-  signup/password update).
+- Auth Leaked Password Protection: УВІМКНЕНО власником 2026-09-16 —
+  Dashboard → Authentication → Providers → Email → секція налаштувань
+  пароля → "Prevent the use of leaked passwords" (HaveIBeenPwned).
+  Примітки: старий шлях «Authentication → Policies» більше не існує;
+  програмно стан не експонується (/auth/v1/settings та admin config API),
+  тому єдиний спосіб перевірки — очима в дашборді. Application auth flow
+  не змінюється (перевірка лише при signup/password update).
