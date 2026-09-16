@@ -1,7 +1,7 @@
 # Graph Report - my-shop  (2026-09-16)
 
 ## Corpus Check
-- 638 files · ~665,858 words
+- 638 files · ~838,386 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 2, .bat 2, .ico 1)
 

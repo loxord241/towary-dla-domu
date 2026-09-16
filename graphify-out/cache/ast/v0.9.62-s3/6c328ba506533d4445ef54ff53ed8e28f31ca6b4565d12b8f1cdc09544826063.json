@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_database_migrations_033_revokes_catalog_write_sql", "label": "033_revokes_catalog_write.sql", "file_type": "code", "source_file": "database/migrations/033_revokes_catalog_write.sql", "source_location": null}], "edges": []}
