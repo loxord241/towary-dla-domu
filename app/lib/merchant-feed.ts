@@ -50,6 +50,10 @@
  *   g:link          → {SITE_URL}/product/{slug} (same URL as the page)
  *   g:image_link    → absolute public URL (getPublicImageUrl, hotlinks pass
  *                     through) — the SAME main image the card renders
+ *   g:additional_image_link → up to 10 more gallery images (every non-main
+ *                     photo in gallery order, getPublicImageUrl; filtered to
+ *                     absolute http(s) and capped HERE so the rule stays
+ *                     unit-testable, same split as g:image_link)
  *   g:availability  → in stock / out of stock (availability_status column)
  *   g:price         → "1234.00 UAH" (toIsoCurrency, DB stores UAH)
  *   g:brand         → brands.name via join
@@ -64,6 +68,12 @@ import { compareCategories } from './category-tree.ts';
 
 /** Scheduled-fetch XML feed cap (see module docstring decision). */
 export const GOOGLE_FEED_MAX_ITEMS = 50_000;
+
+/**
+ * Google accepts up to 10 g:additional_image_link elements per item —
+ * repeated elements emitted right after g:image_link.
+ */
+export const GOOGLE_FEED_MAX_ADDITIONAL_IMAGES = 10;
 
 /** Google g:title limit, characters. */
 export const GOOGLE_TITLE_MAX_LENGTH = 150;
@@ -107,6 +117,12 @@ export interface MerchantFeedProductRow {
   brand_name?: string | null;
   /** Absolute http(s) image URL resolved by the data layer, or null. */
   image_url?: string | null;
+  /**
+   * Gallery images EXCLUDING the picked main one, absolutized by the data
+   * layer (getPublicImageUrl) in gallery order. The builder owns the
+   * http(s) filter and the 10-element cap (honest rules, unit-testable).
+   */
+  additional_image_urls?: string[] | null;
   /** "Корень / Подкатегория" path built by the data layer, or null. */
   category_path?: string | null;
 }
@@ -117,6 +133,8 @@ export interface MerchantFeedItem {
   description: string;
   link: string;
   imageLink: string;
+  /** Up to GOOGLE_FEED_MAX_ADDITIONAL_IMAGES values for g:additional_image_link. */
+  additionalImageLinks?: string[];
   availability: 'in stock' | 'out of stock';
   price: string;
   brand?: string;
@@ -177,6 +195,13 @@ export function buildMerchantItems(
     const imageUrl = row.image_url ?? '';
     if (!/^https?:\/\//i.test(imageUrl)) continue;
 
+    // Same honest rule as g:image_link: only absolute http(s) URLs survive;
+    // capped at Google's 10-element limit, gallery order preserved. Empty
+    // result → the field is not set at all.
+    const additionalImageLinks = (row.additional_image_urls ?? [])
+      .filter((url) => /^https?:\/\//i.test(url))
+      .slice(0, GOOGLE_FEED_MAX_ADDITIONAL_IMAGES);
+
     if (!Number.isFinite(row.price) || row.price <= 0) continue;
 
     items.push({
@@ -185,6 +210,7 @@ export function buildMerchantItems(
       description: truncateDescription(description),
       link: `${base}/product/${encodeURIComponent(row.slug)}`,
       imageLink: imageUrl,
+      ...(additionalImageLinks.length > 0 ? { additionalImageLinks } : {}),
       availability: mapAvailability(row.availability_status),
       price: `${row.price.toFixed(2)} ${toIsoCurrency(row.currency)}`,
       ...(row.brand_name ? { brand: row.brand_name } : {}),
@@ -223,6 +249,9 @@ export function buildMerchantFeedXml(
       `    <g:description>${esc(item.description)}</g:description>`,
       `    <g:link>${esc(item.link)}</g:link>`,
       `    <g:image_link>${esc(item.imageLink)}</g:image_link>`,
+      ...(item.additionalImageLinks ?? []).map(
+        (url) => `    <g:additional_image_link>${esc(url)}</g:additional_image_link>`
+      ),
       `    <g:availability>${esc(item.availability)}</g:availability>`,
       `    <g:price>${esc(item.price)}</g:price>`,
       item.brand ? `    <g:brand>${esc(item.brand)}</g:brand>` : null,

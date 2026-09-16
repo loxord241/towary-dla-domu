@@ -18,6 +18,7 @@ import {
   pickCategoryPath,
   truncateDescription,
   GOOGLE_FEED_MAX_ITEMS,
+  GOOGLE_FEED_MAX_ADDITIONAL_IMAGES,
   GOOGLE_TITLE_MAX_LENGTH,
   GOOGLE_DESCRIPTION_MAX_LENGTH,
   type MerchantFeedProductRow,
@@ -349,6 +350,114 @@ test('FEED: empty item list still produces a valid (degraded) feed', () => {
   const xml = buildMerchantFeedXml([], { comment: 'read failed' });
   assert.match(xml, /<channel>/);
   assert.equal(xml.includes('<item>'), false);
+  assertWellFormedXml(xml);
+});
+
+// ---- g:additional_image_link (gallery extras, 2026-09-16) ----
+
+const additionalRow = (
+  urls: string[]
+): MerchantFeedProductRow => ({
+  ...baseRow(),
+  additional_image_urls: urls,
+});
+
+test('FEED: additional_image_urls map to additionalImageLinks in gallery order (main already excluded by the data layer)', () => {
+  const [item] = buildMerchantItems(
+    [
+      additionalRow([
+        'https://img.test/products/1/second.jpg',
+        'https://img.test/products/1/third.jpg',
+      ]),
+    ],
+    'https://x.test'
+  );
+  assert.ok(item);
+  assert.deepEqual(item.additionalImageLinks, [
+    'https://img.test/products/1/second.jpg',
+    'https://img.test/products/1/third.jpg',
+  ]);
+});
+
+test('FEED: no additional photos (field missing or empty) → additionalImageLinks field is absent', () => {
+  const [plain] = buildMerchantItems([baseRow()], 'https://x.test');
+  assert.ok(plain);
+  assert.equal('additionalImageLinks' in plain, false);
+
+  const [empty] = buildMerchantItems([additionalRow([])], 'https://x.test');
+  assert.ok(empty);
+  assert.equal('additionalImageLinks' in empty, false);
+});
+
+test('FEED: additional images are capped at GOOGLE_FEED_MAX_ADDITIONAL_IMAGES = 10, first ten kept in order', () => {
+  assert.equal(GOOGLE_FEED_MAX_ADDITIONAL_IMAGES, 10);
+  const many = Array.from(
+    { length: 13 },
+    (_, i) => `https://img.test/products/1/${i}.jpg`
+  );
+  const [item] = buildMerchantItems([additionalRow(many)], 'https://x.test');
+  assert.ok(item?.additionalImageLinks);
+  assert.equal(item.additionalImageLinks.length, 10);
+  assert.equal(item.additionalImageLinks[0], many[0]);
+  assert.equal(item.additionalImageLinks[9], many[9]);
+});
+
+test('FEED: non-http(s) additional image URLs are filtered by the pure builder, not the route', () => {
+  // The data layer absolutizes; anything that still is not absolute http(s)
+  // (relative leak, junk scheme) is dropped HERE so the honesty rule stays
+  // unit-testable — same split as g:image_link.
+  const [item] = buildMerchantItems(
+    [
+      additionalRow([
+        'products/1/relative.jpg',
+        'javascript:alert(1)',
+        'https://img.test/ok.jpg',
+        '',
+      ]),
+    ],
+    'https://x.test'
+  );
+  assert.deepEqual(item?.additionalImageLinks, ['https://img.test/ok.jpg']);
+});
+
+test('FEED: XML emits one escaped g:additional_image_link per URL right after g:image_link', () => {
+  const xml = buildMerchantFeedXml(
+    buildMerchantItems(
+      [
+        additionalRow([
+          'https://img.test/a.jpg?w=640&h=480',
+          'https://img.test/b&c.jpg',
+        ]),
+      ],
+      'https://x.test'
+    ),
+    {}
+  );
+  assert.match(
+    xml,
+    /<g:additional_image_link>https:\/\/img\.test\/a\.jpg\?w=640&amp;h=480<\/g:additional_image_link>/
+  );
+  assert.match(
+    xml,
+    /<g:additional_image_link>https:\/\/img\.test\/b&amp;c\.jpg<\/g:additional_image_link>/
+  );
+  // Exactly two elements, both inside the item, after g:image_link.
+  assert.equal(xml.match(/<g:additional_image_link>/g)?.length, 2);
+  const imageLinkAt = xml.indexOf('<g:image_link>');
+  const firstAdditionalAt = xml.indexOf('<g:additional_image_link>');
+  const lastAdditionalEnd = xml.lastIndexOf('</g:additional_image_link>');
+  const itemEnd = xml.indexOf('</item>');
+  assert.ok(firstAdditionalAt > imageLinkAt, 'additional links follow image_link');
+  assert.ok(lastAdditionalEnd < itemEnd, 'additional links stay inside the item');
+  assertWellFormedXml(xml);
+});
+
+test('FEED: item without additional images emits no g:additional_image_link element', () => {
+  const xml = buildMerchantFeedXml(
+    buildMerchantItems([baseRow()], 'https://x.test'),
+    {}
+  );
+  assert.equal(xml.includes('<g:additional_image_link>'), false);
   assertWellFormedXml(xml);
 });
 

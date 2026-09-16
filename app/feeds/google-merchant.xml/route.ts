@@ -108,6 +108,14 @@ async function fetchFeedProductRows(): Promise<MerchantFeedProductRow[] | null> 
           [...images].sort(
             (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
           )[0];
+        // g:additional_image_link: every gallery image EXCEPT the picked
+        // main (subtracted by reference), gallery order kept, absolutized by
+        // getPublicImageUrl (hotlinks pass through). The http(s) filter and
+        // the 10-element cap live in the pure builder.
+        const additional = images
+          .filter((img) => img !== main)
+          .map((img) => getPublicImageUrl(img.image_url))
+          .filter((url): url is string => url !== null);
         const categoryIds = (row.pc ?? [])
           .map((pc) => pc.category_id)
           .filter((id): id is string => typeof id === 'string');
@@ -122,6 +130,7 @@ async function fetchFeedProductRows(): Promise<MerchantFeedProductRow[] | null> 
           short_description: row.short_description ?? null,
           brand_name: row.brand?.name ?? null,
           image_url: main ? getPublicImageUrl(main.image_url) : null,
+          additional_image_urls: additional,
           category_path: pickCategoryPath(categoryIds, categories),
         };
       });
