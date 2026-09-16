@@ -1,5 +1,13 @@
 # Проект my-shop - Техническая документация
 
+> **Как читать (2026-09-16):** текущее состояние архитектуры —
+> [ARCHITECTURE.md](ARCHITECTURE.md) (по коду, с проверкой фактов).
+> Правила работы агентов — [AGENTS.md](AGENTS.md). Этот документ —
+> исторический журнал этапов: записи датированы и описывают состояние НА
+> СВОЙ МОМЕНТ; часть утверждений позже изменилась (пример: «place_order
+> доступен anon» этапа 12 отозвано миграцией 036). Не используй старую
+> запись как описание текущего поведения без сверки с кодом.
+
 ## Стек проекта
 - Next.js 16.3.1 (Turbopack, App Router, proxy.ts вместо deprecated middleware)
 - TypeScript, React 19
@@ -104,7 +112,10 @@ product_stock_history
 ## Известные ограничения (осознанные)
 - Оплата РЕАЛИЗОВАНА: 100% онлайн через LiqPay (payment_status='paid'; колбэки LiqPay
   обновляют заказ автоматически). После успешной оплаты заказ обрабатывается менеджером.
-- Rate-limit in-process: сбрасывается при рестарте, не работает на multi-instance (нужен Redis/DB)
+- Rate-limit: с миграции 047 (2026-09-13) АВТОРИТЕТНОЕ решение в Postgres
+  (rate_limit_hits + RPC, IP хранится как HMAC) — cross-instance; in-process
+  limiter остался как быстрый префильтр. Осознанный остаточный риск: fail-open
+  при недоступности Supabase (checkout не блокируется сбоем лимитера).
 - Полный e2e-цикл доставки Nova Post на реальном заказе НЕ проводился (реальных
   заказов в магазине ещё не было) — детали в разделе Nova Post ниже
 
@@ -853,6 +864,7 @@ product_stock_history
   Dashboard → Authentication → Providers → Email → секція налаштувань
   пароля → "Prevent the use of leaked passwords" (HaveIBeenPwned).
   Примітки: старий шлях «Authentication → Policies» більше не існує;
-  програмно стан не експонується (/auth/v1/settings та admin config API),
-  тому єдиний спосіб перевірки — очима в дашборді. Application auth flow
-  не змінюється (перевірка лише при signup/password update).
+  налаштування dashboard-only — програмно стан не експонується
+  (/auth/v1/settings та admin config API), єдиний спосіб перевірки —
+  очима в дашборді. Application auth flow не змінюється (перевірка лише
+  при signup/password update).
