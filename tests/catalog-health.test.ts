@@ -418,17 +418,19 @@ test('DU-DRIFT: du checks are omitted when no du input is provided (backward com
   assert.deepEqual(overallResult(checks), { status: 'PASS', exitCode: 0 });
 });
 
-test('DU-DRIFT: real allowlist snapshot has 302 ids, 20 price-diff, expectedOrphans=40', () => {
-  assert.equal(DU_EXPECTED_ORPHANS, 40);
+test('DU-DRIFT: real allowlist snapshot has 293 ids, 19 price-diff, expectedOrphans=38', () => {
+  assert.equal(DU_EXPECTED_ORPHANS, 38);
   // 2026-09-12 policy change: ALL verified pairs redirect — the price-diff
   // subset is part of the redirect set (no second live page per product).
+  // 2026-09-16 regeneration: 10 pairs + 1 orphan deleted from the DB
+  // outside the importer, 6895802_du promoted, 7220883_du equalized.
   const all = new Set([
     ...DU_REDIRECT_PAIRS.map((p) => p.duYc),
     ...DU_PRICE_DIFF_PAIRS.map((p) => p.duYc),
   ]);
-  assert.equal(all.size, 302);
-  assert.equal(DU_PRICE_DIFF_PAIRS.length, 20);
-  assert.equal(DU_REDIRECT_PAIRS.length, 302);
+  assert.equal(all.size, 293);
+  assert.equal(DU_PRICE_DIFF_PAIRS.length, 19);
+  assert.equal(DU_REDIRECT_PAIRS.length, 293);
   for (const p of DU_PRICE_DIFF_PAIRS) {
     assert.ok(DU_REDIRECT_BY_YC.has(p.duYc), `${p.duYc} must redirect`);
   }

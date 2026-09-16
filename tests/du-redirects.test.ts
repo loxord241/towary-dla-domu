@@ -15,14 +15,16 @@ import {
 } from '../app/lib/du-redirects.ts';
 import duRedirectsJson from '../app/lib/du-redirects.json' with { type: 'json' };
 
-test('DU: allowlist counts match the audit (302 redirect, 20 documented drifts)', () => {
+test('DU: allowlist counts match the audit (293 redirect, 19 documented drifts)', () => {
   // 2026-09-12 regeneration + POLICY CHANGE (owner audit fix «дві ціни на
   // один товар»): ALL verified pairs redirect to base — a drifted _du
   // shadow page with a second price must not be a live storefront/feed
   // page. The price-diff subset stays documented with prices for
   // monitoring; next drift of the id set fails the generator gate.
-  assert.equal(DU_REDIRECT_PAIRS.length, 302);
-  assert.equal(DU_PRICE_DIFF_PAIRS.length, 20);
+  // 2026-09-16 regeneration: 10 pairs + 1 orphan deleted from the DB
+  // outside the importer, 6895802_du promoted, 7220883_du equalized.
+  assert.equal(DU_REDIRECT_PAIRS.length, 293);
+  assert.equal(DU_PRICE_DIFF_PAIRS.length, 19);
 });
 
 test('DU: every pair is well-formed (_du slug strips exactly to base slug)', () => {
@@ -58,7 +60,7 @@ test('DU: next.config 301-redirects exactly the JSON pairs, nothing else', () =>
   const srcCode = src.replace(/\/\/[^\n]*/g, '');
   assert.ok(!srcCode.includes('permanent:'), 'must use statusCode 301, not permanent(308)');
   // JSON is the config source: same slugs as the TS allowlist.
-  assert.equal(duRedirectsJson.redirect.length, 302);
+  assert.equal(duRedirectsJson.redirect.length, 293);
   assert.deepEqual(
     duRedirectsJson.redirect.map((p) => p.duSlug).sort(),
     [...DU_REDIRECT_SLUGS].sort()

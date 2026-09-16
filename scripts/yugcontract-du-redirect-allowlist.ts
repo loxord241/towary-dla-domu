@@ -4,11 +4,11 @@
  * importer tables, or any DB row.
  *
  * Safety gates (hard fail, exit 1) — the module is regenerated ONLY when the
- * DB still matches the audit this script was written against:
- *   - exactly 288 `_du` products with an existing base;
- *   - exactly 39 `_du` orphans without a base;
- *   - 123/123 base_slug === du_slug minus the `_du` suffix;
- *   - exactly 17 pairs with differing price (fixed id set).
+ * DB still matches the audit this script was written against (2026-09-16):
+ *   - exactly 293 `_du` products with an existing base;
+ *   - exactly 38 `_du` orphans without a base;
+ *   - every base_slug === du_slug minus the `_du` suffix;
+ *   - exactly 19 pairs with differing price (fixed id set PRICE_DIFF_YC).
  *
  * Task #34 audit 2026-09-01 (regeneration after supplier catalog churn —
  * investigation in Task #33):
@@ -31,6 +31,19 @@
  *     _du row 6381053_du found its base 6381053 (prices equal, slug
  *     derivation verified) -> 106 redirect + 17 price-diff, 25 orphans
  *     unchanged. Price-diff id set unchanged; no known pair broke.
+ *   - 2026-09-16 regeneration (first after the 2026-09-14/15 syncs settled
+ *     the post-incident feed): 10 allowlisted pairs (3047192, 6521818,
+ *     6739520, 6884592, 6906759, 6923037, 6992422, 7119231, 7120201,
+ *     7259417) are GONE from products entirely — both the _du and the base
+ *     row deleted OUTSIDE the importer (importer never deletes; read-only
+ *     probe scripts/tmp-probe-du-vanished.ts). 7220883_du drifted to equal
+ *     prices (du = base = 32999) -> dropped from PRICE_DIFF_YC, redirects
+ *     with all pairs under the 09-12 policy. Former orphan 6895802_du
+ *     found its base 6895802 (prices equal 41499, slug verified) via the
+ *     09-14/15 sync. Of the 40 expected orphans one row also vanished
+ *     (id unrecorded — the audit tracks the count, not ids): 40 -> 38 =
+ *     38 alive, 1 promoted, 1 deleted. Gates: pairs 302 -> 293,
+ *     orphans 40 -> 38, price-diff 20 -> 19.
  *
  * Usage: node --experimental-strip-types scripts/yugcontract-du-redirect-allowlist.ts
  */
@@ -53,7 +66,7 @@ const svc = createClient(
   { auth: { persistSession: false } }
 );
 
-const AUDIT_DATE = '2026-09-12';
+const AUDIT_DATE = '2026-09-16';
 // 2026-09-12 POLICY CHANGE (owner audit fix «дві ціни на один товар»):
 // ALL verified pairs redirect to base, including price-diff ones. Base is
 // the canonical listing (it lives in categories/catalogs); a supplier _du
@@ -77,7 +90,8 @@ const PRICE_DIFF_YC = new Set([
   '7111320_du',
   '7194071_du',
   '7204300_du',
-  '7220883_du',
+  // 7220883_du removed 2026-09-16: prices equalized (du = base = 32999),
+  // redirects with all pairs under the 09-12 all-pairs-redirect policy.
   '7232191_du',
   '7248827_du',
   '7270074_du',
@@ -145,15 +159,15 @@ const orphans = (duRows as YcRow[]).filter((du) => !bases.has(stripDu(du.yugcont
 
 // 2. Audit gates — every violation is a hard stop.
 const fail = (msg: string) => { console.error('AUDIT GATE FAILED:', msg); process.exit(1); };
-if (pairs.length !== 302) fail(`pairs ${pairs.length} !== 302`);
-if (orphans.length !== 40) fail(`orphans ${orphans.length} !== 40`);
+if (pairs.length !== 293) fail(`pairs ${pairs.length} !== 293`);
+if (orphans.length !== 38) fail(`orphans ${orphans.length} !== 38`);
 if (pairs.some((p) => p.baseSlug !== stripDu(p.duSlug))) fail('slug derivation changed');
 const priceDiff = pairs.filter((p) => p.duPrice !== undefined);
-if (priceDiff.length !== 20) fail(`price-diff ${priceDiff.length} !== 20`);
+if (priceDiff.length !== 19) fail(`price-diff ${priceDiff.length} !== 19`);
 if (priceDiff.some((p) => !PRICE_DIFF_YC.has(p.duYc))) fail('price-diff set changed');
-if (PRICE_DIFF_YC.size !== 20) fail(`PRICE_DIFF_YC ${PRICE_DIFF_YC.size} !== 20`);
+if (PRICE_DIFF_YC.size !== 19) fail(`PRICE_DIFF_YC ${PRICE_DIFF_YC.size} !== 19`);
 
-// 3. Emit the module: ALL 302 verified pairs redirect to base (policy
+// 3. Emit the module: ALL 293 verified pairs redirect to base (policy
 // change 2026-09-12); the price-diff subset stays documented with prices.
 const redirect = [...pairs].sort((a, b) => a.duYc.localeCompare(b.duYc));
 const diff = [...priceDiff].sort((a, b) => a.duYc.localeCompare(b.duYc));
