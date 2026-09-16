@@ -93,11 +93,13 @@ export function buildProductJsonLd(
       priceCurrency: toIsoCurrency(product.currency),
       availability: availabilityUrl(product.availability_status),
       // Google Merchant warnings (SEO audit P2, 2026-09-12). itemCondition:
-      // the shop sells NEW goods only. returnPolicy reflects what
+      // the shop sells NEW goods only. hasMerchantReturnPolicy (key renamed
+      // 2026-09-16 from the non-canonical `returnPolicy` — Google reads only
+      // the canonical hasMerchantReturnPolicy property) reflects what
       // app/returns actually states: «Умови повернення товару протягом
       // 14 днів після придбання» — a finite 14-day window, not invented.
       itemCondition: 'https://schema.org/NewCondition',
-      returnPolicy: {
+      hasMerchantReturnPolicy: {
         '@type': 'MerchantReturnPolicy',
         applicableCountry: 'UA',
         returnPolicyCategory:
@@ -296,6 +298,10 @@ export function serializeJsonLd(data: Record<string, unknown>): string {
  * assets). No openingHours (the contacts page prints «7:30–16:00» without
  * weekdays — a dayOfWeek would be invented), no ratings, no postal codes.
  *
+ * 2026-09-16 (owner SEO package): a WebSite node (@id …/#website) was added
+ * for Google site names — Google takes the snippet's site name from
+ * schema.org/WebSite, with publisher referencing the Organization.
+ *
  * The logo is /public/og-image.png — the only brand image asset on the
  * origin (the header logo is text-only). Both pickup points are rendered as
  * two Store locations exactly as app/contacts lists them: Мазепи 87А —
@@ -335,6 +341,16 @@ export function buildOrganizationJsonLd(
   return {
     '@context': 'https://schema.org',
     '@graph': [
+      {
+        // Google Site names (2026-09-16): Google reads the snippet's site
+        // name from schema.org/WebSite; publisher references the
+        // Organization node below via @id.
+        '@type': 'WebSite',
+        '@id': `${base}/#website`,
+        url: `${base}/`,
+        name: 'Товари для дому',
+        publisher: { '@id': organizationId },
+      },
       {
         '@type': 'Organization',
         '@id': organizationId,

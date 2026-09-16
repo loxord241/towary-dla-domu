@@ -66,7 +66,9 @@ test('JSONLD: happy path emits exactly the real fields', () => {
     priceCurrency: 'UAH',
     availability: 'https://schema.org/InStock',
     itemCondition: 'https://schema.org/NewCondition',
-    returnPolicy: {
+    // Key renamed to the canonical Google Merchant property 2026-09-16
+    // (owner SEO package): `returnPolicy` was never read by Google.
+    hasMerchantReturnPolicy: {
       '@type': 'MerchantReturnPolicy',
       applicableCountry: 'UA',
       returnPolicyCategory:
@@ -346,6 +348,28 @@ test('OrgGraph: builder emits the Organization facts, nothing invented', () => {
   );
 });
 
+test('OrgGraph: WebSite node pins the Google site name (2026-09-16)', () => {
+  const graph = buildOrganizationJsonLd(SITE)['@graph'] as {
+    '@type': string;
+    '@id'?: string;
+    name?: string;
+    url?: string;
+    publisher?: { '@id': string };
+  }[];
+  const site = graph.find((n) => n['@type'] === 'WebSite');
+  assert.ok(site, '@graph must contain a WebSite node');
+  assert.equal(site['@id'], `${SITE}/#website`);
+  assert.equal(site.url, `${SITE}/`);
+  assert.equal(site.name, 'Товари для дому');
+  assert.deepEqual(site.publisher, { '@id': `${SITE}/#organization` });
+  // serializeJsonLd invariant untouched: the graph still round-trips with
+  // every '<' escaped.
+  const html = serializeJsonLd(buildOrganizationJsonLd(SITE));
+  const parsed = JSON.parse(html) as { '@graph': { '@type': string }[] };
+  assert.ok(parsed['@graph'].some((n) => n['@type'] === 'WebSite'));
+  assert.ok(!/<\//.test(html), 'raw </ must never survive serialization');
+});
+
 test('OrgGraph: both phones and both pickup addresses survive serialization', () => {
   const html = serializeJsonLd(buildOrganizationJsonLd(SITE));
   for (const fact of [
@@ -359,7 +383,9 @@ test('OrgGraph: both phones and both pickup addresses survive serialization', ()
     assert.ok(html.includes(fact), `missing fact: ${fact}`);
   }
   const parsed = JSON.parse(html) as { '@graph': unknown[] };
-  assert.equal(parsed['@graph'].length, 2);
+  // 3 nodes since 2026-09-16: Organization + Store + WebSite (Google site
+  // names, owner SEO package) — invariant changed by owner task, not broken.
+  assert.equal(parsed['@graph'].length, 3);
 });
 
 test('OrgGraph: honesty — no invented ratings, openingHours or postal codes', () => {
@@ -376,25 +402,21 @@ test('OrgGraph: honesty — no invented ratings, openingHours or postal codes', 
   assert.ok(!/rating/i.test(html));
 });
 
-test('Offer: itemCondition + 14-day returnPolicy on every PDP offer (Merchant pins)', () => {
+test('Offer: itemCondition + 14-day hasMerchantReturnPolicy on every PDP offer (Merchant pins)', () => {
   const d = buildProductJsonLd(BASE, null, SITE)!;
-  const offers = d.offers as {
-    itemCondition?: string;
-    returnPolicy?: {
-      '@type': string;
-      applicableCountry: string;
-      returnPolicyCategory: string;
-      merchantReturnDays: number;
-    };
-  };
+  const offers = d.offers as Record<string, unknown>;
   assert.equal(offers.itemCondition, 'https://schema.org/NewCondition');
-  assert.deepEqual(offers.returnPolicy, {
+  // Canonical Google Merchant property name (renamed from `returnPolicy`
+  // 2026-09-16, owner SEO package): present under the new key…
+  assert.deepEqual(offers.hasMerchantReturnPolicy, {
     '@type': 'MerchantReturnPolicy',
     applicableCountry: 'UA',
     returnPolicyCategory:
       'https://schema.org/MerchantReturnFiniteReturnWindow',
     merchantReturnDays: 14,
   });
+  // …and the old non-canonical key must be gone entirely.
+  assert.ok(!('returnPolicy' in offers), 'legacy returnPolicy key must not survive');
   // PDP source still routes the builder payload through ProductJsonLd sink.
   const pdp = readFileSync(
     join(ROOT, 'app', 'product', '[slug]', 'page.tsx'),
