@@ -319,6 +319,14 @@ import/{start,run,status}}}`.
 13. window caching: ISR-интервалы из §6 + revalidateTag('catalog-public-reads').
 14. Rate-limit: авторитетное решение в Postgres (047), in-process — префильтр;
     fail-open при недоступности БД (checkout не должен падать от сбоя лимитера).
+15. SEO-пакет 2026-09-16: непустые combo-вьюхи «категория+бренд» каталога
+    индексируются — canonical `/catalog/<cat>?brand=<brand>`, joint-count
+    гейтит совместно-пустые пары (fetchCategoryBrandProductCount); инвариант
+    «indexable set = sitemap set» временно сужен до «sitemap ⊆ indexable»
+    (включение combo в sitemap — решение владельца pending; при отказе combo
+    возвращаются в noindex). Также: hasMerchantReturnPolicy в Product JSON-LD,
+    WebSite-сущность (Google Site names), g:additional_image_link (до 10) в
+    Merchant-фиде.
 
 ## 17. Constraints / Do not change casually
 
