@@ -1290,9 +1290,9 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1789572047.5380032,
-    "seen": 1789573363.8008575,
-    "ast_hash": "757a3364f841848ec2011e9d8eefe578",
+    "mtime": 1789577041.6342888,
+    "seen": 1789577229.8016846,
+    "ast_hash": "9c7da52bcc41229f02d53647a20dd09a",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -1302,9 +1302,9 @@
     "semantic_hash": ""
   },
   "PROJECT_CONTEXT.md": {
-    "mtime": 1789573263.5264077,
-    "seen": 1789573363.8008575,
-    "ast_hash": "34137775149171768d964de8a22e4e49",
+    "mtime": 1789576871.3723178,
+    "seen": 1789577229.8016846,
+    "ast_hash": "c368a744cd41ff0d0f258100e8125747",
     "semantic_hash": ""
   },
   "README.md": {
@@ -2100,8 +2100,8 @@
     "semantic_hash": ""
   },
   "scripts/wsl/yugcontract-sync.sh": {
-    "mtime": 1789571848.5528643,
-    "seen": 1789573363.8008575,
+    "mtime": 1789573530.1820078,
+    "seen": 1789577229.8016846,
     "ast_hash": "40b926fc8fbf8d68965c30227df10de8",
     "semantic_hash": ""
   },
@@ -2118,8 +2118,8 @@
     "semantic_hash": ""
   },
   "app/lib/monitoring/catalog-health.ts": {
-    "mtime": 1789573018.7970345,
-    "seen": 1789573363.8003001,
+    "mtime": 1789573530.1194315,
+    "seen": 1789577229.8016846,
     "ast_hash": "08af96229aab62caf89e3a6a439f9e80",
     "semantic_hash": ""
   },
@@ -2172,8 +2172,8 @@
     "semantic_hash": ""
   },
   "tests/catalog-health.test.ts": {
-    "mtime": 1789573129.3513715,
-    "seen": 1789573363.8008575,
+    "mtime": 1789573530.120939,
+    "seen": 1789577229.8016846,
     "ast_hash": "0fb79ee0907223bb01220f6d4333e6f0",
     "semantic_hash": ""
   },
@@ -2256,20 +2256,20 @@
     "semantic_hash": ""
   },
   "app/lib/du-redirects.json": {
-    "mtime": 1789573020.1229756,
-    "seen": 1789573363.8003001,
+    "mtime": 1789573530.1194315,
+    "seen": 1789577229.8016846,
     "ast_hash": "70b5e3eefd0558cb5498a531a0159af5",
     "semantic_hash": ""
   },
   "app/lib/du-redirects.ts": {
-    "mtime": 1789573020.1229756,
-    "seen": 1789573363.8003001,
+    "mtime": 1789573530.1194315,
+    "seen": 1789577229.8016846,
     "ast_hash": "af07a73735485ffb1b1980c02af53b19",
     "semantic_hash": ""
   },
   "scripts/yugcontract-du-redirect-allowlist.ts": {
-    "mtime": 1789572978.1751006,
-    "seen": 1789573363.8008575,
+    "mtime": 1789573530.120939,
+    "seen": 1789577229.8016846,
     "ast_hash": "32bc7674c67c4fd928564d6d66db94f7",
     "semantic_hash": ""
   },
@@ -2280,8 +2280,8 @@
     "semantic_hash": ""
   },
   "tests/du-redirects.test.ts": {
-    "mtime": 1789573118.4031603,
-    "seen": 1789573363.8008575,
+    "mtime": 1789573530.120939,
+    "seen": 1789577229.8016846,
     "ast_hash": "598dfecf4dfea8bde95eeb488092a31f",
     "semantic_hash": ""
   },
@@ -2400,8 +2400,8 @@
     "semantic_hash": ""
   },
   ".zcode/config.json": {
-    "mtime": 1789563281.1612332,
-    "seen": 1789563307.5675795,
+    "mtime": 1789573530.1805005,
+    "seen": 1789577229.8016846,
     "ast_hash": "5acb7352bc366aaed45641e8f18ad39e",
     "semantic_hash": ""
   },
@@ -3870,8 +3870,8 @@
     "semantic_hash": ""
   },
   "docs/windows-migration.md": {
-    "mtime": 1789573339.3217592,
-    "seen": 1789573363.8008575,
+    "mtime": 1789573566.2606354,
+    "seen": 1789577229.8016846,
     "ast_hash": "062dcfd57fa7d0e444cc32ace56e213e",
     "semantic_hash": ""
   },
@@ -3999,6 +3999,12 @@
     "mtime": 1789499278.870665,
     "seen": 1789563339.053009,
     "ast_hash": "0d5f2ca88498a9ea0a22d7de874d6488",
+    "semantic_hash": ""
+  },
+  "ARCHITECTURE.md": {
+    "mtime": 1789577064.1625795,
+    "seen": 1789577229.8016846,
+    "ast_hash": "b998bff8f0debb7539d47b37e96c457a",
     "semantic_hash": ""
   }
 }
