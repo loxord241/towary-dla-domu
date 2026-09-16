@@ -11,14 +11,29 @@ export { htmlToPlainText, isPlaceholderDescription };
 
 /**
  * Canonical/noindex policy for the storefront (spec 2026-08-26 + Task #14
- * 2026-09): the indexable set is EXACTLY the sitemap set — bare /catalog
- * plus single valid, NON-EMPTY category/brand views on page 1 with the
- * default sort and no extra filters. «Non-empty» means ≥1 eligible product
- * (active + ≥1 photo; category counts follow the junction + subtree
- * semantics of fetchCatalogProducts). Everything else (search results,
- * filter combinations, pagination depth, empty views, unknown slugs) is
- * noindex,follow WITHOUT a canonical tag: Google ignores canonicals on
- * noindexed pages, and emitting one would send contradictory signals.
+ * 2026-09 + owner SEO package 2026-09-16): the indexable set is bare
+ * /catalog, single valid NON-EMPTY category/brand views AND valid non-empty
+ * category+brand combo views — all on page 1, with the default sort and no
+ * extra filters. «Non-empty» means ≥1 eligible product (active + ≥1 photo;
+ * category counts follow the junction + subtree semantics of
+ * fetchCatalogProducts; combos use the JOINT count — per-axis facts cannot
+ * see jointly-empty pairs). Everything else (search results, price/stock/
+ * sort/pagination views, empty views, unknown slugs) is noindex,follow
+ * WITHOUT a canonical tag: Google ignores canonicals on noindexed pages,
+ * and emitting one would send contradictory signals.
+ *
+ * Combo canonical form (2026-09-16): the human-readable PATH form for the
+ * category + the query form for the brand — /catalog/<cat>?brand=<brand>.
+ * /catalog?category=x&brand=y stays a live view (proxy deliberately does
+ * NOT redirect combos — catalogCategoryRedirect skips them), and
+ * /catalog/<slug>?brand=y is served by the dynamic filtered twin — both
+ * emit the same canonical.
+ *
+ * Invariant note: combos are NOT in app/sitemap.ts yet (owner decision
+ * pending), so «indexable set = sitemap set» is temporarily narrowed to
+ * «sitemap ⊆ indexable set». If the owner declines sitemap inclusion,
+ * combos must return to noindex — do not ship sitemap entries silently.
+ *
  * Unknown category/brand slugs stay a normal 200 empty state — they are
  * filter VALUES on an existing resource (/catalog), not missing resources
  * (approved decision A of the spec).
@@ -44,6 +59,15 @@ export interface CatalogIndexInput {
    */
   categoryHasProducts?: boolean;
   brandHasProducts?: boolean;
+  /**
+   * JOINT eligible-product fact for a category+brand combo (owner SEO
+   * package 2026-09-16): per-axis facts cannot see JOINTLY-empty pairs
+   * (each axis non-empty, zero products together). Same contract as the
+   * per-axis facts — false marks an empty combo → noindex, undefined =
+   * fact unknown → treated as non-empty. Only read when BOTH slugs are
+   * valid; never read outside a combo.
+   */
+  comboHasProducts?: boolean;
   minPrice?: number;
   maxPrice?: number;
   inStockOnly?: boolean;
@@ -72,9 +96,13 @@ export function decideCatalogIndexing(
     (categoryRequested && !categoryValid) || (brandRequested && !brandValid);
   const emptyView =
     (categoryValid && input.categoryHasProducts === false) ||
-    (brandValid && input.brandHasProducts === false);
+    (brandValid && input.brandHasProducts === false) ||
+    // Joint fact (owner SEO package 2026-09-16): a combo whose category and
+    // brand are EACH non-empty but have ZERO products together is empty.
+    (categoryValid && brandValid && input.comboHasProducts === false);
+  // NOTE: category+brand is NO LONGER multiFilter (2026-09-16) — a valid
+  // non-empty combo is its own indexable view with the path+query canonical.
   const multiFilter =
-    (categoryRequested && brandRequested) ||
     input.minPrice !== undefined ||
     input.maxPrice !== undefined ||
     input.inStockOnly === true ||
@@ -85,6 +113,15 @@ export function decideCatalogIndexing(
     return { indexable: false, canonicalPath: null };
   }
 
+  if (categoryValid && brandValid) {
+    // Combo canonical: PATH form for the category + query form for the
+    // brand. Both URL shapes that render this view (/catalog?category=x
+    // &brand=y and /catalog/<slug>?brand=y via the filtered twin) emit it.
+    return {
+      indexable: true,
+      canonicalPath: `/catalog/${encodeURIComponent(input.categorySlug!)}?brand=${encodeURIComponent(input.brandSlug!)}`,
+    };
+  }
   if (categoryValid) {
     return {
       indexable: true,
@@ -215,6 +252,13 @@ export function buildCatalogViewMetadata(
     const q = truncateQuery(input.search);
     title = `Пошук: «${q}» | ${SITE_NAME}`;
     description = `Результати пошуку за запитом «${q}» в інтернет-магазині ${SITE_NAME}.`;
+  } else if (input.categorySlug && input.brandSlug && categoryName && brandName) {
+    // Combo (owner SEO package 2026-09-16): «Категорія Бренд». Admin copy
+    // stays per-axis ON PURPOSE — categories.description and
+    // brands.description are written for their SINGLE-axis views; a combo
+    // keeps the template so neither copy leaks onto the other's URL.
+    title = `${categoryName} ${brandName} — ${SITE_NAME}`;
+    description = `Товари у категорії «${categoryName}» бренду ${brandName} — купити в інтернет-магазині ${SITE_NAME} ${GEO_TAIL}.`;
   } else if (input.categorySlug && categoryName) {
     // Audit R4 2026-09-15: the previous tail «— купити в Товари для дому»
     // read ungrammatically (no noun after «в») and spent the ~60-char SERP

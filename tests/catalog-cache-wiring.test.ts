@@ -207,6 +207,10 @@ test('source: every planned public read is wrapped exactly once with its prefix/
     // Task #14: eligible-product counts per single category/brand view.
     ['catalog:category-product-count', 'CATALOG_PUBLIC_READ_TTL_SECONDS'],
     ['catalog:brand-product-count', 'CATALOG_PUBLIC_READ_TTL_SECONDS'],
+    // Owner SEO package 2026-09-16: JOINT count for category+brand combos
+    // (per-axis facts cannot see jointly-empty pairs) — same public-read
+    // caching posture as the axis counts.
+    ['catalog:category-brand-product-count', 'CATALOG_PUBLIC_READ_TTL_SECONDS'],
   ];
   for (const [prefix, ttl] of mappings) {
     const uses = src.split(`'${prefix}'`).length - 1;

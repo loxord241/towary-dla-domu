@@ -49,9 +49,18 @@ test('JUNCTION-FILTER: both queries embed pc and filter by subtree ids', () => {
   // No plain FK equality anywhere in the catalog module.
   assert.doesNotMatch(s, /\.eq\('category_id', categoryId\)/);
   // Both catalog queries AND the Task #14 category count reuse the guarded
-  // junction filter (all three mirror the same subtree semantics).
+  // junction filter (all mirror the same subtree semantics).
+  // 2026-09-16: the 4th site is the JOINT category+brand combo counter
+  // (owner SEO package) — it mirrors the grid's junction+subtree shape the
+  // same way the Task #14 category counter does. The invariant itself is
+  // unchanged: NO plain FK equality, every junction filter goes through
+  // subtree ids.
   const inFilters = (s.match(/\.in\('pc\.category_id', subtreeIds\)/g) ?? []).length;
-  assert.equal(inFilters, 3, 'catalog count + catalog data + Task #14 category count');
+  assert.equal(
+    inFilters,
+    4,
+    'catalog count + catalog data + Task #14 category count + combo count'
+  );
   // The pc embed joins only via the categoryId ternary guards; the count
   // variant selects product_id (pc.id is not a valid live column).
   // (2026-09: the data query gained a relevance-ranked select variant, so

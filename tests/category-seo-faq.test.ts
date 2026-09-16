@@ -457,11 +457,14 @@ test('FAQ: catalog page mounts FAQ + JSON-LD only for shpaleri% on page 1', () =
   );
   assert.match(page, /showWallpaperFaq && <FaqJsonLd questions=\{WALLPAPER_FAQ\} \/>/);
   assert.match(page, /showWallpaperFaq && <FaqSection \/>/);
-  // description block has its own page-1 gate and renders text children
+  // description block has its own page-1 gate and renders text children.
+  // 2026-09-16 (owner SEO package): the gate ALSO excludes combo views
+  // (!brandSlug) — per-axis admin copy never renders on a combo — the
+  // page-1-only property this pin guards is unchanged.
   assert.match(
     page,
-    /Boolean\(filters\.categorySlug\) && page === 1/,
-    'category description gate must be page-1 only'
+    /Boolean\(filters\.categorySlug\) && !filters\.brandSlug && page === 1/,
+    'category description gate must be page-1 only and never render on a combo'
   );
   assert.match(page, /splitDescriptionParagraphs\(/);
   assert.match(page, /fetchCategoryDescription\(/);

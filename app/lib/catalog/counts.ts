@@ -98,3 +98,62 @@ const countBrandProductsStore = cachePublicRead(
 );
 
 export const fetchBrandProductCount = cache(countBrandProductsStore);
+
+// ---------------------------------------------------------------------------
+// JOINT category+brand combo count (owner SEO package 2026-09-16):
+// decideCatalogIndexing indexes non-empty combos, and per-axis facts cannot
+// see JOINTLY-empty pairs (each axis non-empty, zero products together).
+// Mirrors the grid's combo shape exactly: junction + subtree for the
+// category axis, brand_id equality for the brand axis, and the wallpaper
+// scoping decision driven by the CATEGORY subtree only (listing.ts:
+// isWallpaperView is category-scoped for a combo view). Cached like the
+// axis counts; null = either slug unknown/inactive; a DB error is
+// rethrown (the caller degrades to «non-empty»).
+// ---------------------------------------------------------------------------
+
+async function countCategoryBrandProductsUncached(
+  categorySlug: string,
+  brandSlug: string
+): Promise<number | null> {
+  const [category, brand] = await Promise.all([
+    lookupCategoryBySlugCached(categorySlug),
+    lookupBrandBySlugCached(brandSlug),
+  ]);
+  if (!category || !brand) return null;
+  const activeCategories = await fetchActiveCategoriesStore();
+  const subtreeIds = Array.from(
+    collectSubtreeIds(activeCategories, category.id)
+  );
+  const isWallpaperView = activeCategories.some(
+    (activeCategory) =>
+      WALLPAPER_CATEGORY_SLUGS.has(activeCategory.slug) &&
+      subtreeIds.includes(activeCategory.id)
+  );
+  let countQuery = supabase
+    .from('products')
+    .select(JUNCTION_COUNT_SELECT, { count: 'exact', head: true })
+    .eq('is_active', true)
+    .in('pc.category_id', subtreeIds)
+    .eq('brand_id', brand.id);
+  if (!isWallpaperView) {
+    countQuery = countQuery.not('sku', 'like', WALLPAPER_SKU_LIKE);
+  }
+  const { count, error } = await countQuery;
+  if (error) {
+    throw new Error(
+      `Failed to count eligible products for category "${categorySlug}" + brand "${brandSlug}": ${error.message}`
+    );
+  }
+  return count ?? 0;
+}
+
+const countCategoryBrandProductsStore = cachePublicRead(
+  'catalog:category-brand-product-count',
+  CATALOG_PUBLIC_READ_TTL_SECONDS,
+  countCategoryBrandProductsUncached
+);
+
+/** React cache() on top of the 900s Data Cache: one execution per request. */
+export const fetchCategoryBrandProductCount = cache(
+  countCategoryBrandProductsStore
+);

@@ -1,9 +1,12 @@
 /**
  * Pure SEO decision layer: canonical/noindex policy for /catalog views,
- * query truncation, and per-view metadata builders (spec 2026-08-26 B/G).
- * Policy invariant: the INDEXABLE set is exactly the sitemap set —
- * bare /catalog plus single valid category/brand views on page 1
- * with default sort and no other filters. Everything else: noindex,follow,
+ * query truncation, and per-view metadata builders (spec 2026-08-26 B/G +
+ * owner SEO package 2026-09-16: non-empty category+brand combos open up).
+ * Policy invariant (NARROWED 2026-09-16, owner SEO-audit P1): the sitemap
+ * set is now a SUBSET of the indexable set — bare /catalog, single valid
+ * category/brand views AND valid non-empty category+brand combos on page 1
+ * with the default sort and no other filters. Combos are NOT in the
+ * sitemap yet (owner decision pending). Everything else: noindex,follow,
  * and canonical is emitted ONLY on indexable URLs.
  */
 import { test } from 'node:test';
@@ -93,8 +96,11 @@ test('SEO: metadata builder emits noindex for the empty-category fact', () => {
 });
 
 test('SEO: filter combinations break indexability', () => {
+  // NOTE 2026-09-16: category+brand combos LEFT this list — a valid
+  // non-empty combo is now indexable (owner SEO-audit P1), pinned by the
+  // SEO-COMBO tests below. Price/stock/sort/pagination combinations stay
+  // noindex for both single-axis and combo views.
   const combos: Parameters<typeof decideCatalogIndexing>[0][] = [
-    { categorySlug: 'c', categoryFound: true, brandSlug: 'b', brandFound: true },
     { categorySlug: 'c', categoryFound: true, minPrice: 10 },
     { categorySlug: 'c', categoryFound: true, maxPrice: 10 },
     { categorySlug: 'c', categoryFound: true, inStockOnly: true },
@@ -106,6 +112,179 @@ test('SEO: filter combinations break indexability', () => {
     assert.equal(dec(input).indexable, false, JSON.stringify(input));
     assert.equal(dec(input).canonicalPath, null);
   }
+});
+
+// ---- category+brand combo views (owner SEO package 2026-09-16, P1:
+// previously a noindex blind spot) ----
+
+test('SEO-COMBO: valid combo is indexable with the path+query canonical', () => {
+  const r = dec({
+    categorySlug: 'blendery-1402',
+    categoryFound: true,
+    brandSlug: 'tefal',
+    brandFound: true,
+  });
+  assert.deepEqual(r, {
+    indexable: true,
+    canonicalPath: '/catalog/blendery-1402?brand=tefal',
+  });
+});
+
+test('SEO-COMBO: canonical encodes BOTH slugs exactly once', () => {
+  const r = dec({
+    categorySlug: 'кат z probilom',
+    categoryFound: true,
+    brandSlug: 'бренд 1',
+    brandFound: true,
+  });
+  assert.equal(
+    r.canonicalPath,
+    `/catalog/${encodeURIComponent('кат z probilom')}?brand=${encodeURIComponent('бренд 1')}`
+  );
+});
+
+test('SEO-COMBO: explicit per-axis non-empty facts keep the combo indexable', () => {
+  const r = dec({
+    categorySlug: 'c',
+    categoryFound: true,
+    categoryHasProducts: true,
+    brandSlug: 'b',
+    brandFound: true,
+    brandHasProducts: true,
+  });
+  assert.deepEqual(r, { indexable: true, canonicalPath: '/catalog/c?brand=b' });
+});
+
+test('SEO-COMBO: jointly-empty combo (comboHasProducts: false) → noindex without canonical', () => {
+  const r = dec({
+    categorySlug: 'c',
+    categoryFound: true,
+    brandSlug: 'b',
+    brandFound: true,
+    comboHasProducts: false,
+  });
+  assert.equal(r.indexable, false, 'jointly-empty combo must not be indexable');
+  assert.equal(r.canonicalPath, null);
+});
+
+test('SEO-COMBO: missing combo fact (undefined) keeps legacy non-empty behavior', () => {
+  const r = dec({
+    categorySlug: 'c',
+    categoryFound: true,
+    brandSlug: 'b',
+    brandFound: true,
+    comboHasProducts: undefined,
+  });
+  assert.deepEqual(r, { indexable: true, canonicalPath: '/catalog/c?brand=b' });
+});
+
+test('SEO-COMBO: per-axis empty facts noindex a combo too', () => {
+  for (const input of [
+    {
+      categorySlug: 'c',
+      categoryFound: true,
+      brandSlug: 'b',
+      brandFound: true,
+      categoryHasProducts: false,
+    },
+    {
+      categorySlug: 'c',
+      categoryFound: true,
+      brandSlug: 'b',
+      brandFound: true,
+      brandHasProducts: false,
+    },
+  ]) {
+    const r = dec(input);
+    assert.equal(r.indexable, false, JSON.stringify(input));
+    assert.equal(r.canonicalPath, null);
+  }
+});
+
+test('SEO-COMBO: the combo fact is never read outside a valid combo', () => {
+  // brand-only view: comboHasProducts must be ignored (same contract as
+  // the per-axis facts: never read for the non-requested entity).
+  const b = dec({ brandSlug: 'b', brandFound: true, comboHasProducts: false });
+  assert.deepEqual(b, { indexable: true, canonicalPath: '/catalog?brand=b' });
+});
+
+test('SEO-COMBO: everything that noindexes single-axis views noindexes combos too', () => {
+  const base = {
+    categorySlug: 'c',
+    categoryFound: true,
+    brandSlug: 'b',
+    brandFound: true,
+  };
+  const variants: Parameters<typeof decideCatalogIndexing>[0][] = [
+    { ...base, search: 'чайник' },
+    { ...base, sort: 'price_asc' },
+    { ...base, sort: 'name_asc' },
+    { ...base, page: 2 },
+    { ...base, minPrice: 10 },
+    { ...base, maxPrice: 500 },
+    { ...base, inStockOnly: true },
+    { ...base, categoryFound: false, comboHasProducts: undefined }, // invalid category slug
+    { ...base, brandFound: false, comboHasProducts: undefined }, // invalid brand slug
+  ];
+  for (const input of variants) {
+    assert.equal(dec(input).indexable, false, JSON.stringify(input));
+    assert.equal(dec(input).canonicalPath, null);
+  }
+});
+
+test('SEO-COMBO: metadata builder — combo title/description template, canonical, og mirrors', () => {
+  const m = buildCatalogViewMetadata({
+    input: {
+      categorySlug: 'blendery-1402',
+      categoryFound: true,
+      brandSlug: 'tefal',
+      brandFound: true,
+    },
+    categoryName: 'Блендери',
+    brandName: 'TEFAL',
+  });
+  assert.equal(m.title, 'Блендери TEFAL — Товари для дому');
+  assert.equal(
+    m.description,
+    'Товари у категорії «Блендери» бренду TEFAL — купити в інтернет-магазині Товари для дому з доставкою по Україні та самовивозом у Кривому Розі.'
+  );
+  assert.equal(m.robots, undefined, 'a valid combo emits no robots override');
+  assert.deepEqual(m.alternates, {
+    canonical: '/catalog/blendery-1402?brand=tefal',
+  });
+  assert.ok(m.openGraph, 'og object missing on a combo view');
+  assert.equal(m.openGraph!.title, m.title);
+  assert.equal(m.openGraph!.description, m.description);
+});
+
+test('SEO-COMBO: per-axis admin copy does NOT leak onto the combo meta', () => {
+  const m = buildCatalogViewMetadata({
+    input: {
+      categorySlug: 'blendery-1402',
+      categoryFound: true,
+      brandSlug: 'tefal',
+      brandFound: true,
+    },
+    categoryName: 'Блендери',
+    brandName: 'TEFAL',
+    categoryDescription: 'Унікальний текст про блендери, капнутий до 160 символів.',
+    brandDescription: 'Унікальний текст бренду TEFAL.',
+  });
+  // Copy is per-axis on purpose: categories.description / brands.description
+  // are written for the single-axis views, the combo keeps the template.
+  assert.equal(
+    m.description,
+    'Товари у категорії «Блендери» бренду TEFAL — купити в інтернет-магазині Товари для дому з доставкою по Україні та самовивозом у Кривому Розі.'
+  );
+});
+
+test('SEO-COMBO: unknown category on a combo stays noindex generic without canonical', () => {
+  const m = buildCatalogViewMetadata({
+    input: { categorySlug: 'zzz', brandSlug: 'tefal', brandFound: true },
+    brandName: 'TEFAL',
+  });
+  assert.deepEqual(m.robots, { index: false, follow: true });
+  assert.equal(m.alternates, undefined);
 });
 
 test('SEO: truncateQuery strips control chars, collapses whitespace, caps length', () => {
@@ -330,10 +509,13 @@ test('SEO-TWITTER: root layout declares twitter:card (title/description/image in
 test('SEO-DESC: catalogViewMetadata feeds the admin description through the SAME cache()d read', () => {
   const view = readFileSync('app/catalog/CatalogView.tsx', 'utf8');
   // The read joins the existing parallel batch in the metadata function…
+  // 2026-09-16 (owner SEO-audit P1): the gate gained the !brandSlug guard —
+  // a combo view must NOT read the per-axis category copy (its meta is
+  // template-only, see the SEO-COMBO tests).
   assert.match(
     view,
-    /category && filters\.categorySlug && filters\.page === 1\s*\?\s*fetchCategoryDescription\(filters\.categorySlug\)/,
-    'metadata must read the description behind the page-1 gate'
+    /category && filters\.categorySlug && !filters\.brandSlug && filters\.page === 1\s*\?\s*fetchCategoryDescription\(filters\.categorySlug\)/,
+    'metadata must read the description behind the page-1, non-combo gate'
   );
   // …and reaches the builder as a parameter (no duplicate DB read — the
   // page body reuses the React-cache()d call). R8: brandDescription rides
@@ -346,12 +528,46 @@ test('SEO-DESC: catalogViewMetadata feeds the admin description through the SAME
 
 test('SEO-R8: catalogViewMetadata feeds the brand description the same way (audit R8 2026-09-15)', () => {
   const view = readFileSync('app/catalog/CatalogView.tsx', 'utf8');
+  // 2026-09-16: mirrored !categorySlug guard — a combo reads neither copy.
   assert.match(
     view,
-    /brand && filters\.brandSlug && filters\.page === 1\s*\?\s*fetchBrandDescription\(filters\.brandSlug\)/,
-    'metadata must read the brand description behind the page-1 gate'
+    /brand && filters\.brandSlug && !filters\.categorySlug && filters\.page === 1\s*\?\s*fetchBrandDescription\(filters\.brandSlug\)/,
+    'metadata must read the brand description behind the page-1, non-combo gate'
   );
   assert.match(view, /brandDescription,\s*\}\),/, 'builder must receive brandDescription');
+});
+
+test('SEO-COMBO: catalogViewMetadata fetches the joint count and gates per-axis overrides', () => {
+  const view = readFileSync('app/catalog/CatalogView.tsx', 'utf8');
+  // Joint eligible-count fetch (same null degradation as the axis counts —
+  // a read failure can never noindex a full page).
+  assert.match(view, /fetchCategoryBrandProductCount\(/);
+  // The fact reaches the decision input: false = jointly-empty → noindex.
+  assert.match(view, /comboHasProducts:\s*comboCount === 0 \? false : undefined/);
+  // The pinned category title/H1 override (category-seo.ts) must NOT fire
+  // on a combo view: the slug is passed only when NO brand is requested.
+  assert.match(view, /filters\.brandSlug \? undefined : filters\.categorySlug/);
+  // The visible pinned intro block is gated the same way.
+  assert.match(
+    view,
+    /!filters\.search && filters\.categorySlug && !filters\.brandSlug/,
+    'pinned category copy must not swallow the combo H1/title'
+  );
+  // Visible per-axis admin copy blocks: neither renders on a combo.
+  assert.match(
+    view,
+    /Boolean\(filters\.categorySlug\) && !filters\.brandSlug && page === 1/
+  );
+  assert.match(
+    view,
+    /Boolean\(filters\.brandSlug\) && !filters\.categorySlug && page === 1/
+  );
+  // Combo H1 «Категорія Бренд» in the shared heading helper.
+  assert.match(
+    view,
+    /`\$\{names\.categoryName\} \$\{names\.brandName\}`/,
+    'combo H1 template missing in catalogHeading'
+  );
 });
 
 test('SEO-R8: brand-description reader mirrors the category reader contract', () => {

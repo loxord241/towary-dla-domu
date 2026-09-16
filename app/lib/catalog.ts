@@ -38,7 +38,11 @@ export {
 export type { CatalogFilters, CatalogSort } from './catalog/filters.ts';
 export { CATALOG_PAGE_SIZE } from './catalog/filters.ts';
 export { fetchBrandBySlug, fetchCategoryBySlug } from './catalog/slug-lookup.ts';
-export { fetchBrandProductCount, fetchCategoryProductCount } from './catalog/counts.ts';
+export {
+  fetchBrandProductCount,
+  fetchCategoryProductCount,
+  fetchCategoryBrandProductCount,
+} from './catalog/counts.ts';
 export type { CatalogPage } from './catalog/listing.ts';
 export { fetchCatalogProducts } from './catalog/listing.ts';
 export type { WallpaperPage } from './catalog/wallpaper-listing.ts';

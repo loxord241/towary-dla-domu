@@ -15,6 +15,7 @@ import { buildCatalogViewMetadata } from '@/app/lib/seo'
 import {
   fetchCategoryProductCount,
   fetchBrandProductCount,
+  fetchCategoryBrandProductCount,
 } from '@/app/lib/catalog'
 import {
   getCategorySeo,
@@ -144,6 +145,12 @@ function catalogHeading(
   h1Override?: string
 ): string {
   if (filters.search) return `Пошук: «${filters.search}»`;
+  // Combo (owner SEO package 2026-09-16): «Категорія Бренд» — the category
+  // branch below would otherwise swallow every combo (it matches on the
+  // category slug alone) and the pinned H1 override would leak through.
+  if (filters.categorySlug && filters.brandSlug && names.categoryName && names.brandName) {
+    return `${names.categoryName} ${names.brandName}`;
+  }
   if (filters.categorySlug && names.categoryName) return h1Override ?? names.categoryName;
   if (filters.brandSlug && names.brandName) return `Бренд ${names.brandName}`;
   return 'Каталог товарів';
@@ -186,25 +193,36 @@ export async function catalogViewMetadata({
   // it never throws (errors degrade to null → template description), and
   // the page-1 gate mirrors the visible description block (paginated views
   // keep the template meta).
-  const [categoryCount, brandCount, categoryDescription, brandDescription] = await Promise.all([
+  const [categoryCount, brandCount, comboCount, categoryDescription, brandDescription] = await Promise.all([
     category && filters.categorySlug
       ? fetchCategoryProductCount(filters.categorySlug).catch(() => null)
       : Promise.resolve(null),
     brand && filters.brandSlug
       ? fetchBrandProductCount(filters.brandSlug).catch(() => null)
       : Promise.resolve(null),
-    category && filters.categorySlug && filters.page === 1
+    // Joint eligible-count for the category+brand combo (owner SEO package
+    // 2026-09-16): per-axis facts cannot see JOINTLY-empty pairs. Same
+    // failure degradation as the axis counts — null → «has products».
+    category && brand && filters.categorySlug && filters.brandSlug
+      ? fetchCategoryBrandProductCount(
+          filters.categorySlug,
+          filters.brandSlug
+        ).catch(() => null)
+      : Promise.resolve(null),
+    // Per-axis admin copy stays per-axis (2026-09-16): a combo view reads
+    // neither copy — its meta is template-only (lib/seo.ts combo branch).
+    category && filters.categorySlug && !filters.brandSlug && filters.page === 1
       ? fetchCategoryDescription(filters.categorySlug)
       : Promise.resolve(null),
-    // Audit R8 2026-09-15: brand admin copy rides the same parallel batch
-    // (React-cache()d, so the page body reuses this exact read).
-    brand && filters.brandSlug && filters.page === 1
+    brand && filters.brandSlug && !filters.categorySlug && filters.page === 1
       ? fetchBrandDescription(filters.brandSlug)
       : Promise.resolve(null),
   ]);
 
   // SEO copy override (category-seo.ts) touches ONLY title/description —
   // the indexability/canonical decision from buildCatalogViewMetadata stays.
+  // On a COMBO the pinned category title/H1 must not fire: the slug is
+  // passed only when NO brand is requested.
   return applyCategorySeoMetadata(
     buildCatalogViewMetadata({
       input: {
@@ -215,6 +233,7 @@ export async function catalogViewMetadata({
         brandFound: brand !== null,
         categoryHasProducts: category && categoryCount === 0 ? false : undefined,
         brandHasProducts: brand && brandCount === 0 ? false : undefined,
+        comboHasProducts: comboCount === 0 ? false : undefined,
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
         inStockOnly: filters.inStockOnly,
@@ -226,7 +245,7 @@ export async function catalogViewMetadata({
       categoryDescription,
       brandDescription,
     }),
-    filters.categorySlug
+    filters.brandSlug ? undefined : filters.categorySlug
   );
 }
 
@@ -371,9 +390,10 @@ export default async function CatalogView({
   const filterChipCount = chips.filter((chip) => chip.removeKey !== 'q').length;
 
   // Category-level SEO (category-seo.ts): intent copy for the pinned
-  // category only (no search).
+  // category only (no search, no combo — a combo keeps its «Категорія
+  // Бренд» H1 and must not inherit the pinned category title/intro).
   const seo =
-    !filters.search && filters.categorySlug
+    !filters.search && filters.categorySlug && !filters.brandSlug
       ? getCategorySeo(filters.categorySlug)
       : null;
   const activeCategory = filters.categorySlug
@@ -408,7 +428,7 @@ export default async function CatalogView({
   // duplicate the copy. `page` is the server-clamped page, so an
   // out-of-range request that renders page 1 behaves like page 1.
   const showCategoryDescription =
-    Boolean(filters.categorySlug) && page === 1;
+    Boolean(filters.categorySlug) && !filters.brandSlug && page === 1;
   const descriptionParagraphs = showCategoryDescription
     ? splitDescriptionParagraphs(
         await fetchCategoryDescription(filters.categorySlug as string)
@@ -416,7 +436,8 @@ export default async function CatalogView({
     : [];
   // Audit R8 2026-09-15: brand admin copy renders with the same contract as
   // the category copy — plain text paragraphs, page-1 brand views only.
-  const showBrandDescription = Boolean(filters.brandSlug) && page === 1;
+  const showBrandDescription =
+    Boolean(filters.brandSlug) && !filters.categorySlug && page === 1;
   const brandDescriptionParagraphs = showBrandDescription
     ? splitDescriptionParagraphs(
         await fetchBrandDescription(filters.brandSlug as string)
