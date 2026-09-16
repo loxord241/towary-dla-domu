@@ -52,3 +52,6 @@ next-env.d.ts
 
 # wallpaper import data drops (инвентаризация, чеклисты, кэши фото)
 /data/
+
+# UI-audit screenshots (ephemeral evidence, see docs/ui-ux-audit-*.md)
+gui-audit-screenshots/
