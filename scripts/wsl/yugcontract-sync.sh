@@ -28,6 +28,9 @@
 #   6    cannot cd into repo root
 #   7    coreutils 'timeout' not found
 #   10   cannot create logs dir
+#   44   coreutils 'flock' not found (Git Bash on Windows has none — use
+#        scripts/windows/yugcontract-sync.ps1 there); fail loud instead of
+#        the old silent 'if ! flock' skip that looked like a normal no-op
 #   124  a phase exceeded its hard timeout and was killed (GNU timeout code);
 #        explicit log message + non-zero exit so systemd OnFailure / CI callers
 #        see the failure instead of a hung flock
@@ -80,6 +83,11 @@ LOG="$LOGS/yugcontract-sync-$(date +%Y%m%d).log"
 find "$LOGS" -name 'yugcontract-sync-*.log' -mtime +14 -delete 2>/dev/null || true
 
 # --- single-instance guard (extra to systemd's own serialization) -------------
+if ! command -v flock >/dev/null 2>&1; then
+    echo "[yugcontract-sync] FAILED: coreutils 'flock' not found (Git Bash on Windows?)" >&2
+    echo "[yugcontract-sync] use scripts/windows/yugcontract-sync.ps1 on Windows" >&2
+    exit 44
+fi
 exec 9>"$LOGS/.yugcontract-sync.lock"
 if ! flock -n 9; then
     echo "[yugcontract-sync] another sync is already running — skipping (no overlap)"

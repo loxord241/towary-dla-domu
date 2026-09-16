@@ -25,23 +25,29 @@
 
 ## Что осталось (по мере надобности)
 
-0. **graphify** — единственное, что ставится заново (uv на Windows
-   отсутствует): `winget install astral-sh.uv`, затем
-   `uv tool install graphifyy`. Сам граф (`graphify-out/`) в git не хранится
-   — регенерируется из репо первой командой `graphify update .`. Проектная
-   обвязка (`.zcode/config.json` + hook) уже в репо.
+0. ✅ **graphify** — выполнено 2026-09-16: `winget install astral-sh.uv` →
+   `uv tool install "graphifyy[sql]"` (SQL-экстра — чтобы парсились
+   `database/*.sql`), граф пересобран `graphify update .`,
+   `.zcode/config.json` переписан на Windows-пути (`graphify-mcp.exe`).
+   Уточнение: `graphify-out/` на самом деле хранится в git (113 файлов) —
+   обновляется коммитами `chore(graphify)` после смены кода, а не
+   регенерируется с нуля.
 1. **Прогон тестов на Windows** — `npm test` в `C:\projects\my-shop`
    (выполнено 2026-09-15: 2351/2351/0 fail).
 2. **Playwright на Windows** — проще, чем в WSL: `npx playwright install
    chromium` в рабочей папке; костыли `/tmp/debs` + `LD_LIBRARY_PATH`
    больше не нужны.
-3. **ZCode на Windows** — установить и продолжить сеансы из
-   `C:\projects\my-shop` (после этого WSL-сеанс гасится).
-4. **Таймеры Югконтракта:** рабочий синк — GitHub Actions (каждые 6ч).
-   Локальные WSL systemd-таймеры (`yugcontract-sync/health`) при уходе с
-   WSL отключить: `systemctl disable --now yugcontract-sync.timer
-   yugcontract-health.timer`. Если нужен локальный дубль — готов
-   `scripts/windows/install-yugcontract-task.ps1` (Планировщик задач).
+3. ✅ **ZCode на Windows** — работает, сеансы идут из `C:\projects\my-shop`
+   (2026-09-16).
+4. **Таймеры Югконтракта (уточнено 2026-09-16):** автоматика выключена
+   СОЗНАТЕЛЬНО с инцидента 2026-09-05 — синк ходит по команде
+   («запусти Yugcontract Sync») через лаунчеры с 48h-гейтом. GitHub
+   Actions вооружён (расписание каждые 6ч), но GO-переменная
+   `YUGCONTRACT_SYNC_ENABLED` ни разу не включалась — 0 успешных запусков
+   (да и IP-allowlist Yugcontract домашний, раннеры Azure не прошли бы).
+   WSL systemd-таймеры установлены, но disarmed. Если понадобится
+   безлюдный запуск — `scripts/windows/install-yugcontract-task.ps1`
+   (Планировщик задач, спросит пароль Windows).
 5. **Гигиена при закрытии WSL** (не раньше, чем Windows-сеанс обживётся):
    - убедиться, что в `C:\projects\my-shop` нет незапушенных коммитов;
    - `wsl --shutdown`; WSL-копию проекта не удалять сразу — держать как
