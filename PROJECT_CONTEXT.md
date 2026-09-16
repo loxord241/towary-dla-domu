@@ -212,10 +212,15 @@ product_stock_history
   gate). Авто-синк ВЫКЛЮЧЕН: systemd timer yugcontract-sync.timer disabled
   (проверено systemctl is-enabled; вкл/выкл — docs/wsl-sync.md раздел 3).
 - Новые id категорий Юга потребуют разового ремапа categories.yugcontract_id.
-- scripts/catalog-health-check.ts сейчас ожидаемо FAIL (exit 2): метрика
-  «перекос новинки = out_of_stock» — 99% из топ-100 новейших активных
-  товаров OOS (порог FAIL ≥50%; замер 2026-09-05). Это следствие инцидента,
-  НЕ регрессия.
+- scripts/catalog-health-check.ts — инцидент ЗАКРЫТ (2026-09-16, RESULT
+  PASS exit 0): «перекос новинки = OOS» 7% (PASS), feed-liveness 85.1%
+  in_stock — фид здоров; ack инцидента — logs/feed-liveness-baseline.json
+  (baseline 85.1%; файл локальный, logs/ в .gitignore). Дрейф
+  _du-allowlist после синков 09-14/15 закрыт регенерацией 2026-09-16:
+  10 allowlist-пар + 1 сирота удалены из БД ВНЕ импортера (импортер не
+  удаляет — причина удаления не установлена), 6895802_du обрела базу,
+  7220883_du сравнялась в ценах; итог 293 redirect / 19 price-diff /
+  38 сиріт.
 
 ## Наблюдаемость (2026-09-05)
 - Аналитика поиска: событие `search` несёт boolean hasResults
@@ -846,7 +851,10 @@ product_stock_history
   tests/storage-hardening.test.ts. public=true збережено (не змінювалось).
 - Auth Leaked Password Protection: НЕ вдалося перевірити/увімкнути
   програмно (Dashboard-only, Pro plan; /auth/v1/settings та admin config
-  API не експонують стан). ПОТРІБНО ВРУЧНУ: Dashboard → Authentication →
-  Policies → увімкнути "Leaked password protection" (HaveIBeenPwned).
+  API не експонують стан). ПОТРІБНО ВРУЧНУ — шлях ОНОВЛЕНО 2026-09-16
+  (старий «Authentication → Policies» більше не існує, тому не знаходили):
+  Dashboard → Authentication → Providers → Email (sign in / up) → секція
+  налаштувань пароля → перемикач "Leaked password protection"
+  (HaveIBeenPwned). Джерело: supabase.com/docs/guides/auth/password-security.
   Application auth flow не змінюється (перевірка лише при
   signup/password update).
