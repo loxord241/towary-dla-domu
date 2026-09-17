@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "app/(home)/page.tsx": {
-    "mtime": 1789499275.8068235,
-    "seen": 1789563307.5675795,
-    "ast_hash": "218d22313c1eacc11c8fa5b27311ac15",
+    "mtime": 1789651911.6023068,
+    "seen": 1789652173.4106076,
+    "ast_hash": "959d168600e6d35e10f87d325e784dc9",
     "semantic_hash": ""
   },
   "app/about/page.tsx": {
@@ -1098,9 +1098,9 @@
     "semantic_hash": ""
   },
   "tests/p3-ux.test.ts": {
-    "mtime": 1789499282.3695164,
-    "seen": 1789563307.5675795,
-    "ast_hash": "7cea3e5497ee817072c6156ff0eed99b",
+    "mtime": 1789652014.749331,
+    "seen": 1789652173.4106076,
+    "ast_hash": "91ffd718e3d4f13a788861608b82d0b1",
     "semantic_hash": ""
   },
   "tests/pagination-hardening.test.ts": {
@@ -1158,9 +1158,9 @@
     "semantic_hash": ""
   },
   "tests/seo-metadata.test.ts": {
-    "mtime": 1789648770.9305165,
-    "seen": 1789648933.9704747,
-    "ast_hash": "b5c41a9af793ebe4e71e46a18a4dcab7",
+    "mtime": 1789652026.4255981,
+    "seen": 1789652173.4106076,
+    "ast_hash": "d5daa2f11e005f5448a2413ae13d6513",
     "semantic_hash": ""
   },
   "tests/seo-robots.test.ts": {
@@ -4011,6 +4011,12 @@
     "mtime": 1789650686.0826123,
     "seen": 1789650785.0913758,
     "ast_hash": "5c510807bce3d701023253c64b553ed6",
+    "semantic_hash": ""
+  },
+  "tests/home-categories.test.ts": {
+    "mtime": 1789651864.3151782,
+    "seen": 1789652173.4106076,
+    "ast_hash": "f6c3b86cc24f5a1e07bde6de10a6b09d",
     "semantic_hash": ""
   }
 }
