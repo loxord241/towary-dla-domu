@@ -601,11 +601,23 @@ test('SEO-R6: home title leads with the brand + assortment, desc carries the sto
   assert.ok(!home.includes('Інтернет-магазин товарів для дому | Товари для дому'));
 });
 
-test('SEO-R9: home links every active top-level category, not a hardcoded 5-item slice', () => {
+test('SEO-R9: superseded by owner decision 2026-09-17 — home caps at 5 hub cards, hub reachability preserved', () => {
+  // R9 2026-09-15 ("every active top-level category renders") was reversed
+  // by the owner decision 2026-09-17: the section showed all ~175 active
+  // categories of every tree level. Now: first 5 top-level hubs by the
+  // admin-managed sort_order. SEO reachability of every hub is preserved —
+  // the footer still receives the FULL categories list on every page, and
+  // /catalog + the sitemap carry the whole tree.
   const home = readFileSync('app/(home)/page.tsx', 'utf8');
-  assert.ok(!home.includes('.slice(0, 5)'), 'the 5-item slice is gone');
-  assert.match(home, /categories\.map\(\(category, idx\)/);
-  // Odd counts leave an orphan card on the 2-col mobile grid — the last
-  // card spans the full row (same affordance the old slice-5 hack served).
-  assert.match(home, /categories\.length % 2 === 1/);
+  assert.match(
+    home,
+    /\.filter\(\(category\) => category\.parent_id === null\)\s*\n\s*\.slice\(0, 5\)/,
+    'featured = top-level hubs capped at 5'
+  );
+  assert.match(
+    home,
+    /<SiteFooter categories=\{categories\} \/>/,
+    'footer keeps the crawlable hub anchors'
+  );
+  assert.match(home, /Усі категорії →/, 'escape hatch to /catalog stays');
 });

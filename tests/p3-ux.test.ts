@@ -45,10 +45,14 @@ test('P3-R3: category card affordance is not hover-only', () => {
 });
 
 test('P3-R3: last category card spans the mobile row on odd counts (no orphan)', () => {
-  // Audit R9 2026-09-15: the home grid renders EVERY top-level category,
-  // so the old hardcoded fifth-card pin became the general odd-count rule.
+  // Owner decision 2026-09-17: the section renders the featured slice
+  // (first 5 top-level hubs), so the odd-count rule now counts THAT
+  // rendered array (5 = odd → the last card always spans on mobile).
   const home = read('app/(home)/page.tsx');
-  assert.match(home, /idx === categories\.length - 1 && categories\.length % 2 === 1/);
+  assert.match(
+    home,
+    /idx === featuredCategories\.length - 1 && featuredCategories\.length % 2 === 1/
+  );
   assert.match(home, /'col-span-2 sm:col-span-1'/);
 });
 

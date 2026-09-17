@@ -51,6 +51,15 @@ export default async function Home() {
     POPULAR_LIMIT,
     selectedProducts.map((product) => product.id)
   )
+  // Categories section feed (owner decision 2026-09-17): only TOP-LEVEL
+  // hubs (parent_id === null), capped at 5, in the admin-managed sort_order
+  // (fetchActiveCategories orders sort_order → id; hubs are reordered via
+  // admin/categories/[id]/order, so no separate hand-picked list). The
+  // `categories` array itself stays FULL — SiteFooter below must keep all
+  // its hub anchors.
+  const featuredCategories = categories
+    .filter((category) => category.parent_id === null)
+    .slice(0, 5)
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
@@ -180,12 +189,15 @@ export default async function Home() {
           {categories.length === 0 ? (
             <p className="text-gray-500">Категорії відсутні</p>
           ) : (
-            // Audit R9 2026-09-15: EVERY active top-level category renders —
-            // the old 5-item slice left two hubs (and their whole subtrees)
-            // without a homepage entry point. The rest of the tree lives in
-            // /catalog and the footer as before.
+            // Owner decision 2026-09-17: at most 5 cards — the first 5
+            // top-level hubs by the admin-managed sort_order. The R9
+            // 2026-09-15 state (render every active category) was a
+            // defect: ~175 cards of every tree level ended up here.
+            // Every hub stays reachable: SiteFooter links the same hubs
+            // on every page, and /catalog + the sitemap carry the full
+            // tree.
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
-              {categories.map((category, idx) => (
+              {featuredCategories.map((category, idx) => (
                 <Link
                   key={category.id}
                   // Path form (SEO package 2026-09-13): legacy query-form
@@ -197,7 +209,7 @@ export default async function Home() {
                   // affordance the old slice-5 hack served). sm:col-span-1
                   // cancels it for the 3-col layout.
                   className={`card group p-5 transition-shadow hover:shadow-md ${
-                    idx === categories.length - 1 && categories.length % 2 === 1
+                    idx === featuredCategories.length - 1 && featuredCategories.length % 2 === 1
                       ? 'col-span-2 sm:col-span-1'
                       : ''
                   }`}
