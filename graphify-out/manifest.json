@@ -4020,27 +4020,27 @@
     "semantic_hash": ""
   },
   "app/api/ingest/1c-linoleum/route.ts": {
-    "mtime": 1789657975.8165286,
-    "seen": 1789658043.7987144,
-    "ast_hash": "7900349f2bd68a2c4fbea8834108b53e",
+    "mtime": 1789665341.2461014,
+    "seen": 1789666350.1946754,
+    "ast_hash": "d7c070da000d55ed8f781588776c8b86",
     "semantic_hash": ""
   },
   "app/lib/linoleum/parse.ts": {
-    "mtime": 1789657916.8645985,
-    "seen": 1789658043.7992384,
-    "ast_hash": "4211e08336a3d45c8b2292d68449fb72",
+    "mtime": 1789664973.0951397,
+    "seen": 1789665199.357092,
+    "ast_hash": "2c5678bf658d6ca8e353e3e305aaf9d5",
     "semantic_hash": ""
   },
   "tests/linoleum-ingest.test.ts": {
-    "mtime": 1789657872.5774136,
-    "seen": 1789658043.7992384,
-    "ast_hash": "12c8b7269a37ef944009a6fba9b08775",
+    "mtime": 1789665058.2232497,
+    "seen": 1789665199.357092,
+    "ast_hash": "6d88a2499543e07791881988a1ff3ab4",
     "semantic_hash": ""
   },
   "tests/linoleum-parse.test.ts": {
-    "mtime": 1789657780.824221,
-    "seen": 1789658043.7992384,
-    "ast_hash": "45b2caa8900877f629fa85dc4e2479fe",
+    "mtime": 1789665013.8698435,
+    "seen": 1789665199.357092,
+    "ast_hash": "7de3abce8b614d0ef4908738f9700494",
     "semantic_hash": ""
   },
   ".zcode/plans/plan-sess_9b103a4c-cdfe-4084-8ceb-a46ec44411aa.md": {
@@ -4050,15 +4050,15 @@
     "semantic_hash": ""
   },
   "database/migrations/052_linoleum_stock_staging.sql": {
-    "mtime": 1789659349.8687706,
-    "seen": 1789661127.8445957,
-    "ast_hash": "fed5100be0ed3c8e437dd23388524d9b",
+    "mtime": 1789664973.1430893,
+    "seen": 1789665199.357092,
+    "ast_hash": "21bb4d273e3bbaaed581876fe1e0d13c",
     "semantic_hash": ""
   },
   "tests/linoleum-staging-migration.test.ts": {
-    "mtime": 1789659394.5998244,
-    "seen": 1789661127.8445957,
-    "ast_hash": "c8da6b3f0e1456680c29095c94ebee1c",
+    "mtime": 1789664973.1664326,
+    "seen": 1789665199.357092,
+    "ast_hash": "acc95261adde13a93eda5f7c7df2dafc",
     "semantic_hash": ""
   },
   "tests/linoleum-storefront.test.ts": {
@@ -4068,15 +4068,15 @@
     "semantic_hash": ""
   },
   "app/lib/linoleum/import-plan.ts": {
-    "mtime": 1789660406.755613,
-    "seen": 1789661127.8445957,
-    "ast_hash": "0ac94773408e56638ed02737647ae0cb",
+    "mtime": 1789665058.123991,
+    "seen": 1789665199.357092,
+    "ast_hash": "ae7d8bec5a9372e3180219fc5f23b329",
     "semantic_hash": ""
   },
   "scripts/linoleum-import.ts": {
-    "mtime": 1789660969.0575945,
-    "seen": 1789661127.8445957,
-    "ast_hash": "5bd0d99b2493deea2f8002cce41ad058",
+    "mtime": 1789665058.2471726,
+    "seen": 1789665199.357092,
+    "ast_hash": "14aad3e27b78df1cbd36f72794c5f460",
     "semantic_hash": ""
   },
   "tests/linoleum-import-cli.test.ts": {
@@ -4086,9 +4086,9 @@
     "semantic_hash": ""
   },
   "tests/linoleum-import-plan.test.ts": {
-    "mtime": 1789661057.705969,
-    "seen": 1789661127.8445957,
-    "ast_hash": "44d74aed04b1d58f7be9e89109be96d5",
+    "mtime": 1789665013.944822,
+    "seen": 1789665199.357092,
+    "ast_hash": "0f10286789f9a37024b96015b6eebcfb",
     "semantic_hash": ""
   },
   "app/components/LinoleumMeterPanel.tsx": {
@@ -4098,9 +4098,9 @@
     "semantic_hash": ""
   },
   "app/lib/catalog/linoleum-listing.ts": {
-    "mtime": 1789662177.315195,
-    "seen": 1789662378.1714816,
-    "ast_hash": "b8b12c52cc26119b7a30e8225fee8d1a",
+    "mtime": 1789665058.1503143,
+    "seen": 1789665199.357092,
+    "ast_hash": "5e7ae60797c7e41c0c127bf28f869353",
     "semantic_hash": ""
   },
   "app/lib/linoleum/product-view.ts": {
@@ -4116,9 +4116,9 @@
     "semantic_hash": ""
   },
   "app/linoleum/Storefront.tsx": {
-    "mtime": 1789662345.4953296,
-    "seen": 1789662378.1714816,
-    "ast_hash": "68228fbf7b6c2846523397a61014ea8b",
+    "mtime": 1789665058.1999848,
+    "seen": 1789665199.357092,
+    "ast_hash": "a9f5468953c44d80638ffd835dac79f9",
     "semantic_hash": ""
   },
   "tests/linoleum-hub.test.ts": {
@@ -4149,6 +4149,18 @@
     "mtime": 1789662495.5615647,
     "seen": 1789662904.889558,
     "ast_hash": "00a8d9c2fc75379bf5d450e5e7884795",
+    "semantic_hash": ""
+  },
+  "scripts/linoleum-photos.ts": {
+    "mtime": 1789666254.218349,
+    "seen": 1789666350.1946754,
+    "ast_hash": "f35c35407d046b2cc3ae16588a5aba9e",
+    "semantic_hash": ""
+  },
+  "tests/linoleum-photos.test.ts": {
+    "mtime": 1789666298.719621,
+    "seen": 1789666350.1946754,
+    "ast_hash": "c891bb8096fec0d34af3b92b03951dda",
     "semantic_hash": ""
   }
 }
