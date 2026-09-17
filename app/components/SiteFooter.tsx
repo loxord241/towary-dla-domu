@@ -17,6 +17,9 @@ interface SiteFooterProps {
 
 const INFO_LINKS = [
   { href: '/oboi', label: 'Шпалери' },
+  // Brands hub (SEO batch 2026-09-17): crawlable entrance to the
+  // /catalog?brand=<slug> views (client filter alone is not crawlable).
+  { href: '/brands', label: 'Бренди' },
   { href: '/about', label: 'Про нас' },
   { href: '/delivery', label: 'Доставка та оплата' },
   { href: '/samovyviz', label: 'Самовивіз' },

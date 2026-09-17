@@ -111,6 +111,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // self-canonical in its metadata, so the «indexable set = sitemap set»
     // invariant holds.
     '/samovyviz',
+    // Brands hub (SEO batch 2026-09-17): static indexable route with self-canonical,
+    // invariant holds. Brand views keep their query-form URLs below; the hub
+    // is their crawlable entrance.
+    '/brands',
     '/about',
     '/returns',
     '/privacy',
@@ -123,8 +127,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency:
       path === '' || path === '/catalog' || path === '/oboi'
         ? 'daily'
-        : 'monthly',
-    priority: path === '' ? 1 : path === '/catalog' || path === '/oboi' ? 0.9 : 0.3,
+        : path === '/brands'
+          ? 'weekly'
+          : 'monthly',
+    priority:
+      path === ''
+        ? 1
+        : path === '/catalog' || path === '/oboi'
+          ? 0.9
+          : path === '/brands'
+            ? 0.6
+            : 0.3,
   }));
 
   const [categories, brands, products] = await Promise.all([
@@ -177,6 +190,42 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: 'weekly',
     priority: 0.6,
   }));
+
+  // Owner decision 2026-09-17 (SEO batch): non-empty category+brand combos
+  // join the sitemap — «indexable set = sitemap set» holds again (the
+  // combos were indexable since 2026-09-16 but absent here). Pairs derive
+  // from the SAME product rows (brand_id × junction category_ids, ancestors
+  // via parent_id) — zero extra queries. On a product-read failure
+  // (products === null) no pair data exists and no combo entries ship,
+  // matching the product-entries behavior for the same failure.
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
+  const brandById = new Map(brands.map((brand) => [brand.id, brand]));
+  const comboEntries: MetadataRoute.Sitemap = (products
+    ? [...collectNonEmptyComboPairs(categories, products).values()]
+    : []
+  ).flatMap((pair) => {
+    const category = categoryById.get(pair.categoryId);
+    const brand = brandById.get(pair.brandId);
+    // A derived pair already implies both axes non-empty (the pair exists
+    // only because an eligible product links them), but the non-empty sets
+    // stay the single source of truth for what is listed — keep the guard.
+    if (
+      !category ||
+      !brand ||
+      !nonEmptyCategoryIds.has(category.id) ||
+      !nonEmptyBrandIds.has(brand.id)
+    ) {
+      return [];
+    }
+    return [{
+      // Combo canonical form (lib/seo.ts): PATH for the category + query
+      // for the brand.
+      url: `${base}/catalog/${encodeURIComponent(category.slug)}?brand=${encodeURIComponent(brand.slug)}`,
+      lastModified: new Date(pair.lastUpdated),
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    }];
+  });
 
   const productEntries: MetadataRoute.Sitemap = (products ?? [])
     // _du URLs that 301-redirect to base must NOT be listed (spec C invariant:
