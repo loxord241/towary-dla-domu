@@ -62,11 +62,23 @@ test('LINKS: /oboi subcategory + glue chips link to /catalog/<slug>', () => {
 
 test('LINKS: PDP trail and «Категорія» block link to /catalog/<slug>', () => {
   const pdp = src('app/product/[slug]/page.tsx');
+  // SEO batch 2026-09-17 (owner task) extended the pinned invariant: the
+  // trail and the «Категорія» block render the FULL root→parent chain, so
+  // the path-form href now binds the chain entry (`cat.slug`) instead of
+  // the direct `product.category.slug` — the path-form decision itself is
+  // unchanged, both blocks still use it (exactly two occurrences).
   const pathLinks = pdp.match(
-    /\/catalog\/\$\{encodeURIComponent\(product\.category\.slug\)\}/g
+    /\/catalog\/\$\{encodeURIComponent\(cat\.slug\)\}/g
   );
   assert.ok(pathLinks !== null && pathLinks.length === 2,
     'both the breadcrumb trail and the «Категорія» block use the path form');
+  // Both visible placements must map the SAME built chain (not just the
+  // direct parent), and the page must build it via buildCategoryChain.
+  assert.match(pdp, /buildCategoryChain\(/);
+  assert.ok(
+    (pdp.match(/trailCategories\.map/g) ?? []).length === 2,
+    'nav trail AND «Категорія» block both render the ancestor chain'
+  );
   // Brand links intentionally stay query-form (no path shape exists).
   assert.match(pdp, /\/catalog\?brand=/);
 });

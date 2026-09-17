@@ -299,6 +299,32 @@ export function buildOboiBreadcrumbJsonLd(
 }
 
 /**
+ * schema.org/BreadcrumbList for the /brands hub (SEO batch 2026-09-17):
+ * Головна → Бренди — the visible page mirrors these two levels. Pure and
+ * constant-input: /brands has no path params, so both item URLs are the
+ * canonical shapes the page pins (/, /brands) — same shape as the /oboi
+ * builder above.
+ */
+export function buildBrandsBreadcrumbJsonLd(
+  siteUrl: string
+): Record<string, unknown> {
+  const base = siteUrl.replace(/\/+$/, '');
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Головна', item: `${base}/` },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Бренди',
+        item: `${base}/brands`,
+      },
+    ],
+  };
+}
+
+/**
  * schema.org/FAQPage builder (category FAQ, 2026-09-11) — same honesty
  * rules as the other builders: only caller-supplied Q&A pairs are emitted,
  * trimmed; pairs with an empty question or answer are dropped; an empty

@@ -95,10 +95,14 @@ test('product: generateMetadata provides unique title/description', () => {
 test('product: brand and category are links, page wrapped in <main>', () => {
   const product = src('app/product/[slug]/page.tsx');
   assert.match(product, /<main/);
-  // Brand stays query-form; the category link moved to the PATH form
+  // Brand stays query-form; category links stay on the PATH form
   // (SEO package 2026-09-13): the query shape only 308-redirects now.
   assert.match(product, /\/catalog\?brand=/);
-  assert.match(product, /\/catalog\/\$\{encodeURIComponent\(product\.category\.slug\)\}/);
+  // SEO batch 2026-09-17 (owner task): the trail renders the FULL
+  // root→parent ancestor chain, so the path-form href binds the chain
+  // entry (`cat.slug`) instead of the direct `product.category.slug` —
+  // the path-form invariant itself is unchanged.
+  assert.match(product, /\/catalog\/\$\{encodeURIComponent\(cat\.slug\)\}/);
   assert.doesNotMatch(product, /\/catalog\?category=/);
 });
 

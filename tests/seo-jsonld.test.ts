@@ -16,6 +16,7 @@ import {
   buildProductJsonLd,
   buildProductBreadcrumbJsonLd,
   buildCatalogBreadcrumbJsonLd,
+  buildCategoryChain,
   buildOrganizationJsonLd,
   serializeJsonLd,
 } from '../app/lib/schema-org.ts';
@@ -259,6 +260,131 @@ test('BreadcrumbList: Product JSON-LD builder output is untouched', () => {
   ) as Record<string, unknown>;
   assert.equal(d['@type'], 'Product');
   assert.equal(d['@context'], 'https://schema.org');
+});
+
+// ---- Multilevel ancestor chain (SEO batch 2026-09-17) -----------------------
+// The trail used to stop at the direct parent; the owner task extends it to
+// the FULL active-tree ancestry (Головна → Каталог → …предки… → Категорія →
+// Товар) in both the JSON-LD and the visible nav. Dictionary rows mirror
+// fetchActiveCategories (id + parent_id + name/slug); real Ukrainian names
+// come from the live tree the imports produce (Дрібна побутова техніка is a
+// real top-level appliance category the PDP previously skipped).
+
+const CHAIN_DICT = [
+  {
+    id: 'cat-root',
+    parent_id: null,
+    name: 'Дрібна побутова техніка',
+    slug: 'mala-kukhonna-tekhnika-69',
+  },
+  { id: 'cat-mid', parent_id: 'cat-root', name: 'Кухонні ваги', slug: 'kuhonni-vahy-70' },
+  { id: 'cat-leaf', parent_id: 'cat-mid', name: 'Ваги скляні', slug: 'vahy-sklyani-71' },
+];
+
+test('CategoryChain: walks parent_id to the root, root → leaf order', () => {
+  const chain = buildCategoryChain('cat-leaf', CHAIN_DICT);
+  assert.deepEqual(
+    chain.map((c) => c.name),
+    ['Дрібна побутова техніка', 'Кухонні ваги', 'Ваги скляні']
+  );
+  // Only name/slug travel with the chain — no dictionary internals leak
+  // into the breadcrumb input.
+  assert.deepEqual(chain[2], { name: 'Ваги скляні', slug: 'vahy-sklyani-71' });
+});
+
+test('CategoryChain: cycle in parent_id terminates; broken/unknown links degrade', () => {
+  const cyclic = [
+    { id: 'a', parent_id: 'b', name: 'A', slug: 'a' },
+    { id: 'b', parent_id: 'a', name: 'B', slug: 'b' },
+    { id: 'self', parent_id: 'self', name: 'C', slug: 'c' },
+  ];
+  // A→B→A: the visited set stops the loop after both real rows.
+  assert.equal(buildCategoryChain('a', cyclic).length, 2);
+  // Self-parent: exactly the one real row, no hang.
+  assert.equal(buildCategoryChain('self', cyclic).length, 1);
+  // Unknown id / null id / parent outside the dictionary → honest cutoffs.
+  assert.deepEqual(buildCategoryChain('nope', CHAIN_DICT), []);
+  assert.deepEqual(buildCategoryChain(null, CHAIN_DICT), []);
+  assert.deepEqual(
+    buildCategoryChain('cat-leaf', [CHAIN_DICT[2]!]),
+    [{ name: 'Ваги скляні', slug: 'vahy-sklyani-71' }],
+    'a parent not present in the active dictionary is never invented'
+  );
+});
+
+test('BreadcrumbList: 3-category chain → through-numbered positions, path-form URLs', () => {
+  const ld = buildProductBreadcrumbJsonLd(
+    BREADCRUMB_PRODUCT,
+    buildCategoryChain('cat-leaf', CHAIN_DICT),
+    SITE
+  ) as { itemListElement: { position: number; name: string; item: string }[] };
+  const items = ld.itemListElement;
+  assert.equal(items.length, 6);
+  assert.deepEqual(
+    items.map((i) => i.position),
+    [1, 2, 3, 4, 5, 6]
+  );
+  assert.deepEqual(
+    items.map((i) => i.name),
+    [
+      'Головна',
+      'Каталог',
+      'Дрібна побутова техніка',
+      'Кухонні ваги',
+      'Ваги скляні',
+      BREADCRUMB_PRODUCT.name,
+    ]
+  );
+  assert.equal(items[2]!.item, `${SITE}/catalog/mala-kukhonna-tekhnika-69`);
+  assert.equal(items[3]!.item, `${SITE}/catalog/kuhonni-vahy-70`);
+  assert.equal(items[4]!.item, `${SITE}/catalog/vahy-sklyani-71`);
+  assert.equal(
+    items[5]!.item,
+    `${SITE}/product/${BREADCRUMB_PRODUCT.slug}`
+  );
+  // Two-category chain: same through-numbering, 5 items total (1..5).
+  const five = buildProductBreadcrumbJsonLd(
+    BREADCRUMB_PRODUCT,
+    buildCategoryChain('cat-mid', CHAIN_DICT),
+    SITE
+  ) as { itemListElement: { position: number }[] };
+  assert.deepEqual(
+    five.itemListElement.map((i) => i.position),
+    [1, 2, 3, 4, 5]
+  );
+});
+
+test('BreadcrumbList: single-element chain behaves exactly like the single object', () => {
+  const fromArray = buildProductBreadcrumbJsonLd(
+    BREADCRUMB_PRODUCT,
+    [BREADCRUMB_CATEGORY],
+    SITE
+  ) as { itemListElement: { position: number; name: string; item: string }[] };
+  assert.deepEqual(
+    fromArray.itemListElement.map((i) => [i.position, i.name, i.item]),
+    [
+      [1, 'Головна', `${SITE}/`],
+      [2, 'Каталог', `${SITE}/catalog`],
+      [3, BREADCRUMB_CATEGORY.name, `${SITE}/catalog/${BREADCRUMB_CATEGORY.slug}`],
+      [4, BREADCRUMB_PRODUCT.name, `${SITE}/product/${BREADCRUMB_PRODUCT.slug}`],
+    ]
+  );
+});
+
+test('BreadcrumbList: empty chain falls back to the old honest levels', () => {
+  const ld = buildProductBreadcrumbJsonLd(
+    BREADCRUMB_PRODUCT,
+    [],
+    SITE
+  ) as { itemListElement: { position: number; name: string }[] };
+  assert.deepEqual(
+    ld.itemListElement.map((i) => i.position),
+    [1, 2, 3]
+  );
+  assert.deepEqual(
+    ld.itemListElement.map((i) => i.name),
+    ['Головна', 'Каталог', BREADCRUMB_PRODUCT.name]
+  );
 });
 
 // ---- catalog breadcrumb (category level, no extra DB reads)
