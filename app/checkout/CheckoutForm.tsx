@@ -7,7 +7,7 @@ import { useCart } from '@/app/lib/cart-context';
 import { fetchCartPreview, type CartPreviewLine } from '@/app/lib/cart-preview';
 import { toE164Ua } from '@/app/lib/phone';
 import { PICKUP_POINTS } from '@/app/lib/checkout-delivery';
-import { isWallpaperSlug } from '@/app/lib/domains';
+import { domainOfSlug } from '@/app/lib/domains';
 import { ANALYTICS_EVENTS } from '@/app/lib/analytics';
 import { trackEvent } from '@/app/lib/track-event';
 import {
@@ -132,19 +132,17 @@ export default function CheckoutForm() {
   // authority — submit is NOT blocked, the user is just warned).
   const [previewError, setPreviewError] = useState(false);
 
-  // Домен кошика для самовивоза (власник 2026-09-12): шпалери (slug wc-*)
-  // видаються на Мазепи 83А, техніка — на Мазепи 87А; змішаний кошик
-  // пропонує ОБИДВІ точки з попередженням. Поки превʼю не завантажено —
-  // безпечний дефолт: обидві.
-  const cartHasWallpapers = lines.some((l) => isWallpaperSlug(l.slug));
-  // Всё, что не шпалеры (включая позиции без slug) — техника: точка Мазепы.
-  const cartHasTech = lines.some((l) => !isWallpaperSlug(l.slug));
-  const availablePickupPoints = PICKUP_POINTS.filter((p) =>
-    lines.length === 0
-      ? true
-      : p.domains.includes('wallpaper')
-        ? cartHasWallpapers
-        : cartHasTech
+  // Домен кошика для самовивоза (власник 2026-09-12; третя точка —
+  // лінолеум, власник 2026-09-17): техніка — Мазепи 87А, шпалери (wc-*) —
+  // Мазепи 83А, лінолеум (ln-*) — Мазепи 89А. Змішаний кошик пропонує
+  // ОБ'ЄДНАННЯ сумісних точок (точка видима, якщо в кошику є ≥1 товар її
+  // домену — те саме правило, що й для двох доменів) з попередженням:
+  // усе замовлення чекатиме на обраній точці. Поки превʼю не завантажено —
+  // безпечний дефолт: усі точки. Слаг без відомого префікса (і позиція
+  // взагалі без slug) — техніка, як і раніше.
+  const cartDomains = new Set(lines.map((l) => domainOfSlug(l.slug)));
+  const availablePickupPoints = PICKUP_POINTS.filter(
+    (p) => lines.length === 0 || p.domains.some((d) => cartDomains.has(d))
   );
 
   // Server-side prices for the summary panel (display only — place_order
@@ -619,7 +617,7 @@ export default function CheckoutForm() {
                 availablePickupPoints={availablePickupPoints}
                 pickupPointId={pickupPointId} paymentIntent={paymentIntent}
                 setPickupPointId={setPickupPointId} setPaymentIntent={setPaymentIntent}
-                cartHasWallpapers={cartHasWallpapers} cartHasTech={cartHasTech}
+                mixedCart={cartDomains.size > 1}
               />
             )}
 

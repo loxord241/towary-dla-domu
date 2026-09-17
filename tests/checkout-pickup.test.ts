@@ -1,11 +1,13 @@
 /**
  * «Самовивіз, Кривий Ріг» — checkout pickup flow (2026-09-12).
  *
- * Two pickup points split by cart domain (owner decision): техника —
+ * Three pickup points split by cart domain (owner decisions): техника —
  * вул. Гетьмана Івана Мазепи, 87А, шпалери (wc-*) — вул. Гетьмана Івана
- * Мазепи, 83А (street renamed from Серафимовича 2026-09-14); a mixed cart
- * offers BOTH points with a «весь заказ будет ждать на
- * обраній точці» warning. Payment: online LiqPay as usual OR cash at the
+ * Мазепи, 83А (street renamed from Серафимовича 2026-09-14), лінолеум
+ * (ln-*) — вул. Гетьмана Івана Мазепи, 89А (owner decision 2026-09-17,
+ * NOT 87А); a mixed cart is offered the UNION of points whose domain the
+ * cart contains, with a «все замовлення чекатиме на обраній точці»
+ * warning. Payment: online LiqPay as usual OR cash at the
  * point (paymentIntent in shipping_info.delivery; the order page hides the
  * LiqPay button for cash_on_pickup).
  *
@@ -83,12 +85,19 @@ test('PICKUP sanitize: whitelisted points, canonical address, default online', (
     assert.equal(res.value.paymentIntent, 'online', 'default is online');
     assert.equal(res.value.settlementId, undefined, 'pickup has no carrier ids');
   }
-  // Both owner-defined points exist with the contracted addresses
-  // (wallpapers street renamed 2026-09-14: Серафимовича → Мазепи 83А).
-  assert.deepEqual(
-    PICKUP_POINTS.map((p) => p.address),
-    ['вул. Гетьмана Івана Мазепи, 87А', 'вул. Гетьмана Івана Мазепи, 83А']
-  );
+  // Owner-defined points with the contracted addresses (wallpapers street
+  // renamed 2026-09-14: Серафимовича → Мазепи 83А; third point for
+  // linoleum added 2026-09-17 per owner decision — Мазепи 89А, NOT 87А).
+  assert.deepEqual(PICKUP_POINTS.map((p) => p.address), [
+    'вул. Гетьмана Івана Мазепи, 87А',
+    'вул. Гетьмана Івана Мазепи, 83А',
+    'вул. Гетьмана Івана Мазепи, 89А',
+  ]);
+  // The 89А point serves exactly the linoleum domain (ln-* slugs).
+  const linoleumPoint = PICKUP_POINTS.find((p) => p.address.endsWith('89А'));
+  assert.ok(linoleumPoint, 'linoleum pickup point (89А) must exist');
+  assert.equal(linoleumPoint.id, 'kr-mazepy-89a');
+  assert.deepEqual([...linoleumPoint.domains], ['linoleum']);
   assert.deepEqual([...PICKUP_PAYMENT_INTENTS], ['online', 'cash_on_pickup']);
 });
 
@@ -171,20 +180,50 @@ test('CARRIER sanitize: paymentIntent is pickup-only; carrier contract unchanged
 
 const formCode = FORM;
 
-test('PICKUP form: deliveryObject branch — pickup first, wc- domain detection', () => {
+test('PICKUP form: deliveryObject branch — pickup first, domain detection via domains module', () => {
   const pickupIdx = formCode.indexOf("if (deliveryType === 'pickup') {");
   const upIdx = formCode.indexOf("if (deliveryType === 'ukrposhta_warehouse') {");
   assert.ok(pickupIdx !== -1 && upIdx !== -1 && pickupIdx < upIdx, 'pickup branch first');
   // Cart-domain detection via the shared domains module (2026-09-13: the
-  // inline wc- literal became isWallpaperSlug — single source of truth).
-  assert.match(formCode, /cartHasWallpapers = lines\.some\(\(l\) => isWallpaperSlug\(l\.slug\)\)/);
-  assert.match(formCode, /cartHasTech = lines\.some\(\(l\) => !isWallpaperSlug\(l\.slug\)\)/);
-  // Both points offered on a mixed cart…
+  // inline wc- literal became isWallpaperSlug; 2026-09-17: domainOfSlug
+  // also covers the ln- linoleum prefix — single source of truth; slugs
+  // without a known prefix stay tech, as before).
+  assert.match(formCode, /cartDomains = new Set\(lines\.map\(\(l\) => domainOfSlug\(l\.slug\)\)\)/);
+  // A point is offered iff the cart contains ≥1 item of its domain(s) —
+  // the same union rule as the original two-domain version, generalized
+  // to three domains (mixed cart = union of compatible points).
   assert.match(formCode, /availablePickupPoints = PICKUP_POINTS\.filter\(/);
-  // …with the honest mixed-cart warning (rendered by PickupBlock).
-  assert.match(PICKUP_BLOCK, /У кошику товари обох напрямків — усе замовлення буде\s+чекати на обраній точці\./);
+  assert.match(formCode, /p\.domains\.some\(\(d\) => cartDomains\.has\(d\)\)/);
+  // Mixed cart = ≥2 distinct product domains in the cart.
+  assert.match(formCode, /cartDomains\.size > 1/);
+  // …with the honest mixed-cart warning (rendered by PickupBlock; reworded
+  // 2026-09-17 from «обох напрямків» — with a third domain «обох» lies).
+  assert.match(PICKUP_BLOCK, /У кошику товари різних напрямків — усе замовлення буде\s+чекати на обраній точці\./);
+  assert.match(PICKUP_BLOCK, /mixedCart/);
   // NP city search must NOT render for pickup.
   assert.match(formCode, /deliveryType !== 'pickup' &&/);
+});
+
+test('PICKUP form: point subtitle names all three domains honestly', () => {
+  // The third point (лінолеум) must not fall into the old wallpaper-only
+  // ternary that labeled everything non-wallpaper «техніка».
+  assert.match(PICKUP_BLOCK, /wallpaper: 'шпалери'/);
+  assert.match(PICKUP_BLOCK, /linoleum: 'лінолеум'/);
+  assert.match(PICKUP_BLOCK, /tech: 'техніка'/);
+  assert.doesNotMatch(
+    PICKUP_BLOCK,
+    /domains\.includes\('wallpaper'\)\s*\?\s*'шпалери'/
+  );
+});
+
+test('PICKUP: contacts page lists the linoleum point (owner 2026-09-17)', () => {
+  const contacts = src('app/contacts/page.tsx');
+  // New third point in the same «буд. N — домен» format…
+  assert.match(contacts, /вул\. Гетьмана Івана Мазепи, буд\. 89А — лінолеум\./);
+  // …with both pre-existing points intact (page = source of truth for
+  // STORE_LOCATIONS).
+  assert.match(contacts, /вул\. Гетьмана Івана Мазепи, буд\. 87А — побутова техніка/);
+  assert.match(contacts, /вул\. Гетьмана Івана Мазепи, буд\. 83А — шпалери/);
 });
 
 test('PICKUP form: payment radios + cash flows through delivery.paymentIntent', () => {

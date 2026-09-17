@@ -44,9 +44,11 @@ test('DOMAINS: every former duplicate now rides the single module', () => {
   const importer = src('app/lib/wallpapers/import-plan.ts');
   assert.match(importer, /import \{ WALLPAPER_SKU_PREFIX \} from '\.\.\/domains.ts';/);
   assert.doesNotMatch(importer, /const WALLPAPER_SKU_PREFIX/);
-  // …and the checkout uses the classifier, not an inline literal.
+  // …and the checkout uses the classifier, not an inline literal
+  // (2026-09-17: domainOfSlug — covers wc-, ln- and the tech fallback
+  // for the three-domain pickup filter).
   const form = src('app/checkout/CheckoutForm.tsx');
-  assert.match(form, /import \{ isWallpaperSlug \} from '@\/app\/lib\/domains';/);
+  assert.match(form, /import \{ domainOfSlug \} from '@\/app\/lib\/domains';/);
   assert.doesNotMatch(form, /startsWith\('wc-'\)/);
   // Pickup points share the vocabulary (no ad-hoc union).
   const delivery = src('app/lib/checkout-delivery.ts');

@@ -3,10 +3,11 @@
  *
  * The page must describe the REAL checkout (Нова Пошта: відділення /
  * поштомат / кур'єр; Укрпошта: відділення; 2026-09-12: самовивіз у
- * Кривому Розі — дві точки, онлайн LiqPay АБО готівка на точці; оплата
- * частинами — за телефонами) and must NOT promise payment/delivery
- * options the store does not have (післяплата, IBAN, «оплата карткою» /
- * «банківський переказ» as separate methods, Делівері, кур'єр по місту).
+ * Кривому Розі — з 2026-09-17 три точки, онлайн LiqPay АБО готівка на
+ * точці; оплата частинами — за телефонами) and must NOT promise
+ * payment/delivery options the store does not have (післяплата, IBAN,
+ * «оплата карткою» / «банківський переказ» as separate methods, Делівері,
+ * кур'єр по місту).
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -37,9 +38,13 @@ test('DELIVERY-PAGE: pickup section quotes the canonical pickup points', () => {
       `pickup point ${point.id} address must be on the page`
     );
   }
-  // Domain split matches the checkout (техніка vs шпалери).
+  // Domain split matches the checkout (техніка vs шпалеры; лінолеумна
+  // точка 89А додана 2026-09-17 за рішенням власника — НЕ 87А).
   assert.match(page, /Мазепи, 87А — побутова техніка/);
   assert.match(page, /Мазепи, 83А — шпалери/);
+  assert.match(page, /Мазепи, 89А — лінолеум/);
+  // Honest mixed-cart wording for three domains (was «обох напрямків»).
+  assert.match(page, /товари різних напрямків/);
 });
 
 test('DELIVERY-PAGE: payment is online LiqPay, cash allowed at pickup only', () => {

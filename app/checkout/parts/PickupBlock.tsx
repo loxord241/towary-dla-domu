@@ -2,7 +2,16 @@
 
 import Link from 'next/link';
 import type { PickupPoint } from '@/app/lib/checkout-delivery';
+import type { ProductDomain } from '@/app/lib/domains';
 import type { PickupPaymentIntent } from '../delivery-apis';
+
+/** Спеціалізація точки per домен — усі три, без старої ternary-брехні
+ * «не шпалери = техніка» (лінолеумна точка з'явилася 2026-09-17). */
+const DOMAIN_LABELS: Record<ProductDomain, string> = {
+  wallpaper: 'шпалери',
+  linoleum: 'лінолеум',
+  tech: 'техніка',
+};
 
 interface PickupBlockProps {
   availablePickupPoints: readonly PickupPoint[];
@@ -10,8 +19,9 @@ interface PickupBlockProps {
   paymentIntent: PickupPaymentIntent;
   setPickupPointId: (id: string) => void;
   setPaymentIntent: (intent: PickupPaymentIntent) => void;
-  cartHasWallpapers: boolean;
-  cartHasTech: boolean;
+  /** У кошику ≥2 різних доменів — усе замовлення чекатиме на одній точці
+   * (розраховується в CheckoutForm як cartDomains.size > 1). */
+  mixedCart: boolean;
 }
 
 // Самовивіз: точки під обраний домен кошика + спосіб оплати.
@@ -24,17 +34,16 @@ export default function PickupBlock({
   paymentIntent,
   setPickupPointId,
   setPaymentIntent,
-  cartHasWallpapers,
-  cartHasTech,
+  mixedCart,
 }: PickupBlockProps) {
   return (
     <div className="mt-3 space-y-3">
-      {cartHasWallpapers && cartHasTech && (
+      {mixedCart && (
         <p
           className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
           role="note"
         >
-          У кошику товари обох напрямків — усе замовлення буде
+          У кошику товари різних напрямків — усе замовлення буде
           чекати на обраній точці.
         </p>
       )}
@@ -56,9 +65,7 @@ export default function PickupBlock({
               <span className="block">{p.address}</span>
               <span className="block text-xs text-gray-500">
                 {p.city} · безкоштовно ·{' '}
-                {p.domains.includes('wallpaper')
-                  ? 'шпалери'
-                  : 'техніка'}
+                {p.domains.map((d) => DOMAIN_LABELS[d]).join(' · ')}
               </span>
             </button>
           );

@@ -60,10 +60,18 @@ test('PDP-BUYBOX: кнопка стоїть одразу під ціною, до
 });
 
 test('PDP-BUYBOX: повний набір пропсів єдиного інстансу', () => {
+  // Linoleum batch 3 (2026-09-17): the buy-box is now a conditional with TWO
+  // mutually exclusive branches — ln-* renders LinoleumMeterPanel, every
+  // other domain renders AddToCartButton. Both branches carry the full prop
+  // set (→ availabilityStatus count 2), and the «exactly one buy-box per
+  // page» invariant moved to linoleum-pdp.test.ts, which pins
+  // <AddToCartButton === 1 AND <LinoleumMeterPanel === 1 on the page source.
+  // Only the unit-domain branch takes variants: the ln-* panel is
+  // variant-less by domain (running metres, no options).
   assert.equal(countOf(pageSrc, 'variants={product.variants.map'), 1);
   assert.equal(
     countOf(pageSrc, 'availabilityStatus={product.availability_status}'),
-    1
+    2
   );
 });
 

@@ -463,14 +463,25 @@ test('OrgGraph: builder emits the Organization facts, nothing invented', () => {
   const locations = (store as unknown as {
     location: { name: string; address: { streetAddress: string } }[];
   }).location;
-  assert.equal(locations.length, 2);
+  assert.equal(locations.length, 3);
   assert.deepEqual(
     locations.map((l) => l.address.streetAddress).sort(),
-    // Обе точки на Мазепы (шпалерная улица переименована 2026-09-14).
+    // Все три точки на Мазепы (шпалерная улица переименована 2026-09-14;
+    // третья точка — лінолеум, 89А — решение владельца 2026-09-17).
     [
       'вул. Гетьмана Івана Мазепи, буд. 83А',
       'вул. Гетьмана Івана Мазепи, буд. 87А',
+      'вул. Гетьмана Івана Мазепи, буд. 89А',
     ].sort()
+  );
+  // The new Store location keeps the contacts-page naming scheme.
+  assert.ok(
+    locations.some(
+      (l) =>
+        l.name === 'Пункт видачі — лінолеум' &&
+        l.address.streetAddress === 'вул. Гетьмана Івана Мазепи, буд. 89А'
+    ),
+    'linoleum Store location must be named «Пункт видачі — лінолеум»'
   );
 });
 
@@ -496,13 +507,15 @@ test('OrgGraph: WebSite node pins the Google site name (2026-09-16)', () => {
   assert.ok(!/<\//.test(html), 'raw </ must never survive serialization');
 });
 
-test('OrgGraph: both phones and both pickup addresses survive serialization', () => {
+test('OrgGraph: both phones and all three pickup addresses survive serialization', () => {
   const html = serializeJsonLd(buildOrganizationJsonLd(SITE));
   for (const fact of [
     '+380973144221',
     '+380983584958',
     'вул. Гетьмана Івана Мазепи, буд. 87А',
     'вул. Гетьмана Івана Мазепи, буд. 83А',
+    'вул. Гетьмана Івана Мазепи, буд. 89А',
+    'Пункт видачі — лінолеум',
     'Кривий Ріг',
     'magazinujut@gmail.com',
   ]) {

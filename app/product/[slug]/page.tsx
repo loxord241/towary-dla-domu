@@ -8,6 +8,7 @@ import SiteHeader from '@/app/components/SiteHeader'
 import SiteFooter from '@/app/components/SiteFooter'
 import Announcements from '@/app/components/Announcements'
 import AddToCartButton from '@/app/components/AddToCartButton'
+import LinoleumMeterPanel from '@/app/components/LinoleumMeterPanel'
 import FavoriteButton from '@/app/components/FavoriteButton'
 import ShareButtons from '@/app/components/ShareButtons'
 import ProductGallery from '@/app/components/ProductGallery'
@@ -34,6 +35,8 @@ import {
 import { buildProductMetaDescription, buildProductTitleName } from '@/app/lib/seo'
 import { shouldRenderDescriptionSection } from '@/app/lib/product-description'
 import { formatPrice } from '@/app/lib/format'
+import { LINOLEUM_SKU_PREFIX } from '@/app/lib/domains'
+import { extractPricePerSqm } from '@/app/lib/linoleum/product-view'
 
 // On-demand ISR (Task #5B 2026-08-31): the route no longer touches any
 // request-time API — reviews pagination beyond the SSR-rendered page 1 is
@@ -143,6 +146,16 @@ export default async function ProductPage({
   // Wallpaper domain gate (sku prefix single source of truth 'wc-'): drives
   // the roll calculator AND the glue cross-sell shelf below.
   const isWallpaper = product.sku.startsWith('wc-')
+
+  // Linoleum domain gate (ln-*, prefix from domains.ts — single source of
+  // truth for the third domain): drives the meter buy-box (LinoleumMeterPanel
+  // below replaces AddToCartButton) and the грн/м² badge next to the price.
+  // Every wallpaper-specific block above already keys off isWallpaper, so
+  // ln-* PDPs get neither the roll calculator nor the glue shelf.
+  const isLinoleum = product.sku.startsWith(LINOLEUM_SKU_PREFIX)
+  const linoleumPriceSqm = isLinoleum
+    ? extractPricePerSqm(product.specifications)
+    : null
 
   // Supplementary content (perf audit Step 2 2026-08-28): reviews, summary
   // and related products depend ONLY on `product`, so they all run in ONE
@@ -334,6 +347,15 @@ export default async function ProductPage({
               <span className="text-3xl font-extrabold tracking-tight text-blue-700">
                 {formatPrice(product.price, product.currency)}
               </span>
+              {/* ln-* only (owner plan 2026-09-17): the m² price lives in the
+                  «Ціна за м²» specification (importer canon «410,00») — the
+                  products.price on a linoleum card is грн за погонный метр,
+                  so the badge is what a buyer actually compares. */}
+              {linoleumPriceSqm && (
+                <span className="rounded bg-blue-50 px-2 py-0.5 text-sm font-semibold text-blue-700">
+                  {linoleumPriceSqm} грн/м²
+                </span>
+              )}
               {product.old_price && product.old_price > product.price && (
                 <>
                   <span className="text-lg text-gray-500 line-through">
@@ -347,20 +369,32 @@ export default async function ProductPage({
             </div>
 
             {/* Buy-box (owner 2026-09-15): ОДНА кнопка «Додати в кошик»,
-                одразу під ціною — на всіх екранах. Решта блоків (поділитись,
-                наявність, intro/характеристики, опис) ідуть нижче. */}
-            <AddToCartButton
-              productId={product.id}
-              productName={product.name}
-              stockQuantity={product.stock_quantity}
-              availabilityStatus={product.availability_status}
-              variants={product.variants.map((v) => ({
-                id: v.id,
-                name: v.name,
-                stockQuantity: v.stock_quantity,
-                availabilityStatus: v.availability_status,
-              }))}
-            />
+                одразу під ціною — на всіх екранах. ln-* (лінолеум) купують
+                цілими метрами: замість штатної кнопки — LinoleumMeterPanel
+                (метраж + ціна за пог.м + живий итог + калькулятор кімнати),
+                variantId=null, той самий integer-шлях кошика 1..99. */}
+            {isLinoleum ? (
+              <LinoleumMeterPanel
+                productId={product.id}
+                price={product.price}
+                currency={product.currency}
+                stockQuantity={product.stock_quantity}
+                availabilityStatus={product.availability_status}
+              />
+            ) : (
+              <AddToCartButton
+                productId={product.id}
+                productName={product.name}
+                stockQuantity={product.stock_quantity}
+                availabilityStatus={product.availability_status}
+                variants={product.variants.map((v) => ({
+                  id: v.id,
+                  name: v.name,
+                  stockQuantity: v.stock_quantity,
+                  availabilityStatus: v.availability_status,
+                }))}
+              />
+            )}
 
             {/* «Передзвоніть мені» — для КОЖНОГО товару (без гейта
                 availability: консультація потрібна і «в наявності»).

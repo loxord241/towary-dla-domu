@@ -54,6 +54,10 @@ test('CARD-SELECT: /catalog card projection contains only card-render fields', (
     'currency',
     'availability_status',
     'brand:brands(name)',
+    // Linoleum batch 3 (owner plan 2026-09-17): ln-* cards render the
+    // «Ціна за м²» specification as THE card price — products.price on an
+    // ln-* row is грн за погонный метр, not comparable across widths.
+    'specifications',
   ]) {
     assert.ok(sel.includes(field), `card select must contain ${field}: ${sel}`);
   }
@@ -68,11 +72,17 @@ test('CARD-SELECT: /catalog card projection contains only card-render fields', (
   assert.match(sel, /product_id/);
 });
 
-test('CARD-SELECT: card projection drops body payload (description/specs/variants/category)', () => {
+test('CARD-SELECT: card projection drops the heavy body payload (description/variants/category)', () => {
+  // UPDATE (linoleum batch 3, 2026-09-17): `specifications` left the
+  // forbidden list BY OWNER PLAN — ln-* cards need the «Ціна за м²» entry
+  // (import-plan.ts canon) to show грн/м²; live measure 2026-09-17 showed
+  // the specifications jsonb is cheap (avg ~0.5 KB/row, most appliance rows
+  // NULL) unlike the description HTML that motivated the original pin.
+  // Everything else that made cards heavy stays forbidden.
   const sel = cardSelectLiteral(src());
   assert.doesNotMatch(
     sel,
-    /description|specifications|variants|sku|stock_quantity|category:categories|created_at|updated_at/
+    /description|variants|sku|stock_quantity|category:categories|created_at|updated_at/
   );
 });
 

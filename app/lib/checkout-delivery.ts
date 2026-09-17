@@ -69,11 +69,14 @@ export interface CheckoutDelivery {
 
 /**
  * Кривий Ріг pickup points (owner-defined 2026-09-12; wallpapers point
- * address updated 2026-09-14 — street renamed to Гетьмана Івана Мазепи):
- * техника выдаётся на Мазепы 87А, шпалеры — на Мазепы 83А; a mixed cart
- * may pick either (the whole order waits at the chosen point). Single
- * source of truth for the checkout UI, the sanitizer whitelist and the
- * Telegram notice.
+ * address updated 2026-09-14 — street renamed to Гетьмана Івана Мазепи;
+ * third point for linoleum added 2026-09-17 per owner — Мазепи 89А, NOT
+ * 87А): техника выдаётся на Мазепы 87А, шпалеры — на Мазепы 83А,
+ * лінолеум (ln-*) — на Мазепы 89А. A mixed cart is offered the UNION of
+ * points whose domain the cart contains (the whole order waits at the
+ * chosen point) — the same rule as the original two-domain version,
+ * generalized. Single source of truth for the checkout UI, the sanitizer
+ * whitelist and the Telegram notice.
  */
 import type { ProductDomain } from './domains';
 
@@ -96,6 +99,12 @@ export const PICKUP_POINTS: readonly PickupPoint[] = [
     city: 'Кривий Ріг',
     address: 'вул. Гетьмана Івана Мазепи, 83А',
     domains: ['wallpaper'],
+  },
+  {
+    id: 'kr-mazepy-89a',
+    city: 'Кривий Ріг',
+    address: 'вул. Гетьмана Івана Мазепи, 89А',
+    domains: ['linoleum'],
   },
 ];
 

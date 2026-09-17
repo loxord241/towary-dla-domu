@@ -3,6 +3,8 @@ import Image from 'next/image';
 import FavoriteButton from './FavoriteButton';
 import CardAddToCartButton from './CardAddToCartButton';
 import { formatPrice } from '@/app/lib/format';
+import { isLinoleumSlug } from '@/app/lib/domains';
+import { extractPricePerSqm } from '@/app/lib/linoleum/product-view';
 
 function availabilityLabel(status: string): string {
   if (status === 'in_stock') return 'В наявності';
@@ -19,6 +21,12 @@ export interface ProductCardData {
   old_price?: number | null;
   availability_status: string;
   brand?: { name: string } | null;
+  /**
+   * Supplier characteristics (ln-* cards carry «Ціна за м²» / «Ширина»).
+   * Present on CATALOG_CARD_SELECT rows since the linoleum batch 3; optional
+   * so card rows from narrower projections stay assignable.
+   */
+  specifications?: { name: string; value: string }[] | null;
 }
 
 /**
@@ -42,6 +50,16 @@ export default function ProductCard({
   const outOfStock = product.availability_status === 'out_of_stock';
   const hasDiscount =
     product.old_price != null && product.old_price > product.price;
+
+  // ln-* cards (owner plan 2026-09-17, «сначала показывается цена за
+  // квадратный метр»): products.price is грн за ПОГОННЫЙ метр, so the m²
+  // price from the «Ціна за м²» specification replaces it as THE card
+  // price. Missing specification → the running-meter price stays (no
+  // invented numbers). For ln-* slug === sku, so the slug prefix gate is
+  // exact; wc-*/tech cards are unaffected.
+  const priceSqm = isLinoleumSlug(product.slug)
+    ? extractPricePerSqm(product.specifications)
+    : null;
 
   return (
     <div className="group relative flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
@@ -92,7 +110,11 @@ export default function ProductCard({
           )}
 
           <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1 pt-2">
-            {hasDiscount ? (
+            {priceSqm ? (
+              <span className="text-lg font-bold text-blue-700">
+                {priceSqm} грн/м²
+              </span>
+            ) : hasDiscount ? (
               <>
                 <span className="text-xl font-extrabold text-red-600">
                   {formatPrice(product.price, product.currency)}

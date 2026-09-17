@@ -378,16 +378,17 @@ export function serializeJsonLd(data: Record<string, unknown>): string {
  * schema.org/WebSite, with publisher referencing the Organization.
  *
  * The logo is /public/og-image.png — the only brand image asset on the
- * origin (the header logo is text-only). Both pickup points are rendered as
- * two Store locations exactly as app/contacts lists them: Мазепи 87А —
- * побутова техніка; Мазепи 83А — шпалери (street formerly Серафимовича,
- * renamed 2026-09-14 per owner).
+ * origin (the header logo is text-only). All three pickup points are
+ * rendered as Store locations exactly as app/contacts lists them:
+ * Мазепи 87А — побутова техніка; Мазепи 83А — шпалери; Мазепи 89А —
+ * лінолеум (street formerly Серафимовича, renamed 2026-09-14 per owner;
+ * third point 89А added 2026-09-17 per owner — NOT 87А).
  *
  * Emitted through serializeJsonLd by OrganizationJsonLd.tsx inside the root
  * layout, so every SSR page carries the graph.
  */
 
-/** The two real pickup points, verbatim from app/contacts/page.tsx. */
+/** The three real pickup points, verbatim from app/contacts/page.tsx. */
 export const STORE_LOCATIONS: { name: string; streetAddress: string }[] = [
   {
     name: 'Пункт видачі — побутова техніка',
@@ -396,6 +397,10 @@ export const STORE_LOCATIONS: { name: string; streetAddress: string }[] = [
   {
     name: 'Пункт видачі — шпалери',
     streetAddress: 'вул. Гетьмана Івана Мазепи, буд. 83А',
+  },
+  {
+    name: 'Пункт видачі — лінолеум',
+    streetAddress: 'вул. Гетьмана Івана Мазепи, буд. 89А',
   },
 ];
 
