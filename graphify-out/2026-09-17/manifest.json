@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "app/components/SiteFooter.tsx": {
-    "mtime": 1789650568.712219,
-    "seen": 1789650785.0913758,
-    "ast_hash": "6a5670ba928be4da5889e9e716e3e9f2",
+    "mtime": 1789499277.2736547,
+    "seen": 1789563307.5675795,
+    "ast_hash": "044797dec4b57817f7a14b7b0a79a5f3",
     "semantic_hash": ""
   },
   "app/components/SiteHeader.tsx": {
@@ -648,9 +648,9 @@
     "semantic_hash": ""
   },
   "app/lib/schema-org.ts": {
-    "mtime": 1789650477.3055346,
-    "seen": 1789650785.0913758,
-    "ast_hash": "d32117dc55bfc1dd70f57d277d8c7980",
+    "mtime": 1789649619.4122875,
+    "seen": 1789649870.6449385,
+    "ast_hash": "629b65a8514791dd43f9c51867228776",
     "semantic_hash": ""
   },
   "app/lib/seo-sitemap.ts": {
@@ -816,9 +816,9 @@
     "semantic_hash": ""
   },
   "app/sitemap.ts": {
-    "mtime": 1789650647.4134593,
-    "seen": 1789650785.0913758,
-    "ast_hash": "1a3a87b82c458d5b1c89b17ffaa16fae",
+    "mtime": 1789648741.8624866,
+    "seen": 1789648933.9704747,
+    "ast_hash": "12793f164eb2990b0494fed3f2a94c1b",
     "semantic_hash": ""
   },
   "app/terms/page.tsx": {
@@ -3999,18 +3999,6 @@
     "mtime": 1789648793.7115004,
     "seen": 1789648933.9704747,
     "ast_hash": "c5f066c6416b420ff597ed0086d64f56",
-    "semantic_hash": ""
-  },
-  "app/brands/page.tsx": {
-    "mtime": 1789650682.4852698,
-    "seen": 1789650785.0913758,
-    "ast_hash": "019aaecbf91b580783f9241e535f6f80",
-    "semantic_hash": ""
-  },
-  "tests/brands-page.test.ts": {
-    "mtime": 1789650686.0826123,
-    "seen": 1789650785.0913758,
-    "ast_hash": "5c510807bce3d701023253c64b553ed6",
     "semantic_hash": ""
   }
 }
