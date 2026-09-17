@@ -2,7 +2,7 @@
 // Home shelves: «Обрані товари» / «Популярні товари» bounded reads.
 //
 
-import { normalizeProduct, PRODUCT_SELECT, supabase, WALLPAPER_SKU_LIKE } from './shared.ts';
+import { normalizeProduct, PRODUCT_SELECT, supabase, WALLPAPER_SKU_LIKE, LINOLEUM_SKU_LIKE } from './shared.ts';
 import type { Product, ProductJoinedRow } from './shared.ts';
 import { fetchProducts } from './product-feed.ts';
 
@@ -38,8 +38,11 @@ export async function fetchSelectedProducts(): Promise<Product[]> {
     .eq('is_active', true)
     .eq('is_selected', true)
     // Home shelves never surface the wallpaper domain (owner task
-    // 2026-09-10): wc-* products render on /oboi only.
+    // 2026-09-10): wc-* products render on /oboi only. Same for the
+    // linoleum domain (owner plan 2026-09-17): ln-* products render on
+    // /linoleum only — the wall goes up BEFORE the importer fills it.
     .not('sku', 'like', WALLPAPER_SKU_LIKE)
+    .not('sku', 'like', LINOLEUM_SKU_LIKE)
     .order('availability_status', { ascending: true })
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
@@ -88,9 +91,11 @@ export async function fetchPopularProducts(
     .eq('is_active', true)
     .eq('is_featured', true)
     // Home shelves never surface the wallpaper domain (owner task
-    // 2026-09-10): wc-* products render on /oboi only. Chained BEFORE the
+    // 2026-09-10): wc-* products render on /oboi only, ln-* the same way
+    // (owner plan 2026-09-17, /linoleum only). Chained BEFORE the
     // not-in/range tail so the bounded window still yields `take` rows.
     .not('sku', 'like', WALLPAPER_SKU_LIKE)
+    .not('sku', 'like', LINOLEUM_SKU_LIKE)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false });
 

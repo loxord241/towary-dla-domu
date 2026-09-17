@@ -5,7 +5,7 @@
 // Explicit .ts extension: required by node:test ESM resolution and allowed
 // by allowImportingTsExtensions for the Next bundler.
 import { collectSubtreeIds } from '../category-tree.ts';
-import { cachePublicRead, CATALOG_CARD_SELECT, CATALOG_PUBLIC_READ_TTL_SECONDS, normalizeCatalogCard, supabase, WALLPAPER_SKU_LIKE, WALLPAPER_SKU_PREFIX } from './shared.ts';
+import { cachePublicRead, CATALOG_CARD_SELECT, CATALOG_PUBLIC_READ_TTL_SECONDS, LINOLEUM_SKU_LIKE, LINOLEUM_SKU_PREFIX, normalizeCatalogCard, supabase, WALLPAPER_SKU_LIKE, WALLPAPER_SKU_PREFIX } from './shared.ts';
 import type { CatalogCardProduct, CatalogCardRow, Product } from './shared.ts';
 import { fetchActiveCategories } from './categories.ts';
 
@@ -53,8 +53,10 @@ type RelatedStageFilter =
   | null;
 
 /** Related-products sku domain (owner task 2026-09-10): a wc-* PDP gets its
-    related from the wallpaper domain only, any other PDP gets none of it. */
-type RelatedSkuDomain = 'wallpaper' | 'general';
+    related from the wallpaper domain only, any other PDP gets none of it.
+    Linoleum (owner plan 2026-09-17): ln-* PDPs relate within ln-*, general
+    PDPs see neither domain. */
+type RelatedSkuDomain = 'wallpaper' | 'linoleum' | 'general';
 
 async function fetchRelatedStage(
   filter: RelatedStageFilter,
@@ -80,12 +82,18 @@ async function fetchRelatedStage(
     )
     .eq('is_active', true)
     .neq('id', currentId);
-  // Wallpaper separation: every stage stays inside the current product's
-  // sku domain (wallpaper PDPs see wc-* candidates, the rest never do).
+  // Sku-domain separation: every stage stays inside the current product's
+  // sku domain (wallpaper PDPs see wc-* candidates, linoleum PDPs see ln-*,
+  // the rest never sees either). postgrest-js appends both not-like params;
+  // PostgREST ANDs repeated same-key filters.
   query =
     skuDomain === 'wallpaper'
       ? query.like('sku', WALLPAPER_SKU_LIKE)
-      : query.not('sku', 'like', WALLPAPER_SKU_LIKE);
+      : skuDomain === 'linoleum'
+        ? query.like('sku', LINOLEUM_SKU_LIKE)
+        : query
+            .not('sku', 'like', WALLPAPER_SKU_LIKE)
+            .not('sku', 'like', LINOLEUM_SKU_LIKE);
   if (filter?.kind === 'category') {
     // Same junction + subtree semantics as fetchCatalogProducts. The count
     // embed uses product_id (see JUNCTION_COUNT_SELECT note).
@@ -134,13 +142,15 @@ const fetchRelatedProductsStore = cachePublicRead(
     identity: Pick<Product, 'id' | 'category_id' | 'brand_id' | 'sku'>,
     limit: number
   ): Promise<CatalogCardProduct[]> => {
-    // Wallpapers relate to wallpapers, the rest to the rest (owner task
-    // 2026-09-10): one sku-domain guard shared by all three stages.
-    const skuDomain: RelatedSkuDomain = (identity.sku ?? '')
-      .toLowerCase()
-      .startsWith(WALLPAPER_SKU_PREFIX)
+    // Wallpapers relate to wallpapers, linoleum to linoleum, the rest to
+    // the rest (owner task 2026-09-10; linoleum — owner plan 2026-09-17):
+    // one sku-domain guard shared by all three stages.
+    const sku = (identity.sku ?? '').toLowerCase();
+    const skuDomain: RelatedSkuDomain = sku.startsWith(WALLPAPER_SKU_PREFIX)
       ? 'wallpaper'
-      : 'general';
+      : sku.startsWith(LINOLEUM_SKU_PREFIX)
+        ? 'linoleum'
+        : 'general';
     const sameCategoryStage = identity.category_id
       ? fetchActiveCategories().then((activeCategories) =>
           fetchRelatedStage(

@@ -71,7 +71,12 @@ test('CATALOG: fetchSelectedProducts is a single bounded window (limit 8, no pag
   const lib = readLib();
   assert.match(lib, /export async function fetchSelectedProducts/);
   const fnStart = lib.indexOf('export async function fetchSelectedProducts');
-  const fnBody = lib.slice(fnStart, fnStart + 1600);
+  // Window 1600→2400 (2026-09-17, linoleum batches): the ln-* exclusion
+  // lines + in-stock-first ordering comment grew the function body past
+  // 1600 chars BEFORE the closing .range(0, SELECTED_LIMIT - 1) — the
+  // bounded-window invariant itself is intact, only the source slice was
+  // too short. The .range now sits at offset ~1603 from the marker.
+  const fnBody = lib.slice(fnStart, fnStart + 2400);
 
   // LIMIT = 8, mirrored from the featured shelf business rule.
   assert.match(lib, /export const SELECTED_LIMIT = 8;/);

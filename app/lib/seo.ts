@@ -352,6 +352,52 @@ export function buildWallpapersMetadata(
 }
 
 // ---------------------------------------------------------------------------
+// /linoleum — linoleum storefront (linoleum vertical, batch 2, task L4,
+// 2026-09-17). The third static indexable route on the same footing as
+// /oboi: part of the «indexable set = sitemap set» invariant, and
+// app/sitemap.ts lists it in its static entries. Deep pagination (?page=N>1),
+// width-filtered views (?width=…, ANY raw value present — junk included:
+// these are filter VALUES on an existing resource, not routes) and explicit
+// sorts follow the same policy as /oboi and /catalog: a noindex,follow
+// duplicate view WITHOUT a canonical tag.
+// ---------------------------------------------------------------------------
+
+export const LINOLEUM_CANONICAL_PATH = '/linoleum';
+
+export function buildLinoleumMetadata(
+  page = 1,
+  /** Raw ?width= param: ANY present value (even '' or junk) → noindex. */
+  width?: string,
+  /** Raw ?sort= param: ANY present value → noindex. The DEFAULT sort on
+      /linoleum is alphabetical (same contract as /oboi) — the bare path IS
+      the sorted view, so only explicit reorderings are duplicates. */
+  sort?: string
+): ViewMetadata {
+  const title = `Лінолеум — купити в ${SITE_NAME}`;
+  // Copy stays factual: the width grid mirrors the importer's
+  // LINOLEUM_WIDTHS_M (1.5..4 м, app/lib/linoleum/parse.ts); «побутовий та
+  // напівкомерційний» mirrors the parser's documented price window. Geo
+  // tail in the description only — the title stays geo-free.
+  const description = `Каталог лінолеуму інтернет-магазину ${SITE_NAME}: побутовий та напівкомерційний, ширина 1,5–4 м — ${GEO_TAIL}.`;
+
+  if (page > 1 || width !== undefined || (sort !== undefined && sort !== '')) {
+    return {
+      title,
+      description,
+      openGraph: buildViewOpenGraph(title, description),
+      robots: { index: false, follow: true },
+    };
+  }
+
+  return {
+    title,
+    description,
+    openGraph: buildViewOpenGraph(title, description),
+    alternates: { canonical: LINOLEUM_CANONICAL_PATH },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // PDP meta-description policy (audit 2026-08-31)
 //
 // Two classes of supplier descriptions must NOT leak into meta descriptions:

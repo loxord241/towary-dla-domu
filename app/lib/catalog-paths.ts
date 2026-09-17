@@ -91,3 +91,17 @@ export function oboiFilteredRewrite(
   if (pathname !== '/oboi' || search === '') return null;
   return '/oboi/filtered';
 }
+
+/**
+ * Internal rewrite target for a query-carrying /linoleum request, or null
+ * when the request must fall through to the ISR-cached storefront. Mirror
+ * of oboiFilteredRewrite for the static /linoleum path (?page/?width/?sort
+ * are all query-only there — see app/linoleum/page.tsx).
+ */
+export function linoleumFilteredRewrite(
+  pathname: string,
+  search: string
+): string | null {
+  if (pathname !== '/linoleum' || search === '') return null;
+  return '/linoleum/filtered';
+}

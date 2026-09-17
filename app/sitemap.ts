@@ -105,6 +105,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // route — seo.ts's buildWallpapersMetadata emits the matching canonical,
     // so the «indexable set = sitemap set» invariant holds.
     '/oboi',
+    // Linoleum storefront (linoleum vertical, batch 2, 2026-09-17): the
+    // static indexable canonical pair of seo.ts's buildLinoleumMetadata —
+    // same invariant (query views are noindex duplicates via the filtered
+    // twin and are deliberately NOT listed).
+    '/linoleum',
     '/delivery',
     '/contacts',
     // Pickup page (owner task 2026-09-14): static indexable route with a
@@ -125,7 +130,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // every deploy and teaches crawlers the timestamp is noise — omit it
     // and let changeFrequency do the work.
     changeFrequency:
-      path === '' || path === '/catalog' || path === '/oboi'
+      path === '' || path === '/catalog' || path === '/oboi' || path === '/linoleum'
         ? 'daily'
         : path === '/brands'
           ? 'weekly'
@@ -133,7 +138,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority:
       path === ''
         ? 1
-        : path === '/catalog' || path === '/oboi'
+        : path === '/catalog' || path === '/oboi' || path === '/linoleum'
           ? 0.9
           : path === '/brands'
             ? 0.6

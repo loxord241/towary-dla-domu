@@ -250,6 +250,10 @@ const ORDER_EXEMPT: { file: string; anchor: string }[] = [
   // windows now live in the listing modules.
   { file: 'app/lib/catalog/listing.ts', anchor: 'query.range((page - 1)' },
   { file: 'app/lib/catalog/wallpaper-listing.ts', anchor: 'query.range((page - 1)' },
+  // Linoleum listing (vertical batch 2/3, 2026-09-17): same builder-switch
+  // pattern as wallpaper-listing — .order() chains with the id tiebreaker
+  // live in the sort switch above the single .range() return.
+  { file: 'app/lib/catalog/linoleum-listing.ts', anchor: 'query.range((page - 1)' },
   { file: 'scripts/yugcontract-verify.ts', anchor: 'make().range(from' },
 ];
 

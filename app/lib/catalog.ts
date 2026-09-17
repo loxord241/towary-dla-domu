@@ -47,6 +47,8 @@ export type { CatalogPage } from './catalog/listing.ts';
 export { fetchCatalogProducts } from './catalog/listing.ts';
 export type { WallpaperPage } from './catalog/wallpaper-listing.ts';
 export { fetchWallpaperProducts } from './catalog/wallpaper-listing.ts';
+export type { LinoleumPage } from './catalog/linoleum-listing.ts';
+export { fetchLinoleumProducts } from './catalog/linoleum-listing.ts';
 export type { ProductReview, ReviewsPageData, ReviewSummary } from './catalog/reviews.ts';
 export {
   REVIEWS_PAGE_SIZE,

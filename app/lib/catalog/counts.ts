@@ -7,7 +7,7 @@
 // by allowImportingTsExtensions for the Next bundler.
 import { cache } from 'react';
 import { collectSubtreeIds } from '../category-tree.ts';
-import { cachePublicRead, CATALOG_PUBLIC_READ_TTL_SECONDS, ELIGIBLE_COUNT_SELECT, JUNCTION_COUNT_SELECT, supabase, WALLPAPER_CATEGORY_SLUGS, WALLPAPER_SKU_LIKE } from './shared.ts';
+import { cachePublicRead, CATALOG_PUBLIC_READ_TTL_SECONDS, ELIGIBLE_COUNT_SELECT, JUNCTION_COUNT_SELECT, LINOLEUM_CATEGORY_SLUGS, LINOLEUM_SKU_LIKE, supabase, WALLPAPER_CATEGORY_SLUGS, WALLPAPER_SKU_LIKE } from './shared.ts';
 import { lookupBrandBySlugCached, lookupCategoryBySlugCached } from './slug-lookup.ts';
 import { fetchActiveCategoriesStore } from './categories.ts';
 
@@ -38,10 +38,17 @@ async function countCategoryProductsUncached(
   // Mirror fetchCatalogProducts' wallpaper decision exactly (owner task
   // 2026-09-10): wallpaper-scoped views count their wc-* rows, every other
   // category view excludes them — the empty-view verdict can never disagree
-  // with the grid's own total (noindex contract, Task #14).
+  // with the grid's own total (noindex contract, Task #14). The linoleum
+  // decision (owner plan 2026-09-17) mirrors it the same way: ln-* rows
+  // count only on linoleum-subtree views.
   const isWallpaperView = activeCategories.some(
     (activeCategory) =>
       WALLPAPER_CATEGORY_SLUGS.has(activeCategory.slug) &&
+      subtreeIds.includes(activeCategory.id)
+  );
+  const isLinoleumView = activeCategories.some(
+    (activeCategory) =>
+      LINOLEUM_CATEGORY_SLUGS.has(activeCategory.slug) &&
       subtreeIds.includes(activeCategory.id)
   );
   let countQuery = supabase
@@ -51,6 +58,9 @@ async function countCategoryProductsUncached(
     .in('pc.category_id', subtreeIds);
   if (!isWallpaperView) {
     countQuery = countQuery.not('sku', 'like', WALLPAPER_SKU_LIKE);
+  }
+  if (!isLinoleumView) {
+    countQuery = countQuery.not('sku', 'like', LINOLEUM_SKU_LIKE);
   }
   const { count, error } = await countQuery;
   if (error) {
@@ -80,8 +90,10 @@ async function countBrandProductsUncached(
     .select(ELIGIBLE_COUNT_SELECT, { count: 'exact', head: true })
     .eq('is_active', true)
     // Brand views are general listings: wallpapers (wc-*) excluded, same as
-    // the grid (owner task 2026-09-10).
+    // the grid (owner task 2026-09-10); linoleum (ln-*) the same way (owner
+    // plan 2026-09-17).
     .not('sku', 'like', WALLPAPER_SKU_LIKE)
+    .not('sku', 'like', LINOLEUM_SKU_LIKE)
     .eq('brand_id', brand.id);
   if (error) {
     throw new Error(
@@ -129,6 +141,13 @@ async function countCategoryBrandProductsUncached(
       WALLPAPER_CATEGORY_SLUGS.has(activeCategory.slug) &&
       subtreeIds.includes(activeCategory.id)
   );
+  // Linoleum mirror (owner plan 2026-09-17): the scoping decision is driven
+  // by the CATEGORY subtree only — same as the wallpaper one above.
+  const isLinoleumView = activeCategories.some(
+    (activeCategory) =>
+      LINOLEUM_CATEGORY_SLUGS.has(activeCategory.slug) &&
+      subtreeIds.includes(activeCategory.id)
+  );
   let countQuery = supabase
     .from('products')
     .select(JUNCTION_COUNT_SELECT, { count: 'exact', head: true })
@@ -137,6 +156,9 @@ async function countCategoryBrandProductsUncached(
     .eq('brand_id', brand.id);
   if (!isWallpaperView) {
     countQuery = countQuery.not('sku', 'like', WALLPAPER_SKU_LIKE);
+  }
+  if (!isLinoleumView) {
+    countQuery = countQuery.not('sku', 'like', LINOLEUM_SKU_LIKE);
   }
   const { count, error } = await countQuery;
   if (error) {

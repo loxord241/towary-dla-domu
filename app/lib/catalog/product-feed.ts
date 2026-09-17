@@ -2,7 +2,7 @@
 // Paged full-row product feed (PRODUCT_SELECT) behind the home shelves.
 //
 
-import { normalizeProduct, PRODUCT_SELECT, supabase, WALLPAPER_SKU_LIKE } from './shared.ts';
+import { LINOLEUM_SKU_LIKE, normalizeProduct, PRODUCT_SELECT, supabase, WALLPAPER_SKU_LIKE } from './shared.ts';
 import type { Product, ProductJoinedRow } from './shared.ts';
 
 export async function fetchProducts(options: {
@@ -26,8 +26,10 @@ export async function fetchProducts(options: {
       .select(PRODUCT_SELECT)
       .eq('is_active', true)
       // Home shelves never surface the wallpaper domain (owner task
-      // 2026-09-10): wc-* products render on /oboi only.
-      .not('sku', 'like', WALLPAPER_SKU_LIKE);
+      // 2026-09-10): wc-* products render on /oboi only. The linoleum
+      // domain (ln-*, owner plan 2026-09-17) is excluded the same way.
+      .not('sku', 'like', WALLPAPER_SKU_LIKE)
+      .not('sku', 'like', LINOLEUM_SKU_LIKE);
     if (options.featuredOnly) {
       query = query.eq('is_featured', true);
     }

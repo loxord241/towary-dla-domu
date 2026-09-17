@@ -4,6 +4,7 @@ import {
   catalogCategoryRedirect,
   catalogCategoryFilteredRewrite,
   oboiFilteredRewrite,
+  linoleumFilteredRewrite,
 } from '@/app/lib/catalog-paths';
 
 export async function proxy(request: NextRequest) {
@@ -29,7 +30,8 @@ export async function proxy(request: NextRequest) {
     // preserved verbatim — only the internal pathname changes.
     const rewritePath =
       catalogCategoryFilteredRewrite(pathname, request.nextUrl.search) ??
-      oboiFilteredRewrite(pathname, request.nextUrl.search);
+      oboiFilteredRewrite(pathname, request.nextUrl.search) ??
+      linoleumFilteredRewrite(pathname, request.nextUrl.search);
     if (rewritePath) {
       const url = request.nextUrl.clone();
       url.pathname = rewritePath;
@@ -99,6 +101,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // '/catalog/:path*' matches zero or more segments, so bare /catalog (the
   // 308 redirect) and every /catalog/<slug> shape (the ISR rewrite) are
-  // covered by one pattern; '/oboi' feeds the same rewrite.
-  matcher: ['/admin/:path*', '/catalog/:path*', '/oboi'],
+  // covered by one pattern; '/oboi' and '/linoleum' feed the same rewrite.
+  matcher: ['/admin/:path*', '/catalog/:path*', '/oboi', '/linoleum'],
 };

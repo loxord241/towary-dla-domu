@@ -110,10 +110,13 @@ test('PATHS: proxy wires the redirect with 308 and a non-admin early return', ()
   const proxySrc = src('proxy.ts');
   // Matcher: the admin pattern unchanged; '/catalog/:path*' covers bare
   // /catalog (the 308 redirect) AND /catalog/<slug> (the ISR rewrite);
-  // '/oboi' feeds the same rewrite.
+  // '/oboi' and '/linoleum' feed the same rewrite. 2026-09-17 (linoleum
+  // batch 2): '/linoleum' ADDED as the third storefront rewrite source —
+  // a new static indexable route on the /oboi pattern, admin pattern
+  // untouched.
   assert.match(
     proxySrc,
-    /matcher:\s*\[\s*'\/admin\/:path\*',\s*'\/catalog\/:path\*',\s*'\/oboi'\s*\]/
+    /matcher:\s*\[\s*'\/admin\/:path\*',\s*'\/catalog\/:path\*',\s*'\/oboi',\s*'\/linoleum'\s*\]/
   );
   // Permanent redirect (method-preserving), anchored to the request origin.
   assert.match(proxySrc, /NextResponse\.redirect\(\s*new URL\(redirectPath, request\.url\),\s*308\s*\)/);
@@ -125,6 +128,7 @@ test('PATHS: proxy wires the redirect with 308 and a non-admin early return', ()
   // ISR split wiring: query-carrying requests rewrite to the twin routes.
   assert.match(proxySrc, /catalogCategoryFilteredRewrite\(/);
   assert.match(proxySrc, /oboiFilteredRewrite\(/);
+  assert.match(proxySrc, /linoleumFilteredRewrite\(/);
   assert.match(proxySrc, /NextResponse\.rewrite\(/);
 });
 

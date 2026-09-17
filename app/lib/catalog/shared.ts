@@ -210,16 +210,20 @@ export const PRODUCT_SELECT =
 
 /**
  * Slim card projection for /catalog (Task #4, 2026-08-31): ONLY the fields
- * ProductCard and the catalog page actually read. description/specifications/
- * variants and the category embed are dropped — category names come from
+ * ProductCard and the catalog page actually read. description/variants and
+ * the category embed are dropped — category names come from
  * fetchActiveCategories and body fields are never rendered in the grid.
+ * EXCEPTION (linoleum batch 3, owner plan 2026-09-17): `specifications`
+ * rides along — ln-* cards show the «Ціна за м²» spec as the card price;
+ * the live payload is small (2026-09-17 measure: avg ~0.5 KB/row, most
+ * appliance rows NULL), while the heavy description HTML stays out.
  * `product_images!inner` is REQUIRED: it is the eligibility join that hides
  * imageless products (same semantics as PRODUCT_SELECT); `sort_order` drives
  * image normalization; `product_id` is required by getMainPublicImageUrl's
  * parameter type. Live-measured ~2.3 KB/product vs ~9.8 KB for PRODUCT_SELECT.
  */
 export const CATALOG_CARD_SELECT =
-  'id, name, slug, price, old_price, currency, availability_status, brand:brands(name), images:product_images!inner(id, product_id, image_url, is_main, sort_order)';
+  'id, name, slug, price, old_price, currency, availability_status, brand:brands(name), specifications, images:product_images!inner(id, product_id, image_url, is_main, sort_order)';
 
 /** Same eligibility join for head-count queries (no row multiplication). */
 // NOTE: the junction count embed selects product_id (a real column), NOT id:
@@ -249,16 +253,35 @@ export const JUNCTION_COUNT_SELECT = 'id, images:product_images!inner(id), pc:pr
  * no duplicated literals here. Since 2026-09-13 the PREFIX itself lives in
  * app/lib/domains.ts (single source for «шпалери vs техніка» across the
  * checkout, search and catalog) — re-exported here for the SQL consumers.
+ * Since 2026-09-17 the same module owns the linoleum prefix (ln-*) —
+ * re-exported the same way.
  */
 export {
   WALLPAPER_SKU_PREFIX,
   WALLPAPER_SKU_LIKE,
+  LINOLEUM_SKU_PREFIX,
+  LINOLEUM_SKU_LIKE,
 } from '../domains.ts';
 
 /** «Шпалери» root + every imported subgroup slug (canonical importer list). */
 export const WALLPAPER_CATEGORY_SLUGS: ReadonlySet<string> = new Set([
   WALLPAPER_ROOT.slug,
   ...Object.values(WALLPAPER_CATEGORY_MAP).map((target) => target.slug),
+]);
+
+/**
+ * Linoleum domain separation (owner plan 2026-09-17, vertical batch 1):
+ * the third product domain mirrors the wallpaper decision — ln-* products
+ * are OFF every general listing and ON their own subtree category views,
+ * active-search views keep them (cross-domain surface). Batch 1 carries no
+ * importer category map yet: the root slug is the whole set; the batch-2
+ * importer's map extends this set the same way WALLPAPER_CATEGORY_MAP
+ * feeds WALLPAPER_CATEGORY_SLUGS.
+ */
+export const LINOLEUM_ROOT_SLUG = 'linoleum';
+
+export const LINOLEUM_CATEGORY_SLUGS: ReadonlySet<string> = new Set([
+  LINOLEUM_ROOT_SLUG,
 ]);
 
 // PostgREST embeds a many-to-one relation as an object (or null when the
@@ -292,6 +315,17 @@ export interface CatalogCardProduct {
   currency: string;
   availability_status: string;
   brand: { name: string } | null;
+  /**
+   * Supplier characteristics (jsonb). Added in the linoleum batch 3 (owner
+   * plan 2026-09-17): ln-* cards render the «Ціна за м²» specification as
+   * THE card price (products.price is грн за погонный метр). Optional in
+   * the type: rows from projections built before the field (or fixtures)
+   * stay assignable; every CATALOG_CARD_SELECT read carries it, null when
+   * the column is empty. Typical payload is small (live measure 2026-09-17:
+   * avg ~0.5 KB/row, most rows null; the heavy description payload stays
+   * excluded — that was the point of the original slim projection).
+   */
+  specifications?: { name: string; value: string }[] | null;
   images: CatalogCardImage[];
 }
 

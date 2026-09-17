@@ -14,7 +14,7 @@
 // Explicit .ts extension: required by node:test ESM resolution and allowed
 // by allowImportingTsExtensions for the Next bundler.
 import { collectSubtreeIds } from '../category-tree.ts';
-import { CATALOG_CARD_SELECT, ELIGIBLE_COUNT_SELECT, JUNCTION_COUNT_SELECT, normalizeCatalogCard, supabase, WALLPAPER_CATEGORY_SLUGS, WALLPAPER_SKU_LIKE } from './shared.ts';
+import { CATALOG_CARD_SELECT, ELIGIBLE_COUNT_SELECT, JUNCTION_COUNT_SELECT, LINOLEUM_CATEGORY_SLUGS, LINOLEUM_SKU_LIKE, normalizeCatalogCard, supabase, WALLPAPER_CATEGORY_SLUGS, WALLPAPER_SKU_LIKE } from './shared.ts';
 import type { CatalogCardProduct, Category, SearchCardRow } from './shared.ts';
 import { buildFuzzyFallbackPlan, buildSearchConditions, identifyAppliedSearch, rankSearchResults, relaxSearchTerm, SEARCH_RANK_SCAN_LIMIT } from './search.ts';
 import type { FuzzyFallbackPlan } from './search.ts';
@@ -100,6 +100,22 @@ export async function fetchCatalogProducts(
     );
   const hideWallpapers = !isWallpaperView && !hasSearch;
 
+  // Linoleum separation (owner plan 2026-09-17, vertical batch 1): the
+  // third domain (ln-*) mirrors the wallpaper decision in the SAME branches
+  // — general listings exclude it, an active search keeps it, and category
+  // views scoped to the linoleum subtree (root slug `linoleum`; subcategory
+  // slugs arrive with the batch-2 importer) keep their rows. The wallpaper
+  // guard stays FIRST on both queries: the wire params (and the pins that
+  // read them) keep their historical order.
+  const isLinoleumView =
+    categoryId !== null &&
+    activeCategories.some(
+      (category) =>
+        LINOLEUM_CATEGORY_SLUGS.has(category.slug) &&
+        subtreeIds.includes(category.id)
+    );
+  const hideLinoleum = !isLinoleumView && !hasSearch;
+
   // ---- paged data query ----
   // Shared builder for BOTH paths (perf package 2026-09-13). The
   // eligibility join MUST mirror the PDP-grade projection, otherwise totals
@@ -130,9 +146,15 @@ export async function fetchCatalogProducts(
       .eq('is_active', true);
 
     // Same wallpaper decision as the count query — total and the grid must
-    // never disagree (owner task 2026-09-10).
+    // never disagree (owner task 2026-09-10). The linoleum guard mirrors it
+    // in the same branch (owner plan 2026-09-17); postgrest-js APPENDS the
+    // sku param (not() → searchParams.append), and PostgREST ANDs repeated
+    // same-key filters — the search path already relies on that contract.
     if (hideWallpapers) {
       q = q.not('sku', 'like', WALLPAPER_SKU_LIKE);
+    }
+    if (hideLinoleum) {
+      q = q.not('sku', 'like', LINOLEUM_SKU_LIKE);
     }
 
     if (categoryId) {
@@ -217,6 +239,9 @@ export async function fetchCatalogProducts(
 
       if (hideWallpapers) {
         q = q.not('sku', 'like', WALLPAPER_SKU_LIKE);
+      }
+      if (hideLinoleum) {
+        q = q.not('sku', 'like', LINOLEUM_SKU_LIKE);
       }
       if (categoryId) {
         q = q.in('pc.category_id', subtreeIds);
