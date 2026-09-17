@@ -71,6 +71,17 @@ test('DRAWER: shop section targets existing routes only', () => {
   assert.match(drawer, /\/orders\/lookup/);
 });
 
+// ---- linoleum hub entrance (owner task L9, 2026-09-17)
+
+test('DRAWER: /linoleum hub is linked from the desktop nav and the drawer shop list', () => {
+  const header = src('app/components/SiteHeader.tsx');
+  // Desktop nav: «Лінолеум» link mirrors «Шпалери» (same class, same row).
+  assert.match(header, /href="\/linoleum"[^>]*>\s*Лінолеум/, 'header nav linoleum link missing');
+  const drawer = src('app/components/NavDrawer.tsx');
+  // Drawer SHOP_LINKS: symmetric with «Шпалери» (/oboi) already listed there.
+  assert.match(drawer, /href:\s*'\/linoleum'/, 'drawer linoleum link missing');
+});
+
 test('DRAWER: categories and brands link through catalog filters', () => {
   const drawer = src('app/components/NavDrawer.tsx');
   // Pinned categories are hardcoded links on the human-readable path form

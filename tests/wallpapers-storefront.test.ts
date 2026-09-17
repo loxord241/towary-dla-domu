@@ -217,7 +217,7 @@ test('OBOI: sitemap lists /oboi in the static set (indexable set = sitemap set)'
 
 // ---- static: home page buttons ----
 
-test('HOME: two catalog buttons live in the blue hero (owner, 2026-09-11)', () => {
+test('HOME: three catalog buttons live in the blue hero (owner, 2026-09-11 + linoleum 2026-09-17)', () => {
   const home = read('app/(home)/page.tsx');
   const heroStart = home.indexOf('bg-gradient-to-br from-blue-700');
   assert.ok(heroStart !== -1, 'blue hero section present');
@@ -225,9 +225,12 @@ test('HOME: two catalog buttons live in the blue hero (owner, 2026-09-11)', () =
   const hero = home.slice(heroStart, heroEnd);
   const tech = hero.indexOf('Каталог техніки');
   const shp = hero.indexOf('Каталог шпалер');
+  const lin = hero.indexOf('Каталог лінолеуму');
   assert.ok(tech !== -1 && shp > tech, 'both buttons present inside the hero');
+  assert.ok(lin > shp, 'linoleum button present after the wallpaper one');
   assert.match(hero, /href="\/catalog"/);
   assert.match(hero, /href="\/oboi"/);
+  assert.match(hero, /href="\/linoleum"/);
   // showcase cards block below the hero must stay removed
   assert.ok(!home.includes('Дві вітрини'), 'showcase cards block removed');
 });

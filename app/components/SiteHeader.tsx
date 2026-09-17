@@ -39,6 +39,9 @@ export default function SiteHeader({
               <Link href="/oboi" className="text-gray-600 hover:text-blue-600">
                 Шпалери
               </Link>
+              <Link href="/linoleum" className="text-gray-600 hover:text-blue-600">
+                Лінолеум
+              </Link>
             </nav>
           </div>
 

@@ -91,6 +91,12 @@ export default async function Home() {
             >
               Каталог шпалер
             </Link>
+            <Link
+              href="/linoleum"
+              className="btn border border-white/40 px-6 py-3 text-white hover:bg-white/10"
+            >
+              Каталог лінолеуму
+            </Link>
           </div>
         </div>
       </section>
