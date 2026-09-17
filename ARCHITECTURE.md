@@ -321,10 +321,11 @@ import/{start,run,status}}}`.
     fail-open при недоступности БД (checkout не должен падать от сбоя лимитера).
 15. SEO-пакет 2026-09-16: непустые combo-вьюхи «категория+бренд» каталога
     индексируются — canonical `/catalog/<cat>?brand=<brand>`, joint-count
-    гейтит совместно-пустые пары (fetchCategoryBrandProductCount); инвариант
-    «indexable set = sitemap set» временно сужен до «sitemap ⊆ indexable»
-    (включение combo в sitemap — решение владельца pending; при отказе combo
-    возвращаются в noindex). Также: hasMerchantReturnPolicy в Product JSON-LD,
+    гейтит совместно-пустые пары (fetchCategoryBrandProductCount). Сужение
+    2026-09-16 («sitemap ⊆ indexable», combo вне sitemap) СНЯТО 2026-09-17
+    (решение владельца): непустые пары в app/sitemap.ts через
+    seo-sitemap.collectNonEmptyComboPairs — инвариант
+    «indexable set = sitemap set» восстановлен. Также: hasMerchantReturnPolicy в Product JSON-LD,
     WebSite-сущность (Google Site names), g:additional_image_link (до 10) в
     Merchant-фиде.
 

@@ -89,3 +89,77 @@ export function collectNonEmptyBrandIds(
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// SEO batch 2026-09-17 (owner GO: «делай что нужно»): non-empty category+brand
+// combo views enter the sitemap, restoring «indexable set = sitemap set».
+// A pair (C, brand) is indexable ⟺ the JOINT count ≥1 ⟺ C's subtree holds
+// ≥1 eligible product of that brand. That is derivable from the SAME product
+// rows the sitemap already reads: for each product with brand_id and each of
+// its junction categories C, the pair (C, brand) holds, plus (ancestor, brand)
+// for EVERY ancestor of C via parent_id — exactly the subtree semantics of
+// collectNonEmptyCategoryIds. Pure and dependency-free so node:test loads it
+// without Supabase.
+// ---------------------------------------------------------------------------
+
+export interface ComboProductLike {
+  brand_id: string | null;
+  category_ids: ReadonlyArray<string>;
+  updated_at: string;
+}
+
+export interface ComboPair {
+  categoryId: string;
+  brandId: string;
+  /** Max updated_at across the products contributing to this pair. */
+  lastUpdated: string;
+}
+
+/**
+ * Non-empty «category × brand» pairs from eligible product rows. Unknown
+ * category ids are ignored (pairs are built only from ACTIVE categories —
+ * the caller passes fetchActiveCategories output); brandless products are
+ * skipped. Cycle-safe parent walk (same guard style as
+ * collectNonEmptyCategoryIds). Returns a Map keyed by
+ * `${categoryId}\u0000${brandId}` — iterate `.values()` in the caller.
+ */
+export function collectNonEmptyComboPairs(
+  categories: ReadonlyArray<SubtreeCategoryLike>,
+  products: ReadonlyArray<ComboProductLike>
+): Map<string, ComboPair> {
+  const known = new Set(categories.map((c) => c.id));
+  const parentOf = new Map<string, string>();
+  for (const category of categories) {
+    if (category.parent_id && known.has(category.parent_id)) {
+      parentOf.set(category.id, category.parent_id);
+    }
+  }
+  const pairs = new Map<string, ComboPair>();
+  for (const product of products) {
+    if (!product.brand_id) continue;
+    for (const categoryId of product.category_ids) {
+      if (!known.has(categoryId)) continue;
+      // A node already visited for THIS product stops the walk — also the
+      // cycle guard (mirrors collectNonEmptyCategoryIds).
+      const visited = new Set<string>();
+      let cursor: string | undefined = categoryId;
+      while (cursor && !visited.has(cursor)) {
+        visited.add(cursor);
+        const key = `${cursor}\u0000${product.brand_id}`;
+        const existing = pairs.get(key);
+        if (
+          !existing ||
+          Date.parse(product.updated_at) > Date.parse(existing.lastUpdated)
+        ) {
+          pairs.set(key, {
+            categoryId: cursor,
+            brandId: product.brand_id,
+            lastUpdated: product.updated_at,
+          });
+        }
+        cursor = parentOf.get(cursor);
+      }
+    }
+  }
+  return pairs;
+}

@@ -2,11 +2,14 @@
  * Pure SEO decision layer: canonical/noindex policy for /catalog views,
  * query truncation, and per-view metadata builders (spec 2026-08-26 B/G +
  * owner SEO package 2026-09-16: non-empty category+brand combos open up).
- * Policy invariant (NARROWED 2026-09-16, owner SEO-audit P1): the sitemap
- * set is now a SUBSET of the indexable set — bare /catalog, single valid
- * category/brand views AND valid non-empty category+brand combos on page 1
- * with the default sort and no other filters. Combos are NOT in the
- * sitemap yet (owner decision pending). Everything else: noindex,follow,
+ * Policy invariant (RESTORED to equality 2026-09-17): the sitemap set EQUALS
+ * the indexable set — bare /catalog, single valid NON-EMPTY category/brand
+ * views AND valid non-empty category+brand combos on page 1 with the
+ * default sort and no other filters. The 2026-09-16 narrowing
+ * («sitemap ⊆ indexable», combos absent from the sitemap pending an owner
+ * decision) is lifted: owner approved sitemap inclusion on 2026-09-17 and
+ * app/sitemap.ts now derives non-empty pairs via
+ * seo-sitemap.collectNonEmptyComboPairs. Everything else: noindex,follow,
  * and canonical is emitted ONLY on indexable URLs.
  */
 import { test } from 'node:test';

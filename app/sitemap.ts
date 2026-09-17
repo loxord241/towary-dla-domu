@@ -2,19 +2,24 @@ import type { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { fetchActiveCategories, fetchActiveBrands } from '@/app/lib/catalog';
 import { getPublicImageUrl } from '@/app/lib/supabase-storage';
-import { collectPaged, collectNonEmptyCategoryIds, collectNonEmptyBrandIds } from '@/app/lib/seo-sitemap';
+import { collectPaged, collectNonEmptyCategoryIds, collectNonEmptyBrandIds, collectNonEmptyComboPairs } from '@/app/lib/seo-sitemap';
 import { DU_REDIRECT_SLUGS } from '@/app/lib/du-redirects';
 
 /**
  * Sitemap for public surfaces only (SEO package 2026-08-26, spec C + Task
- * #14 2026-09): static pages, NON-EMPTY active categories/brands and EVERY
- * product the storefront grid can show. «Non-empty» mirrors the same
+ * #14 2026-09): static pages, NON-EMPTY active categories/brands, NON-EMPTY
+ * category+brand combo views (owner decision 2026-09-17 — the
+ * «indexable set = sitemap set» invariant is restored; seo.ts policy) and
+ * EVERY product the storefront grid can show. «Non-empty» mirrors the same
  * eligibility join (active + ≥1 photo via product_images!inner): a category
  * view keeps its URL when its subtree holds ≥1 eligible assignment
  * (collectNonEmptyCategoryIds), a brand when ≥1 eligible product carries
- * its brand_id (collectNonEmptyBrandIds) — the empty views are noindex'd by
- * lib/seo.ts, so listing them here would violate the «indexable set =
- * sitemap set» invariant. Private and technical routes are never listed.
+ * its brand_id (collectNonEmptyBrandIds), a combo when the category's
+ * subtree holds ≥1 eligible product of that brand (joint count ≥1 —
+ * collectNonEmptyComboPairs derives the pairs from the same product rows,
+ * zero extra queries) — the empty views are noindex'd by lib/seo.ts, so
+ * listing them here would violate the invariant. Private and technical
+ * routes are never listed.
  * Product reads walk bounded 1000-row windows with a deterministic id
  * order (see seo-sitemap.collectPaged).
  */
@@ -201,6 +206,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticEntries,
     ...categoryEntries,
     ...brandEntries,
+    ...comboEntries,
     ...productEntries,
   ];
 }

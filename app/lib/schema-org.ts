@@ -127,16 +127,59 @@ export function buildProductJsonLd(
 
 /**
  * schema.org/BreadcrumbList builder for product pages — PURE, same honesty
- * rules as buildProductJsonLd: every name/URL comes from real DB data, the
- * category level is emitted ONLY when the product actually has one (no
- * invented hierarchy). Four levels for a categorized product (Головна →
- * Каталог → Категорія → Товар), three otherwise. Absolute URLs reuse the
- * same siteUrl basis as buildProductJsonLd (NEXT_PUBLIC_SITE_URL via the
- * page); the category slug is encoded exactly like the visible nav link.
+ * rules as buildProductJsonLd: every name/URL comes from real DB data, a
+ * category level is emitted ONLY for entries the caller actually resolved
+ * (no invented hierarchy). The second argument is either ONE direct-parent
+ * category (legacy shape — output unchanged) or a root→parent chain from
+ * buildCategoryChain (multilevel trail, SEO batch 2026-09-17): Головна →
+ * Каталог → …ancestors… → Категорія → Товар, positions through-numbered
+ * for any depth. An empty/null category keeps the three honest levels
+ * (Головна → Каталог → Товар). Absolute URLs reuse the same siteUrl basis
+ * as buildProductJsonLd (NEXT_PUBLIC_SITE_URL via the page); every category
+ * slug is encoded exactly like the visible nav link.
  */
 export interface BreadcrumbCategoryLike {
   name: string;
   slug: string;
+}
+
+/**
+ * Dictionary row the chain builder needs — Category from catalog.ts
+ * satisfies it structurally (mirrors FeedCategoryLike in merchant-feed.ts).
+ */
+export interface BreadcrumbCategoryNode extends BreadcrumbCategoryLike {
+  id: string;
+  parent_id?: string | null;
+}
+
+/**
+ * Root → leaf chain of REAL active categories for breadcrumbs (SEO batch
+ * 2026-09-17): walk parent_id links from `categoryId` up through the
+ * caller's active-categories dictionary (fetchActiveCategories — the PDP
+ * already reads it for the footer links, so building the chain adds no DB
+ * read; PRODUCT_SELECT's category embed carries no parent_id, the id lookup
+ * is the single source). Same cycle-safe walk as pickCategoryPath
+ * (merchant-feed.ts): unknown ids stop immediately and a parent link
+ * pointing outside the dictionary stops the walk — only real dictionary
+ * rows are emitted (honesty rule), nothing is invented. Order: root first,
+ * the category itself last; only {name, slug} travel with the result.
+ */
+export function buildCategoryChain(
+  categoryId: string | null | undefined,
+  categories: ReadonlyArray<BreadcrumbCategoryNode>
+): BreadcrumbCategoryLike[] {
+  if (!categoryId) return [];
+  const known = new Map(categories.map((c) => [c.id, c]));
+  const chain: BreadcrumbCategoryLike[] = [];
+  const visited = new Set<string>();
+  let cursor = known.get(categoryId);
+  while (cursor && !visited.has(cursor.id)) {
+    visited.add(cursor.id);
+    chain.push({ name: cursor.name, slug: cursor.slug });
+    cursor = cursor.parent_id ? known.get(cursor.parent_id) : undefined;
+  }
+  chain.reverse();
+  return chain;
 }
 
 /**
@@ -154,7 +197,7 @@ export function catalogCategoryPath(slug: string): string {
 
 export function buildProductBreadcrumbJsonLd(
   product: { name: string; slug: string },
-  category: BreadcrumbCategoryLike | null,
+  category: BreadcrumbCategoryLike | BreadcrumbCategoryLike[] | null,
   siteUrl: string
 ): Record<string, unknown> {
   const base = siteUrl.replace(/\/+$/, '');
@@ -167,13 +210,19 @@ export function buildProductBreadcrumbJsonLd(
       item: `${base}/catalog`,
     },
   ];
-  if (category?.name && category?.slug) {
-    items.push({
-      '@type': 'ListItem',
-      position: items.length + 1,
-      name: category.name,
-      item: `${base}${catalogCategoryPath(category.slug)}`,
-    });
+  // A single direct-parent category (legacy shape) and a root→parent chain
+  // feed the same guarded push, so positions stay through-numbered at any
+  // depth and entries without a real name+slug never emit a level.
+  const levels = Array.isArray(category) ? category : category ? [category] : [];
+  for (const cat of levels) {
+    if (cat?.name && cat?.slug) {
+      items.push({
+        '@type': 'ListItem',
+        position: items.length + 1,
+        name: cat.name,
+        item: `${base}${catalogCategoryPath(cat.slug)}`,
+      });
+    }
   }
   items.push({
     '@type': 'ListItem',

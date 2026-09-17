@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { cache } from 'react'
+import { cache, Fragment } from 'react'
 import type { Metadata } from 'next'
 import { fetchProductBySlug, fetchPublishedReviews, fetchReviewSummary, fetchRelatedProducts, fetchGlueCrossSell, fetchActiveCategories, type ReviewsPageData, type ReviewSummary, type CatalogCardProduct } from '@/app/lib/catalog'
 import { getPublicImageUrls, getMainPublicImageUrl } from '@/app/lib/supabase-storage'
@@ -25,7 +25,12 @@ import RecentlyViewedTracker from '@/app/components/RecentlyViewedTracker'
 import RelatedProducts from '@/app/components/RelatedProducts'
 import GlueCrossSell from '@/app/components/GlueCrossSell'
 import ProductJsonLd from '@/app/components/ProductJsonLd'
-import { buildProductJsonLd, buildProductBreadcrumbJsonLd } from '@/app/lib/schema-org'
+import {
+  buildProductJsonLd,
+  buildProductBreadcrumbJsonLd,
+  buildCategoryChain,
+  type BreadcrumbCategoryLike,
+} from '@/app/lib/schema-org'
 import { buildProductMetaDescription, buildProductTitleName } from '@/app/lib/seo'
 import { shouldRenderDescriptionSection } from '@/app/lib/product-description'
 import { formatPrice } from '@/app/lib/format'
@@ -197,6 +202,24 @@ export default async function ProductPage({
   const footerCategories =
     categoriesSettled.status === 'fulfilled' ? categoriesSettled.value : []
 
+  // Multilevel breadcrumbs (SEO batch 2026-09-17): the ancestor chain is
+  // walked IN MEMORY from the same active-categories dictionary the footer
+  // links already received (React cache()d + unstable_cache — no extra DB
+  // read; PRODUCT_SELECT's category embed carries no parent_id, so the id
+  // lookup is the single source). Degradation stays honest: a failed
+  // dictionary read, a category missing from it or a broken parent link
+  // falls back to the direct-parent-only trail (the previous behavior).
+  const categoryChain = buildCategoryChain(
+    product.category?.id ?? null,
+    footerCategories
+  )
+  const trailCategories: BreadcrumbCategoryLike[] =
+    categoryChain.length > 0
+      ? categoryChain
+      : product.category
+        ? [product.category]
+        : []
+
   const galleryUrls = getPublicImageUrls(product.images)
 
   // PDP UX: ONE decision point for both placements — «Опис» inside the
@@ -220,10 +243,11 @@ export default async function ProductPage({
   // fallback (total=0) when reviews are unavailable → aggregateRating drops.
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
   const productJsonLd = buildProductJsonLd(product, reviewSummary, siteUrl)
-  // Mirrors the visible breadcrumb nav: Головна → Каталог → [Категорія] → Товар.
+  // Mirrors the visible breadcrumb nav: Головна → Каталог → …предки… →
+  // Категорія → Товар (full ancestor chain, SEO batch 2026-09-17).
   const breadcrumbJsonLd = buildProductBreadcrumbJsonLd(
     { name: product.name, slug: product.slug },
-    product.category ?? null,
+    trailCategories,
     siteUrl
   )
 
@@ -234,26 +258,27 @@ export default async function ProductPage({
 
       <main className="container mx-auto flex-1 px-4 py-8">
         <nav aria-label="Навігація" className="mb-5 text-sm text-gray-500">
-          {/* Головна → Каталог → [Категорія] → Товар — the visible trail now
-              mirrors the BreadcrumbList JSON-LD emitted below. */}
+          {/* Головна → Каталог → …предки… → Категорія → Товар — the visible
+              trail mirrors the BreadcrumbList JSON-LD emitted below: the
+              FULL ancestor chain since the SEO batch 2026-09-17. */}
           <Link href="/" className="hover:text-blue-600 hover:underline">
             Головна
           </Link>
           <span className="mx-1.5 text-gray-300">/</span>
           <Link href="/catalog" className="hover:text-blue-600 hover:underline">Каталог</Link>
-          {product.category && (
-            <>
+          {trailCategories.map((cat) => (
+            <Fragment key={cat.slug}>
               <span className="mx-1.5 text-gray-300">/</span>
               <Link
                 // Path form (SEO package 2026-09-13): legacy query-form
                 // category URLs only 308-redirect now.
-                href={`/catalog/${encodeURIComponent(product.category.slug)}`}
+                href={`/catalog/${encodeURIComponent(cat.slug)}`}
                 className="hover:text-blue-600 hover:underline"
               >
-                {product.category.name}
+                {cat.name}
               </Link>
-            </>
-          )}
+            </Fragment>
+          ))}
           <span className="mx-1.5 text-gray-300">/</span>
           {/* wrap-anywhere: назви шпалер — кома-ланцюжки без пробілів
               («коричневі,шпалери,53см*10м»), і хлібна крихта не повинна
@@ -422,16 +447,23 @@ export default async function ProductPage({
                 </div>
               )}
 
-              {product.category && (
+              {trailCategories.length > 0 && (
                 <div>
                   <h4 className="font-semibold">Категорія:</h4>
                   <p>
-                    <Link
-                      href={`/catalog/${encodeURIComponent(product.category.slug)}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {product.category.name}
-                    </Link>
+                    {trailCategories.map((cat, idx) => (
+                      <Fragment key={cat.slug}>
+                        {idx > 0 && (
+                          <span className="mx-1 text-gray-300">/</span>
+                        )}
+                        <Link
+                          href={`/catalog/${encodeURIComponent(cat.slug)}`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {cat.name}
+                        </Link>
+                      </Fragment>
+                    ))}
                   </p>
                 </div>
               )}

@@ -29,10 +29,11 @@ export { htmlToPlainText, isPlaceholderDescription };
  * /catalog/<slug>?brand=y is served by the dynamic filtered twin — both
  * emit the same canonical.
  *
- * Invariant note: combos are NOT in app/sitemap.ts yet (owner decision
- * pending), so «indexable set = sitemap set» is temporarily narrowed to
- * «sitemap ⊆ indexable set». If the owner declines sitemap inclusion,
- * combos must return to noindex — do not ship sitemap entries silently.
+ * Invariant (restored 2026-09-17, owner decision): non-empty combos ARE
+ * listed in app/sitemap.ts (same /catalog/<cat>?brand=<brand> canonical
+ * form, pairs derived via seo-sitemap.collectNonEmptyComboPairs), so
+ * «indexable set = sitemap set» holds again — the 2026-09-16 narrowing to
+ * «sitemap ⊆ indexable set» is lifted.
  *
  * Unknown category/brand slugs stay a normal 200 empty state — they are
  * filter VALUES on an existing resource (/catalog), not missing resources
