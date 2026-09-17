@@ -24,7 +24,7 @@ import type { CatalogFilters } from './filters.ts';
 // Width filter (KEY contract): a card IS a design × width pair, and the
 // importer writes the width as a specification entry with the value in UK
 // comma format — {name:'Ширина', value: formatWidthM(w)} → '1,5'|'2'|'2,5'|
-// '3'|'4' (app/lib/linoleum/import-plan.ts, single canon for the product
+// '3'|'3,5'|'4' (app/lib/linoleum/import-plan.ts, single canon for the product
 // name AND the spec). The query therefore builds its jsonb contains literal
 // THROUGH formatWidthM — any other spelling ('1.5') would silently miss
 // every stored row.

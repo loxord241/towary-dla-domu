@@ -20,7 +20,7 @@
 --     (строка staging = дизайн×ширина из выгрузки CSV
 --     «code;name;width_m;price_sqm;qty_m»):
 --       - width_m — ширина рулона (м); NUMERIC с CHECK (width_m IN
---         (1.5, 2, 2.5, 3, 4)) — DB-уровень зеркалит whitelist парсера
+--         (1.5, 2, 2.5, 3, 3.5, 4)) — DB-уровень зеркалит whitelist парсера
 --         (defense in depth; основная валидация — в эндпоинте);
 --       - price_sqm — цена за м², NUMERIC(12,2), CHECK >= 0: мусор из
 --         CSV отсекается на уровне БД;
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS linoleum_stock (
     export_date DATE NOT NULL,
     code TEXT NOT NULL,
     name TEXT NOT NULL,
-    width_m NUMERIC NOT NULL CHECK (width_m IN (1.5, 2, 2.5, 3, 4)),
+    width_m NUMERIC NOT NULL CHECK (width_m IN (1.5, 2, 2.5, 3, 3.5, 4)),
     price_sqm NUMERIC(12,2) NOT NULL CHECK (price_sqm >= 0),
     qty_m INTEGER NOT NULL CHECK (qty_m >= 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

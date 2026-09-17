@@ -4,7 +4,8 @@
  *
  * Contract under test (task L2, 2026-09-17; mirrors wallpapers/parse.ts):
  *   - `;`-separated, optional header line, BOM- and CRLF-tolerant, trimmed;
- *   - width_m — STRICTLY one of LINOLEUM_WIDTHS_M (1.5 | 2 | 2.5 | 3 | 4 м),
+ *   - width_m — STRICTLY one of LINOLEUM_WIDTHS_M
+ *     (1.5 | 2 | 2.5 | 3 | 3.5 | 4 м),
  *     decimal comma AND dot accepted; anything else is a per-line error;
  *   - price_sqm — sanity window 10..100000 грн/м² (see parse.ts comment);
  *   - qty_m — WHOLE running meters 0..99999; fractional strings rejected;
@@ -46,13 +47,13 @@ test('linoleum-parse: valid row with decimal dots', () => {
 });
 
 test('linoleum-parse: every width from the set parses (comma and dot forms)', () => {
-  const widths = ['1,5', '2', '2,0', '2.5', '3', '4,0', '1.50'];
+  const widths = ['1,5', '2', '2,0', '2.5', '3', '3,5', '3.5', '4,0', '1.50'];
   for (const w of widths) {
     const { rows, errors } = parseLinoleumCsv(`C1;Назва;${w};250;10`);
     assert.deepEqual(errors, [], `width "${w}" must be valid`);
     assert.equal(rows.length, 1);
   }
-  assert.deepEqual([...LINOLEUM_WIDTHS_M], [1.5, 2, 2.5, 3, 4], 'width set is pinned');
+  assert.deepEqual([...LINOLEUM_WIDTHS_M], [1.5, 2, 2.5, 3, 3.5, 4], 'width set is pinned');
 });
 
 test('linoleum-parse: qty boundaries 0 and 99999 are valid', () => {

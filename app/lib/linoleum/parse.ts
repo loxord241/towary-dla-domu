@@ -8,7 +8,7 @@
  *    CRLF-tolerant, fields trimmed. Numeric fields are strict (no signs/
  *    units/exponents):
  *      * width_m — roll width, STRICTLY one of LINOLEUM_WIDTHS_M
- *        (1.5 | 2 | 2.5 | 3 | 4 м); decimal comma AND dot accepted
+ *        (1.5 | 2 | 2.5 | 3 | 3.5 | 4 м); decimal comma AND dot accepted
  *        ("2,5" == "2.5", "2" == "2,0"). A width outside the real product
  *        grid means a broken export line — it is rejected, never guessed;
  *      * price_sqm — price per m² in грн. Sanity window 10..100000:
@@ -29,7 +29,7 @@
  * is safe to reuse from the ingest route and the future linoleum importer.
  */
 
-export const LINOLEUM_WIDTHS_M = [1.5, 2, 2.5, 3, 4] as const;
+export const LINOLEUM_WIDTHS_M = [1.5, 2, 2.5, 3, 3.5, 4] as const;
 export type LinoleumWidthM = (typeof LINOLEUM_WIDTHS_M)[number];
 
 // See module doc: sanity windows for price (грн/м²) and whole-meter qty.

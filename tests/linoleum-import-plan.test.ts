@@ -9,11 +9,15 @@
  * Контракт (план L3, 2026-09-17):
  *  - товарная модель: ОДНА карточка = дизайн×ширина; sku-домен `ln-*`;
  *  - sku = `ln-x<нормализованный код 1С>-w<токен ширины>`; нормализация кода:
- *    trim + lowercase + вырезка пробелов; токен ширины = ширина×10
- *    (1.5→'15', 2→'20', 2.5→'25', 3→'30', 4→'40') — детерминированно,
- *    идемпотентно, 1:1 на (код, ширина), charset slug'а [a-z0-9-];
+ *    trim + lowercase + вырезка пробелов; коды уже внутри charset'а
+ *    [a-z0-9-] проходят как есть, коды с символами вне него (кириллица:
+ *    «ЛІН-01160049») → digits-only фолбэк («01160049»); токен ширины =
+ *    ширина×10 (1.5→'15', 2→'20', 2.5→'25', 3→'30', 3.5→'35', 4→'40') —
+ *    детерминированно, идемпотентно, 1:1 на (код, ширина), charset
+ *    slug'а [a-z0-9-];
  *  - имя карточки: `{name} {ширина} м`, ширина в українській комою
- *    ('1,5'/'2'/'2,5'/'3'/'4') — uk-контент, format.ts рендерит uk-UA комою;
+ *    ('1,5'/'2'/'2,5'/'3'/'3,5'/'4') — uk-контент, format.ts рендерит
+ *    uk-UA комою;
  *  - products.price = грн за ПОГОННЫЙ метр = price_sqm × width_m, HALF-UP
  *    до копійки (співпадає з округленням Postgres NUMERIC);
  *  - specifications (jsonb array): {'Ціна за м²': '350,50'} + {'Ширина': '2,5'};
@@ -133,6 +137,7 @@ test('FORMAT: formatWidthM — українська кома, цілі без д
   assert.equal(formatWidthM(2), '2');
   assert.equal(formatWidthM(2.5), '2,5');
   assert.equal(formatWidthM(3), '3');
+  assert.equal(formatWidthM(3.5), '3,5');
   assert.equal(formatWidthM(4), '4');
 });
 
@@ -153,14 +158,29 @@ test('FORMAT: sku = ln-x{код}-w{ширина×10} — детермінова�
   assert.equal(linoleumSku('1234', 2), 'ln-x1234-w20');
   assert.equal(linoleumSku('1234', 2.5), 'ln-x1234-w25');
   assert.equal(linoleumSku('1234', 3), 'ln-x1234-w30');
+  assert.equal(linoleumSku('1234', 3.5), 'ln-x1234-w35');
   assert.equal(linoleumSku('1234', 4), 'ln-x1234-w40');
   // нормализация кода: trim + lowercase + пробелы вырезаются
   assert.equal(linoleumSku('  A 100 ', 2), 'ln-xa100-w20');
   // 1:1: разные ширины одного кода — разные sku
-  const widths = [1.5, 2, 2.5, 3, 4] as const;
+  const widths = [1.5, 2, 2.5, 3, 3.5, 4] as const;
   const tokens = widths.map((w) => linoleumSku('L-1', w));
-  assert.equal(new Set(tokens).size, 5);
+  assert.equal(new Set(tokens).size, 6);
   for (const sku of tokens) assert.match(sku, /^[a-z0-9-]+$/);
+});
+
+test('FORMAT: кириллический код поставщика → digits-only fallback, sku/slug остаются [a-z0-9-]', () => {
+  // Реальный код выгрузки 1С: кириллица + дефис + цифры. Наивная
+  // нормализация (trim+lowercase) оставила бы кириллицу в slug'е.
+  assert.equal(linoleumSku('ЛІН-01160049', 1.5), 'ln-x01160049-w15');
+  // Детерминированность: регистр/пробелы не меняют ядро кода.
+  assert.equal(linoleumSku('лІН 01160049', 2), 'ln-x01160049-w20');
+  // План целиком: slug === sku и весь charset [a-z0-9-].
+  const plan = planLinoleumImport(emptyMap(), [lrow({ code: 'ЛІН-01160049' })]);
+  assert.equal(plan.creates.length, 1);
+  const created = plan.creates[0]!;
+  assert.equal(created.slug, created.sku);
+  assert.match(created.sku, /^[a-z0-9-]+$/);
 });
 
 test('FORMAT: runningMeterPrice — грн/пог.м = price_sqm × width, HALF-UP до копійки (як Postgres NUMERIC)', () => {

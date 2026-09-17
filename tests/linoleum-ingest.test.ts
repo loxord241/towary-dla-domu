@@ -9,7 +9,7 @@
  *     timingSafeEqual — the cron-route model);
  *   - body ≤ 2 MB (413), ≤ 5000 data lines (413 — linoleum assortment is
  *     smaller than wallpapers; see route comment); per-line validation
- *     (width 1.5|2|2.5|3|4 м, price 10..100000, qty 0..99999 whole meters)
+ *     (width 1.5|2|2.5|3|3.5|4 м, price 10..100000, qty 0..99999 whole meters)
  *     is delegated to parseLinoleumCsv — bad lines land in `errors`
  *     (rejected) and never fail the whole file;
  *   - `X-Export-Date: YYYYMMDD` is mandatory, a real calendar date and not

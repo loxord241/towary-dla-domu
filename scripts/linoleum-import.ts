@@ -139,7 +139,7 @@ const WIDTH_WHITELIST: ReadonlySet<number> = new Set<number>(LINOLEUM_WIDTHS_M);
  * which keeps the planner deterministic.
  */
 export function prepareRows(raw: readonly RawStagingRow[]): PrepareRowsResult {
-  // `|`-ключ коллизионно-свободен: суффиксы ширин (|1.5,|2,|2.5,|3,|4) не
+  // `|`-ключ коллизионно-свободен: суффиксы ширин (|1.5,|2,|2.5,|3,|3.5,|4) не
   // вложены друг в друга, так что code1|w1 === code2|w2 ⇒ коды и ширины равны.
   const byKey = new Map<string, { row: LinoleumRow; exportDate: string }>();
   let skipped = 0;

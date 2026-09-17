@@ -12,7 +12,7 @@
  * code, export_date DESC`), same as wallpapers.
  *
  * CSV contract (`code;name;width_m;price_sqm;qty_m`, optional header,
- * BOM/CRLF tolerated): width_m ∈ {1.5, 2, 2.5, 3, 4} strictly; price
+ * BOM/CRLF tolerated): width_m ∈ {1.5, 2, 2.5, 3, 3.5, 4} strictly; price
  * 10..100000 грн/м² and qty 0..99999 whole running meters are sanity
  * windows enforced PER LINE by parseLinoleumCsv — bad lines land in
  * `errors` (rejected), they never fail the whole file; duplicate codes are
@@ -33,7 +33,7 @@
  *   - ≤ 5000 data lines (parsed rows + per-line errors; the optional header
  *     line is not counted) → 413. Wallpaper caps at 2000 (~4x its expected
  *     ~534 rows); linoleum expects a few hundred SKUs but a design can
- *     appear once per width (up to 5 lines), so 5000 keeps ~10x headroom
+ *     appear once per width (up to 6 lines), so 5000 keeps ~10x headroom
  *     for the first dirty exports without letting a broken export hammer
  *     the DB; the 2 MB body cap stays the binding physical limit;
  *   - `X-Export-Date: YYYYMMDD` is mandatory, must be a real calendar date

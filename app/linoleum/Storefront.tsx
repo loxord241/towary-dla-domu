@@ -49,8 +49,8 @@ const filterChipIdleClass =
 
 /** Filter links reset to page 1 (a new filter = a new result set). The
     active sort is preserved — a filter narrows the SAME ordering. The chip
-    value is the machine-readable dot form ('1.5'/'2'/'2.5'/'3'/'4'); the
-    LABEL is the importer's uk comma canon (formatWidthM). */
+    value is the machine-readable dot form ('1.5'/'2'/'2.5'/'3'/'3.5'/'4');
+    the LABEL is the importer's uk comma canon (formatWidthM). */
 function linoleumFilterUrl(
   width: string | undefined,
   sort: string
@@ -82,7 +82,7 @@ export interface LinoleumStorefrontProps {
   currentPage: number;
   maxPage: number;
   /** Resolved width filter in the machine-readable dot form
-      ('1.5'/'2'/'2.5'/'3'/'4'; undefined = all). */
+      ('1.5'/'2'/'2.5'/'3'/'3.5'/'4'; undefined = all). */
   width: string | undefined;
   /** Resolved ?sort= value ('' = default alphabetical). */
   sortParam: string;

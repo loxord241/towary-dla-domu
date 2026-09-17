@@ -54,8 +54,8 @@ test('LINOLEUM-STAGING: creates linoleum_stock with the staged-export column set
   assert.match(body, /\bname\s+text\s+not\s+null/i, 'name text not null');
   assert.match(
     body,
-    /width_m\s+numeric\s+not\s+null\s+check\s*\(\s*width_m\s+in\s*\(\s*1\.5,\s*2,\s*2\.5,\s*3,\s*4\s*\)\s*\)/i,
-    'width_m numeric not null CHECK (width_m IN (1.5, 2, 2.5, 3, 4)) — DB mirror of the parser whitelist'
+    /width_m\s+numeric\s+not\s+null\s+check\s*\(\s*width_m\s+in\s*\(\s*1\.5,\s*2,\s*2\.5,\s*3,\s*3\.5,\s*4\s*\)\s*\)/i,
+    'width_m numeric not null CHECK (width_m IN (1.5, 2, 2.5, 3, 3.5, 4)) — DB mirror of the parser whitelist'
   );
   assert.match(
     body,

@@ -11,8 +11,15 @@
  * (LinoleumRow, one row = one design×width from the daily export):
  *   sku = `ln-x<code>-w<widthToken>` where
  *     - `<code>` is the 1С code normalized (trim + lowercase + whitespace
- *       stripped — same recipe as the wallpaper article key);
- *     - `<widthToken>` = width × 10 (`1.5→15, 2→20, 2.5→25, 3→30, 4→40`).
+ *       stripped — same recipe as the wallpaper article key). Codes already
+ *       inside the slug charset [a-z0-9-] pass through unchanged; codes
+ *       carrying any character OUTSIDE it (real supplier codes are often
+ *       Cyrillic: «ЛІН-01160049») fall back to their DIGITS-ONLY core
+ *       («01160049»), so every sku/slug stays in [a-z0-9-]. Deterministic
+ *       and idempotent; a surviving collision (two codes sharing a digits
+ *       core) resolves with a `-2`, `-3`, … suffix;
+ *     - `<widthToken>` = width × 10 (`1.5→15, 2→20, 2.5→25, 3→30, 3.5→35,
+ *       4→40`).
  *   Deterministic, idempotent, 1:1 over the fixed width whitelist
  *   LINOLEUM_WIDTHS_M (width tokens share no suffix relation, so distinct
  *   (code,width) pairs can never produce the same base sku). The token keeps
@@ -23,7 +30,7 @@
  *
  * Card display decisions (owner plan 2026-09-17):
  *   - name = `{name} {width} м` with the width in UKRAINIAN comma format
- *     (formatWidthM: `1,5` / `2` / `2,5` / `3` / `4`) — the site content
+ *     (formatWidthM: `1,5` / `2` / `2,5` / `3` / `3,5` / `4`) — the site content
  *     language is Ukrainian and app/lib/format.ts renders uk-UA decimal
  *     commas everywhere; this formatter is THE single canonical width string
  *     for the product name, the «Ширина» specification value AND the future
@@ -163,7 +170,7 @@ export function formatPriceSqmValue(priceSqm: number): string {
  * грн за погонный метр = price_sqm × width_m, HALF-UP to a kopiyka.
  * Integer-cents math: price_sqm carries ≤2 decimals (NUMERIC(12,2) canon →
  * exact cents via Math.round), width × 2 is a small exact integer
- * (3|4|5|6|8), so `(cents × widthHalf) / 2` is exact binary float and
+ * (3|4|5|6|7|8), so `(cents × widthHalf) / 2` is exact binary float and
  * Math.round resolves the `.5` cases HALF-UP — the same rounding Postgres
  * NUMERIC applies (naive `Math.round(priceSqm * widthM * 100)` loses on
  * binary representation: 10.15×1.5 = 15.224999… → 15.22 instead of 15.23).
@@ -184,9 +191,16 @@ function skuWidthToken(widthM: LinoleumWidthM): string {
   return String(Math.round(widthM * 10));
 }
 
-/** Same recipe as the wallpaper article key: trim + lowercase, no whitespace. */
+/** Same recipe as the wallpaper article key: trim + lowercase, no whitespace.
+ *  Codes already inside the slug charset [a-z0-9-] pass through unchanged
+ *  (back-compat with every already-issued sku); anything carrying characters
+ *  outside it — real supplier codes are often Cyrillic («ЛІН-01160049») —
+ *  falls back to its DIGITS-ONLY core, keeping skus/slugs in [a-z0-9-]
+ *  (owner task L7, 2026-09-17). */
 function normalizeCode(code: string): string {
-  return code.trim().toLowerCase().replace(/\s+/g, '');
+  const base = code.trim().toLowerCase().replace(/\s+/g, '');
+  if (/^[a-z0-9-]+$/.test(base)) return base;
+  return (base.match(/\d+/g) ?? []).join('');
 }
 
 /** `ln-x<code>-w<width×10>` — see module doc (deterministic, 1:1, slug-safe). */
@@ -272,7 +286,7 @@ export function planLinoleumImport(
   // Dedup by (code, width_m): last row for a key wins; JS Map keeps the
   // first-appearance order, which makes the plan deterministic. The `|`
   // separator is collision-free here: the width suffixes
-  // (`|1.5`,`|2`,`|2.5`,`|3`,`|4`) share no suffix relation, so
+  // (`|1.5`,`|2`,`|2.5`,`|3`,`|3.5`,`|4`) share no suffix relation, so
   // `code1|w1 === code2|w2` implies `code1 === code2 && w1 === w2`.
   const byKey = new Map<string, LinoleumRow>();
   for (const row of rows) byKey.set(`${row.code}|${row.widthM}`, row);
