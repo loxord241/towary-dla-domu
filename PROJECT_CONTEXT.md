@@ -239,6 +239,21 @@ product_stock_history
   (32999 vs 33999); итог 293 redirect (не изменился) / 93 price-diff /
   38 сиріт. Health по _du-дрейфу: PASS.
 
+## Этап 18: запуск вертикали «Лінолеум» + срочный UX-фикс (2026-09-17/18)
+- Вертикаль linoleum: домен `ln-*`, хаб /linoleum (ISR+twin), ingest
+  1c-linoleum, импортёр (1 карточка = дизайн, ширины = product_variants),
+  панель метража с геометрическим калькулятором, пикап Мазепи 89А
+  (fail-closed серверная проверка точка↔корзина, L12-сохранение тех-спеков).
+  Сиды (Beauflor×4 + Floortex Helsinki 582/592) заменены первым реальным
+  экспортом; 6 дизайнов с фото опубликовано, 9 скрыты (фото-гейт).
+- Пагинация витрин переведена на документ-навигацию (PaginationNav):
+  segment-cache Next 16 переиспользует static-prefetch ISR-пути для всех
+  ?page значений — мягкая навигация рендерила кеш стр.1 под URL ?page=N
+  (Clarity: rage-clicks). Прецедент isSortDocumentNavigation 2026-09-15.
+- Контент: все 177 активных категорий получили авторские описания
+  (31 дописаны 2026-09-18), ln-* исключены из Merchant-фида, крон
+  linoleum-freshness (15:00 UTC).
+
 ## Наблюдаемость (2026-09-05)
 - Аналитика поиска: событие `search` несёт boolean hasResults
   (app/lib/analytics.ts buildSearchEventPayload; query проходит
