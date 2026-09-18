@@ -9,8 +9,7 @@ import SiteFooter from '@/app/components/SiteFooter';
  * PICKUP_POINTS (app/lib/checkout-delivery.ts) — єдиним білим списком
  * чекаута; телефони й графік — з публічної сторінки /contacts.
  * Третя точка — Мазепи 89А (лінолеум, рішення власника 2026-09-17): поки
- * текстова картка БЕЗ фото (очікуються) і без телефону — публічного
- * телефону саме точки 89А немає, вигадувати номер заборонено.
+ * текстова картка БЕЗ фото (очікуються), з контактним телефоном магазину.
  */
 export const metadata: Metadata = {
   title: 'Самовивіз у Кривому Розі — Товари для дому',
@@ -29,8 +28,7 @@ interface PickupPointCard {
   /** h2 картки — адреса точки, canonical form з PICKUP_POINTS. */
   address: string;
   specialization: string;
-  /** Публічний телефон ТОЧКИ (з /contacts); у точки 89А свого номера
-      немає — картка рендериться без телефону, вигадувати не можна. */
+  /** Публічний телефон ТОЧКИ (з /contacts). */
   phoneHref?: string;
   phoneLabel?: string;
   photos: { src: string; alt: string }[];
@@ -118,8 +116,8 @@ export default function SamovyvizPage() {
                 <p className="mb-1 text-sm text-gray-700">
                   Графік: {HOURS}
                 </p>
-                {/* Телефон і «дзвінки до 16:00» — тільки в точок із
-                    публічним номером (у 89А свого номера немає). */}
+                {/* Телефон і «дзвінки до 16:00» — для точок із
+                    публічним номером (номер для 89А додано з /contacts). */}
                 {point.phoneHref && point.phoneLabel && (
                   <>
                     <p className="mb-3 text-sm text-gray-700">{CALLS_NOTE}</p>

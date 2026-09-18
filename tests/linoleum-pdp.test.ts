@@ -467,3 +467,113 @@ test('product-card: у ln-* карток НЕМАЄ «У кошик» — Link �
     'add-to-cart з сітки лишається тільки не-ln-*'
   );
 });
+
+// ---- Breadcrumbs (P2.2 domain duplicate elimination) ---------------------------
+
+test('linoleum-pdp: хлібні крихти не дублюють назву доменної категорії на PDP (P2.2)', () => {
+  // REGRESSION (P2.2, 2026-09-18): друга крихта стає «Лінолеум» (/linoleum)
+  // для ln-* або «Шпалери» (/oboi) для wc-*. Усередині trailCategories.map
+  // корінь 'linoleum' чи 'shpaleri' дублював би назву:
+  // «Головна / Лінолеум / Лінолеум / ...» або «Головна / Шпалери / Шпалери / ...».
+  // Фільтрація повертає null для дубльованого доменного кореня без мутації trailCategories.
+
+  // 1. Статичний пін сирця: умова пропуску дублікатів присутня в trailCategories.map
+  assert.match(
+    pageSrc,
+    /\(isLinoleum\s*&&\s*cat\.slug\s*===\s*'linoleum'\)\s*\|\|\s*\(isWallpaper\s*&&\s*cat\.slug\s*===\s*'shpaleri'\)/,
+    'фільтр дублікатів кореневих категорій присутній у хлібних крихтах'
+  );
+  assert.match(
+    pageSrc,
+    /if\s*\(\s*\(isLinoleum\s*&&\s*cat\.slug\s*===\s*'linoleum'\)\s*\|\|\s*\(isWallpaper\s*&&\s*cat\.slug\s*===\s*'shpaleri'\)\s*\)\s*\{\s*return null\s*\}/,
+    'дублююча доменна категорія повертає null у JSX-мапі'
+  );
+
+  // 2. Інваріанти: trailCategories.map залишається рівно 2 рази (крихти + характеристики)
+  assert.equal(
+    (pageSrc.match(/trailCategories\.map/g) ?? []).length,
+    2,
+    'trailCategories.map рівно у двох місцях (крихти і блок характеристик)'
+  );
+  assert.equal(
+    (pageSrc.match(/\/catalog\/\$\{encodeURIComponent\(cat\.slug\)\}/g) ?? []).length,
+    2,
+    'шляхові посилання збережені в обох місцях'
+  );
+
+  // 3. Імітація логіки рендерингу ланцюжка хлібних крихт:
+  type BreadcrumbCat = { slug: string; name: string };
+  function renderBreadcrumbs(
+    isLinoleum: boolean,
+    isWallpaper: boolean,
+    trail: BreadcrumbCat[],
+    productName: string
+  ): string[] {
+    const root2 = isLinoleum ? 'Лінолеум' : isWallpaper ? 'Шпалери' : 'Каталог';
+    const crumbs = ['Головна', root2];
+    for (const cat of trail) {
+      if (
+        (isLinoleum && cat.slug === 'linoleum') ||
+        (isWallpaper && cat.slug === 'shpaleri')
+      ) {
+        continue;
+      }
+      crumbs.push(cat.name);
+    }
+    crumbs.push(productName);
+    return crumbs;
+  }
+
+  // Лінолеум: коренева категорія 'linoleum' не дублюється
+  assert.deepEqual(
+    renderBreadcrumbs(true, false, [{ slug: 'linoleum', name: 'Лінолеум' }], 'Таркетт'),
+    ['Головна', 'Лінолеум', 'Таркетт'],
+    'лінолеум: «Головна / Лінолеум / <товар>» без другого «Лінолеум»'
+  );
+
+  // Лінолеум з підкатегорією: підкатегорія рендериться після Лінолеум
+  assert.deepEqual(
+    renderBreadcrumbs(
+      true,
+      false,
+      [
+        { slug: 'linoleum', name: 'Лінолеум' },
+        { slug: 'napivkomertsiinyi', name: 'Напівкомерційний' },
+      ],
+      'Таркетт'
+    ),
+    ['Головна', 'Лінолеум', 'Напівкомерційний', 'Таркетт'],
+    'лінолеум: підкатегорія зберігається в ланцюжку'
+  );
+
+  // Шпалери: коренева категорія 'shpaleri' не дублюється
+  assert.deepEqual(
+    renderBreadcrumbs(
+      false,
+      true,
+      [
+        { slug: 'shpaleri', name: 'Шпалери' },
+        { slug: 'vinilovi', name: 'Вінілові' },
+      ],
+      'Шпалери 10м'
+    ),
+    ['Головна', 'Шпалери', 'Вінілові', 'Шпалери 10м'],
+    'шпалери: «Головна / Шпалери / Вінілові / <товар>» без другого «Шпалери»'
+  );
+
+  // Каталог (побутова техніка): звичайний ланцюжок не змінюється
+  assert.deepEqual(
+    renderBreadcrumbs(
+      false,
+      false,
+      [
+        { slug: 'tekhnika', name: 'Побутова техніка' },
+        { slug: 'kholodylnyky', name: 'Холодильники' },
+      ],
+      'Холодильник Samsung'
+    ),
+    ['Головна', 'Каталог', 'Побутова техніка', 'Холодильники', 'Холодильник Samsung'],
+    'каталог: повний ланцюжок зберігається'
+  );
+});
+

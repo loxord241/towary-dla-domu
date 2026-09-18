@@ -325,19 +325,27 @@ export default async function ProductPage({
               Каталог
             </Link>
           )}
-          {trailCategories.map((cat) => (
-            <Fragment key={cat.slug}>
-              <span className="mx-1.5 text-gray-300">/</span>
-              <Link
-                // Path form (SEO package 2026-09-13): legacy query-form
-                // category URLs only 308-redirect now.
-                href={`/catalog/${encodeURIComponent(cat.slug)}`}
-                className="hover:text-blue-600 hover:underline"
-              >
-                {cat.name}
-              </Link>
-            </Fragment>
-          ))}
+          {trailCategories.map((cat) => {
+            if (
+              (isLinoleum && cat.slug === 'linoleum') ||
+              (isWallpaper && cat.slug === 'shpaleri')
+            ) {
+              return null
+            }
+            return (
+              <Fragment key={cat.slug}>
+                <span className="mx-1.5 text-gray-300">/</span>
+                <Link
+                  // Path form (SEO package 2026-09-13): legacy query-form
+                  // category URLs only 308-redirect now.
+                  href={`/catalog/${encodeURIComponent(cat.slug)}`}
+                  className="hover:text-blue-600 hover:underline"
+                >
+                  {cat.name}
+                </Link>
+              </Fragment>
+            )
+          })}
           <span className="mx-1.5 text-gray-300">/</span>
           {/* wrap-anywhere: назви шпалер — кома-ланцюжки без пробілів
               («коричневі,шпалери,53см*10м»), і хлібна крихта не повинна
