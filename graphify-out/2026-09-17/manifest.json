@@ -4020,9 +4020,9 @@
     "semantic_hash": ""
   },
   "app/api/ingest/1c-linoleum/route.ts": {
-    "mtime": 1789657975.8165286,
-    "seen": 1789658043.7987144,
-    "ast_hash": "7900349f2bd68a2c4fbea8834108b53e",
+    "mtime": 1789665341.2461014,
+    "seen": 1789666350.1946754,
+    "ast_hash": "d7c070da000d55ed8f781588776c8b86",
     "semantic_hash": ""
   },
   "app/lib/linoleum/parse.ts": {
@@ -4149,6 +4149,18 @@
     "mtime": 1789662495.5615647,
     "seen": 1789662904.889558,
     "ast_hash": "00a8d9c2fc75379bf5d450e5e7884795",
+    "semantic_hash": ""
+  },
+  "scripts/linoleum-photos.ts": {
+    "mtime": 1789666254.218349,
+    "seen": 1789666350.1946754,
+    "ast_hash": "f35c35407d046b2cc3ae16588a5aba9e",
+    "semantic_hash": ""
+  },
+  "tests/linoleum-photos.test.ts": {
+    "mtime": 1789666298.719621,
+    "seen": 1789666350.1946754,
+    "ast_hash": "c891bb8096fec0d34af3b92b03951dda",
     "semantic_hash": ""
   }
 }
