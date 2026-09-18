@@ -66660,7 +66660,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/product/[slug]/page.tsx",
-      "source_location": "L444",
+      "source_location": "L447",
       "weight": 1.0
     },
     {
