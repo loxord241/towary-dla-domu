@@ -5,8 +5,9 @@
  * Призначення: завантажити верифіковані оркестратором фото ДИЗАЙНІВ
  * (data/linoleum-photos.json — файл у gitignored data/, НЕ в гіті) у Storage
  * bucket product_images і прив'язати до ln-* товарів у product_images.
- * Фото ОДНЕ на дизайн — усі width-картки дизайну (name = `{design} {width} м`,
- * app/lib/linoleum/import-plan.ts:linoleumCardName) ділять спільну картинку.
+ * Фото ОДНЕ на дизайн — консолідована карточка дизайну (одна карточка =
+ * дизайн, C2 2026-09-18, app/lib/linoleum/import-plan.ts) ділить спільну
+ * картинку.
  *
  * Режими:
  *   node scripts/linoleum-photos.ts --plan [--photos <photos.json>]
@@ -23,8 +24,9 @@
  *       HTTP-заголовків — MIME лише за байтами); (b) залити в
  *       product_images як `linoleum/<slug>.<ext>` (slug через
  *       sanitizeUploadFileName з upload-filename — extension за whitelist
- *       MIME); (c) знайти всі ln-* товари (sku LIKE 'ln-%'), чиє name
- *       ПОЧИНАЄТЬСЯ з design-рядка, і для кожного INSERT product_images
+ *       MIME); (c) знайти всі ln-* товари (sku LIKE 'ln-%'), чиє ім'я
+ *       збігається з design за РІВНІСТЮ designKey (задача D2), і для
+ *       кожного INSERT product_images
  *       {product_id, image_url: <ВІДНОСНИЙ шлях>, is_main, sort_order: 0}.
  *       Ідемпотентність: наявна пара (product_id, image_url) пропускається
  *       (select перед insert + 23505 -> no-op); is_main=true лише якщо в
@@ -52,6 +54,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { LINOLEUM_SKU_LIKE } from '../app/lib/domains.ts';
+import { designKey } from '../app/lib/linoleum/import-plan.ts';
 import { getPublicImageUrl } from '../app/lib/supabase-storage.ts';
 import { detectImageMime } from '../app/lib/wallpapers/photo-sources.ts';
 import { IMAGE_EXT_BY_MIME, sanitizeUploadFileName } from '../app/lib/upload-filename.ts';
@@ -194,13 +197,17 @@ export function loadPhotosFile(photosPath: string): DesignPhoto[] {
 }
 
 /**
- * Sanitized object-name BASE for a design string (кирилиця відпадає, latin
- * лишається; extension додається окремо — за magic bytes). Reuse of the
- * admin-upload sanitizer: '.jpg' here is only a placeholder to extract the
- * safe base (IMAGE_EXT_BY_MIME['image/jpeg'] '.jpg').
+ * Sanitized object-name BASE for a design, derived from the canonical
+ * designKey (D2): the key folds case/whitespace drift, so re-seeding the
+ * same design under a drifted title resolves to the SAME Storage object
+ * (idempotent), and two designs share a slug IFF they share a key IFF they
+ * match the same products. Cyrillic of the key falls away in the sanitizer
+ * (latin-only slug); extension додається окремо — за magic bytes. Reuse of
+ * the admin-upload sanitizer: '.jpg' here is only a placeholder to extract
+ * the safe base (IMAGE_EXT_BY_MIME['image/jpeg'] '.jpg').
  */
 export function designSlug(design: string): string {
-  const name = sanitizeUploadFileName(design, 'image/jpeg');
+  const name = sanitizeUploadFileName(designKey(design), 'image/jpeg');
   return name === null ? 'image' : name.slice(0, -IMAGE_EXT_BY_MIME['image/jpeg']!.length);
 }
 
@@ -216,15 +223,31 @@ export function storagePathForDesign(design: string, mime: string): string | nul
 }
 
 /**
- * Prefix matcher: ln-* products whose name starts with the design string
- * (card name = `{design} {width} м` — exact case prefix, ширини списка
- * не потрібні). Порядок вводу зберігається.
+ * Identity matcher (D2): ln-* products whose card name equals the design
+ * under the canonical designKey — designKey(product.name) === designKey(design).
+ * designKey comes from app/lib/linoleum/import-plan.ts (the SAME function
+ * that groups feed rows by design in the importer), so the photo seed and
+ * the import cannot disagree about design identity; the recipe folds case
+ * and whitespace (trim + lowercase + без пробілів) but NOT underscores —
+ * «Pure oak» and «Pure_oak» stay different designs, by contract.
+ *
+ * EQUALITY, not prefix, deliberately (задача D2): design codes are
+ * extension-suffixed identities (997L vs 997M, 090S vs 090S2) and the
+ * consolidated card name IS the design title without tails (import-plan
+ * C2), so key equality is the honest identity. A key-prefix would
+ * over-match sibling codes («090S2» — the next char '2' IS [a-z0-9], so
+ * even a boundary-checked prefix misfires on tails like «090S(2м)»).
+ * Failure asymmetry decides it: under-matching is LOUD (matchedProducts=0
+ * logged, 0 writes, design skipped), over-matching silently writes wrong
+ * product_images rows. Precision over recall on a write path.
+ * Порядок вводу зберігається.
  */
 export function matchDesignProducts(
   design: string,
   products: readonly { id: string; name: string }[],
 ): { id: string; name: string }[] {
-  return products.filter((p) => p.name.startsWith(design));
+  const key = designKey(design);
+  return products.filter((p) => designKey(p.name) === key);
 }
 
 export interface ImageInsertRow {
@@ -501,8 +524,9 @@ export function planPhotos(photosPath: string, log: (line: string) => void): voi
       `[plan]   public URL: ${publicUrl ?? '(NEXT_PUBLIC_SUPABASE_URL не задано — нерозрішено)'}`,
     );
     log(
-      `[plan]   прив'язка: products WHERE sku LIKE '${LINOLEUM_SKU_LIKE}' AND name STARTS WITH ` +
-        `"${photo.design}" -> product_images (is_main лише якщо main ще немає)`,
+      `[plan]   прив'язка: products WHERE sku LIKE '${LINOLEUM_SKU_LIKE}' AND ` +
+        `designKey(name) = designKey("${photo.design}") -> product_images ` +
+        '(is_main лише якщо main ще немає)',
     );
   }
   log('[plan] total: записів 0 (plan). Для виконання: --run (GO оркестратора).');

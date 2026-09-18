@@ -5,7 +5,8 @@
  *
  * Задача L8: 4 дизайни з data/linoleum-photos.json (WHO: оркестратор,
  * файл у gitignored data/ — у тестах зашиті копії рядків), кожен дизайн —
- * ОДНЕ фото на всі width-картки (name = `{design} {width} м`).
+ * ОДНЕ фото на консолідовану карточку (одна карточка = дизайн, C2 2026-09-18:
+ * products.name = дизайн-тайтл без хвостів, app/lib/linoleum/import-plan.ts).
  *
  * Контракт під тестом (статика — БД/Storage тестами НЕ торкаються):
  *   - режими --plan (0 записів, без клієнта) та --run; --photos <path>;
@@ -14,8 +15,11 @@
  *     sanitizeUploadFileName (upload-filename) -> public URL для логу
  *     (getPublicImageUrl); у product_images пишеться ВІДНОСНИЙ шлях
  *     (патерн wallpaper-photos та admin-images route);
- *   - прив'язка: products sku LIKE 'ln-%' (LINOLEUM_SKU_LIKE) ІМ'Я яких
- *     починається з design-рядка; ідемпотентно: наявна пара
+ *   - прив'язка (задача D2): products sku LIKE 'ln-%' (LINOLEUM_SKU_LIKE),
+ *     чиє ім'я збігається з design за РІВНІСТЮ designKey (import-plan:
+ *     trim + lowercase + пробіли вирізані) — регістр/пробіли не важливі,
+ *     хвости та сусідні дизайн-коди (090S vs 090S2) не матчаться;
+ *     ідемпотентно: наявна пара
  *     (product_id, image_url) -> skip; is_main=true лише якщо в товара ще
  *     немає main, інакше false; НІКОЛИ не UPDATE (main-прапор не
  *     перетирається); 23505 -> no-op;
@@ -73,10 +77,10 @@ const DESIGNS = [
 const LOCAL_DESIGN = 'CRACKED OAK 496M Лінолеум BEAUFLOUR PURETEX';
 
 const EXPECTED_SLUGS = [
-  'sugar-oak-997l-beauflour-smartex',
-  'warm-oak-090s-beauflour-hightex',
-  'cracked-oak-906m-beauflour-puretex',
-  'lime-oak-679d-beauflour-inspire',
+  'sugaroak997l-beaufloursmartex',
+  'warmoak090s-beauflourhightex',
+  'crackedoak906m-beauflourpuretex',
+  'limeoak679d-beauflourinspire',
 ];
 
 const jpeg = (): Uint8Array => new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]);
@@ -169,7 +173,8 @@ test('Прямий запуск без сайд-ефектів для тесті
 });
 
 // ---------------------------------------------------------------------------
-// designSlug / storagePathForDesign — санітизація design-рядка
+// designSlug / storagePathForDesign — slug на ОСНОВІ designKey (D2):
+// регістр/пробіли зводяться до одного ключа -> один Storage-обʼєкт на дизайн
 // ---------------------------------------------------------------------------
 
 test('designSlug: кирилиця+латиниця -> латинський slug, 4 реальні дизайни унікальні', () => {
@@ -177,6 +182,13 @@ test('designSlug: кирилиця+латиниця -> латинський slug
     assert.equal(designSlug(design), EXPECTED_SLUGS[i], design);
   });
   assert.equal(new Set(EXPECTED_SLUGS).size, 4);
+});
+
+test('designSlug: дрейф регістру/пробілів -> той самий designKey -> той самий slug (ідемпотентний повтор)', () => {
+  assert.equal(
+    designSlug('  sugar   OAK 997l ЛІНОЛЕУМ beauflour smartex '),
+    designSlug(DESIGNS[0] ?? ''),
+  );
 });
 
 test('designSlug: порожній/нелатинський рядок -> fallback "image" (не порожній шлях)', () => {
@@ -194,33 +206,48 @@ test('storagePathForDesign: linoleum/<slug>.<ext> за whitelist MIME; неві�
 });
 
 // ---------------------------------------------------------------------------
-// matchDesignProducts — префікс-матч імені
+// matchDesignProducts — РІВНІСТЬ designKey (задача D2; префікс свідомо відхилений)
 // ---------------------------------------------------------------------------
 
 const product = (id: string, name: string): { id: string; name: string } => ({ id, name });
 
-test('matchDesignProducts: name починається з design — усі ширини дизайну', () => {
+test('matchDesignProducts: рівні ключі матчаться — регістр і пробіли не важливі', () => {
+  const design = 'SUGAR OAK 997L';
   const products = [
-    product('p1', `${DESIGNS[0]} 1,5 м`),
-    product('p2', `${DESIGNS[0]} 2 м`),
-    product('p3', `${DESIGNS[1]} 2,5 м`),
-    product('p4', 'Лінолеум Інший'),
+    product('p1', 'SUGAR OAK 997L'), // точна назва
+    product('p2', 'sugar  oak 997l'), // регістр + подвійні пробіли
+    product('p3', '  Sugar Oak 997L '), // обрамлення пробілами
+    product('p4', 'LIME OAK 679D'), // інший дизайн
   ];
-  const matched = matchDesignProducts(DESIGNS[0] ?? '', products);
-  assert.deepEqual(matched.map((p) => p.id), ['p1', 'p2']);
+  assert.deepEqual(matchDesignProducts(design, products).map((p) => p.id), ['p1', 'p2', 'p3']);
 });
 
-test('matchDesignProducts: name рівне design (без ширини) теж матчиться', () => {
-  const matched = matchDesignProducts(DESIGNS[0] ?? '', [product('p1', DESIGNS[0] ?? '')]);
-  assert.deepEqual(matched.map((p) => p.id), ['p1']);
+test('matchDesignProducts: сусідні дизайн-коди (496M vs 906M) і префікс без рівності — НЕ матч', () => {
+  const design = 'CRACKED OAK 496M';
+  const products = [
+    product('p1', 'CRACKED OAK 906M'), // інший номер — інший дизайн
+    product('p2', 'CRACKED OAK 496M2'), // строгий префікс ключа, але інший ключ
+    product('p3', 'CRACKED OAK 496M(2м)'), // хвіст старої width-моделі карток
+    product('p4', 'CRACKED OAK 496M Extra'), // хвіст-екстеншн
+    product('p5', `${design} Лінолеум BEAUFLOUR PURETEX`), // постачальницький хвіст = інший ключ
+  ];
+  assert.deepEqual(matchDesignProducts(design, products).map((p) => p.id), []);
 });
 
-test('matchDesignProducts: регістр та під рядок — суворо (не матчить чужі імена)', () => {
-  const products = [
-    product('p1', 'sugar oak 997l Лінолеум BEAUFLOUR SMARTEX 2 м'), // інший регістр
-    product('p2', `Немає ${DESIGNS[0]}`), // design не префікс
-  ];
-  assert.deepEqual(matchDesignProducts(DESIGNS[0] ?? '', products).map((p) => p.id), []);
+test('matchDesignProducts: designKey нормалізує регістр/пробіли, підкреслення РОЗРІЗНЯЄ (рецепт import-plan)', () => {
+  assert.deepEqual(
+    matchDesignProducts('Pure oak 190L', [product('p1', 'Pure_oak 190L')]).map((p) => p.id),
+    [],
+  );
+});
+
+test('matchDesignProducts: порядок вводу зберігається', () => {
+  const design = 'Warm Oak 090S';
+  const matched = matchDesignProducts(design, [
+    product('b', 'WARM OAK 090S'),
+    product('a', 'warm oak 090s'),
+  ]);
+  assert.deepEqual(matched.map((p) => p.id), ['b', 'a']);
 });
 
 // ---------------------------------------------------------------------------
@@ -228,7 +255,7 @@ test('matchDesignProducts: регістр та під рядок — сувор�
 // ---------------------------------------------------------------------------
 
 test('planDesignRows: свіжий продукт без фото -> is_main true, пара пишеться', () => {
-  const plan = planDesignRows('linoleum/x.jpg', [product('p1', `${DESIGNS[0]} 2 м`)], DESIGNS[0] ?? '', new Map(), new Set());
+  const plan = planDesignRows('linoleum/x.jpg', [product('p1', DESIGNS[0] ?? '')], DESIGNS[0] ?? '', new Map(), new Set());
   assert.deepEqual(plan.rows, [{ product_id: 'p1', image_url: 'linoleum/x.jpg', is_main: true }]);
   assert.equal(plan.skipped, 0);
 });
@@ -236,7 +263,7 @@ test('planDesignRows: свіжий продукт без фото -> is_main tru
 test('planDesignRows: у продукта вже є main -> нова строка is_main false (main не перетирається)', () => {
   const plan = planDesignRows(
     'linoleum/x.jpg',
-    [product('p1', `${DESIGNS[0]} 2 м`)],
+    [product('p1', DESIGNS[0] ?? '')],
     DESIGNS[0] ?? '',
     new Map(),
     new Set(['p1']),
@@ -244,11 +271,14 @@ test('planDesignRows: у продукта вже є main -> нова строк�
   assert.deepEqual(plan.rows, [{ product_id: 'p1', image_url: 'linoleum/x.jpg', is_main: false }]);
 });
 
-test('planDesignRows: наявна пара (product_id, image_url) -> skipped, рядка немає', () => {
+test('planDesignRows: наявна пара -> skipped; дрейф регістру імені все одно матчиться (designKey)', () => {
   const pairs = new Map([['p1', new Set(['linoleum/x.jpg'])]]);
   const plan = planDesignRows(
     'linoleum/x.jpg',
-    [product('p1', `${DESIGNS[0]} 2 м`), product('p2', `${DESIGNS[0]} 3 м`)],
+    [
+      product('p1', DESIGNS[0] ?? ''),
+      product('p2', 'sugar oak 997l лінолеум beauflour smartex'),
+    ],
     DESIGNS[0] ?? '',
     pairs,
     new Set(),
@@ -583,11 +613,12 @@ function makeFakeDb(state: FakeDbState): {
   return { client: client as unknown as SupabaseClient, inserts, uploads };
 }
 
-const lnProduct = (id: string, design: string, width: string): {
+/** Консолідована модель (C2): ім'я ln-* карточки = дизайн-тайтл без хвостів. */
+const lnProduct = (id: string, design: string): {
   id: string;
   sku: string;
   name: string;
-} => ({ id, sku: `ln-x-${id}`, name: `${design} ${width} м` });
+} => ({ id, sku: `ln-x-${id}`, name: design });
 
 interface RunFixture {
   state: FakeDbState;
@@ -600,10 +631,11 @@ interface RunFixture {
 function makeFixture(): RunFixture {
   const state: FakeDbState = {
     products: [
-      lnProduct('s15', DESIGNS[0] ?? '', '1,5'),
-      lnProduct('s20', DESIGNS[0] ?? '', '2'),
-      lnProduct('w25', DESIGNS[1] ?? '', '2,5'),
-      lnProduct('other', 'Лінолеум Чужий Дизайн', '3'),
+      lnProduct('s15', DESIGNS[0] ?? ''),
+      // дрейф регістру/пробілів у збереженому імені — той самий designKey (D2)
+      lnProduct('s20', 'sugar  oak 997l ЛІНОЛЕУМ beauflour smartex'),
+      lnProduct('w25', DESIGNS[1] ?? ''),
+      lnProduct('other', 'Лінолеум Чужий Дизайн'),
     ],
     images: [],
     storagePaths: [],
@@ -628,7 +660,7 @@ function makeFixture(): RunFixture {
   return { state, db, log, photos, photosPath };
 }
 
-test('runPhotos: щасливий шлях — 1 upload на дизайн (шлях linoleum/<slug>, content-type за magic bytes), attach по префіксу, is_main по mains', async () => {
+test('runPhotos: щасливий шлях — 1 upload на дизайн (шлях linoleum/<slug>, content-type за magic bytes), attach за designKey, is_main по mains', async () => {
   const fx = makeFixture();
   const fetchedUrls: string[] = [];
   const totals = await runPhotos(
@@ -841,7 +873,7 @@ test('runPhotos: localPath (readFileSync-гілка) — upload за magic bytes
   const photosPath = path.join(dir, 'photos.json');
   // Фікстура — реальний комітований дрібний png у репо (шлях від кореня репо).
   const localSlug = designSlug(LOCAL_DESIGN);
-  assert.equal(localSlug, 'cracked-oak-496m-beauflour-puretex');
+  assert.equal(localSlug, 'crackedoak496m-beauflourpuretex');
   writeFileSync(
     photosPath,
     JSON.stringify({
@@ -852,7 +884,7 @@ test('runPhotos: localPath (readFileSync-гілка) — upload за magic bytes
   );
   try {
     const state: FakeDbState = {
-      products: [lnProduct('c25', LOCAL_DESIGN, '2,5')],
+      products: [lnProduct('c25', LOCAL_DESIGN)],
       images: [],
       storagePaths: [],
     };
@@ -902,7 +934,7 @@ test('runPhotos: відсутній локальний файл -> failed диз
   );
   try {
     const state: FakeDbState = {
-      products: [lnProduct('c25', LOCAL_DESIGN, '2,5')],
+      products: [lnProduct('c25', LOCAL_DESIGN)],
       images: [],
       storagePaths: [],
     };
