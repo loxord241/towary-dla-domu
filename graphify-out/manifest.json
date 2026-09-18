@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "app/(home)/page.tsx": {
-    "mtime": 1789674440.5295644,
-    "seen": 1789674631.213615,
-    "ast_hash": "29d0e2e2aa1fb2aab46c3dad396319ca",
+    "mtime": 1789751526.868402,
+    "seen": 1789751834.0355184,
+    "ast_hash": "2076ea6bae9504568b3361bf36dcf506",
     "semantic_hash": ""
   },
   "app/about/page.tsx": {
@@ -276,9 +276,9 @@
     "semantic_hash": ""
   },
   "app/cart/page.tsx": {
-    "mtime": 1789499276.799399,
-    "seen": 1789563307.5675795,
-    "ast_hash": "2614d900c5c4f5e910f896200181b6a1",
+    "mtime": 1789751411.1535106,
+    "seen": 1789751834.0355184,
+    "ast_hash": "a406c9acbd5c75193fcb4787554e7685",
     "semantic_hash": ""
   },
   "app/catalog/CatalogFilters.tsx": {
@@ -330,9 +330,9 @@
     "semantic_hash": ""
   },
   "app/components/AddToCartButton.tsx": {
-    "mtime": 1789499276.9812472,
-    "seen": 1789563307.5675795,
-    "ast_hash": "baaa22e3d0d6552a26b9e39edc6de3fb",
+    "mtime": 1789751656.5661747,
+    "seen": 1789751834.0355184,
+    "ast_hash": "d6b1a688c3bf42ece0e6e584d1b69e85",
     "semantic_hash": ""
   },
   "app/components/AdminCategoryMultiSelect.tsx": {
@@ -390,15 +390,15 @@
     "semantic_hash": ""
   },
   "app/components/NavDrawer.tsx": {
-    "mtime": 1789674454.2408655,
-    "seen": 1789674631.213615,
-    "ast_hash": "85e45f59a09365670c1cf3e757ba752d",
+    "mtime": 1789751683.6874623,
+    "seen": 1789751834.0355184,
+    "ast_hash": "31e69e9d75330bd053a496096523f1e9",
     "semantic_hash": ""
   },
   "app/components/OrderDetailsCard.tsx": {
-    "mtime": 1789499277.1175654,
-    "seen": 1789563307.5675795,
-    "ast_hash": "79452ca0c93e66a3a66db373d167b12e",
+    "mtime": 1789751432.3342597,
+    "seen": 1789751834.0355184,
+    "ast_hash": "12ac3cb9f88834c1e839363fd407d044",
     "semantic_hash": ""
   },
   "app/components/OrderStatusBadge.tsx": {
@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "app/components/ProductCard.tsx": {
-    "mtime": 1789709957.7370534,
-    "seen": 1789710102.2515914,
-    "ast_hash": "18b670a8c8d522c0bdf3d290d2466d76",
+    "mtime": 1789751492.6047409,
+    "seen": 1789751834.0355184,
+    "ast_hash": "1820943a194d01ac8196288c4614b705",
     "semantic_hash": ""
   },
   "app/components/ProductDescription.tsx": {
@@ -474,15 +474,15 @@
     "semantic_hash": ""
   },
   "app/components/SiteFooter.tsx": {
-    "mtime": 1789650568.712219,
-    "seen": 1789650785.0913758,
-    "ast_hash": "6a5670ba928be4da5889e9e716e3e9f2",
+    "mtime": 1789751509.034631,
+    "seen": 1789751834.0355184,
+    "ast_hash": "506d33a58abd2f3e0ef01def09188997",
     "semantic_hash": ""
   },
   "app/components/SiteHeader.tsx": {
-    "mtime": 1789674447.2723818,
-    "seen": 1789674631.213615,
-    "ast_hash": "e32a04da3997dbb0e97ecc23f9b715a2",
+    "mtime": 1789751469.0967813,
+    "seen": 1789751834.0355184,
+    "ast_hash": "67067cd6800472451995738334b3e401",
     "semantic_hash": ""
   },
   "app/components/icons.tsx": {
@@ -492,9 +492,9 @@
     "semantic_hash": ""
   },
   "app/contacts/page.tsx": {
-    "mtime": 1789662005.5438886,
-    "seen": 1789662378.1714816,
-    "ast_hash": "7325c75a53c5f1597f567d0339c489ed",
+    "mtime": 1789751596.4032018,
+    "seen": 1789751834.0355184,
+    "ast_hash": "40501853335ba2ab74bc9d85fba2cbf5",
     "semantic_hash": ""
   },
   "app/delivery/page.tsx": {
@@ -606,9 +606,9 @@
     "semantic_hash": ""
   },
   "app/lib/format.ts": {
-    "mtime": 1789499277.9080184,
-    "seen": 1789563307.5675795,
-    "ast_hash": "a433f0dd9ee228804ea346027c3dfd2f",
+    "mtime": 1789751723.8561375,
+    "seen": 1789751834.0370264,
+    "ast_hash": "b791cb4a59ede8f3794717451e5c6c38",
     "semantic_hash": ""
   },
   "app/lib/order-token.ts": {
@@ -798,9 +798,9 @@
     "semantic_hash": ""
   },
   "app/product/[slug]/page.tsx": {
-    "mtime": 1789745108.709383,
-    "seen": 1789745362.8991432,
-    "ast_hash": "51ac34651bdb746899e3fd933c168d42",
+    "mtime": 1789751672.5329208,
+    "seen": 1789751834.0370264,
+    "ast_hash": "c668882c793a5ad3ff33ff7b551d16ee",
     "semantic_hash": ""
   },
   "app/returns/page.tsx": {
@@ -1038,9 +1038,9 @@
     "semantic_hash": ""
   },
   "tests/format-price.test.ts": {
-    "mtime": 1789499282.1431026,
-    "seen": 1789563307.5675795,
-    "ast_hash": "180083f2ac090e53ee05af54f55af5d5",
+    "mtime": 1789751736.166813,
+    "seen": 1789751834.0370264,
+    "ast_hash": "236f2a7929b64cc808b0bbbcafe3c906",
     "semantic_hash": ""
   },
   "tests/h1-invariants.test.ts": {
@@ -1158,9 +1158,9 @@
     "semantic_hash": ""
   },
   "tests/seo-metadata.test.ts": {
-    "mtime": 1789652026.4255981,
-    "seen": 1789652173.4106076,
-    "ast_hash": "d5daa2f11e005f5448a2413ae13d6513",
+    "mtime": 1789751579.0056722,
+    "seen": 1789751834.0370264,
+    "ast_hash": "ff72aebca7b9b2e657b1394a7ab3a593",
     "semantic_hash": ""
   },
   "tests/seo-robots.test.ts": {
@@ -1302,9 +1302,9 @@
     "semantic_hash": ""
   },
   "PROJECT_CONTEXT.md": {
-    "mtime": 1789739145.9567497,
-    "seen": 1789740508.6708868,
-    "ast_hash": "17c685bc016b02463118d693ffd53924",
+    "mtime": 1789750928.149541,
+    "seen": 1789751834.0370264,
+    "ast_hash": "8819d3a54765b0fd59815639c958c965",
     "semantic_hash": ""
   },
   "README.md": {
@@ -3342,9 +3342,9 @@
     "semantic_hash": ""
   },
   "app/checkout/parts/OrderSummary.tsx": {
-    "mtime": 1789499276.9292543,
-    "seen": 1789563307.5675795,
-    "ast_hash": "cf73f2449cadac7e11bc7d4a59426a36",
+    "mtime": 1789751421.7905364,
+    "seen": 1789751834.0355184,
+    "ast_hash": "d5073822c2b4327d79b0612a4d4c9ec1",
     "semantic_hash": ""
   },
   "app/checkout/parts/PickupBlock.tsx": {
@@ -3492,15 +3492,15 @@
     "semantic_hash": ""
   },
   "app/lib/domains.ts": {
-    "mtime": 1789658455.0187836,
-    "seen": 1789658941.455128,
-    "ast_hash": "31d80053f2889aede21263d65afa2da7",
+    "mtime": 1789751395.092095,
+    "seen": 1789751834.0355184,
+    "ast_hash": "2644c75f32957662ed572c024532a336",
     "semantic_hash": ""
   },
   "tests/domains.test.ts": {
-    "mtime": 1789662125.1205685,
-    "seen": 1789662378.1714816,
-    "ast_hash": "c9b432d78bfe19edfb19a5b27db7fc30",
+    "mtime": 1789751399.4744577,
+    "seen": 1789751834.0370264,
+    "ast_hash": "825f4f545ed31589f2d79c477d06fe90",
     "semantic_hash": ""
   },
   "app/components/GlueCrossSell.tsx": {
@@ -3582,9 +3582,9 @@
     "semantic_hash": ""
   },
   "app/samovyviz/page.tsx": {
-    "mtime": 1789707904.706404,
-    "seen": 1789708352.0342247,
-    "ast_hash": "b670dd57472c7109c0b7ef0efcba052d",
+    "mtime": 1789751546.8323987,
+    "seen": 1789751834.0370264,
+    "ast_hash": "4a8baa6f8665730734a141e7c4d14286",
     "semantic_hash": ""
   },
   "tests/samovyviz-page.test.ts": {
@@ -4002,9 +4002,9 @@
     "semantic_hash": ""
   },
   "app/brands/page.tsx": {
-    "mtime": 1789650682.4852698,
-    "seen": 1789650785.0913758,
-    "ast_hash": "019aaecbf91b580783f9241e535f6f80",
+    "mtime": 1789751754.6382904,
+    "seen": 1789751834.0355184,
+    "ast_hash": "dbdd0cb54ca24ed8559aeaea94cfd9b4",
     "semantic_hash": ""
   },
   "tests/brands-page.test.ts": {
@@ -4092,9 +4092,9 @@
     "semantic_hash": ""
   },
   "app/components/LinoleumMeterPanel.tsx": {
-    "mtime": 1789709923.1582153,
-    "seen": 1789710102.2515914,
-    "ast_hash": "662c387530eda5e40b4541dbd95e68dd",
+    "mtime": 1789751368.7445462,
+    "seen": 1789751834.0355184,
+    "ast_hash": "0dec75e37d3c83c385693ed6190a9c09",
     "semantic_hash": ""
   },
   "app/lib/catalog/linoleum-listing.ts": {
@@ -4104,9 +4104,9 @@
     "semantic_hash": ""
   },
   "app/lib/linoleum/product-view.ts": {
-    "mtime": 1789745076.0872731,
-    "seen": 1789745362.8991432,
-    "ast_hash": "65bd249a254a5f684acb62a28d4769e0",
+    "mtime": 1789751363.1678028,
+    "seen": 1789751834.0370264,
+    "ast_hash": "95676130735b7ec78226f3926a234bbf",
     "semantic_hash": ""
   },
   "app/linoleum/SortSelect.tsx": {
@@ -4128,9 +4128,9 @@
     "semantic_hash": ""
   },
   "tests/linoleum-product-view.test.ts": {
-    "mtime": 1789745272.9326646,
-    "seen": 1789745362.8991432,
-    "ast_hash": "7b9665a3e5a5120d6001f3416857fc67",
+    "mtime": 1789751385.8141654,
+    "seen": 1789751834.0370264,
+    "ast_hash": "9378eb16ae1c662cb917dbaaf937d7c1",
     "semantic_hash": ""
   },
   "app/linoleum/filtered/page.tsx": {
