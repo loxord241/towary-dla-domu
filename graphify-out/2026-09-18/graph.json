@@ -1041,7 +1041,7 @@
       "file_type": "code",
       "norm_label": "paginationnavitem",
       "source_file": "app/components/PaginationNav.tsx",
-      "source_location": "L53"
+      "source_location": "L50"
     },
     {
       "id": "app_components_paginationnav_paginationnavprops",
@@ -1054,7 +1054,7 @@
       "file_type": "code",
       "norm_label": "paginationnavprops",
       "source_file": "app/components/PaginationNav.tsx",
-      "source_location": "L57"
+      "source_location": "L54"
     },
     {
       "id": "app_lib_faq_content_faqitem",
@@ -9934,7 +9934,7 @@
       "file_type": "code",
       "norm_label": "paginationnav()",
       "source_file": "app/components/PaginationNav.tsx",
-      "source_location": "L77"
+      "source_location": "L74"
     },
     {
       "id": "app_lib_announcements_store_fetchactiveannouncements",
@@ -10042,7 +10042,7 @@
       "file_type": "code",
       "norm_label": "navsrc()",
       "source_file": "tests/catalog-pagination.test.ts",
-      "source_location": "L27"
+      "source_location": "L29"
     },
     {
       "id": "tests_catalog_pagination_test_pagesrc",
@@ -10054,7 +10054,7 @@
       "file_type": "code",
       "norm_label": "pagesrc()",
       "source_file": "tests/catalog-pagination.test.ts",
-      "source_location": "L25"
+      "source_location": "L27"
     },
     {
       "id": "tests_wallpaper_import_cli_test_planrow",
@@ -30150,7 +30150,7 @@
       "file_type": "code",
       "norm_label": "grid_pending_classes",
       "source_file": "app/components/PaginationNav.tsx",
-      "source_location": "L51"
+      "source_location": "L48"
     },
     {
       "id": "app_lib_announcements_store_fetchactiveannouncementsstore",
@@ -30260,7 +30260,7 @@
       "file_type": "code",
       "norm_label": "root",
       "source_file": "tests/catalog-pagination.test.ts",
-      "source_location": "L24"
+      "source_location": "L26"
     },
     {
       "id": "postcss_config",
@@ -57886,7 +57886,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/catalog/CatalogView.tsx",
-      "source_location": "L653",
+      "source_location": "L655",
       "weight": 1.0
     },
     {
@@ -57898,7 +57898,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/catalog/CatalogView.tsx",
-      "source_location": "L660",
+      "source_location": "L662",
       "weight": 1.0
     },
     {
@@ -66322,7 +66322,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/linoleum/Storefront.tsx",
-      "source_location": "L214",
+      "source_location": "L215",
       "weight": 1.0
     },
     {
@@ -66334,7 +66334,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/linoleum/Storefront.tsx",
-      "source_location": "L222",
+      "source_location": "L223",
       "weight": 1.0
     },
     {
@@ -66538,7 +66538,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/oboi/OboiStorefront.tsx",
-      "source_location": "L258",
+      "source_location": "L259",
       "weight": 1.0
     },
     {
@@ -66550,7 +66550,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "app/oboi/OboiStorefront.tsx",
-      "source_location": "L266",
+      "source_location": "L267",
       "weight": 1.0
     },
     {
@@ -72334,7 +72334,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/catalog-pagination.test.ts",
-      "source_location": "L25",
+      "source_location": "L27",
       "weight": 1.0
     },
     {
@@ -72346,7 +72346,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/catalog-pagination.test.ts",
-      "source_location": "L27",
+      "source_location": "L29",
       "weight": 1.0
     },
     {
@@ -92666,7 +92666,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "tests/catalog-pagination.test.ts",
-      "source_location": "L22",
+      "source_location": "L24",
       "weight": 1.0
     },
     {
@@ -100876,7 +100876,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "app/components/PaginationNav.tsx",
-      "source_location": "L5",
+      "source_location": "L4",
       "weight": 1.0
     },
     {
@@ -106367,7 +106367,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "tests/catalog-pagination.test.ts",
-      "source_location": "L22",
+      "source_location": "L24",
       "weight": 1.0
     },
     {
@@ -113205,7 +113205,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/components/PaginationNav.tsx",
-      "source_location": "L51",
+      "source_location": "L48",
       "weight": 1.0
     },
     {
@@ -113216,7 +113216,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/components/PaginationNav.tsx",
-      "source_location": "L53",
+      "source_location": "L50",
       "weight": 1.0
     },
     {
@@ -113227,7 +113227,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/components/PaginationNav.tsx",
-      "source_location": "L57",
+      "source_location": "L54",
       "weight": 1.0
     },
     {
@@ -113238,7 +113238,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/components/PaginationNav.tsx",
-      "source_location": "L77",
+      "source_location": "L74",
       "weight": 1.0
     },
     {
@@ -140650,7 +140650,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/catalog-pagination.test.ts",
-      "source_location": "L24",
+      "source_location": "L26",
       "weight": 1.0
     },
     {

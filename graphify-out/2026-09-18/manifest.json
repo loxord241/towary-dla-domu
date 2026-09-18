@@ -2862,9 +2862,9 @@
     "semantic_hash": ""
   },
   "tests/catalog-pagination.test.ts": {
-    "mtime": 1789743292.172432,
-    "seen": 1789743592.0091467,
-    "ast_hash": "3fed0e7f4e0a9734aea74e8149867513",
+    "mtime": 1789743848.8214397,
+    "seen": 1789744012.3644257,
+    "ast_hash": "2150fde0045bd65b2a9bd58a57980d23",
     "semantic_hash": ""
   },
   "tests/catalog-revoke-migration.test.ts": {
@@ -3300,9 +3300,9 @@
     "semantic_hash": ""
   },
   "app/catalog/CatalogView.tsx": {
-    "mtime": 1789743191.4213874,
-    "seen": 1789743592.008142,
-    "ast_hash": "69b9200debdd17f13378d7758da8277b",
+    "mtime": 1789743876.6729167,
+    "seen": 1789744012.3644257,
+    "ast_hash": "1fbe8fb1251720ca333383bfaa0ad59d",
     "semantic_hash": ""
   },
   "app/catalog/[category]/page.tsx": {
@@ -3714,9 +3714,9 @@
     "semantic_hash": ""
   },
   "app/oboi/OboiStorefront.tsx": {
-    "mtime": 1789743215.4100697,
-    "seen": 1789743592.008142,
-    "ast_hash": "724a0b4de924ecb0319260f912a0b6d1",
+    "mtime": 1789743884.6256874,
+    "seen": 1789744012.3644257,
+    "ast_hash": "03c52b7dd106473a05d4d984d7a17bb3",
     "semantic_hash": ""
   },
   "app/oboi/filtered/page.tsx": {
@@ -3732,9 +3732,9 @@
     "semantic_hash": ""
   },
   "tests/catalog-isr.test.ts": {
-    "mtime": 1789743111.2892644,
-    "seen": 1789743592.0091467,
-    "ast_hash": "43ebfc030d63fdc4c51acb745eca8fc2",
+    "mtime": 1789743923.3744335,
+    "seen": 1789744012.3644257,
+    "ast_hash": "7d15541bf7886af06705e52064755f4b",
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-09-14-epicentr-description-pattern.md": {
@@ -4116,9 +4116,9 @@
     "semantic_hash": ""
   },
   "app/linoleum/Storefront.tsx": {
-    "mtime": 1789743246.5541434,
-    "seen": 1789743592.008142,
-    "ast_hash": "eaf754f3be4c30221e7108c4dfad4fcf",
+    "mtime": 1789743892.467493,
+    "seen": 1789744012.3644257,
+    "ast_hash": "a1393727ef9e02e3acb2d3e0b514ff55",
     "semantic_hash": ""
   },
   "tests/linoleum-hub.test.ts": {
@@ -4182,9 +4182,9 @@
     "semantic_hash": ""
   },
   "app/components/PaginationNav.tsx": {
-    "mtime": 1789743490.1610951,
-    "seen": 1789743592.008142,
-    "ast_hash": "3a7e0b719d7c0c5f7a246d8f39d6ebfa",
+    "mtime": 1789743916.8714132,
+    "seen": 1789744012.3644257,
+    "ast_hash": "1e1e317ea22c9177198b78f474797edf",
     "semantic_hash": ""
   }
 }
