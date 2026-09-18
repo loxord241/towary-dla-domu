@@ -4,11 +4,11 @@
  * importer tables, or any DB row.
  *
  * Safety gates (hard fail, exit 1) — the module is regenerated ONLY when the
- * DB still matches the audit this script was written against (2026-09-16):
+ * DB still matches the audit this script was written against (2026-09-18):
  *   - exactly 293 `_du` products with an existing base;
  *   - exactly 38 `_du` orphans without a base;
  *   - every base_slug === du_slug minus the `_du` suffix;
- *   - exactly 19 pairs with differing price (fixed id set PRICE_DIFF_YC).
+ *   - exactly 93 pairs with differing price (fixed id set PRICE_DIFF_YC).
  *
  * Task #34 audit 2026-09-01 (regeneration after supplier catalog churn —
  * investigation in Task #33):
@@ -44,6 +44,21 @@
  *     (id unrecorded — the audit tracks the count, not ids): 40 -> 38 =
  *     38 alive, 1 promoted, 1 deleted. Gates: pairs 302 -> 293,
  *     orphans 40 -> 38, price-diff 20 -> 19.
+ *   - 2026-09-18 regeneration (first after the 2026-09-18 supplier sync,
+ *     run yc-2026-09-18-13-28-09: inserted 13 / updated 762 / skipped 9,
+ *     logs/yugcontract-sync-20260918.log): pair and orphan sets UNCHANGED —
+ *     the same 293 pair ids (slug derivation verified 293/293, no new and
+ *     no vanished pairs) and the same 38 orphan rows. The sync's repricing
+ *     wave drifted 74 pairs from equal prices to differing (mostly
+ *     Gorenje/Hisense/Beko/Indesit/LG/Whirlpool); all 19 allowlisted diffs
+ *     still differ (17 amounts unchanged; 7109372_du base 3869 -> 3999,
+ *     7232191_du base 42999 -> 44299), none equalized. 7220883_du
+ *     (equalized and removed from the set on 2026-09-16) drifted apart
+ *     again (du 32999 vs base 33999) and re-enters. PRICE_DIFF_YC
+ *     19 -> 93. Under the 09-12 policy all 293 pairs still redirect to
+ *     base — no second-price storefront/feed page; the set stays a 1:1
+ *     drift gate so any further change fails loudly. Gates: pairs 293
+ *     (unchanged), orphans 38 (unchanged), price-diff 19 -> 93.
  *
  * Usage: node --experimental-strip-types scripts/yugcontract-du-redirect-allowlist.ts
  */
@@ -66,7 +81,7 @@ const svc = createClient(
   { auth: { persistSession: false } }
 );
 
-const AUDIT_DATE = '2026-09-16';
+const AUDIT_DATE = '2026-09-18';
 // 2026-09-12 POLICY CHANGE (owner audit fix «дві ціни на один товар»):
 // ALL verified pairs redirect to base, including price-diff ones. Base is
 // the canonical listing (it lives in categories/catalogs); a supplier _du
@@ -74,6 +89,8 @@ const AUDIT_DATE = '2026-09-16';
 // feed is worse than showing the base price. PRICE_DIFF_YC is still gated
 // 1:1 so any NEW drift fails the gate and forces a human look.
 const PRICE_DIFF_YC = new Set([
+  // — 19 pairs of the 2026-09-16 audit (all still differing on 2026-09-18;
+  // 7109372_du and 7232191_du drifted further in amount, see changelog):
   '6241811_du',
   '6482008_du',
   '6615810_du',
@@ -90,11 +107,90 @@ const PRICE_DIFF_YC = new Set([
   '7111320_du',
   '7194071_du',
   '7204300_du',
-  // 7220883_du removed 2026-09-16: prices equalized (du = base = 32999),
-  // redirects with all pairs under the 09-12 all-pairs-redirect policy.
   '7232191_du',
   '7248827_du',
   '7270074_du',
+  // — 74 pairs added 2026-09-18: drifted same-price -> differing with the
+  // 2026-09-18 sync repricing wave (verified live 2026-09-18, read-only
+  // re-audit). They still redirect to base under the 09-12 policy — the
+  // set documents and gates the drift, it does not un-redirect.
+  // 7220883_du is back: equalized and removed on 2026-09-16, drifted apart
+  // again 2026-09-18 (du 32999 vs base 33999).
+  '6213659_du',
+  '6235034_du',
+  '6313699_du',
+  '6344418_du',
+  '6489771_du',
+  '6602293_du',
+  '6602876_du',
+  '6643049_du',
+  '6650648_du',
+  '6656859_du',
+  '6671596_du',
+  '6719369_du',
+  '6807009_du',
+  '6810251_du',
+  '6811444_du',
+  '6882306_du',
+  '6885815_du',
+  '6910447_du',
+  '6915580_du',
+  '6943335_du',
+  '6944463_du',
+  '6977230_du',
+  '6984810_du',
+  '6984812_du',
+  '6987709_du',
+  '6990162_du',
+  '6993614_du',
+  '6993837_du',
+  '6998665_du',
+  '6998788_du',
+  '7019427_du',
+  '7035514_du',
+  '7035567_du',
+  '7040730_du',
+  '7051690_du',
+  '7053878_du',
+  '7056171_du',
+  '7068492_du',
+  '7088391_du',
+  '7088394_du',
+  '7092284_du',
+  '7094152_du',
+  '7110070_du',
+  '7156900_du',
+  '7159943_du',
+  '7159944_du',
+  '7220881_du',
+  '7220882_du',
+  // 7220883_du re-added 2026-09-18 (see above).
+  '7220883_du',
+  '7220891_du',
+  '7220896_du',
+  '7220910_du',
+  '7221668_du',
+  '7221704_du',
+  '7222127_du',
+  '7229839_du',
+  '7231791_du',
+  '7232192_du',
+  '7242869_du',
+  '7246355_du',
+  '7248826_du',
+  '7250275_du',
+  '7259030_du',
+  '7264937_du',
+  '7266827_du',
+  '7267156_du',
+  '7281960_du',
+  '7290695_du',
+  '7290706_du',
+  '7290718_du',
+  '7291169_du',
+  '7297145_du',
+  '7297148_du',
+  '7306143_du',
 ]);
 const stripDu = (s: string) => s.replace(/_du$/, '');
 
@@ -163,9 +259,9 @@ if (pairs.length !== 293) fail(`pairs ${pairs.length} !== 293`);
 if (orphans.length !== 38) fail(`orphans ${orphans.length} !== 38`);
 if (pairs.some((p) => p.baseSlug !== stripDu(p.duSlug))) fail('slug derivation changed');
 const priceDiff = pairs.filter((p) => p.duPrice !== undefined);
-if (priceDiff.length !== 19) fail(`price-diff ${priceDiff.length} !== 19`);
+if (priceDiff.length !== 93) fail(`price-diff ${priceDiff.length} !== 93`);
 if (priceDiff.some((p) => !PRICE_DIFF_YC.has(p.duYc))) fail('price-diff set changed');
-if (PRICE_DIFF_YC.size !== 19) fail(`PRICE_DIFF_YC ${PRICE_DIFF_YC.size} !== 19`);
+if (PRICE_DIFF_YC.size !== 93) fail(`PRICE_DIFF_YC ${PRICE_DIFF_YC.size} !== 93`);
 
 // 3. Emit the module: ALL 293 verified pairs redirect to base (policy
 // change 2026-09-12); the price-diff subset stays documented with prices.
@@ -184,7 +280,7 @@ const out = `/**
  * ${pairs.length} verified _du↔base pairs (name 302/302 equal, slug derivation
  * verified ${pairs.length}/${pairs.length} live on ${AUDIT_DATE}).
  * ${redirect.length} pairs -> permanent redirect to base (ALL pairs — policy
- * change ${AUDIT_DATE}, owner audit fix «дві ціни на один товар»: a _du
+ * change 2026-09-12, owner audit fix «дві ціни на один товар»: a _du
  * shadow page with a second price must not be a live storefront/feed page;
  * the base listing is canonical). Prices of the ${diff.length} drifted pairs
  * are documented in DU_PRICE_DIFF_PAIRS for monitoring.

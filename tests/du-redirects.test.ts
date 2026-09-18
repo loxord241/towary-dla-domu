@@ -15,7 +15,7 @@ import {
 } from '../app/lib/du-redirects.ts';
 import duRedirectsJson from '../app/lib/du-redirects.json' with { type: 'json' };
 
-test('DU: allowlist counts match the audit (293 redirect, 19 documented drifts)', () => {
+test('DU: allowlist counts match the audit (293 redirect, 93 documented drifts)', () => {
   // 2026-09-12 regeneration + POLICY CHANGE (owner audit fix «дві ціни на
   // один товар»): ALL verified pairs redirect to base — a drifted _du
   // shadow page with a second price must not be a live storefront/feed
@@ -23,8 +23,14 @@ test('DU: allowlist counts match the audit (293 redirect, 19 documented drifts)'
   // monitoring; next drift of the id set fails the generator gate.
   // 2026-09-16 regeneration: 10 pairs + 1 orphan deleted from the DB
   // outside the importer, 6895802_du promoted, 7220883_du equalized.
+  // 2026-09-18 regeneration: pair/orphan sets unchanged (same 293 pair
+  // ids, same 38 orphan rows); the 2026-09-18 sync repricing wave (run
+  // yc-2026-09-18-13-28-09: 762 updated) drifted 74 pairs from equal
+  // prices to differing; none of the previous 19 equalized, 7220883_du
+  // drifted apart again (du 32999 vs base 33999) -> 19 -> 93 (verified
+  // live, read-only re-audit before regeneration).
   assert.equal(DU_REDIRECT_PAIRS.length, 293);
-  assert.equal(DU_PRICE_DIFF_PAIRS.length, 19);
+  assert.equal(DU_PRICE_DIFF_PAIRS.length, 93);
 });
 
 test('DU: every pair is well-formed (_du slug strips exactly to base slug)', () => {
