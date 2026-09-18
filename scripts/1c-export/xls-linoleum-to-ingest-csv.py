@@ -20,6 +20,16 @@ xls-report-to-ingest-csv.py, но контракт другой:
 названия — в названиях бывают опечатки), вне {1.5, 2, 2.5, 3, 3.5, 4}
 скрипт падает (fail-closed), а не подставляет молча корень.
 
+Имя дизайна в CSV (колонка name) чистится (clean_design_title):
+вырезается хвост ширины «(2,5м)/(4m)» и ценовой хвост «1750грн/м.п.»,
+подчёркивания → пробелы, пробелы схлопываются — иначе импортёр
+(linoleum-import, группировка по имени дизайна) делает каждую ширину
+отдельной карточкой (53 скрытых мусорных карточки на проде 2026-09-18).
+ПРАВИЛО ПРОТИВОРЕЧИЯ: если в исходном имени есть явная ширина «(Xm)»
+и X ≠ ширине секции («(0,5m)» в секции 3,5) — строка идёт в errors
+(offcut/мислейбл), НЕ в CSV. Ширина проверяется по ИСХОДНОМУ имени,
+до чистки. Unit-тесты чистки: --self-check.
+
 Зависимость: xlrd 2.x через PYTHONPATH=/tmp/xlrdlib (как у обоев).
 """
 import csv
@@ -33,15 +43,45 @@ import xlrd  # PYTHONPATH=/tmp/xlrdlib
 
 ALLOWED_WIDTHS = {1.5, 2, 2.5, 3, 3.5, 4}
 SECTION_RE = re.compile(r'^(\d+(?:[.,]\d+)?)\s*МЕТРА$', re.IGNORECASE)
+WIDTH_TAIL_RE = re.compile(r'\s*\(\s*(\d+(?:[.,]\d+)?)\s*[mм]\s*\)\s*', re.IGNORECASE)
+PRICE_TAIL_RE = re.compile(r'\s*\(?\s*\d+(?:[.,]\d+)?\s*грн.*$', re.IGNORECASE)
+
+# Нормализация написаний одного и того же дизайна у поставщика (слитно/раздельно,
+# кириллические омоглифы в коде дизайна). Применяется к чистому тайтлу.
+TITLE_NORMALIZE_MAP = [
+    ('Havanna', 'Havana'),   # Inspire Havana/Havanna Oak 967M — один дизайн
+    ('967М', '967M'),        # кириллическая М в суффиксе кода → латиница
+]
+
+
+def normalize_title(title: str) -> str:
+    for src, dst in TITLE_NORMALIZE_MAP:
+        title = title.replace(src, dst)
+    return title
+
+
+def named_width_m(name: str):
+    """Ширина, явно указанная в имени («(2,5м)», «(4m)»), или None."""
+    m = WIDTH_TAIL_RE.search(name)
+    return float(m.group(1).replace(',', '.')) if m else None
+
+
+def clean_design_title(name: str) -> str:
+    """Хвост ширины + ценовой хвост → долой; «_» → пробел; пробелы схлопнуть."""
+    cleaned = WIDTH_TAIL_RE.sub(' ', name)
+    cleaned = PRICE_TAIL_RE.sub(' ', cleaned)
+    cleaned = cleaned.replace('_', ' ')
+    return normalize_title(re.sub(r'\s+', ' ', cleaned).strip())
 
 
 def main(xls_path: str, out_dir: str) -> None:
     wb = xlrd.open_workbook(xls_path, encoding_override='cp1251')
     sh = wb.sheet_by_index(0)
 
-    items = []            # (code, name, price, qty_float, width, qty_floor)
+    items = []            # (code, clean_name, price, qty_float, width, qty_floor)
     width = None
     unknown_headers = set()
+    width_conflicts = []  # (code, raw_name, section_width, named_width)
     for r in range(sh.nrows):
         label = str(sh.cell_value(r, 1)).strip()
         m = SECTION_RE.match(label)
@@ -65,7 +105,12 @@ def main(xls_path: str, out_dir: str) -> None:
             continue
         if width is None:
             sys.exit(f'FAIL: строка-товар до первой секции ширины (строка {r + 1}): {name!r}')
-        items.append((code, name, float(price), float(qty), width, math.floor(qty)))
+        # Порядок: конфликт ширины проверяем по ИСХОДНОМУ имени, чистим после.
+        named_w = named_width_m(name)
+        if named_w is not None and named_w != width:
+            width_conflicts.append((code, name, width, named_w))
+            continue
+        items.append((code, clean_design_title(name), float(price), float(qty), width, math.floor(qty)))
 
     if not items:
         sys.exit('FAIL: ни одной строки-товара — формат отчёта изменился?')
@@ -93,10 +138,50 @@ def main(xls_path: str, out_dir: str) -> None:
     dup_codes = {c for c, *_ in items if [x[0] for x in items].count(c) > 1}
     if dup_codes:
         print(f'!! дубликаты кодов (не дедуплицируются, решает import-plan): {sorted(dup_codes)}')
+    if width_conflicts:
+        print(f'!! ширина в имени ≠ ширине секции — исключено из CSV (offcut/мислейбл): {len(width_conflicts)}')
+        for c, n, sec_w, named_w in width_conflicts:
+            print(f'  {c}: в имени {named_w:g}м, секция {sec_w:g}м — {n!r}')
     if unknown_headers:
         print('прочие заголовки вне секций (пропущены):', sorted(unknown_headers))
     print('CSV :', csv_path)
 
 
+def self_check() -> None:
+    """Детерміновані unit-тести чистки імен дизайну (без xls-файлу).
+
+    Кейси — реальні назви з «Остатки 18,09,26.xls»/прод-карток 2026-09-18.
+    Запуск: PYTHONPATH=/tmp/xlrdlib python xls-linoleum-to-ingest-csv.py --self-check
+    """
+    cases = [
+        ('Лінолеум Beauflor Hightex Warm Oak 090S(2,5м) 1750грн/м.п.',
+         'Лінолеум Beauflor Hightex Warm Oak 090S', 2.5),
+        ('Лінолеум Beauflor CRACKED OAK 496М(4м)(2600грн/м.п)',
+         'Лінолеум Beauflor CRACKED OAK 496М', 4.0),
+        ('Лінолеум  IVC Floortex Helsinki_582 (0,5m) 175 грн/м.п',
+         'Лінолеум IVC Floortex Helsinki 582', 0.5),
+        ('Лінолеум Beauflor Smartex Pure_oak 190L(4м) 1960 грн/м.п.',
+         'Лінолеум Beauflor Smartex Pure oak 190L', 4.0),
+    ]
+    for raw, expected_clean, expected_width in cases:
+        got = clean_design_title(raw)
+        assert got == expected_clean, (
+            f'clean_design_title({raw!r}) -> {got!r}, очікувалось {expected_clean!r}')
+        assert named_width_m(raw) == expected_width, (
+            f'named_width_m({raw!r}) -> {named_width_m(raw)!r}, очікувалось {expected_width}')
+    # Подвійний пробіл схлопується (кейс 3: «Лінолеум  IVC»).
+    assert '  ' not in clean_design_title(cases[2][0])
+    # Чисте ім'я без хвостів не ламається.
+    plain = 'Лінолеум Beauflor Plain Oak'
+    assert clean_design_title(plain) == plain
+    assert named_width_m(plain) is None
+    # Конфлікт ширини: 0.5м у секції 3.5м — рядок має вилучатись (див. main).
+    assert named_width_m(cases[2][0]) != 3.5
+    print('self-check: OK (4 реальні назви, чисте ім\'я, конфлікт ширини)')
+
+
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+    if len(sys.argv) > 1 and sys.argv[1] == '--self-check':
+        self_check()
+    else:
+        main(sys.argv[1], sys.argv[2])
