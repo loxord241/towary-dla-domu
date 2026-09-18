@@ -1098,9 +1098,9 @@
     "semantic_hash": ""
   },
   "tests/p3-ux.test.ts": {
-    "mtime": 1789652014.749331,
-    "seen": 1789652173.4106076,
-    "ast_hash": "91ffd718e3d4f13a788861608b82d0b1",
+    "mtime": 1789743295.2697651,
+    "seen": 1789743592.0091467,
+    "ast_hash": "d1b232513a93e676d223b1706e6e4a1d",
     "semantic_hash": ""
   },
   "tests/pagination-hardening.test.ts": {
@@ -1302,9 +1302,9 @@
     "semantic_hash": ""
   },
   "PROJECT_CONTEXT.md": {
-    "mtime": 1789576871.3723178,
-    "seen": 1789577229.8016846,
-    "ast_hash": "c368a744cd41ff0d0f258100e8125747",
+    "mtime": 1789739145.9567497,
+    "seen": 1789740508.6708868,
+    "ast_hash": "17c685bc016b02463118d693ffd53924",
     "semantic_hash": ""
   },
   "README.md": {
@@ -2862,9 +2862,9 @@
     "semantic_hash": ""
   },
   "tests/catalog-pagination.test.ts": {
-    "mtime": 1789499281.876566,
-    "seen": 1789563307.5675795,
-    "ast_hash": "d19d5eff58c0c10657a44c132a29382d",
+    "mtime": 1789743292.172432,
+    "seen": 1789743592.0091467,
+    "ast_hash": "3fed0e7f4e0a9734aea74e8149867513",
     "semantic_hash": ""
   },
   "tests/catalog-revoke-migration.test.ts": {
@@ -3132,9 +3132,9 @@
     "semantic_hash": ""
   },
   "tests/wallpapers-storefront.test.ts": {
-    "mtime": 1789674404.971954,
-    "seen": 1789674631.213615,
-    "ast_hash": "a50a1d40ccc0fcf852c0b4bde5cf3018",
+    "mtime": 1789743068.8106422,
+    "seen": 1789743592.0091467,
+    "ast_hash": "3db927cd6a7b4f33df7c9a25beb01781",
     "semantic_hash": ""
   },
   "tests/yugcontract-category-apply.test.ts": {
@@ -3300,9 +3300,9 @@
     "semantic_hash": ""
   },
   "app/catalog/CatalogView.tsx": {
-    "mtime": 1789587586.0281062,
-    "seen": 1789587759.5686023,
-    "ast_hash": "385546d8f50526f04de6ce969aa89b25",
+    "mtime": 1789743191.4213874,
+    "seen": 1789743592.008142,
+    "ast_hash": "69b9200debdd17f13378d7758da8277b",
     "semantic_hash": ""
   },
   "app/catalog/[category]/page.tsx": {
@@ -3714,9 +3714,9 @@
     "semantic_hash": ""
   },
   "app/oboi/OboiStorefront.tsx": {
-    "mtime": 1789499278.39501,
-    "seen": 1789563307.5675795,
-    "ast_hash": "56c0e2266bb87967e7a5c5a383d420c6",
+    "mtime": 1789743215.4100697,
+    "seen": 1789743592.008142,
+    "ast_hash": "724a0b4de924ecb0319260f912a0b6d1",
     "semantic_hash": ""
   },
   "app/oboi/filtered/page.tsx": {
@@ -3732,9 +3732,9 @@
     "semantic_hash": ""
   },
   "tests/catalog-isr.test.ts": {
-    "mtime": 1789499281.8709948,
-    "seen": 1789563307.5675795,
-    "ast_hash": "f36a06dee842141856bf38361454cb6b",
+    "mtime": 1789743111.2892644,
+    "seen": 1789743592.0091467,
+    "ast_hash": "43ebfc030d63fdc4c51acb745eca8fc2",
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-09-14-epicentr-description-pattern.md": {
@@ -4116,15 +4116,15 @@
     "semantic_hash": ""
   },
   "app/linoleum/Storefront.tsx": {
-    "mtime": 1789707940.4253623,
-    "seen": 1789708352.0342247,
-    "ast_hash": "b4ca59463224593d0544a0e6b3dec750",
+    "mtime": 1789743246.5541434,
+    "seen": 1789743592.008142,
+    "ast_hash": "eaf754f3be4c30221e7108c4dfad4fcf",
     "semantic_hash": ""
   },
   "tests/linoleum-hub.test.ts": {
-    "mtime": 1789707666.2104588,
-    "seen": 1789708352.0342247,
-    "ast_hash": "5e89dbe934268dabf03a4941e677da57",
+    "mtime": 1789743076.1915448,
+    "seen": 1789743592.0091467,
+    "ast_hash": "12bb71c5a79d513fdf69251e618a3235",
     "semantic_hash": ""
   },
   "tests/linoleum-product-view.test.ts": {
@@ -4152,15 +4152,15 @@
     "semantic_hash": ""
   },
   "scripts/linoleum-photos.ts": {
-    "mtime": 1789736680.7093296,
-    "seen": 1789737001.5226886,
-    "ast_hash": "d47476124f7b290bb274bdba16e74069",
+    "mtime": 1789740460.9626608,
+    "seen": 1789740508.6698806,
+    "ast_hash": "4dbb86ec0cb95c5759cc5f0f59a33315",
     "semantic_hash": ""
   },
   "tests/linoleum-photos.test.ts": {
-    "mtime": 1789736939.5965295,
-    "seen": 1789737001.5226886,
-    "ast_hash": "814c03a2453170bce6deefebb64cea02",
+    "mtime": 1789740374.0384872,
+    "seen": 1789740508.6708868,
+    "ast_hash": "882a7a6bcc8d2ca830e9f36bfdf697c7",
     "semantic_hash": ""
   },
   "scripts/linoleum-consolidate.ts": {
@@ -4176,9 +4176,15 @@
     "semantic_hash": ""
   },
   "scripts/1c-export/xls-linoleum-to-ingest-csv.py": {
-    "mtime": 1789738528.114531,
-    "seen": 1789739068.1070282,
-    "ast_hash": "d8c0307f193696107da2e857f2ac1b2f",
+    "mtime": 1789740777.052184,
+    "seen": 1789743592.008142,
+    "ast_hash": "11eac71cb6a308b43be1115bde06d157",
+    "semantic_hash": ""
+  },
+  "app/components/PaginationNav.tsx": {
+    "mtime": 1789743490.1610951,
+    "seen": 1789743592.008142,
+    "ast_hash": "3a7e0b719d7c0c5f7a246d8f39d6ebfa",
     "semantic_hash": ""
   }
 }
