@@ -219,6 +219,8 @@ Yugcontract Sync» и «вот выгрузка» — это явные GO на 
 ### Синк линолеума (Excel 1С)
 
 Триггер: владелец прислал `.xls` с линолеумом («вот выгрузка по линолеуму»).
+Свежесть следит cron `linoleum-freshness` (15:00 UTC, Telegram-алерт, если
+выгрузка старше 26ч).
 Модель: 1 карточка = дизайн, ширины = product_variants (2026-09-18).
 Витрина: `/linoleum` (sku-префикс `ln-`); `is_active` ln-* пишет только
 `linoleum-import --publish`. Секрет: `data/LINOLEUM_INGEST_KEY.txt`.

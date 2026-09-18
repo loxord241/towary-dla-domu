@@ -52,7 +52,9 @@ scripts/              CLI: импортеры, health-check, генератор�
 tests/                node --test, 204 файлов / ~2351 теста
 docs/                 аудиты, research, specs (docs/superpowers/specs/), памятки миграций
 graphify-out/         граф знаний кода (в git; обновляется `graphify update .`)
-vercel.json           cron: /api/cron/reconciliation 06:00 UTC, /api/cron/wallpaper-freshness 15:00 UTC
+vercel.json           cron: /api/cron/reconciliation 06:00 UTC,
+                      /api/cron/wallpaper-freshness и /api/cron/linoleum-freshness
+                      по 15:00 UTC (свежесть выгрузок 1С)
 .github/workflows/    yugcontract-sync.yml — вооружён (cron 6ч), но GO-затвор
                       vars.YUGCONTRACT_SYNC_ENABLED никогда не включался: 0 успешных запусков
 data/                 gitignored: ключи ingestion, CSV 1С, items-JSON
@@ -107,7 +109,7 @@ create-next-app, не описывает проект.
 `payment/liqpay/callback`, `delivery/novapost/{delivery-cost,divisions,settlements,streets}`,
 `delivery/ukrposhta/{delivery-cost,offices,settlements}`, `telegram/webhook`,
 `feeds/google-merchant.xml`, `ingest/1c-wallpaper` (bearer `WALLPAPER_INGEST_SECRET`),
-`cron/{reconciliation,wallpaper-freshness}` (bearer `CRON_SECRET`).
+`cron/{reconciliation,wallpaper-freshness,linoleum-freshness}` (bearer `CRON_SECRET`).
 
 Админские (все через `requireAdminApi()`): `admin/{announcements,brands,brands/[id],
 categories,categories/[id],categories/[id]/order,descriptions,feedback,orders,
