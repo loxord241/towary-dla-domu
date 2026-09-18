@@ -64,6 +64,8 @@ const POINTS: PickupPointCard[] = [
   {
     address: 'вул. Гетьмана Івана Мазепи, 89А',
     specialization: 'Лінолеум',
+    phoneHref: 'tel:+380973144221',
+    phoneLabel: '+380 (97) 314 42 21',
     // Фото 89А ще не надійшли (очікуються) — картка поки текстова; фото
     // додам окремою правкою, коли власник передасть файли.
     photos: [],
@@ -94,13 +96,23 @@ export default function SamovyvizPage() {
                 key={point.address}
                 className="rounded-lg border border-gray-200 bg-white p-5 sm:p-6"
               >
-                <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl font-semibold tracking-tight text-gray-900">
-                    {point.address}
-                  </h2>
-                  <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                    Безкоштовно
-                  </span>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-semibold tracking-tight text-gray-900">
+                      {point.address}
+                    </h2>
+                    <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                      Безкоштовно
+                    </span>
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=Кривий+Ріг+${encodeURIComponent(point.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-[44px] items-center text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline underline-offset-2"
+                  >
+                    Відкрити на карті →
+                  </a>
                 </div>
                 <p className="mb-1 text-sm text-gray-500">{point.specialization}</p>
                 <p className="mb-1 text-sm text-gray-700">

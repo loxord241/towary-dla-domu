@@ -32,7 +32,7 @@ export default function SiteHeader({
             </Link>
             {/* Избранное доступно через сердечко-бейдж справа (с живым
                 счётчиком) — отдельная текстовая ссылка дублировала бы его. */}
-            <nav className="hidden min-[420px]:flex space-x-4" aria-label="Основна навігація">
+            <nav className="hidden md:flex space-x-4" aria-label="Основна навігація">
               <Link href="/catalog" className="text-gray-600 hover:text-blue-600">
                 Каталог
               </Link>

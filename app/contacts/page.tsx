@@ -32,10 +32,43 @@ export default function Page() {
         <p>
           {`Пункти видачі (самовивіз — безкоштовно):`}
         </p>
-        <ul className="list-disc list-inside space-y-1">
-          <li>{`вул. Гетьмана Івана Мазепи, буд. 87А — побутова техніка;`}</li>
-          <li>{`вул. Гетьмана Івана Мазепи, буд. 83А — шпалери;`}</li>
-          <li>{`вул. Гетьмана Івана Мазепи, буд. 89А — лінолеум.`}</li>
+        <ul className="list-disc list-inside space-y-2">
+          <li>
+            <span>{`вул. Гетьмана Івана Мазепи, буд. 87А — побутова техніка;`}</span>
+            {' · '}
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=Кривий+Ріг+${encodeURIComponent('вул. Гетьмана Івана Мазепи, 87А')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-blue-600 hover:text-blue-800 hover:underline underline-offset-2 text-sm"
+            >
+              Відкрити на карті
+            </a>
+          </li>
+          <li>
+            <span>{`вул. Гетьмана Івана Мазепи, буд. 83А — шпалери;`}</span>
+            {' · '}
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=Кривий+Ріг+${encodeURIComponent('вул. Гетьмана Івана Мазепи, 83А')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-blue-600 hover:text-blue-800 hover:underline underline-offset-2 text-sm"
+            >
+              Відкрити на карті
+            </a>
+          </li>
+          <li>
+            <span>{`вул. Гетьмана Івана Мазепи, буд. 89А — лінолеум.`}</span>
+            {' · '}
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=Кривий+Ріг+${encodeURIComponent('вул. Гетьмана Івана Мазепи, 89А')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-blue-600 hover:text-blue-800 hover:underline underline-offset-2 text-sm"
+            >
+              Відкрити на карті
+            </a>
+          </li>
         </ul>
         <p>{`Час роботи: 7:30–16:00`}</p>
         <p>

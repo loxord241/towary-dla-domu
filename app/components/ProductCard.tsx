@@ -124,14 +124,17 @@ export default function ProductCard({
               <>
                 <span className="text-xl font-extrabold text-red-600">
                   {formatPrice(product.price, product.currency)}
+                  {isLinoleum ? '/пог. м' : ''}
                 </span>
                 <span className="text-sm text-gray-400 line-through">
                   {formatPrice(product.old_price!, product.currency)}
+                  {isLinoleum ? '/пог. м' : ''}
                 </span>
               </>
             ) : (
               <span className="text-lg font-bold text-blue-700">
                 {formatPrice(product.price, product.currency)}
+                {isLinoleum ? '/пог. м' : ''}
               </span>
             )}
           </div>

@@ -593,9 +593,11 @@ test('SEO: home metadata is unique vs root layout title (static source check)', 
 
 test('SEO-R6: home title leads with the brand + assortment, desc carries the stock fact', () => {
   const home = readFileSync('app/(home)/page.tsx', 'utf8');
-  // The old title duplicated the brand twice and the desc said nothing
-  // quotable; the new copy names the three real assortment pillars.
-  assert.match(home, /title:\s*'Товари для дому — побутова техніка, посуд, шпалери'/);
+  // P1.4 (2026-09-18): title includes linoleum alongside tech, wallpapers, tableware.
+  assert.match(
+    home,
+    /title:\s*'Товари для дому — побутова техніка, шпалери, лінолеум, посуд'/
+  );
   assert.match(home, /понад 5 000 товарів/);
   assert.match(home, /самовивіз у Кривому Розі/);
   assert.ok(!home.includes('Інтернет-магазин товарів для дому | Товари для дому'));

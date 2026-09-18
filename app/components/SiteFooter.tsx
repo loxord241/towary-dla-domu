@@ -17,6 +17,7 @@ interface SiteFooterProps {
 
 const INFO_LINKS = [
   { href: '/oboi', label: 'Шпалери' },
+  { href: '/linoleum', label: 'Лінолеум' },
   // Brands hub (SEO batch 2026-09-17): crawlable entrance to the
   // /catalog?brand=<slug> views (client filter alone is not crawlable).
   { href: '/brands', label: 'Бренди' },
