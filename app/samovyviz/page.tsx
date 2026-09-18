@@ -4,15 +4,18 @@ import SiteHeader from '@/app/components/SiteHeader';
 import SiteFooter from '@/app/components/SiteFooter';
 
 /**
- * «Самовивіз» (власник, 2026-09-14): індексована сторінка двох точок
- * видачі у Кривому Розі з фотографіями. Адреси/спеціалізація збігаються з
+ * «Самовивіз» (власник, 2026-09-14): індексована сторінка точок видачі у
+ * Кривому Розі з фотографіями. Адреси/спеціалізація збігаються з
  * PICKUP_POINTS (app/lib/checkout-delivery.ts) — єдиним білим списком
  * чекаута; телефони й графік — з публічної сторінки /contacts.
+ * Третя точка — Мазепи 89А (лінолеум, рішення власника 2026-09-17): поки
+ * текстова картка БЕЗ фото (очікуються) і без телефону — публічного
+ * телефону саме точки 89А немає, вигадувати номер заборонено.
  */
 export const metadata: Metadata = {
   title: 'Самовивіз у Кривому Розі — Товари для дому',
   description:
-    'Безкоштовний самовивіз у Кривому Розі: побутова техніка й товари для дому — вул. Гетьмана Івана Мазепи, 87А, шпалери — вул. Гетьмана Івана Мазепи, 83А. Адреси, телефони та фото пунктів видачі.',
+    'Безкоштовний самовивіз у Кривому Розі: побутова техніка й товари для дому — вул. Гетьмана Івана Мазепи, 87А, шпалери — вул. Гетьмана Івана Мазепи, 83А, лінолеум — вул. Гетьмана Івана Мазепи, 89А. Адреси, телефони та фото пунктів видачі.',
   alternates: { canonical: '/samovyviz' },
 };
 
@@ -26,8 +29,10 @@ interface PickupPointCard {
   /** h2 картки — адреса точки, canonical form з PICKUP_POINTS. */
   address: string;
   specialization: string;
-  phoneHref: string;
-  phoneLabel: string;
+  /** Публічний телефон ТОЧКИ (з /contacts); у точки 89А свого номера
+      немає — картка рендериться без телефону, вигадувати не можна. */
+  phoneHref?: string;
+  phoneLabel?: string;
   photos: { src: string; alt: string }[];
 }
 
@@ -56,6 +61,13 @@ const POINTS: PickupPointCard[] = [
     phoneLabel: '+380 (98) 358 49 58',
     photos: MAZEPY_83A_PHOTOS,
   },
+  {
+    address: 'вул. Гетьмана Івана Мазепи, 89А',
+    specialization: 'Лінолеум',
+    // Фото 89А ще не надійшли (очікуються) — картка поки текстова; фото
+    // додам окремою правкою, коли власник передасть файли.
+    photos: [],
+  },
 ];
 
 export default function SamovyvizPage() {
@@ -69,11 +81,11 @@ export default function SamovyvizPage() {
           </h1>
           <div aria-hidden className="mb-6 h-1 w-12 rounded bg-blue-600" />
           <p className="mb-8 text-base leading-relaxed text-gray-600">
-            Забрати замовлення можна безкоштовно в одній із двох точок видачі.
+            Забрати замовлення можна безкоштовно в одній із трьох точок видачі.
             Пункт обирається під час оформлення замовлення: техніка і товари
-            для дому чекають на Мазепи 87А, шпалери — на Гетьмана Івана Мазепи 83А. Якщо в
-            кошику товари обох напрямків — усе замовлення чекатиме на обраній
-            точці.
+            для дому чекають на Мазепи 87А, шпалери — на Гетьмана Івана Мазепи
+            83А, лінолеум — на Гетьмана Івана Мазепи 89А. Якщо в кошику товари
+            кількох напрямків — усе замовлення чекатиме на обраній точці.
           </p>
 
           <div className="space-y-10">
@@ -94,29 +106,37 @@ export default function SamovyvizPage() {
                 <p className="mb-1 text-sm text-gray-700">
                   Графік: {HOURS}
                 </p>
-                <p className="mb-3 text-sm text-gray-700">{CALLS_NOTE}</p>
-                <a
-                  href={point.phoneHref}
-                  className="inline-flex min-h-[44px] items-center font-medium text-blue-600 hover:text-blue-800 hover:underline underline-offset-2"
-                >
-                  {point.phoneLabel}
-                </a>
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {point.photos.map((photo, photoIndex) => (
-                    <Image
-                      key={photo.src}
-                      src={photo.src}
-                      alt={photo.alt}
-                      width={960}
-                      height={1280}
-                      // Only the very first photo of the page may compete for
-                      // LCP; everything else loads lazily (next/image default).
-                      priority={pointIndex === 0 && photoIndex === 0}
-                      sizes="(max-width: 640px) 50vw, 300px"
-                      className="h-auto w-full rounded-lg"
-                    />
-                  ))}
-                </div>
+                {/* Телефон і «дзвінки до 16:00» — тільки в точок із
+                    публічним номером (у 89А свого номера немає). */}
+                {point.phoneHref && point.phoneLabel && (
+                  <>
+                    <p className="mb-3 text-sm text-gray-700">{CALLS_NOTE}</p>
+                    <a
+                      href={point.phoneHref}
+                      className="inline-flex min-h-[44px] items-center font-medium text-blue-600 hover:text-blue-800 hover:underline underline-offset-2"
+                    >
+                      {point.phoneLabel}
+                    </a>
+                  </>
+                )}
+                {point.photos.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {point.photos.map((photo, photoIndex) => (
+                      <Image
+                        key={photo.src}
+                        src={photo.src}
+                        alt={photo.alt}
+                        width={960}
+                        height={1280}
+                        // Only the very first photo of the page may compete for
+                        // LCP; everything else loads lazily (next/image default).
+                        priority={pointIndex === 0 && photoIndex === 0}
+                        sizes="(max-width: 640px) 50vw, 300px"
+                        className="h-auto w-full rounded-lg"
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
             ))}
           </div>

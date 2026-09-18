@@ -6,6 +6,8 @@ import {
   type CatalogSort,
 } from '@/app/lib/catalog'
 import { buildLinoleumMetadata } from '@/app/lib/seo'
+import ProductJsonLd from '@/app/components/ProductJsonLd'
+import { buildLinoleumBreadcrumbJsonLd } from '@/app/lib/schema-org'
 import LinoleumStorefront from './Storefront'
 
 // Linoleum storefront (linoleum vertical, batch 2, task L4, 2026-09-17):
@@ -48,16 +50,26 @@ export default async function LinoleumPage() {
   ]);
   const maxPage = Math.max(1, Math.ceil(catalog.total / catalog.size));
 
+  // BreadcrumbList (Головна → Лінолеум) — owner review fix 2026-09-17, the
+  // same /brands pattern: rendered ONLY on this indexable pure view through
+  // the sanctioned ProductJsonLd sink; the noindex filtered twin stays free
+  // of it.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+  const breadcrumbJsonLd = buildLinoleumBreadcrumbJsonLd(siteUrl);
+
   return (
-    <LinoleumStorefront
-      products={catalog.products}
-      total={catalog.total}
-      // The server-clamped page for a page-1 request is always 1.
-      currentPage={catalog.page}
-      maxPage={maxPage}
-      width={undefined}
-      sortParam=""
-      categories={categories}
-    />
+    <>
+      <ProductJsonLd data={breadcrumbJsonLd} />
+      <LinoleumStorefront
+        products={catalog.products}
+        total={catalog.total}
+        // The server-clamped page for a page-1 request is always 1.
+        currentPage={catalog.page}
+        maxPage={maxPage}
+        width={undefined}
+        sortParam=""
+        categories={categories}
+      />
+    </>
   )
 }

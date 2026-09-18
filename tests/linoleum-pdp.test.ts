@@ -1,17 +1,25 @@
 /**
- * Static invariants for the ln-* PDP purchase UX (linoleum vertical,
- * batch 3, task L6, owner plan 2026-09-17). node:test cannot render React
- * (.tsx), so the page integration and the client panel are pinned by source
- * inspection — the same convention as roll-calculator.test.ts /
- * pdp-specs-placement.test.ts. The pure math behind the panel is unit-tested
- * for real in tests/linoleum-product-view.test.ts.
+ * Static invariants for the ln-* PDP purchase UX (linoleum vertical, batch 3,
+ * task L6, owner plan 2026-09-17; width selection — task C3, owner plan
+ * 2026-09-18). node:test cannot render React (.tsx), so the page integration
+ * and the client panel are pinned by source inspection — the same convention
+ * as roll-calculator.test.ts / pdp-specs-placement.test.ts. The pure math
+ * behind the panel is unit-tested for real in tests/linoleum-product-view.test.ts.
  *
  * Contract under pin:
  *   - the gate is the ln- sku prefix from domains.ts (single source);
  *   - ln-* PDP replaces the unit AddToCartButton with LinoleumMeterPanel
- *     (whole metres 1..99 via the штатный integer cart path, variantId=null);
+ *     (whole metres 1..99 via the штатный integer cart path; since C3 the
+ *     metres are added FOR THE SELECTED WIDTH: consolidated model — product
+ *     = design, product_variants = widths, place_order takes the variantId
+ *     and decrements variant stock at variant price);
+ *   - width chips come from the is_active product_variants the page maps
+ *     (label = «{name} м»), default selection = narrowest in-stock width;
+ *   - the panel price is the SELECTED width's грн/пог.м (live on chip
+ *     switch) with the «{Ціна за м²} грн/м²» spec as the caption;
  *   - the «Ціна за м²» specification renders as a грн/м² badge next to the
- *     price (products.price on ln-* is грн за погонный метр);
+ *     page price (products.price on ln-* is грн за погонный метр) and as
+ *     «від …» on cards (C2: the spec value is the design MIN across widths);
  *   - wallpaper-specific blocks (roll calculator, glue cross-sell) stay
  *     gated off ln-* PDPs.
  *
@@ -60,10 +68,12 @@ test('linoleum-pdp: buy-box для ln-* — LinoleumMeterPanel замість Ad
   );
   // The conditional must REPLACE the unit button for ln-* (not stack both):
   // one buy-box per page, the owner 2026-09-15 placement (under the price).
+  // specifications ride in so the calculator knows the ROLL width; variants
+  // ride in since C3 — the width chips (consolidated model 2026-09-18).
   assert.match(
     pageSrc,
-    /\{isLinoleum \? \(\s*<LinoleumMeterPanel\s+productId=\{product\.id\}\s+price=\{product\.price\}\s+currency=\{product\.currency\}\s+stockQuantity=\{product\.stock_quantity\}\s+availabilityStatus=\{product\.availability_status\}\s*\/>\s*\) : \(\s*<AddToCartButton/,
-    'ln-* рендерить панель метражу, інші домени — штатну кнопку'
+    /\{isLinoleum \? \(\s*<LinoleumMeterPanel\s+productId=\{product\.id\}\s+price=\{product\.price\}\s+currency=\{product\.currency\}\s+stockQuantity=\{product\.stock_quantity\}\s+availabilityStatus=\{product\.availability_status\}\s+specifications=\{product\.specifications\}\s+variants=\{linoleumWidths\}\s*\/>\s*\) : \(\s*<AddToCartButton/,
+    'ln-* рендерить панель метражу (зі специфікаціями та ширина-варіантами), інші домени — штатну кнопку'
   );
   assert.equal(
     (pageSrc.match(/<AddToCartButton/g) ?? []).length,
@@ -75,6 +85,23 @@ test('linoleum-pdp: buy-box для ln-* — LinoleumMeterPanel замість Ad
     1,
     'панель метражу монтується рівно в одному місці сторінки'
   );
+});
+
+test('linoleum-pdp: у панель прокидаються ШИРИНИ-варіанти (is_active) консолідованої моделі', () => {
+  // C3 (owner plan 2026-09-18): продукт = дизайн, product_variants = ширини
+  // (name = formatWidthM «1,5», price = грн/пог.м цієї ширини, stock = метри).
+  assert.match(
+    pageSrc,
+    /const linoleumWidths = isLinoleum\s*\?\s*product\.variants\s*\.filter\(\(v\) => v\.is_active\)/,
+    'чипи — тільки з is_active варіантів (RLS final_001 уже фільтрує; фільтр — defense-in-depth)'
+  );
+  assert.match(
+    pageSrc,
+    /name: v\.name,\s*price: v\.price,\s*stockQuantity: v\.stock_quantity,\s*availabilityStatus: v\.availability_status,/,
+    'у чип ідуть name/price/stock/availability варіанта —Panel не читає сирий ProductVariant'
+  );
+  // Не-ln-* домени отримують порожній список — гейт не розповзається.
+  assert.match(pageSrc, /: \[\]\s*$/m);
 });
 
 test('linoleum-pdp: бейдж «{ціна} грн/м²» біля ціни — зі специфікації «Ціна за м²»', () => {
@@ -93,7 +120,9 @@ test('linoleum-pdp: бейдж «{ціна} грн/м²» біля ціни — 
     /\{linoleumPriceSqm && \(/,
     'бейдж умовний (без вигаданих чисел, коли специфікації немає)'
   );
-  assert.match(pageSrc, /\{linoleumPriceSqm\} грн\/м²/);
+  // Рішення оркестратора (доповнення C3, 2026-09-18): «від» — як на картках,
+  // бо після консолідації спека несе ДИЗАЙН-МІНІМУМ (MIN по ширинах).
+  assert.match(pageSrc, /від \{linoleumPriceSqm\} грн\/м²/);
 });
 
 test('linoleum-pdp: шпалерні блоки не тікають на ln-* (roll calculator, клей)', () => {
@@ -121,9 +150,21 @@ test('linoleum-pdp: шпалерні блоки не тікають на ln-* (r
   );
 });
 
+test('linoleum-pdp: блок «Варіанти товару» НЕ рендериться для ln-* (його дублюють чипи панелі)', () => {
+  // Рішення оркестратора (доповнення C3, 2026-09-18): універсальний нижній
+  // блок «Варіанти товару» (ширина+ціна без кнопки покупки) дублює чипи
+  // LinoleumMeterPanel — для ln-* його не рендеримо; іншим доменам блок
+  // без змін (гейт !isLinoleum стоїть ПЕРЕД length-перевіркою).
+  assert.match(
+    pageSrc,
+    /\{!isLinoleum && product\.variants\.length > 0 && \(/,
+    'блок «Варіанти товару» загейчений від ln-*'
+  );
+});
+
 // ---- LinoleumMeterPanel --------------------------------------------------------
 
-test('linoleum-panel: client-острів на cart-context, variantId=null, цілі метри', () => {
+test('linoleum-panel: client-острів на cart-context, addItem — variantId ОБРАНОЇ ширини (fallback null), цілі метри', () => {
   assert.ok(
     panelSrc.startsWith("'use client'"),
     'компонент має бути client ("use client" першим рядком)'
@@ -133,10 +174,13 @@ test('linoleum-panel: client-острів на cart-context, variantId=null, ц�
     /import \{ useCart, MAX_ITEM_QUANTITY, MAX_CART_LINES \} from '@\/app\/lib\/cart-context'/,
     'додавання йде через наявний cart-context'
   );
+  // C3: метри додаються для вибраної ширини (place_order декрементить сток
+  // варіанта за ціною варіанта); 0 варіантів → чесний fallback variantId=null
+  // (попередня поведінка, ціна/сток продукту).
   assert.match(
     panelSrc,
-    /addItem\(productId, null, qty\)/,
-    'у кошик додається метраж без варіанта (variantId=null)'
+    /addItem\(productId, selectedVariant \? selectedVariant\.id : null, qty\)/,
+    'у кошик іде variantId вибраної ширини, без ширин — null'
   );
   assert.match(
     panelSrc,
@@ -145,27 +189,129 @@ test('linoleum-panel: client-острів на cart-context, variantId=null, ц�
   );
   assert.match(
     panelSrc,
-    /Math\.min\(stockQuantity \|\| MAX_ITEM_QUANTITY, MAX_ITEM_QUANTITY\)/,
-    'метраж обмежений залишком (метри) і максимумом позиції кошика (99)'
+    /Math\.min\(effectiveStock \|\| MAX_ITEM_QUANTITY, MAX_ITEM_QUANTITY\)/,
+    'метраж обмежений залишком ОБРАНОЇ ширини (метри) і максимумом позиції кошика (99)'
   );
 });
 
-test('linoleum-panel: метраж — лейбл, підсказка ціни за пог.м, живий итог', () => {
-  assert.match(panelSrc, /Метраж \(м\):/, 'лейбл кількості — метраж');
+test('linoleum-panel: чіпи ширин — «{name} м», дефолт «найвужчий в наявності», вибір кліком', () => {
   assert.match(
     panelSrc,
-    /ціна: \{unitPrice\}\/пог\.м/,
-    'підсказка «ціна: X грн/пог.м» (formatPrice дає «X грн»)'
+    /export interface LinoleumWidthOption \{/,
+    'чип — це продукт_variants рядок консолідованої моделі (окремий тип)'
   );
   assert.match(
     panelSrc,
-    /\{meters\} м × \{unitPrice\} = \{formatPrice\(meters \* price, currency\)\}/,
-    'живий итог «{qty} м × {price} = {итого} грн»'
+    /variants\?: LinoleumWidthOption\[\];/,
+    'варіанти — опційний проп: 0 варіантів = чесний single-width fallback'
+  );
+  assert.match(
+    panelSrc,
+    /\{option\.name\} м\{soldOut \? ' · немає' : ''\}/,
+    'лейбл чіпа = formatWidthM-імʼя варіанта + « м»; вичерпана ширина позначається'
+  );
+  assert.match(
+    panelSrc,
+    /aria-checked=\{selected\}/,
+    'чипи — радіогрупа з доступним станом (a11y, як select у AddToCartButton)'
+  );
+  assert.match(
+    panelSrc,
+    /const selectedWidthId = pickedWidthId \?\? defaultWidthId;/,
+    'вибір тримається в стані, до першого кліку — дефолт'
+  );
+  assert.match(
+    panelSrc,
+    /const firstAvailable = sorted\.find\(/,
+    'дефолт = перший В НАЯВНОСТІ чіп (план C3: «перший in-stock або найвужчий»)'
+  );
+  assert.match(
+    panelSrc,
+    /o\.stockQuantity > 0 && o\.availabilityStatus !== 'out_of_stock'/,
+    '«в наявності» = метри > 0 і не out_of_stock'
+  );
+  assert.match(
+    panelSrc,
+    /return wa - wb;/,
+    'чипи сортовані за числовою шириною (uk-кома «1,5»), найвужчі перші — «перший» і «найвужчий» збігаються'
+  );
+  assert.match(
+    panelSrc,
+    /setMeters\(\(m\) => \(Number\.isInteger\(m\) \? Math\.max\(1, Math\.min\(m, optionMax\)\) : 1\)\)/,
+    'при зміні ширини метраж піджимається під залишок нової ширини'
+  );
+});
+
+test('linoleum-panel: ціна вибраної ширини жива — «{unitPrice}/пог.м» + підпис «{price_sqm} грн/м²», итог від variant price', () => {
+  assert.match(
+    panelSrc,
+    /const effectivePrice = selectedVariant \? selectedVariant\.price : price;/,
+    'ціна за пог.м = ціна ВИБРАНОЇ ширини (fallback — ціна продукту)'
+  );
+  assert.match(
+    panelSrc,
+    /\{unitPrice\}\/пог\.м/,
+    'заголовок ціни: «{variant.price} грн/пог.м» за обрану ширину'
+  );
+  assert.match(
+    panelSrc,
+    /const priceSqm = extractPricePerSqm\(specifications\);/,
+    'підпис читає «Ціна за м²» через pure-хелпер'
+  );
+  assert.match(
+    panelSrc,
+    /\{priceSqm\} грн\/м²/,
+    'підпис «{price_sqm} грн/м²» під заголовком (план C3)'
+  );
+  assert.match(
+    panelSrc,
+    /\{meters\} м × \{unitPrice\} = \{formatPrice\(meters \* effectivePrice, currency\)\}/,
+    'живий итог «{qty} м × {price ширини} = {итого} грн»'
   );
   assert.match(
     panelSrc,
     /import \{ formatPrice \} from '@\/app\/lib\/format'/,
     'ціни — тільки через форматер (єдиний presentation-пункт)'
+  );
+});
+
+test('linoleum-panel: вичерпана ширина — пряме повідомлення, кнопки покупки немає', () => {
+  // REGRESSION-guard C3: користувач може клікнути на вичерпаний чіп —
+  // панель не повинна «додавати в кошик» неіснуючі метри (place_order
+  // все одно відхилить, але чесний UX — попередити до кошика).
+  assert.match(
+    panelSrc,
+    /const widthUnavailable =/,
+    'вичерпаність ВИБРАНОЇ ширини — окремий стан (продукт може мати інші ширини)'
+  );
+  assert.match(
+    panelSrc,
+    /Цієї ширини немає в наявності/,
+    'повідомлення при исчерпании стока ширини (план C3)'
+  );
+});
+
+test('linoleum-panel: метраж — лейбл, максимум від залишку, живий итог', () => {
+  assert.match(panelSrc, /Метраж \(м\):/, 'лейбл кількості — метраж');
+  assert.match(
+    panelSrc,
+    /макс\. \{maxMeters\} м/,
+    'підсказка максимуму — залишок обраної ширини'
+  );
+  assert.match(
+    panelSrc,
+    /added-in motion-reduce:animate-none/,
+    'поява результату анімується з вимкненням при reduced motion'
+  );
+  assert.match(
+    panelSrc,
+    /motion-reduce:transition-none/,
+    'переходи вимикаються при reduced motion'
+  );
+  assert.match(
+    panelSrc,
+    /Немає в наявності/,
+    'out_of_stock продукту (усі ширини) рендерить вимкнену кнопку (як AddToCartButton)'
   );
 });
 
@@ -187,36 +333,47 @@ test('linoleum-panel: калькулятор кімнати → «Підстав
   );
 });
 
-test('linoleum-panel: неможливий/порожній вхід — без рекомендації; out_of_stock — вимкнена кнопка', () => {
+test('linoleum-panel: калькулятор ділить на ШИРИНУ ОБРАНОГО ВАРІАНТА, fallback — специфікація «Ширина»', () => {
+  // Баг-фікс 2026-09-17: калькулятор ділить на реальну ширину рулону. З C3
+  // ширин кілька: джерело — name ВИБРАНОГО варіанта (formatWidthM-канон,
+  // той самий що й у спеки), fallback (0 варіантів) — перша «Ширина» спеки.
   assert.match(
     panelSrc,
-    /if \(lengthM === null \|\| widthM === null\) return null;/,
-    'неповний вхід не дає «розрахованого» метражу'
+    /import \{[\s\S]*extractWidthLabel,[\s\S]*\} from '@\/app\/lib\/linoleum\/product-view'/,
+    'fallback ширини читається специфікацією через pure-хелпер'
   );
   assert.match(
     panelSrc,
-    /Немає в наявності/,
-    'out_of_stock рендерить вимкнену кнопку (як AddToCartButton)'
+    /if \(selectedVariant\) return parsePositive\(selectedVariant\.name\);/,
+    'ширину рулону беремо з обраного варіанта (не з першої спеки — їх тепер кілька)'
   );
   assert.match(
     panelSrc,
-    /added-in motion-reduce:animate-none/,
-    'поява результату анімується з вимкненням при reduced motion'
+    /widthM: rollWidthM/,
+    'у calcLinoleumMeters передається реальна ширина рулону'
   );
   assert.match(
     panelSrc,
-    /motion-reduce:transition-none/,
-    'переходи вимикаються при reduced motion'
+    /if \(lengthM === null \|\| widthM === null \|\| rollWidthM === null\) return null;/,
+    'без реальної ширини рулону калькулятор не дає рекомендації (не вигадує число)'
   );
+  // Результат у форматі ревʼю: «{S} м² → {n} пог. м (рулон {width} м)».
+  assert.match(panelSrc, /м² → \{calc\.meters\} пог\. м/);
+  assert.match(panelSrc, /\(рулон \{widthLabel\} м\)/);
 });
 
 // ---- ProductCard ---------------------------------------------------------------
 
-test('product-card: ln-* картки показують {ціна} грн/м² замість ціни за пог.м', () => {
+test('product-card: ln-* картки показують «від {ціна} грн/м²» замість ціни за пог.м', () => {
   assert.match(
     cardSrc,
     /import \{ isLinoleumSlug \} from '@\/app\/lib\/domains'/,
     'гейт домену — з domains.ts'
+  );
+  assert.match(
+    cardSrc,
+    /const isLinoleum = isLinoleumSlug\(product\.slug\)/,
+    'гейт обчислюється один раз (ціна грн/м² І кнопка)'
   );
   assert.match(
     cardSrc,
@@ -225,19 +382,39 @@ test('product-card: ln-* картки показують {ціна} грн/м² 
   );
   assert.match(
     cardSrc,
-    /const priceSqm = isLinoleumSlug\(product\.slug\)\s*\?\s*extractPricePerSqm\(product\.specifications\)\s*:\s*null/,
+    /const priceSqm = isLinoleum\s*\?\s*extractPricePerSqm\(product\.specifications\)\s*:\s*null/,
     'грн/м² тільки для ln-* і тільки з реальної специфікації'
   );
   // The m² branch must come FIRST (replaces the running-meter price), and
-  // the card data carries the optional specifications field.
+  // the card data carries the optional specifications field. C3: «від» —
+  // після консолідації специфікація несе ДИЗАЙН-МІНІМУМ (одна «Ціна за м²»
+  // = MIN по ширинах, C2), тож це стартова ціна дизайну, не фінальна.
   assert.match(
     cardSrc,
-    /\{priceSqm \? \([\s\S]*?\{priceSqm\} грн\/м²[\s\S]*?\) : hasDiscount \? \(/,
-    'грн/м² — головна ціна ln-картки, інші домени без змін'
+    /\{priceSqm \? \([\s\S]*?від \{priceSqm\} грн\/м²[\s\S]*?\) : hasDiscount \? \(/,
+    '«від {MIN} грн/м²» — головна ціна ln-картки, інші домени без змін'
   );
   assert.match(
     cardSrc,
     /specifications\?: \{ name: string; value: string \}\[\] \| null;/,
     'ProductCardData несе опціональну specifications'
+  );
+});
+
+test('product-card: у ln-* карток НЕМАЄ «У кошик» — Link «Обрати метраж» на PDP', () => {
+  // REGRESSION (ревʼю власника 2026-09-17): картка показує 500 грн/м², а
+  // «У кошик» додавав 1 ПОГОННИЙ метр (напр. 1250 грн) — покупець бачив
+  // одну ціну, а кошик отримував іншу. ln-* з сітки веде на PDP, де
+  // рахується метраж і обирається ширина; не-ln-* домени не змінені.
+  assert.match(
+    cardSrc,
+    /\{isLinoleum \? \(\s*<Link\s+href=\{`\/product\/\$\{product\.slug\}`\}[\s\S]*?Обрати метраж[\s\S]*?\) : \(\s*<CardAddToCartButton/,
+    'ln-* — лінк «Обрати метраж» на PDP, інші домени — штатну кнопку'
+  );
+  assert.match(cardSrc, /Обрати метраж/);
+  assert.equal(
+    (cardSrc.match(/<CardAddToCartButton/g) ?? []).length,
+    1,
+    'add-to-cart з сітки лишається тільки не-ln-*'
   );
 });

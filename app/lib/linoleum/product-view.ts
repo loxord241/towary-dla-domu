@@ -11,9 +11,10 @@
  *     fallback (running-meter price) instead of inventing a number.
  *
  *   - calcLinoleumMeters: room length × width + default +10 % waste,
- *     ceil to WHOLE metres — the storefront sells integer metres 1–99
- *     (owner plan 2026-09-17; the штатный integer cart path already
- *     enforces 1..MAX_ITEM_QUANTITY).
+ *     DIVIDED BY the roll width (widthM — required, one of
+ *     LINOLEUM_WIDTHS_M), ceil to WHOLE running metres — the storefront
+ *     sells integer metres 1–99 (owner plan 2026-09-17; the штатный
+ *     integer cart path already enforces 1..MAX_ITEM_QUANTITY).
  *
  * Length arithmetic runs in INTEGER centimetres (same discipline as
  * app/lib/wallpapers/roll-math.ts): users type ≤2 decimals, so cm inputs
@@ -27,6 +28,12 @@
  */
 
 import { PRICE_SQM_SPEC_NAME, WIDTH_SPEC_NAME } from './import-plan.ts';
+import { LINOLEUM_WIDTHS_M } from './parse.ts';
+
+/** Real roll widths (parse.ts grid) for an EXACT Set lookup — every member
+ * is exactly representable in binary floating point, so no epsilon needed
+ * (same trick as parse.ts WIDTH_SET). */
+const WIDTH_SET: ReadonlySet<number> = new Set<number>(LINOLEUM_WIDTHS_M);
 
 /** One supplier characteristics entry (products.specifications jsonb). */
 export interface SpecEntry {
@@ -55,12 +62,22 @@ export interface LinoleumMeterInput {
   roomLengthM: number;
   /** Room width, metres, > 0. */
   roomWidthM: number;
+  /**
+   * Roll width, metres — REQUIRED and STRICTLY one of LINOLEUM_WIDTHS_M
+   * (parse.ts grid 1.5|2|2.5|3|3.5|4). Bug fix 2026-09-17 (owner review):
+   * running metres = (room area + waste) / roll width — the pre-fix version
+   * ignored the width and returned the room area WITH waste as «пог. м»
+   * (a 22 м² room on a 2,5 м roll showed 22 instead of 9 running metres).
+   * Anything outside the grid (broken «Ширина» specification) → null: no
+   * invented recommendation.
+   */
+  widthM: number;
   /** Cutting/pattern waste, whole percent, ≥ 0. Default 10. */
   wastePercent?: number;
 }
 
 export interface LinoleumMeterCalculation {
-  /** Whole metres to order (area + waste, ceil), or null when impossible. */
+  /** Whole running metres to order, or null when impossible. */
   meters: number | null;
 }
 
@@ -69,9 +86,10 @@ const SQM_IN_SQCM = CM_PER_M * CM_PER_M; // 10 000 см² у м²
 export const DEFAULT_WASTE_PERCENT = 10;
 
 /**
- * Total function: never throws. Non-finite / non-positive dimensions or a
- * negative waste percent degrade to `{ meters: null }` so the caller renders
- * a neutral state instead of a wrong recommendation.
+ * Total function: never throws. Non-finite / non-positive dimensions, a
+ * negative waste percent or a roll width outside LINOLEUM_WIDTHS_M degrade
+ * to `{ meters: null }` so the caller renders a neutral state instead of a
+ * wrong recommendation.
  */
 export function calcLinoleumMeters(
   input: LinoleumMeterInput
@@ -81,20 +99,30 @@ export function calcLinoleumMeters(
   if (
     !Number.isFinite(input.roomLengthM) ||
     !Number.isFinite(input.roomWidthM) ||
+    !Number.isFinite(input.widthM) ||
     !Number.isFinite(wastePercent) ||
-    wastePercent < 0
+    wastePercent < 0 ||
+    input.widthM <= 0 ||
+    // Точне порівняння: усі члени сітки точно представлені в binary float.
+    !WIDTH_SET.has(input.widthM)
   ) {
     return { meters: null };
   }
 
   const lengthCm = Math.round(input.roomLengthM * CM_PER_M);
   const widthCm = Math.round(input.roomWidthM * CM_PER_M);
-  if (lengthCm <= 0 || widthCm <= 0) return { meters: null };
+  const rollWidthCm = Math.round(input.widthM * CM_PER_M);
+  if (lengthCm <= 0 || widthCm <= 0 || rollWidthCm <= 0) {
+    return { meters: null };
+  }
 
-  // Площа (см²) × (100 + запас)% — цілочисельно; стеля в метри однією
-  // ділю на 10 000 (см² → м²). Числа побутових кімнат (≤ ~10⁸ см² × 200)
-  // залишаються точними doubles.
+  // Погонні метри = (площа з запасом) / (ширина рулону). У сантиметрах:
+  // площа (см²) × (100 + запас) — цілочисельно; дільник
+  // SQM_IN_SQCM × rollWidthCm = 10 000 (см² → м²) × ширина (см), при цьому
+  // приховані ÷100 відсотка запасу та ×100 переводу ширини см→м скорочуються.
+  // Стеля — ОДНА, у цілі погонні метри. Числа побутових кімнат
+  // (≤ ~10⁸ см² × 200) та дільник (≤ 4×10⁶) — точні doubles.
   const areaSqCm = lengthCm * widthCm;
   const withWasteSqCm = areaSqCm * (100 + wastePercent);
-  return { meters: Math.ceil(withWasteSqCm / (SQM_IN_SQCM * 100)) };
+  return { meters: Math.ceil(withWasteSqCm / (SQM_IN_SQCM * rollWidthCm)) };
 }

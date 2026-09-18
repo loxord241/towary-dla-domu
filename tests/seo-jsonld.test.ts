@@ -17,6 +17,7 @@ import {
   buildProductBreadcrumbJsonLd,
   buildCatalogBreadcrumbJsonLd,
   buildCategoryChain,
+  buildLinoleumBreadcrumbJsonLd,
   buildOrganizationJsonLd,
   serializeJsonLd,
 } from '../app/lib/schema-org.ts';
@@ -422,6 +423,33 @@ test('JSONLD: catalog breadcrumb without category keeps two honest levels', () =
     items.map((i) => i.name),
     ['Головна', 'Каталог']
   );
+});
+
+// ---- linoleum hub breadcrumb (owner review fix, 2026-09-17)
+
+test('JSONLD: linoleum hub breadcrumb emits Головна → Лінолеум on /linoleum', () => {
+  const d = buildLinoleumBreadcrumbJsonLd(SITE);
+  assert.equal(d['@type'], 'BreadcrumbList');
+  const items = d.itemListElement as {
+    position: number;
+    name: string;
+    item: string;
+  }[];
+  assert.deepEqual(
+    items.map((i) => i.name),
+    ['Головна', 'Лінолеум']
+  );
+  assert.deepEqual(
+    items.map((i) => i.position),
+    [1, 2]
+  );
+  assert.ok(items[1] !== undefined);
+  assert.equal(items[1].item, `${SITE}/linoleum`);
+  // Trailing-slash siteUrl is normalized, same as the other builders.
+  const slashed = buildLinoleumBreadcrumbJsonLd(`${SITE}/`) as {
+    itemListElement: { item: string }[];
+  };
+  assert.equal(slashed.itemListElement[1]?.item, `${SITE}/linoleum`);
 });
 
 // ---- P2 (2026-09-12): Organization/LocalBusiness graph in the layout -------

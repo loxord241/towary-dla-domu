@@ -7,11 +7,16 @@
  *     written by the batch-2 importer (import-plan.ts buildSpecifications:
  *     «Ціна за м²» = formatPriceSqmValue canon «410,00», «Ширина» =
  *     formatWidthM canon «1,5»);
- *   - calcLinoleumMeters: room area + default +10 % waste, ceil to WHOLE
- *     metres (the purchase path sells integer metres 1–99, owner plan
- *     2026-09-17). Integer-centimetre arithmetic like roll-math.ts: IEEE-754
- *     binary fractions make ceil treacherous near integers, so the area is
- *     computed in cm² before the waste factor is applied.
+ *   - calcLinoleumMeters: room area + default +10 % waste DIVIDED BY the
+ *     roll width (widthM is REQUIRED, strictly one of LINOLEUM_WIDTHS_M
+ *     from parse.ts), ceil to WHOLE running metres (the purchase path sells
+ *     integer metres 1–99, owner plan 2026-09-17). Regression 2026-09-17
+ *     (owner review): the pre-fix version returned the room area WITH waste
+ *     as «пог. м» and ignored the roll width — a 22 м² room on a 2,5 м roll
+ *     showed 22 instead of 9 running metres. Integer-centimetre arithmetic
+ *     like roll-math.ts: IEEE-754 binary fractions make ceil treacherous
+ *     near integers, so the area is computed in cm² before the waste factor
+ *     is applied.
  *
  * Run: npm test
  */
@@ -76,78 +81,161 @@ test('extractWidthLabel: читає «Ширина» (uk-формат formatWidt
 });
 
 // ---- meter math ---------------------------------------------------------------
+// REGRESSION (ревʼю власника 2026-09-17): калькулятор ігнорував ШИРИНУ
+// РУЛОНУ — 22 м² кімнати при рулоні 2,5 м показував як «22 пог. м»
+// (переплата у ширину рулону), а треба 22 / 2,5 = 8,8 → 9 пог. м.
+// Погонні метри = (площа + запас) / ширина рулону; widthM — обовʼязковий.
 
-test('calcLinoleumMeters: звичайна кімната 5×4 = 20 м² + 10% = 22 м', () => {
+test('calcLinoleumMeters: 5×4, +10%, ширина 2,5 → 9 пог. м (22/2,5=8,8→9)', () => {
   assert.deepEqual(
-    mod.calcLinoleumMeters({ roomLengthM: 5, roomWidthM: 4 }),
-    { meters: 22 }
+    mod.calcLinoleumMeters({ roomLengthM: 5, roomWidthM: 4, widthM: 2.5 }),
+    { meters: 9 }
   );
 });
 
-test('calcLinoleumMeters: дрібні кімнати округлюються вгору до цілого метра', () => {
-  // 3×3 = 9 м² × 1.1 = 9.9 → 10
-  assert.deepEqual(mod.calcLinoleumMeters({ roomLengthM: 3, roomWidthM: 3 }), {
-    meters: 10,
-  });
-  // 0.5×0.4 = 0.2 м² × 1.1 = 0.22 → 1 (мінімум покупки — 1 м)
+test('calcLinoleumMeters: та сама кімната, ширина 4 → 6 пог. м (22/4=5,5→6)', () => {
   assert.deepEqual(
-    mod.calcLinoleumMeters({ roomLengthM: 0.5, roomWidthM: 0.4 }),
+    mod.calcLinoleumMeters({ roomLengthM: 5, roomWidthM: 4, widthM: 4 }),
+    { meters: 6 }
+  );
+});
+
+test('calcLinoleumMeters: без ширини рулону → meters: null (не вигадуємо число)', () => {
+  assert.deepEqual(
+    mod.calcLinoleumMeters({
+      roomLengthM: 5,
+      roomWidthM: 4,
+      widthM: undefined as unknown as number,
+    }),
+    { meters: null }
+  );
+});
+
+test('calcLinoleumMeters: точний поділ не додає метр (22/2 = 11), дрібний — округлює вгору', () => {
+  assert.deepEqual(
+    mod.calcLinoleumMeters({ roomLengthM: 5, roomWidthM: 4, widthM: 2 }),
+    { meters: 11 }
+  );
+  // 3×3 = 9 м² × 1.1 = 9.9 м² / 2.5 = 3.96 → 4
+  assert.deepEqual(
+    mod.calcLinoleumMeters({ roomLengthM: 3, roomWidthM: 3, widthM: 2.5 }),
+    { meters: 4 }
+  );
+  // 0.5×0.4 = 0.2 м² × 1.1 = 0.22 м² / 1.5 ≈ 0.15 → 1 (мінімум покупки — 1 м)
+  assert.deepEqual(
+    mod.calcLinoleumMeters({ roomLengthM: 0.5, roomWidthM: 0.4, widthM: 1.5 }),
     { meters: 1 }
   );
 });
 
 test('calcLinoleumMeters: binary-fraction пастка — цілочисельні см, не float', () => {
-  // 2×2.55 = 5.1 м² × 1.1 = 5.61 → ceil 6. Наивний float-шлях через
-  // проміжні binary дроби може дати 5.6000000000000005 → той самий ceil,
-  // але 3.3×2.9 = 9.57 × 1.1 = 10.527 — перевіряємо саме стабільність
-  // результату на сантиметровій арифметиці (контракт модуля).
+  // 2×2.55 = 5.1 м² × 1.1 = 5.61 м² / 2.5 = 2.244 → 3; наївний float-шлях
+  // через проміжні binary дроби не має дійти до ceil (контракт модуля).
   assert.deepEqual(
-    mod.calcLinoleumMeters({ roomLengthM: 2, roomWidthM: 2.55 }),
-    { meters: 6 }
+    mod.calcLinoleumMeters({ roomLengthM: 2, roomWidthM: 2.55, widthM: 2.5 }),
+    { meters: 3 }
   );
+  // 3.3×2.9 = 9.57 м² × 1.1 = 10.527 м² / 2.5 = 4.2108 → 5
   assert.deepEqual(
-    mod.calcLinoleumMeters({ roomLengthM: 3.3, roomWidthM: 2.9 }),
-    { meters: 11 }
+    mod.calcLinoleumMeters({ roomLengthM: 3.3, roomWidthM: 2.9, widthM: 2.5 }),
+    { meters: 5 }
   );
 });
 
 test('calcLinoleumMeters: wastePercent — 0% без запасу, 25% округлюється вгору', () => {
+  // 20 м² / 2.5 = рівно 8
   assert.deepEqual(
-    mod.calcLinoleumMeters({ roomLengthM: 5, roomWidthM: 4, wastePercent: 0 }),
-    { meters: 20 }
+    mod.calcLinoleumMeters({
+      roomLengthM: 5,
+      roomWidthM: 4,
+      widthM: 2.5,
+      wastePercent: 0,
+    }),
+    { meters: 8 }
   );
-  // 4×4 = 16 м² × 1.25 = 20 → рівно 20
+  // 4×4 = 16 м² × 1.25 = 20 м² / 2.5 = рівно 8
   assert.deepEqual(
-    mod.calcLinoleumMeters({ roomLengthM: 4, roomWidthM: 4, wastePercent: 25 }),
-    { meters: 20 }
+    mod.calcLinoleumMeters({
+      roomLengthM: 4,
+      roomWidthM: 4,
+      widthM: 2.5,
+      wastePercent: 25,
+    }),
+    { meters: 8 }
   );
-  // 5×3 = 15 м² × 1.25 = 18.75 → 19
+  // 5×3 = 15 м² × 1.25 = 18.75 м² / 2.5 = 7.5 → 8
   assert.deepEqual(
-    mod.calcLinoleumMeters({ roomLengthM: 5, roomWidthM: 3, wastePercent: 25 }),
-    { meters: 19 }
+    mod.calcLinoleumMeters({
+      roomLengthM: 5,
+      roomWidthM: 3,
+      widthM: 2.5,
+      wastePercent: 25,
+    }),
+    { meters: 8 }
   );
 });
 
-test('calcLinoleumMeters: неможливий вхід (0, відʼємне, не-число) → meters: null', () => {
-  assert.deepEqual(mod.calcLinoleumMeters({ roomLengthM: 0, roomWidthM: 4 }), {
-    meters: null,
-  });
-  assert.deepEqual(mod.calcLinoleumMeters({ roomLengthM: 5, roomWidthM: -1 }), {
-    meters: null,
-  });
+test('calcLinoleumMeters: ширина поза сіткою LINOLEUM_WIDTHS_M / ≤0 → meters: null', () => {
+  // 1.7 м не існує в продуктовій сітці (1.5|2|2.5|3|3.5|4) — зламаний
+  // імпорт/специфікація, а не привід для вигаданої рекомендації.
   assert.deepEqual(
-    mod.calcLinoleumMeters({ roomLengthM: Number.NaN, roomWidthM: 4 }),
+    mod.calcLinoleumMeters({ roomLengthM: 5, roomWidthM: 4, widthM: 1.7 }),
+    { meters: null }
+  );
+  assert.deepEqual(
+    mod.calcLinoleumMeters({ roomLengthM: 5, roomWidthM: 4, widthM: 0 }),
+    { meters: null }
+  );
+  assert.deepEqual(
+    mod.calcLinoleumMeters({ roomLengthM: 5, roomWidthM: 4, widthM: -2.5 }),
+    { meters: null }
+  );
+  assert.deepEqual(
+    mod.calcLinoleumMeters({
+      roomLengthM: 5,
+      roomWidthM: 4,
+      widthM: Number.NaN,
+    }),
+    { meters: null }
+  );
+  assert.deepEqual(
+    mod.calcLinoleumMeters({
+      roomLengthM: 5,
+      roomWidthM: 4,
+      widthM: Number.POSITIVE_INFINITY,
+    }),
+    { meters: null }
+  );
+});
+
+test('calcLinoleumMeters: неможливий вхід кімнати (0, відʼємне, не-число) → meters: null', () => {
+  assert.deepEqual(
+    mod.calcLinoleumMeters({ roomLengthM: 0, roomWidthM: 4, widthM: 2.5 }),
+    { meters: null }
+  );
+  assert.deepEqual(
+    mod.calcLinoleumMeters({ roomLengthM: 5, roomWidthM: -1, widthM: 2.5 }),
+    { meters: null }
+  );
+  assert.deepEqual(
+    mod.calcLinoleumMeters({ roomLengthM: Number.NaN, roomWidthM: 4, widthM: 2.5 }),
     { meters: null }
   );
   assert.deepEqual(
     mod.calcLinoleumMeters({
       roomLengthM: Number.POSITIVE_INFINITY,
       roomWidthM: 4,
+      widthM: 2.5,
     }),
     { meters: null }
   );
   assert.deepEqual(
-    mod.calcLinoleumMeters({ roomLengthM: 5, roomWidthM: 4, wastePercent: -5 }),
+    mod.calcLinoleumMeters({
+      roomLengthM: 5,
+      roomWidthM: 4,
+      widthM: 2.5,
+      wastePercent: -5,
+    }),
     { meters: null }
   );
 });
@@ -165,4 +253,8 @@ test('product-view: pure-модуль без React/Next/DB, реюз назв с
     /from ['"]\.\/import-plan\.ts['"]/,
     'назви записів — з import-plan.ts, не нові літерали'
   );
+  // Сітка ширин рулону — з parse.ts (LINOLEUM_WIDTHS_M), не новий літерал:
+  // calc відсікає ширину поза реальною продуктовою сіткою.
+  assert.match(src, /LINOLEUM_WIDTHS_M/);
+  assert.match(src, /from ['"]\.\/parse\.ts['"]/);
 });

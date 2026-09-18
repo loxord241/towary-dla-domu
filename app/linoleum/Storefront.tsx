@@ -23,10 +23,11 @@ import LinoleumSortSelect from './SortSelect'
  *    noindex,follow metadata (lib/seo.ts buildLinoleumMetadata).
  *
  * Markup and data flow are IDENTICAL to the /oboi storefront (OboiStorefront)
- * with two v1 differences: no wallpaper-FAQ copy exists for linoleum (the
- * showFaq gate has no counterpart yet) and the BreadcrumbList JSON-LD is
- * not emitted — the schema-org builder module is owned by a parallel task
- * (L5); the visible trail below already mirrors the /oboi levels.
+ * with one v1 difference: no wallpaper-FAQ copy exists for linoleum (the
+ * showFaq gate has no counterpart yet). The BreadcrumbList JSON-LD is
+ * emitted by the ISR page (app/linoleum/page.tsx) through ProductJsonLd —
+ * owner review fix 2026-09-17, /brands pattern; the visible trail below
+ * already mirrors the /oboi levels.
  */
 
 /** Shared geometry with the /catalog pagination (P3-R2 pattern). */

@@ -128,6 +128,30 @@ test('LINOLEUM HUB: storefront — one h1 «Лінолеум», width chips, gri
   assert.match(shelf, /EmptyState/, 'empty state like /oboi');
 });
 
+test('LINOLEUM HUB: BreadcrumbList JSON-LD on the ISR page (Головна → Лінолеум)', () => {
+  // Owner review fix 2026-09-17: the hub had NO BreadcrumbList while /oboi
+  // and /brands carry one. Rendered on the indexable pure view through the
+  // sanctioned ProductJsonLd sink (same pattern as app/brands/page.tsx);
+  // the noindex filtered twin stays free of it (scope: pure view only).
+  const page = read('app/linoleum/page.tsx');
+  assert.match(
+    page,
+    /import ProductJsonLd from '@\/app\/components\/ProductJsonLd'/
+  );
+  assert.match(
+    page,
+    /import \{ buildLinoleumBreadcrumbJsonLd \} from '@\/app\/lib\/schema-org'/
+  );
+  assert.match(page, /buildLinoleumBreadcrumbJsonLd\(siteUrl\)/);
+  assert.match(
+    page,
+    /<ProductJsonLd data=\{breadcrumbJsonLd\} \/>/,
+    'рендеринг через санкціонований JSON-LD sink, без нових HTML-сінків'
+  );
+  // The builder unit lives with the other breadcrumb builders
+  // (tests/seo-jsonld.test.ts) — here only the mount pin.
+});
+
 test('LINOLEUM HUB: sort select rides the document-navigation fix', () => {
   const sel = read('app/linoleum/SortSelect.tsx');
   assert.match(sel, /isSortDocumentNavigation\('\/linoleum'\)/,

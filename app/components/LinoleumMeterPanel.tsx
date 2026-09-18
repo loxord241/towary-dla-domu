@@ -8,17 +8,50 @@ import { trackEvent } from '@/app/lib/track-event';
 import {
   calcLinoleumMeters,
   DEFAULT_WASTE_PERCENT,
+  extractPricePerSqm,
+  extractWidthLabel,
 } from '@/app/lib/linoleum/product-view';
 import { formatPrice } from '@/app/lib/format';
 
-interface LinoleumMeterPanelProps {
-  productId: string;
-  /** products.price = грн за ПОГОННЫЙ метр (ln-* contract, import-plan.ts). */
+/**
+ * One selectable roll width — a product_variants row of a consolidated ln-*
+ * product (owner plan C3 2026-09-18): the product is ONE design, the widths
+ * are its variants (import-plan.ts). name = formatWidthM canon («1,5»/«2»),
+ * price = грн за ПОГОННЫЙ метр of THAT width, stockQuantity = free METRES.
+ */
+export interface LinoleumWidthOption {
+  id: string;
+  name: string;
   price: number;
-  currency: string;
-  /** Free stock in METRES: for ln-* stock_quantity = qtyM (import-plan.ts). */
   stockQuantity: number;
   availabilityStatus: string;
+}
+
+interface LinoleumMeterPanelProps {
+  productId: string;
+  /**
+   * Fallback price (грн за погонный метр): used only while the product has
+   * NO width variants (0 вариантов — не должно после C2; honest fallback,
+   * addItem с variantId=null — поведение до C3).
+   */
+  price: number;
+  currency: string;
+  /** Fallback free stock in METRES (products.stock_quantity) — no variants. */
+  stockQuantity: number;
+  availabilityStatus: string;
+  /**
+   * products.specifications — fallback roll width source for the calculator
+   * («Ширина», uk-канон formatWidthM «2,5») and the «Ціна за м²» caption.
+   * With variants the SELECTED variant's name IS the roll width (same
+   * canon), so the spec read only backs the variant-less fallback.
+   */
+  specifications?: { name: string; value: string }[] | null;
+  /**
+   * Width variants for the chips — is_active product_variants mapped by the
+   * page (RLS final_001 already returns only is_active rows; the page filter
+   * is defense-in-depth). Empty/absent → the variant-less fallback above.
+   */
+  variants?: LinoleumWidthOption[];
 }
 
 /** Accepts "5" and "5,5" (some keyboards type a comma into inputs). */
@@ -28,20 +61,60 @@ function parsePositive(value: string): number | null {
   return n;
 }
 
+/** Numeric width behind a variant name (uk comma canon «1,5»); null when the
+ * name is not a width — such chips sort last and never crash the panel. */
+function widthValueOf(name: string): number | null {
+  return parsePositive(name);
+}
+
+/** Chips render narrowest-first, so the DEFAULT («перший in-stock або
+ * найвужчий», owner plan C3) is deterministic: the first in-stock chip IS
+ * the narrowest in-stock width. uk-«1,5» compares NUMERICALLY, never
+ * lexically («10» would sort before «2» as text). */
+function sortWidthOptions(
+  options: LinoleumWidthOption[]
+): LinoleumWidthOption[] {
+  return [...options].sort((a, b) => {
+    const wa = widthValueOf(a.name);
+    const wb = widthValueOf(b.name);
+    if (wa === null && wb === null) return 0;
+    if (wa === null) return 1;
+    if (wb === null) return -1;
+    return wa - wb;
+  });
+}
+
+/** Default width id: the NARROWEST (first in the sorted list) in-stock chip;
+ * every width exhausted → the narrowest overall (the panel then shows the
+ * «Цієї ширини немає в наявності» state, chips stay switchable). */
+function pickDefaultWidthId(sorted: LinoleumWidthOption[]): string | null {
+  const firstAvailable = sorted.find(
+    (o) => o.stockQuantity > 0 && o.availabilityStatus !== 'out_of_stock'
+  );
+  return (firstAvailable ?? sorted[0])?.id ?? null;
+}
+
 const intUk = new Intl.NumberFormat('uk-UA', { maximumFractionDigits: 2 });
 
 /**
  * Buy-box for ln-* products (linoleum vertical, batch 3, owner plan
- * 2026-09-17): the customer buys WHOLE METRES of a running good, so the
- * quantity label is «Метраж (м)», the unit price (грн/пог.м) is shown as a
- * hint and the line total updates live: «{qty} м × {price} = {итого} грн».
- * The integer cart path is reused unchanged (addItem with variantId=null,
- * 1..MAX_ITEM_QUANTITY — place_order() stays the real boundary).
+ * 2026-09-17; width selection — C3, owner plan 2026-09-18): the customer
+ * buys WHOLE METRES of a running good AT A CHOSEN WIDTH. Width chips are
+ * built from the product's product_variants (name = formatWidthM, price =
+ * грн/пог.м of that width, stock = metres); the headline price and the
+ * «{qty} м × {price} = {итого} грн» line update LIVE on chip switch, and
+ * addItem carries the SELECTED variantId — place_order() (variant path)
+ * stays the real boundary: it decrements variant stock at variant price.
+ * 0 variants → the honest pre-C3 fallback: single running-meter price,
+ * product-level stock, addItem(productId, null, qty).
  *
  * Below the buy-box: the room calculator (clone of the wallpaper
- * RollCalculator UX) — length × width + default +10 % waste → whole metres,
- * one click «Підставити в метраж» fills the quantity field. Math lives in
- * the pure, unit-tested app/lib/linoleum/product-view.ts.
+ * RollCalculator UX) — length × width + default +10 % waste, divided by the
+ * SELECTED variant's width (fallback: the «Ширина» specification) → whole
+ * running metres, one click «Підставити в метраж» fills the quantity field.
+ * Math lives in the pure, unit-tested app/lib/linoleum/product-view.ts;
+ * without a real width the calculator renders no estimate at all (no
+ * invented numbers).
  */
 export default function LinoleumMeterPanel({
   productId,
@@ -49,8 +122,25 @@ export default function LinoleumMeterPanel({
   currency,
   stockQuantity,
   availabilityStatus,
+  specifications,
+  variants,
 }: LinoleumMeterPanelProps) {
   const { addItem } = useCart();
+
+  const widthOptions = useMemo(
+    () => sortWidthOptions(variants ?? []),
+    [variants]
+  );
+  const defaultWidthId = useMemo(
+    () => pickDefaultWidthId(widthOptions),
+    [widthOptions]
+  );
+  // null = «дефолт ще не перевизначено кліком» — selectedWidthId падає на
+  // дефолт (найвужча ширина в наявності), а не зберігає зайвий стан.
+  const [pickedWidthId, setPickedWidthId] = useState<string | null>(null);
+  const selectedWidthId = pickedWidthId ?? defaultWidthId;
+  const selectedVariant =
+    widthOptions.find((o) => o.id === selectedWidthId) ?? null;
 
   const [meters, setMeters] = useState(1);
   const [length, setLength] = useState('');
@@ -66,28 +156,54 @@ export default function LinoleumMeterPanel({
     setCartNotice(false);
   };
 
-  // stock_quantity for ln-* carries METRES — clamp the purchasable meterage
-  // to it, never above MAX_ITEM_QUANTITY (place_order re-checks anyway).
+  // Цена/сток ВЫБРАННОЙ ширины; без вариантов — продукт-фолбэк (до-C3).
+  const effectivePrice = selectedVariant ? selectedVariant.price : price;
+  const effectiveStock = selectedVariant
+    ? selectedVariant.stockQuantity
+    : stockQuantity;
+
+  // Исчерпание ВЫБРАННОЙ ширины ≠ исчерпание продукта: другие ширины
+  // остаются покупабельными, эта — с явным сообщением вместо кнопки.
+  const widthUnavailable =
+    selectedVariant !== null &&
+    (selectedVariant.stockQuantity <= 0 ||
+      selectedVariant.availabilityStatus === 'out_of_stock');
+
+  // stock for ln-* carries METRES — clamp the purchasable meterage to the
+  // selected width's stock, never above MAX_ITEM_QUANTITY (place_order
+  // re-checks anyway).
   const maxMeters = Math.max(
     1,
-    Math.min(stockQuantity || MAX_ITEM_QUANTITY, MAX_ITEM_QUANTITY)
+    Math.min(effectiveStock || MAX_ITEM_QUANTITY, MAX_ITEM_QUANTITY)
   );
   const outOfStock = availabilityStatus === 'out_of_stock' || stockQuantity <= 0;
 
   const clampMeters = (n: number): number =>
     Number.isInteger(n) ? Math.max(1, Math.min(n, maxMeters)) : 1;
 
+  // Ширина рулону для калькулятора: ПРИОРИТЕТ — імʼя ВИБРАНОГО варіанта
+  // (formatWidthM «1,5» — той самий канон, що й у спеки; після C2 спеки
+  // «Ширина» кілька, і find() по них дав би завжди першу). Fallback (0
+  // варіантів) — перша «Ширина» зі специфікацій. Поза сіткою
+  // LINOLEUM_WIDTHS_M валідує сам calc (→ meters: null).
+  const rollWidthM = useMemo(() => {
+    if (selectedVariant) return parsePositive(selectedVariant.name);
+    const label = extractWidthLabel(specifications);
+    return label === null ? null : parsePositive(label);
+  }, [selectedVariant, specifications]);
+
   // null until both room dimensions are positive — no premature estimate.
   const calc = useMemo(() => {
     const lengthM = parsePositive(length);
     const widthM = parsePositive(width);
-    if (lengthM === null || widthM === null) return null;
+    if (lengthM === null || widthM === null || rollWidthM === null) return null;
     return calcLinoleumMeters({
       roomLengthM: lengthM,
       roomWidthM: widthM,
       wastePercent: DEFAULT_WASTE_PERCENT,
+      widthM: rollWidthM,
     });
-  }, [length, width]);
+  }, [length, width, rollWidthM]);
 
   if (outOfStock) {
     return (
@@ -101,6 +217,18 @@ export default function LinoleumMeterPanel({
     );
   }
 
+  const selectWidth = (option: LinoleumWidthOption) => {
+    if (option.id === selectedWidthId) return;
+    const optionMax = Math.max(
+      1,
+      Math.min(option.stockQuantity || MAX_ITEM_QUANTITY, MAX_ITEM_QUANTITY)
+    );
+    setPickedWidthId(option.id);
+    // Метраж покупця зберігаємо, але піджимаємо під залишок нової ширини.
+    setMeters((m) => (Number.isInteger(m) ? Math.max(1, Math.min(m, optionMax)) : 1));
+    resetFeedback();
+  };
+
   const handleAdd = () => {
     const qty = clampMeters(meters);
     // addItem() silently rejects quantities above MAX_ITEM_QUANTITY —
@@ -109,7 +237,9 @@ export default function LinoleumMeterPanel({
       setMeterNotice(true);
       return;
     }
-    const addedOk = addItem(productId, null, qty);
+    // C3: метри додаються для ОБРАНОЇ ширини (place_order декрементить сток
+    // варіанта за ціною варіанта); 0 варіантів → variantId=null (фолбэк).
+    const addedOk = addItem(productId, selectedVariant ? selectedVariant.id : null, qty);
     if (!addedOk) {
       setCartNotice(true);
       return;
@@ -125,79 +255,139 @@ export default function LinoleumMeterPanel({
     resetFeedback();
   };
 
-  const unitPrice = formatPrice(price, currency);
+  const unitPrice = formatPrice(effectivePrice, currency);
+  const priceSqm = extractPricePerSqm(specifications);
+  const widthLabel = selectedVariant
+    ? selectedVariant.name
+    : extractWidthLabel(specifications);
 
   return (
     <div className="space-y-3">
-      <label className="block">
-        <span className="mb-1 block text-sm font-medium text-gray-700">
-          Метраж (м):
-        </span>
-        <div className="flex items-center gap-3">
-          <input
-            type="number"
-            min={1}
-            max={maxMeters}
-            step={1}
-            value={meters}
-            onChange={(e) => {
-              const n = Number(e.target.value);
-              setMeters(Number.isInteger(n) ? n : 1);
-              resetFeedback();
-            }}
-            onBlur={() => setMeters(clampMeters(meters))}
-            className="w-20 text-base min-h-[44px] border border-gray-300 rounded-md p-2"
-          />
-          <span className="text-xs text-gray-500">макс. {maxMeters} м</span>
-        </div>
-      </label>
-
-      <p className="text-xs text-gray-500">ціна: {unitPrice}/пог.м</p>
-      <p className="text-sm font-semibold text-gray-900">
-        {meters} м × {unitPrice} = {formatPrice(meters * price, currency)}
-      </p>
-
-      {added ? (
-        <div className="added-in motion-reduce:animate-none flex gap-3">
-          <Link
-            href="/cart"
-            className="flex-1 text-center bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors motion-reduce:transition-none"
+      {widthOptions.length > 0 && (
+        <div>
+          <span className="mb-1 block text-sm font-medium text-gray-700">
+            Ширина рулону:
+          </span>
+          <div
+            className="flex flex-wrap gap-2"
+            role="radiogroup"
+            aria-label="Ширина рулону"
           >
-            У кошику — перейти
-          </Link>
-          <button
-            type="button"
-            onClick={() => setAdded(false)}
-            className="px-4 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-          >
-            Ще
-          </button>
+            {widthOptions.map((option) => {
+              const selected = option.id === selectedWidthId;
+              const soldOut =
+                option.stockQuantity <= 0 ||
+                option.availabilityStatus === 'out_of_stock';
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => selectWidth(option)}
+                  className={`min-h-[44px] rounded-md border px-3 text-sm font-semibold transition-colors motion-reduce:transition-none ${
+                    selected
+                      ? 'border-blue-600 bg-blue-600 text-white'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {option.name} м{soldOut ? ' · немає' : ''}
+                </button>
+              );
+            })}
+          </div>
         </div>
+      )}
+
+      {/* Заголовок ціни ОБРАНОЇ ширини (план C3): «{variant.price} грн/пог.м»
+          + підпис «{price_sqm} грн/м²» — змінюються наживо при виборі чіпа. */}
+      <div>
+        <p className="text-2xl font-extrabold tracking-tight text-blue-700">
+          {unitPrice}/пог.м
+        </p>
+        {priceSqm && (
+          <p className="text-xs text-gray-500">{priceSqm} грн/м²</p>
+        )}
+      </div>
+
+      {widthUnavailable ? (
+        <p className="text-sm text-red-600" role="alert">
+          Цієї ширини немає в наявності — оберіть іншу ширину рулону.
+        </p>
       ) : (
-        <button
-          type="button"
-          onClick={handleAdd}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors motion-reduce:transition-none"
-        >
-          Додати в кошик
-        </button>
-      )}
+        <>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-gray-700">
+              Метраж (м):
+            </span>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min={1}
+                max={maxMeters}
+                step={1}
+                value={meters}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  setMeters(Number.isInteger(n) ? n : 1);
+                  resetFeedback();
+                }}
+                onBlur={() => setMeters(clampMeters(meters))}
+                className="w-20 text-base min-h-[44px] border border-gray-300 rounded-md p-2"
+              />
+              <span className="text-xs text-gray-500">макс. {maxMeters} м</span>
+            </div>
+          </label>
 
-      {meterNotice && (
-        <p className="text-sm text-red-600" role="alert">
-          Максимум {MAX_ITEM_QUANTITY} м за одну позицію кошика.
-        </p>
-      )}
-      {cartNotice && (
-        <p className="text-sm text-red-600" role="alert">
-          У кошику максимум {MAX_CART_LINES} позицій. Видаліть щось, щоб
-          додати новий товар.
-        </p>
+          <p className="text-sm font-semibold text-gray-900">
+            {meters} м × {unitPrice} = {formatPrice(meters * effectivePrice, currency)}
+          </p>
+
+          {added ? (
+            <div className="added-in motion-reduce:animate-none flex gap-3">
+              <Link
+                href="/cart"
+                className="flex-1 text-center bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors motion-reduce:transition-none"
+              >
+                У кошику — перейти
+              </Link>
+              <button
+                type="button"
+                onClick={() => setAdded(false)}
+                className="px-4 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+              >
+                Ще
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleAdd}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors motion-reduce:transition-none"
+            >
+              Додати в кошик
+            </button>
+          )}
+
+          {meterNotice && (
+            <p className="text-sm text-red-600" role="alert">
+              Максимум {MAX_ITEM_QUANTITY} м за одну позицію кошика.
+            </p>
+          )}
+          {cartNotice && (
+            <p className="text-sm text-red-600" role="alert">
+              У кошику максимум {MAX_CART_LINES} позицій. Видаліть щось, щоб
+              додати новий товар.
+            </p>
+          )}
+        </>
       )}
 
       {/* Калькулятор метражу (клон RollCalculator): довжина × ширина кімнати
-          + 10 % запасу → цілі метри, «Підставити в метраж» заповнює поле
-          кількості вище. Математика — pure product-view.calcLinoleumMeters. */}
+          + 10 % запасу, ДІЛЕННЯ на ширину ВИБРАНОГО варіанта (fallback —
+          специфікація «Ширина») → цілі погонні метри, «Підставити в метраж»
+          заповнює поле кількості вище. Математика — pure
+          product-view.calcLinoleumMeters. */}
       <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
         <h3 className="mb-3 font-semibold text-gray-900">Розрахунок метражу</h3>
 
@@ -243,16 +433,16 @@ export default function LinoleumMeterPanel({
             <p className="text-gray-700">
               Розраховано:{' '}
               <span className="text-lg font-extrabold text-blue-700">
-                {calc.meters} м
-              </span>
+                {intUk.format(
+                  Number(length.replace(',', '.')) *
+                    Number(width.replace(',', '.'))
+                )}{' '}
+                м² → {calc.meters} пог. м
+              </span>{' '}
+              (рулон {widthLabel} м)
             </p>
             <p className="mt-0.5 text-xs text-gray-500">
-              площа{' '}
-              {intUk.format(
-                Number(length.replace(',', '.')) *
-                  Number(width.replace(',', '.'))
-              )}{' '}
-              м² + {DEFAULT_WASTE_PERCENT} % запасу
+              + {DEFAULT_WASTE_PERCENT} % запасу
             </p>
             <button
               type="button"

@@ -157,6 +157,25 @@ export default async function ProductPage({
     ? extractPricePerSqm(product.specifications)
     : null
 
+  // C3 (owner plan 2026-09-18): a consolidated ln-* product is ONE design
+  // with several roll widths — product_variants rows (name = formatWidthM
+  // «1,5»/«2», price = грн/пог.м of THAT width, stock = metres). The chips,
+  // the selected-width price and the variantId live in LinoleumMeterPanel.
+  // RLS (final_001 «Enable read access to product variants») already returns
+  // only is_active variants of active products; the filter here is
+  // defense-in-depth for the chip list.
+  const linoleumWidths = isLinoleum
+    ? product.variants
+        .filter((v) => v.is_active)
+        .map((v) => ({
+          id: v.id,
+          name: v.name,
+          price: v.price,
+          stockQuantity: v.stock_quantity,
+          availabilityStatus: v.availability_status,
+        }))
+    : []
+
   // Supplementary content (perf audit Step 2 2026-08-28): reviews, summary
   // and related products depend ONLY on `product`, so they all run in ONE
   // parallel wave instead of reviews-first-then-related waterfall. Each part
@@ -350,10 +369,13 @@ export default async function ProductPage({
               {/* ln-* only (owner plan 2026-09-17): the m² price lives in the
                   «Ціна за м²» specification (importer canon «410,00») — the
                   products.price on a linoleum card is грн за погонный метр,
-                  so the badge is what a buyer actually compares. */}
+                  so the badge is what a buyer actually compares. «від»
+                  (orchestrator add-on to C3, 2026-09-18): after the C2
+                  consolidation the spec carries the design MIN across width
+                  variants — same wording as the ProductCard badge. */}
               {linoleumPriceSqm && (
                 <span className="rounded bg-blue-50 px-2 py-0.5 text-sm font-semibold text-blue-700">
-                  {linoleumPriceSqm} грн/м²
+                  від {linoleumPriceSqm} грн/м²
                 </span>
               )}
               {product.old_price && product.old_price > product.price && (
@@ -370,9 +392,12 @@ export default async function ProductPage({
 
             {/* Buy-box (owner 2026-09-15): ОДНА кнопка «Додати в кошик»,
                 одразу під ціною — на всіх екранах. ln-* (лінолеум) купують
-                цілими метрами: замість штатної кнопки — LinoleumMeterPanel
-                (метраж + ціна за пог.м + живий итог + калькулятор кімнати),
-                variantId=null, той самий integer-шлях кошика 1..99. */}
+                цілими метрами ОБРАНОЇ ширини: замість штатної кнопки —
+                LinoleumMeterPanel (чипи ширин = product_variants, ціна за
+                пог.м обраної ширини наживо, метраж 1..99, живий итог,
+                калькулятор кімнати), addItem несе variantId варіанта ширини
+                (0 варіантів → чесний fallback variantId=null), place_order
+                лишається реальною межею. */}
             {isLinoleum ? (
               <LinoleumMeterPanel
                 productId={product.id}
@@ -380,6 +405,8 @@ export default async function ProductPage({
                 currency={product.currency}
                 stockQuantity={product.stock_quantity}
                 availabilityStatus={product.availability_status}
+                specifications={product.specifications}
+                variants={linoleumWidths}
               />
             ) : (
               <AddToCartButton
@@ -543,8 +570,12 @@ export default async function ProductPage({
           <ProductSpecifications specifications={product.specifications} />
         )}
 
-        {/* Product Variants */}
-        {product.variants.length > 0 && (
+        {/* Product Variants — НЕ для ln-* (orchestrator add-on to C3,
+            2026-09-18): у консолідованій моделі варіанти ln-* — це ширини,
+            і їх уже представляють чипи LinoleumMeterPanel (з ціною та
+            покупкою); універсальний блок нижче дублював би їх. Не-ln-*
+            домени — без змін. */}
+        {!isLinoleum && product.variants.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6 mb-8">
             <h2 className="text-xl font-bold mb-4">Варіанти товару</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">

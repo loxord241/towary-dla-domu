@@ -52,14 +52,28 @@ test('SAMOVYVIZ: exactly one h1, mobile tap targets, phones, calls line', () => 
 // 2. Both points with photos (files committed, ≤200 KB each)
 // ---------------------------------------------------------------------------
 
-test('SAMOVYVIZ: both pickup points with canonical addresses', () => {
+test('SAMOVYVIZ: all three pickup points with canonical addresses', () => {
   // Same canonical forms as PICKUP_POINTS (checkout-delivery.ts whitelist;
   // wallpapers street renamed 2026-09-14: Серафимовича → Мазепи 83А).
+  // Третя точка (лінолеум, 89А) — рішення власника 2026-09-17, вона вже в
+  // чекауті (пін checkout-pickup.test.ts); сторінка мала розсинхрон «двох
+  // точок». Фото 89А ще не надійшли — картка поки текстова, без фото
+  // (пін нижче забороняє посилання на неіснуючі файли).
   assert.match(PAGE, /вул\. Гетьмана Івана Мазепи, 87А/);
   assert.match(PAGE, /вул\. Гетьмана Івана Мазепи, 83А/);
+  assert.match(PAGE, /вул\. Гетьмана Івана Мазепи, 89А/);
   assert.match(PAGE, /Побутова техніка і товари для дому/);
   assert.match(PAGE, /Шпалери/);
+  assert.match(PAGE, /Лінолеум/);
   assert.match(PAGE, /Безкоштовно/);
+  // Розсинхрон із чекаутом виправлено: три точки, лінолеум — 89А.
+  assert.match(PAGE, /одній із трьох точок видачі/);
+  assert.match(PAGE, /лінолеум — на Гетьмана Івана Мазепи 89А/);
+  assert.doesNotMatch(PAGE, /двох точок/, 'старе «двох точок» не повертається');
+  // Фото для 89А ще НЕ надійшли (очікуються): жодних посилань на
+  // неіснуючі /pickup/mazepy-89a-*.jpg — коли фото прибудуть, цей пін
+  // оновлюється разом із карткою.
+  assert.doesNotMatch(PAGE, /mazepy-89a/);
 });
 
 test('SAMOVYVIZ: next/image photos with width/height, files committed ≤200 KB', () => {

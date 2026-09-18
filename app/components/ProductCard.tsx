@@ -56,8 +56,14 @@ export default function ProductCard({
   // price from the «Ціна за м²» specification replaces it as THE card
   // price. Missing specification → the running-meter price stays (no
   // invented numbers). For ln-* slug === sku, so the slug prefix gate is
-  // exact; wc-*/tech cards are unaffected.
-  const priceSqm = isLinoleumSlug(product.slug)
+  // exact; wc-*/tech cards are unaffected. The same gate drives the
+  // «Обрати метраж» link below (owner review fix 2026-09-17).
+  // C3 (owner plan 2026-09-18): «від» — after the C2 consolidation the card
+  // is ONE design and the spec carries a SINGLE «Ціна за м²» = MIN across
+  // its width variants, so the m² figure is the design's STARTING price;
+  // the per-width грн/пог.м is chosen on the PDP.
+  const isLinoleum = isLinoleumSlug(product.slug);
+  const priceSqm = isLinoleum
     ? extractPricePerSqm(product.specifications)
     : null;
 
@@ -112,7 +118,7 @@ export default function ProductCard({
           <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1 pt-2">
             {priceSqm ? (
               <span className="text-lg font-bold text-blue-700">
-                {priceSqm} грн/м²
+                від {priceSqm} грн/м²
               </span>
             ) : hasDiscount ? (
               <>
@@ -142,13 +148,27 @@ export default function ProductCard({
           interactive elements) and is hidden entirely for out_of_stock —
           the photo badge already says why. Availability rides in the card
           projection; the stock level does not, so place_order() stays the
-          real boundary (checkout surfaces unavailable lines). */}
+          real boundary (checkout surfaces unavailable lines).
+          ln-* exception (owner review fix 2026-09-17): the card shows
+          грн/м² while «У кошик» would add 1 RUNNING metre (a different,
+          higher price) — misleading. ln-* cards link «Обрати метраж» to
+          the PDP, where the metreage is actually computed; non-ln-* cards
+          keep the one-click add unchanged. */}
       {!outOfStock && (
         <div className="px-4 pb-4 pt-1">
-          <CardAddToCartButton
-            productId={product.id}
-            productName={product.name}
-          />
+          {isLinoleum ? (
+            <Link
+              href={`/product/${product.slug}`}
+              className="flex w-full min-h-[44px] items-center justify-center rounded-lg bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-700 motion-reduce:transition-none"
+            >
+              Обрати метраж
+            </Link>
+          ) : (
+            <CardAddToCartButton
+              productId={product.id}
+              productName={product.name}
+            />
+          )}
         </div>
       )}
     </div>

@@ -325,6 +325,33 @@ export function buildBrandsBreadcrumbJsonLd(
 }
 
 /**
+ * schema.org/BreadcrumbList for the /linoleum storefront (owner review fix
+ * 2026-09-17: the hub had no BreadcrumbList while /oboi and /brands carry
+ * one) — Головна → Лінолеум, mirroring the visible trail
+ * LinoleumStorefront already renders. Pure and constant-input: /linoleum
+ * has no path params, so both item URLs are the canonical shapes lib/seo.ts
+ * pins (/, /linoleum) — same shape as the builders above.
+ */
+export function buildLinoleumBreadcrumbJsonLd(
+  siteUrl: string
+): Record<string, unknown> {
+  const base = siteUrl.replace(/\/+$/, '');
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Головна', item: `${base}/` },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Лінолеум',
+        item: `${base}/linoleum`,
+      },
+    ],
+  };
+}
+
+/**
  * schema.org/FAQPage builder (category FAQ, 2026-09-11) — same honesty
  * rules as the other builders: only caller-supplied Q&A pairs are emitted,
  * trimmed; pairs with an empty question or answer are dropped; an empty

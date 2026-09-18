@@ -66,8 +66,10 @@ test('PDP-BUYBOX: повний набір пропсів єдиного інст
   // set (→ availabilityStatus count 2), and the «exactly one buy-box per
   // page» invariant moved to linoleum-pdp.test.ts, which pins
   // <AddToCartButton === 1 AND <LinoleumMeterPanel === 1 on the page source.
-  // Only the unit-domain branch takes variants: the ln-* panel is
-  // variant-less by domain (running metres, no options).
+  // Since C3 (owner plan 2026-09-18) the ln-* panel DOES take width variants,
+  // but as the precomputed `variants={linoleumWidths}` (is_active filter +
+  // chip projection), so the literal `variants={product.variants.map` still
+  // matches ONLY the unit-domain branch — the count stays 1.
   assert.equal(countOf(pageSrc, 'variants={product.variants.map'), 1);
   assert.equal(
     countOf(pageSrc, 'availabilityStatus={product.availability_status}'),
