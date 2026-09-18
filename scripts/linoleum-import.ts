@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * Лінолеум IMPORT — CLI executor (линолеум, батч 2; план L3, 2026-09-17).
+ * Лінолеум IMPORT — CLI executor (линолеум; консолідована модель C2,
+ * рішення власника 2026-09-18: ОДНА карточка = ДИЗАЙН, ширини —
+ * product_variants; було: картка = дизайн×ширина, план L3 2026-09-17).
  * Структурное зеркало scripts/wallpaper-import.ts со своим staging-контрактом.
  *
  * Читает staging `linoleum_stock` (миграция 052: append-only, колонки
@@ -10,22 +12,32 @@
  *
  * Режимы:
  *   node scripts/linoleum-import.ts --plan
- *       Read-only: печатает staging-сводку + creates/updates/missing/noops,
- *       exits 0. НОЛЬ записей.
+ *       Read-only: печатает staging-сводку + консолидированный план
+ *       (продукты + их варианты, min price, суммарный метраж), exits 0.
+ *       НОЛЬ записей.
  *   node scripts/linoleum-import.ts --run
  *       Исполняет план батчами ≤200:
  *         - корневая категория «Лінолеум» (slug linoleum): создаётся, если
  *           отсутствует; slug с другой названием → АБОРТ (импортер не
  *           переименовывает; подкатегории придут позже с данными 1С);
- *         - creates → INSERT products (is_active false, currency 'UAH',
- *           specifications [Ціна за м², Ширина], availability согласован,
- *           price = грн/погонный метр) + product_categories junction +
+ *         - creates → INSERT products (ОДНА карточка на дизайн: name БЕЗ
+ *           ширины, price = MIN грн/пог.м, stock = СУМА метражей вариантов,
+ *           specifications [Ціна за м² MIN, Ширина ×N], is_active false,
+ *           currency 'UAH') + product_categories junction +
  *           legacy products.category_id;
- *         - updates → построчный UPDATE только diff-полей (price /
- *           specifications / stock_quantity);
- *         - missing → stock_quantity = 0 (OOS), никогда DELETE;
- *         - каждое изменение стока → product_stock_history
- *           (reason '1c-sync', source '1c-linoleum').
+ *         - INSERT product_variants по стрічці на ширину (name =
+ *           formatWidthM, sku = `{productSku}-w{token}` UNIQUE, price =
+ *           грн/пог.м, stock = qty_m, is_active true) — для свежих продуктов
+ *           и для новых ширин существующих;
+ *         - updates → построчный UPDATE только diff-полей (product: price /
+ *           specifications / stock_quantity; вариант: price / stock_quantity);
+ *         - missing width → вариант stock 0; missing дизайн → product stock 0
+ *           + все его варианты stock 0; никогда DELETE;
+ *         - каждое изменение стока → product_stock_history (reason
+ *           '1c-sync', source '1c-linoleum'); variant-изменения несут
+ *           variant_id (схема final_001: product_stock_history.variant_id,
+ *           паттерн place_order — 006 пишет (product_id, variant_id, ...)).
+ *
  *   node scripts/linoleum-import.ts --publish
  *       Фото-гейт (единственный писатель is_active), SQL-интент
  *         UPDATE products SET is_active = true  WHERE sku LIKE 'ln-%' AND EXISTS
@@ -41,15 +53,31 @@
  *
  * Инварианты (pinned tests/linoleum-import-cli.test.ts):
  *   - availability_status НИКОГДА не пишется на UPDATE (триггер миграции 040
- *     выводит его из stock_quantity); на INSERT пишется значение плана;
- *   - is_active пишется ТОЛЬКО --publish (два diff-aware батч-flip'а);
- *     sync вставляет новые строки невидимыми и флаг существующих не трогает;
+ *     выводит его из stock_quantity — покрывает и products, и
+ *     product_variants); на INSERT пишется значение плана;
+ *   - products.is_active пишется ТОЛЬКО --publish (два diff-aware
+ *     батч-flip'а); sync вставляет новые карточки невидимыми (is_active:
+ *     false) и флаг существующих не трогает; варианты приходят активными
+ *     (is_active true — контракт C2; вариантный флаг админка/PDP не sync);
  *   - НЕТ DELETE/rpc/upsert; план идемпотентен — упавший батч лечится
  *     повторным --run;
  *   - постраничные чтения: окна PAGE_SIZE = 1000 с `.order('id')`;
+ *     product_id-окна чтения вариантов ≤ BATCH_SIZE (паттерн semi-join);
  *     DISTINCT-семантика staging (свежайшая строка на (code,width)) — в JS
  *     (prepareRows), не в SQL;
  *   - любая ошибка батча печатает номер батча и текст и останавливает прогон.
+ *
+ * ВИДОМЕ ОБМЕЖЕННЯ v1 (рішення C2): products.stock_quantity = сума метражів
+ * варіантів на момент імпорту; декременти продажів ідуть по ВАРІАНТАХ
+ * (place_order), тому після продажів product-сток розсинхронізовується з
+ * варіантами (наступний --run повертає його до суми фіду). Реальні залишки —
+ * product_variants.stock_quantity. Синхронізацію product-стоку при продажу
+ * НЕ додаємо (money-path, §17).
+ *
+ * МИГРАЦИЯ C2: перший --run на БД зі старими картками дизайн×ширина створить
+ * консолідовані картки ПАРАЛЕЛЬНО до старих; старі зведуться в 0 наступним
+ * --run (їх sku більше не матчиться фідом). Цільовий шлях — спершу
+ * одноразовий scripts/linoleum-consolidate.ts.
  *
  * Service-role клиент (паттерн app/lib/payment/reconciliation-scan.ts);
  * креды из .env.local / shell env, никогда не логируются.
@@ -66,8 +94,10 @@ import {
   LINOLEUM_ROOT_CATEGORY,
   type ExistingCategoryRow,
   type ExistingProduct,
+  type ExistingVariant,
   type LinoleumPlan,
   type LinoleumPlanRow,
+  type LinoleumVariantPlanRow,
   type SpecificationEntry,
 } from '../app/lib/linoleum/import-plan.ts';
 import { LINOLEUM_WIDTHS_M, type LinoleumRow, type LinoleumWidthM } from '../app/lib/linoleum/parse.ts';
@@ -306,7 +336,7 @@ interface ExistingProductDbRow {
 }
 
 /** The linoleum domain only: sku LIKE 'ln-%' (домен = префикс, domains.ts). */
-async function readExistingLinoleumProducts(
+export async function readExistingLinoleumProducts(
   client: SupabaseClient
 ): Promise<Map<string, ExistingProduct>> {
   const rows = await readAllPages<ExistingProductDbRow>(
@@ -362,6 +392,64 @@ async function readCategories(client: SupabaseClient): Promise<ExistingCategoryR
   return out;
 }
 
+interface ExistingVariantDbRow {
+  id: unknown;
+  sku: unknown;
+  product_id: unknown;
+  name: unknown;
+  price: unknown;
+  stock_quantity: unknown;
+}
+
+/**
+ * product_variants ln-домена: окна ≤200 product_id (`.in`, паттерн
+ * readProductIdsWithImages), каждое окно постранично с `.order('id')`.
+ * Ключ — variant sku (UNIQUE в product_variants); пустой productIds → пустая
+ * карта (без `.in([])`-вызова).
+ */
+export async function readExistingVariants(
+  client: SupabaseClient,
+  productIds: readonly string[]
+): Promise<Map<string, ExistingVariant>> {
+  const existing = new Map<string, ExistingVariant>();
+  for (const group of chunkRows([...productIds], BATCH_SIZE)) {
+    const rows = await readAllPages<ExistingVariantDbRow>(
+      (from) =>
+        client
+          .from('product_variants')
+          .select('id,sku,product_id,name,price,stock_quantity')
+          .in('product_id', group)
+          .order('id')
+          .range(from, from + PAGE_SIZE - 1)
+          .returns<ExistingVariantDbRow[]>(),
+      'product_variants'
+    );
+    for (const r of rows) {
+      const sku = typeof r.sku === 'string' ? r.sku.trim() : '';
+      const price = toFiniteNumber(r.price);
+      const stock = toFiniteNumber(r.stock_quantity);
+      if (
+        sku === '' ||
+        price === null ||
+        stock === null ||
+        typeof r.id !== 'string' ||
+        typeof r.product_id !== 'string'
+      ) {
+        throw new Error(`існуючий варіант з некоректними даними (sku=${String(r.sku)})`);
+      }
+      existing.set(sku, {
+        id: r.id,
+        sku,
+        productId: r.product_id,
+        name: typeof r.name === 'string' ? r.name : '',
+        price,
+        stockQuantity: stock,
+      });
+    }
+  }
+  return existing;
+}
+
 // ---------------------------------------------------------------------------
 // --plan printing (read-only)
 // ---------------------------------------------------------------------------
@@ -383,26 +471,52 @@ function printPlan(plan: LinoleumPlan, stats: PlanStats): void {
     `фід = остання вивантаження ${stats.latestExportDate ?? '—'}; лише зі старих вивантажень (→ OOS): ${stats.olderOnlyKeys}`
   );
   console.log(`існуючих ln-* товарів: ${stats.existingCount}`);
-  console.log(`creates: ${plan.creates.length}`);
+  console.log(`creates (консолідовані карточки): ${plan.creates.length}`);
   for (const c of plan.creates.slice(0, 10)) {
     const sqm = c.specifications.find((s) => s.name === 'Ціна за м²')?.value ?? '—';
-    const width = c.specifications.find((s) => s.name === 'Ширина')?.value ?? '—';
+    const widths = c.specifications
+      .filter((s) => s.name === 'Ширина')
+      .map((s) => s.value)
+      .join('/');
     console.log(
-      `  + ${c.sku} "${c.name}" price=${c.price} грн/пог.м (за м² ${sqm}, ширина ${width}) qty=${c.stockQuantity} ${c.availability}`
+      `  + ${c.sku} "${c.name}" price=${c.price} грн/пог.м (від ${sqm} грн/м²; ширини ${widths}) ` +
+        `qty=${c.stockQuantity} м ${c.availability}; варіантів: ${c.variants.length}`
     );
+    for (const v of c.variants) {
+      console.log(
+        `      · ${v.sku} "${v.name}" price=${v.price} грн/пог.м qty=${v.stockQuantity} ${v.availability}`
+      );
+    }
   }
-  console.log(`updates: ${plan.updates.length}`);
+  console.log(`updates (products): ${plan.updates.length}`);
   for (const u of plan.updates.slice(0, 10)) {
     const parts: string[] = [];
     if (u.fields.price !== undefined) parts.push(`price→${u.fields.price}`);
-    if (u.fields.specifications !== undefined) parts.push('specifications (Ціна за м²)');
+    if (u.fields.specifications !== undefined) parts.push('specifications (Ціна за м² + Ширини)');
     if (u.fields.stock_quantity !== undefined) {
       parts.push(`stock_quantity→${u.fields.stock_quantity}`);
     }
     console.log(`  ~ id=${u.id} ${parts.join(', ')}`);
   }
-  console.log(`missing (OOS, stock_quantity=0): ${plan.missing.length}`);
-  for (const m of plan.missing.slice(0, 10)) console.log(`  ! id=${m.id}`);
+  console.log(`variant creates (нові ширини): ${plan.variantCreates.length}`);
+  for (const vc of plan.variantCreates.slice(0, 10)) {
+    console.log(
+      `  + ${vc.variant.sku} (product ${vc.productId}) "${vc.variant.name}" price=${vc.variant.price} qty=${vc.variant.stockQuantity}`
+    );
+  }
+  console.log(`variant updates: ${plan.variantUpdates.length}`);
+  for (const vu of plan.variantUpdates.slice(0, 10)) {
+    const parts: string[] = [];
+    if (vu.fields.price !== undefined) parts.push(`price→${vu.fields.price}`);
+    if (vu.fields.stock_quantity !== undefined) {
+      parts.push(`stock_quantity→${vu.fields.stock_quantity}`);
+    }
+    console.log(`  ~ id=${vu.id} ${parts.join(', ')}`);
+  }
+  console.log(`missing (OOS products, stock_quantity=0): ${plan.missingProducts.length}`);
+  for (const m of plan.missingProducts.slice(0, 10)) console.log(`  ! id=${m.id}`);
+  console.log(`missing variants (OOS, stock_quantity=0): ${plan.missingVariants.length}`);
+  for (const m of plan.missingVariants.slice(0, 10)) console.log(`  ! id=${m.id}`);
   console.log(`noops: ${plan.noops.length}`);
   for (const s of plan.noops.slice(0, 10)) console.log(`  = ${s}`);
   console.log(`conflicts: ${plan.conflicts.length}`);
@@ -450,7 +564,11 @@ export async function runImportCli(argv: readonly string[]): Promise<number> {
   const rawStaging = await readStagingRaw(client);
   const { rows, skipped, olderOnlyKeys, latestExportDate } = prepareRows(rawStaging);
   const existing = await readExistingLinoleumProducts(client);
-  const plan = planLinoleumImport(existing, rows);
+  const existingVariants = await readExistingVariants(
+    client,
+    [...existing.values()].map((p) => p.id)
+  );
+  const plan = planLinoleumImport(existing, rows, existingVariants);
 
   if (args.mode === 'plan') {
     printPlan(plan, {
@@ -464,11 +582,12 @@ export async function runImportCli(argv: readonly string[]): Promise<number> {
     return 0;
   }
 
-  const totals = await applyPlan(client, plan, existing);
+  const totals = await applyPlan(client, plan, existing, existingVariants);
   const elapsedS = ((Date.now() - t0) / 1000).toFixed(1);
   console.log(
     `\n== Підсумок (${elapsedS} с): створено ${totals.created}, оновлено ${totals.updated}, ` +
-      `зниклі→OOS ${totals.missingSet}, history ${totals.history}, no-op ${totals.noops} ==`
+      `варіантів +${totals.variantsCreated}/~${totals.variantsUpdated}, зниклі→OOS ${totals.missingSet} ` +
+      `(варіантів ${totals.missingVariantsSet}), history ${totals.history}, no-op ${totals.noops} ==`
   );
 
   // Restock hook — ONLY here, after a successful --run (the --plan and
@@ -491,10 +610,13 @@ export async function runImportCli(argv: readonly string[]): Promise<number> {
 // --run executor (sync writer) + --publish executor (the ONLY is_active writer)
 // ---------------------------------------------------------------------------
 
-interface RunTotals {
+export interface RunTotals {
   created: number;
   updated: number;
+  variantsCreated: number;
+  variantsUpdated: number;
   missingSet: number;
+  missingVariantsSet: number;
   history: number;
   noops: number;
 }
@@ -518,22 +640,43 @@ export function productInsertRow(
   };
 }
 
+/** product_variants INSERT payload (варіанти приходять активними — контракт C2). */
+export function variantInsertRow(
+  variant: LinoleumVariantPlanRow,
+  productId: string
+): Record<string, unknown> {
+  return {
+    product_id: productId,
+    name: variant.name,
+    sku: variant.sku,
+    price: variant.price,
+    stock_quantity: variant.stockQuantity,
+    availability_status: variant.availability,
+    is_active: variant.isActive,
+  };
+}
+
 export interface StockHistoryInsert {
   product_id: string;
+  /** Variant-level зміни стока (паттерн place_order 006: final_001 має
+   *  product_stock_history.variant_id). Відсутній → product-level рядок. */
+  variant_id?: string;
   old_quantity: number;
   new_quantity: number;
   reason: string;
   source: string;
 }
 
-/** product_stock_history row for a single stock change. */
+/** product_stock_history row for a single stock change (product or variant). */
 export function stockHistoryRow(
   productId: string,
   oldQuantity: number,
-  newQuantity: number
+  newQuantity: number,
+  variantId?: string
 ): StockHistoryInsert {
   return {
     product_id: productId,
+    ...(variantId === undefined ? {} : { variant_id: variantId }),
     old_quantity: oldQuantity,
     new_quantity: newQuantity,
     reason: HISTORY_REASON,
@@ -541,10 +684,27 @@ export function stockHistoryRow(
   };
 }
 
-async function applyPlan(
+/** product_stock_history inserts for one batch, shared by all write groups. */
+async function insertHistory(
+  client: SupabaseClient,
+  batchNo: number,
+  history: readonly StockHistoryInsert[]
+): Promise<number> {
+  if (history.length === 0) return 0;
+  const { error } = await client.from('product_stock_history').insert([...history]);
+  if (error) {
+    throw new Error(`батч #${batchNo} (product_stock_history insert): ${error.message}`);
+  }
+  return history.length;
+}
+
+/** Виконання плану консолідованої моделі. Реюз: scripts/linoleum-consolidate.ts
+ *  (одноразовий мігратор 34→6) викликає цю саму функцію — один шлях запису. */
+export async function applyPlan(
   client: SupabaseClient,
   plan: LinoleumPlan,
-  existing: ReadonlyMap<string, ExistingProduct>
+  existing: ReadonlyMap<string, ExistingProduct>,
+  existingVariants: ReadonlyMap<string, ExistingVariant>
 ): Promise<RunTotals> {
   // ---- categories: only the «Лінолеум» root (create-or-reuse-or-abort) ----
   const catPlan = planRootCategory(await readCategories(client));
@@ -614,13 +774,46 @@ async function applyPlan(
     batchNo += 1;
   }
 
+  // ---- variant inserts: nested creates + нові ширини існуючих продуктів ----
+  const variantPayloads: { productId: string; variant: LinoleumVariantPlanRow }[] = [];
+  for (const c of plan.creates) {
+    const productId = productIdBySku.get(c.sku);
+    if (productId === undefined) {
+      throw new Error(`варіанти ${c.sku}: свіжий product_id не знайдено`);
+    }
+    for (const variant of c.variants) variantPayloads.push({ productId, variant });
+  }
+  variantPayloads.push(...plan.variantCreates);
+  let variantsCreated = 0;
+  for (const group of chunkRows(variantPayloads, BATCH_SIZE)) {
+    const payload = group.map((v) => variantInsertRow(v.variant, v.productId));
+    const { data, error } = await client
+      .from('product_variants')
+      .insert(payload)
+      .select('id,sku')
+      .returns<{ id: string; sku: string }[]>();
+    if (error || data === null || data.length !== payload.length) {
+      throw new Error(
+        `батч #${batchNo} (product_variants insert): ${
+          error?.message ?? `отримано ${data?.length ?? 0} з ${payload.length}`
+        }`
+      );
+    }
+    variantsCreated += data.length;
+    batchNo += 1;
+  }
+
   // ---- updates + missing → OOS; every stock change writes history ----
   // availability_status is NEVER written here on update: the migration 040
-  // trigger derives it from stock_quantity. is_active is never touched.
+  // trigger derives it from stock_quantity (products AND product_variants).
+  // is_active is never touched (variants arrive active via INSERT above).
   const existingById = new Map<string, ExistingProduct>();
   for (const e of existing.values()) existingById.set(e.id, e);
+  const existingVariantById = new Map<string, ExistingVariant>();
+  for (const v of existingVariants.values()) existingVariantById.set(v.id, v);
   let updated = 0;
   let missingSet = 0;
+  let missingVariantsSet = 0;
   let historyCount = 0;
 
   for (const group of chunkRows(plan.updates, BATCH_SIZE)) {
@@ -646,17 +839,41 @@ async function applyPlan(
         );
       }
     }
-    if (history.length > 0) {
-      const { error } = await client.from('product_stock_history').insert(history);
-      if (error) {
-        throw new Error(`батч #${batchNo} (product_stock_history insert): ${error.message}`);
-      }
-      historyCount += history.length;
-    }
+    historyCount += await insertHistory(client, batchNo, history);
     batchNo += 1;
   }
 
-  for (const group of chunkRows(plan.missing, BATCH_SIZE)) {
+  // Варіанти: diff price/stock_quantity; availability_status/is_active/ім'я
+  // не пишуться. History — з variant_id (паттерн place_order 006).
+  for (const group of chunkRows(plan.variantUpdates, BATCH_SIZE)) {
+    const history: StockHistoryInsert[] = [];
+    for (const op of group) {
+      const { data, error } = await client
+        .from('product_variants')
+        .update(op.fields)
+        .eq('id', op.id)
+        .select('id')
+        .returns<{ id: string }[]>();
+      if (error || data === null || data.length === 0) {
+        throw new Error(
+          `батч #${batchNo} (product_variants update ${op.id}): ${error?.message ?? '0 rows'}`
+        );
+      }
+      const ev = existingVariantById.get(op.id);
+      if (ev === undefined) {
+        throw new Error(`батч #${batchNo}: джерельний варіант ${op.id} не прочитано`);
+      }
+      if (op.fields.stock_quantity !== undefined) {
+        history.push(
+          stockHistoryRow(ev.productId, ev.stockQuantity, op.fields.stock_quantity, op.id)
+        );
+      }
+    }
+    historyCount += await insertHistory(client, batchNo, history);
+    batchNo += 1;
+  }
+
+  for (const group of chunkRows(plan.missingProducts, BATCH_SIZE)) {
     const history: StockHistoryInsert[] = [];
     for (const m of group) {
       const { data, error } = await client
@@ -671,17 +888,46 @@ async function applyPlan(
       missingSet += 1;
       history.push(stockHistoryRow(m.id, existingById.get(m.id)?.stockQuantity ?? 0, 0));
     }
-    if (history.length > 0) {
-      const { error } = await client.from('product_stock_history').insert(history);
-      if (error) {
-        throw new Error(`батч #${batchNo} (product_stock_history insert): ${error.message}`);
-      }
-      historyCount += history.length;
-    }
+    historyCount += await insertHistory(client, batchNo, history);
     batchNo += 1;
   }
 
-  return { created, updated, missingSet, history: historyCount, noops: plan.noops.length };
+  // Зниклі ширини: варіант stock 0 (ніколи DELETE), history з variant_id.
+  for (const group of chunkRows(plan.missingVariants, BATCH_SIZE)) {
+    const history: StockHistoryInsert[] = [];
+    for (const m of group) {
+      const { data, error } = await client
+        .from('product_variants')
+        .update({ stock_quantity: 0 })
+        .eq('id', m.id)
+        .select('id')
+        .returns<{ id: string }[]>();
+      if (error || data === null || data.length === 0) {
+        throw new Error(
+          `батч #${batchNo} (product_variants OOS ${m.id}): ${error?.message ?? '0 rows'}`
+        );
+      }
+      missingVariantsSet += 1;
+      const ev = existingVariantById.get(m.id);
+      if (ev === undefined) {
+        throw new Error(`батч #${batchNo}: джерельний варіант ${m.id} не прочитано`);
+      }
+      history.push(stockHistoryRow(ev.productId, ev.stockQuantity, 0, m.id));
+    }
+    historyCount += await insertHistory(client, batchNo, history);
+    batchNo += 1;
+  }
+
+  return {
+    created,
+    updated,
+    variantsCreated,
+    variantsUpdated: plan.variantUpdates.length,
+    missingSet,
+    missingVariantsSet,
+    history: historyCount,
+    noops: plan.noops.length,
+  };
 }
 
 // ---------------------------------------------------------------------------

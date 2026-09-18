@@ -1,90 +1,111 @@
 /**
- * Pure import planner for the 1C linoleum stock (linoleum vertical, batch 2,
- * task L3, 2026-09-17). Mirrors app/lib/wallpapers/import-plan.ts and
- * app/lib/wallpapers/categories.ts: everything is decided BEFORE any write so
- * the CLI executor (scripts/linoleum-import.ts) can show the exact plan and
- * stay idempotent. No Next.js / DB imports — unit-tested with node:test.
+ * Pure import planner for the 1C linoleum stock (linoleum vertical,
+ * CONSOLIDATED CARD MODEL — рішення власника C2, 2026-09-18: «одна карточка
+ * = дизайн, всі ширини — в одній карточці», а не 34 картки дизайн×ширина).
+ * Mirrors app/lib/wallpapers/import-plan.ts: everything is decided BEFORE any
+ * write so the CLI executor (scripts/linoleum-import.ts) can show the exact
+ * plan and stay idempotent. No Next.js / DB imports — unit-tested with
+ * node:test.
  *
- * Identity rule (card = design × width, owner decision 2026-09-17): the
- * linoleum domain is defined by the `ln-` sku prefix (app/lib/domains.ts;
- * storefront: LINOLEUM_ROOT_SLUG in app/lib/catalog/shared.ts). Per feed row
- * (LinoleumRow, one row = one design×width from the daily export):
- *   sku = `ln-x<code>-w<widthToken>` where
- *     - `<code>` is the 1С code normalized (trim + lowercase + whitespace
- *       stripped — same recipe as the wallpaper article key). Codes already
- *       inside the slug charset [a-z0-9-] pass through unchanged; codes
- *       carrying any character OUTSIDE it (real supplier codes are often
- *       Cyrillic: «ЛІН-01160049») fall back to their DIGITS-ONLY core
- *       («01160049»), so every sku/slug stays in [a-z0-9-]. Deterministic
- *       and idempotent; a surviving collision (two codes sharing a digits
- *       core) resolves with a `-2`, `-3`, … suffix;
- *     - `<widthToken>` = width × 10 (`1.5→15, 2→20, 2.5→25, 3→30, 3.5→35,
- *       4→40`).
- *   Deterministic, idempotent, 1:1 over the fixed width whitelist
- *   LINOLEUM_WIDTHS_M (width tokens share no suffix relation, so distinct
- *   (code,width) pairs can never produce the same base sku). The token keeps
- *   every slug inside the [a-z0-9-] charset shared by the whole catalog —
- *   no dotted/comma slug class is introduced. A collision that survives this
- *   (two codes normalizing together) resolves with a `-2`, `-3`, … suffix —
- *   deterministically, so re-plans stay idempotent.
+ * Identity rule (consolidated, C2): ОДНА карточка = ДИЗАЙН; вибір ширини —
+ * product_variants на PDP (варіантний шлях place_order, міграція 006:
+ * order_items.variant_id, ціна/сток/availability беруться з варіанта).
+ * Per feed row (LinoleumRow, one row = одна ширина дизайну з добового
+ * експорту 1С):
+ *   - ГРУПА = дизайн по name з CSV (designKey: trim + lowercase + пробіли
+ *     вирізані — той самий recipe, що в normalizeCode, але БЕЗ digits-фолбэка:
+ *     кириличні імена не схлопуються в цифри). Display-name групи = ім'я
+ *     першої стрічки (порядок першої появи, детерміновано).
+ *   - product sku = `ln-x<нормалізований код 1С>` БЕЗ width-токена. Код
+ *     береться зі стрічки САМОЇ ВУЗЬКОЇ ширини групи (канонічний порядок
+ *     LINOLEUM_WIDTHS_M) — детерміновано і незалежно від порядку стрічок
+ *     викачки. Реальний фід: всі ширини дизайну несуть один код 1С; якби коди
+ *     різнилися — перейменування/зникнення найвужчої ширини змінило б sku
+ *     (задокументоване обмеження виводу v1).
+ *   - normalizeCode: trim + lowercase + пробіли вирізані; коди вже всередині
+ *     charset'у [a-z0-9-] проходять як є, коди з символами поза ним
+ *     (кирилиця: «ЛІН-01160049») → digits-only core («01160049») — той самий
+ *     рецепт, що в батчі 2; виживша колізія (два коди з спільним digits-яд­ром)
+ *     розв'язується суфіксом `-2`, `-3`, … детерміновано.
+ *   - variant sku = `{productSku}-w<width×10>` (`1.5→15, 2→20, 2.5→25, 3→30,
+ *     3.5→35, 4→40`). UNIQUE у product_variants ✓. Збігається зі sku старих
+ *     карток дизайн×ширина, але це ІНША таблиця — колізії з products.sku немає.
  *
- * Card display decisions (owner plan 2026-09-17):
- *   - name = `{name} {width} м` with the width in UKRAINIAN comma format
- *     (formatWidthM: `1,5` / `2` / `2,5` / `3` / `3,5` / `4`) — the site content
- *     language is Ukrainian and app/lib/format.ts renders uk-UA decimal
- *     commas everywhere; this formatter is THE single canonical width string
- *     for the product name, the «Ширина» specification value AND the future
- *     hub width filter (jsonb contains must match this exact literal);
- *   - products.price = грн за ПОГОННЫЙ метр = price_sqm × width_m rounded
- *     HALF-UP to a kopiyka (runningMeterPrice: integer-cents math that
- *     matches Postgres NUMERIC half-up — a naive Math.round on binary floats
- *     would give 15.22 for 10.15×1.5 where NUMERIC gives 15.23);
- *   - specifications (jsonb array, create): `{name:'Ціна за м²',
- *     value:'350,50'}` (formatPriceSqmValue: exactly 2 decimals, comma —
- *     the NUMERIC(12,2) canon) + `{name:'Ширина', value:'2,5'}`.
+ * Card display decisions (consolidated):
+ *   - products.name = ім'я дизайну БЕЗ ширини («SUGAR OAK 997L Лінолеум
+ *     BEAUFLOUR SMARTEX»); перейменування дизайну у фіді = НОВА карточка
+ *     (стара зведеться в 0 через missing-шлях, is_active не тріпається);
+ *   - products.price = MIN грн/погонний метр по ширинах = MIN
+ *     runningMeterPrice(price_sqm, width_m) — бейдж «від X грн» на вітрині;
+ *   - products.stock_quantity = СУМА метражів варіантів цієї групи. ВІДОМЕ
+ *     ОБМЕЖЕННЯ v1 (задокументовано, рішення C2): декременти продажів ідуть
+ *     по ВАРІАНТАХ (place_order, 006), products.stock_quantity залишається
+ *     знімком імпорту і після продажів розсинхронізується з варіантами;
+ *     реальні залишки — product_variants.stock_quantity. Синхронізацію
+ *     product-стоку при продажі НЕ додаємо (money-path, §17).
+ *   - specifications (jsonb array): `{name:'Ціна за м²', value:'350,50'}`
+ *     (formatPriceSqmValue: рівно 2 знаки, кома — канон NUMERIC(12,2), значення
+ *     = MIN price_sqm групи — бейдж «від X грн/м²») + ПО ОДНІЙ записі
+ *     `{name:'Ширина', value: formatWidthM(w)}` на КОЖНУ ширину
+ *     (formatWidthM: `1,5`/`2`/`2,5`/`3`/`3,5`/`4` — канон фільтра хаба).
+ *     Кілька записів «Ширина» в одному масиві: hub-фільтр
+ *     `contains([{Ширина:'2'}])` матчить масив, що МІСТИТЬ елемент, тож
+ *     карточка з ширинами 1,5/2/2,5 відповідає фільтру «2»
+ *     (app/lib/catalog/linoleum-listing.ts). Канонічний порядок ширин —
+ *     за зростанням LINOLEUM_WIDTHS_M, незалежно від порядку стрічок фіду.
+ *
+ * product_variants (по стрічці на ширину):
+ *   - name = formatWidthM(width) («1,5»/«2»/…), price = грн/погонний метр =
+ *     runningMeterPrice(price_sqm, width_m) (HALF-UP до копійки, як Postgres
+ *     NUMERIC), stock_quantity = qty_m (INTEGER ✓), availability_status —
+ *     тригер міграції 040 виводить його зі stock_quantity (на INSERT пишеться
+ *     узгоджене значення плану), is_active = true.
  *
  * Plan semantics (pinned by tests/linoleum-import-plan.test.ts):
- *   - rows are deduplicated by the (code, width_m) key; the LAST row for a
- *     key wins, order follows the first appearance of each key;
- *   - creates: slug === sku, availability derived from qty (0 →
- *     out_of_stock), isActive always false — publishing is a separate
- *     photo-presence gate (CLI --publish), never a planner decision;
- *   - updates: diff-aware, ONLY fields that actually diverge:
- *       price           — stored running-meter price ≠ computed;
- *       specifications  — stored «Ціна за м²» value ≠ formatted feed
- *                         price_sqm (rewritten in the SAME UPDATE statement:
- *                         a stale m² price next to a correct running-meter
- *                         price would be factually wrong on the PDP; the
- *                         rewrite replaces only that entry in place and
- *                         preserves every other entry and the order).
- *                         Rationale for touching specifications at all:
- *                         it is one extra field on an already-issued
- *                         diff-gated UPDATE — zero extra statements, honest
- *                         data. The «Ширина» entry is NEVER rewritten on
- *                         update: (code, width) IS the card identity, a
- *                         width change is a different card;
- *       stock_quantity  — stored qty ≠ feed qtyM;
- *     name/sku/slug/is_active of existing rows are never touched;
- *   - missing: existing ln-* products absent from the feed whose
- *     stock_quantity is not yet 0 (the executor OOS-es them, never deletes);
- *     already-reconciled (qty = 0) absent products are reported in noops so
- *     that re-planning over the applied result yields an empty plan;
+ *   - rows deduplicated by (code, width_m); the LAST row for a key wins;
+ *     всередині групи дублікати ОДНІЄЇ ширини (два коди одного дизайну+ширина
+ *     на картці невиразні) теж зводяться «остання перемагає»;
+ *   - creates: slug === sku, availability по сумарному метражу (0 →
+ *     out_of_stock), isActive always false — публікація це окремий фото-гейт
+ *     (CLI --publish), ніколи не рішення планувальника; варіанти активні;
+ *   - product updates: diff-aware, ONLY fields that actually diverge:
+ *       price           — stored MIN-пог.м ≠ computed;
+ *       specifications  — переписуються ЦІЛИКОМ (replace-in-place «Ціна за
+ *                         м²» + канонічний список «Ширина») при розбіжності:
+ *                         список ширин тепер ДАНІ карточки (ширина додалась/
+ *                         зникла), інші записи («Клас зносу» тощо) і їх
+ *                         порядок зберігаються;
+ *       stock_quantity  — stored сума ≠ feed-сумі;
+ *     name/sku/slug/is_active існуючих не торкаються;
+ *   - variant updates: diff price/stock_quantity по variant sku; ім'я
+ *     («Ширина») не переписується — (дизайн, ширина) і є ідентичністю
+ *     варіанта; availability_status/is_active на UPDATE не пишуться
+ *     (тригер 040 / територія адмінки);
+ *   - missing width (ширина зникла з викачки) → variant stock_quantity = 0;
+ *   - missing product (весь дизайн пішов) → product stock 0 + всі його
+ *     варіанти stock 0; DELETE НІКОЛИ;
  *   - conflicts: always [] by contract — the executor pre-filters the
- *     existing-products read to the ln-* domain, so a foreign owner of a sku
- *     cannot reach the planner.
+ *     existing-products read to the ln-* domain.
  *
  * Idempotency contract: feeding the planner its own applied output (creates
- * materialized, updates applied, missing set to qty 0) again produces
- * creates = updates = missing = [] and every domain sku in noops.
+ * materialized, updates applied, missing zeroed) again produces empty
+ * creates/updates/missing and every domain sku in noops.
+ *
+ * Migration note (C2): перший --run на БД, де ще живі старі картки
+ * дизайн×ширина, створить консолідовані картки ПАРАЛЕЛЬНО до старих; старі
+ * зведуться в 0 наступним --run (їх sku більше не матчиться) і ховаються
+ * --publish'ом або одноразовим scripts/linoleum-consolidate.ts. Цільовий
+ * шлях впровадження — спершу консолідація.
  *
  * Categories: the linoleum subtree currently is exactly its root category
  * (LINOLEUM_ROOT_CATEGORY — «Лінолеум», slug = LINOLEUM_ROOT_SLUG);
- * subcategories arrive later with the 1С category data. planRootCategory is
- * the pure create-or-reuse-or-conflict decision for the CLI executor
- * (importer never renames: a slug under a different name is a conflict).
+ * planRootCategory is the pure create-or-reuse-or-conflict decision for the
+ * CLI executor (importer never renames: a slug under a different name is a
+ * conflict).
  */
 
 import type { LinoleumRow, LinoleumWidthM } from './parse.ts';
+import { LINOLEUM_WIDTHS_M } from './parse.ts';
 import { LINOLEUM_SKU_PREFIX } from '../domains.ts';
 
 /** Specification entry names, canon of the hub width filter (jsonb contains). */
@@ -112,23 +133,53 @@ export interface ExistingProduct {
   specifications: SpecificationEntry[];
 }
 
+/** A product_variants row the executor already read from the DB. */
+export interface ExistingVariant {
+  id: string;
+  /** Globally UNIQUE — derived `{productSku}-w{token}` matches by sku. */
+  sku: string;
+  productId: string;
+  /** formatWidthM(width) — never rewritten on update (variant identity). */
+  name: string;
+  /** грн за погонный метр (product_variants.price). */
+  price: number;
+  stockQuantity: number;
+}
+
 export type LinoleumAvailability = 'in_stock' | 'out_of_stock';
 
-/** A product the planner wants the executor to INSERT. */
-export interface LinoleumPlanRow {
+/** A product_variants row the planner wants the executor to INSERT. */
+export interface LinoleumVariantPlanRow {
+  /** `{productSku}-w<width×10>` — UNIQUE у product_variants. */
   sku: string;
-  /** Equals `sku` (the sku is already slug-safe by construction). */
-  slug: string;
-  /** `{name} {width} м` — card = design × width (width in uk comma format). */
+  /** formatWidthM(width): «1,5»/«2»/… (канон спеки «Ширина»). */
   name: string;
   /** грн за погонный метр = runningMeterPrice(priceSqm, widthM). */
   price: number;
   stockQuantity: number;
   availability: LinoleumAvailability;
+  /** Завжди true: варіанти приходять активними (контракт C2). */
+  isActive: true;
+}
+
+/** A product the planner wants the executor to INSERT (consolidated card). */
+export interface LinoleumPlanRow {
+  sku: string;
+  /** Equals `sku` (the sku is already slug-safe by construction). */
+  slug: string;
+  /** Ім'я дизайну БЕЗ ширини (карточка = дизайн). */
+  name: string;
+  /** MIN грн/пог.м по ширинах групи («від X грн»). */
+  price: number;
+  /** СУМА метражів варіантів (див. обмеження v1 у шапці модуля). */
+  stockQuantity: number;
+  availability: LinoleumAvailability;
   /** Always false: publishing is the CLI --publish photo-presence gate. */
   isActive: false;
-  /** `[Ціна за м², Ширина]` — see module doc. */
+  /** `[Ціна за м² (MIN), Ширина ×N]` — see module doc. */
   specifications: SpecificationEntry[];
+  /** По стрічці на ширину, канонічний порядок LINOLEUM_WIDTHS_M. */
+  variants: LinoleumVariantPlanRow[];
 }
 
 /** A partial UPDATE restricted to the fields that actually diverged. */
@@ -141,11 +192,32 @@ export interface LinoleumPlanUpdate {
   };
 }
 
+/** New width on an EXISTING product → product_variants INSERT. */
+export interface LinoleumVariantCreate {
+  productId: string;
+  variant: LinoleumVariantPlanRow;
+}
+
+/** A partial product_variants UPDATE (price / stock_quantity only). */
+export interface LinoleumVariantUpdate {
+  id: string;
+  fields: {
+    price?: number;
+    stock_quantity?: number;
+  };
+}
+
 export interface LinoleumPlan {
   creates: LinoleumPlanRow[];
   updates: LinoleumPlanUpdate[];
-  /** ln-* products absent from the feed and not yet at qty 0 (→ OOS write). */
-  missing: { id: string }[];
+  /** Нові ширини в існуючих продуктів → product_variants INSERT. */
+  variantCreates: LinoleumVariantCreate[];
+  /** Diff-оновлення існуючих варіантів (price / stock_quantity). */
+  variantUpdates: LinoleumVariantUpdate[];
+  /** ln-* продукти поза фідом і ще не на 0 (→ product OOS write). */
+  missingProducts: { id: string }[];
+  /** Варіанти ширин, що зникли (→ variant OOS write); DELETE ніколи. */
+  missingVariants: { id: string }[];
   /** Skus with no pending write this run (exact matches + reconciled missing). */
   noops: string[];
   /** Always [] (contract): domain filtering happens upstream in the executor. */
@@ -181,12 +253,7 @@ export function runningMeterPrice(priceSqm: number, widthM: LinoleumWidthM): num
   return Math.round((priceCents * widthHalf) / 2) / 100;
 }
 
-/** Card name: `{name} {width} м` (width in uk comma format). */
-export function linoleumCardName(name: string, widthM: LinoleumWidthM): string {
-  return `${name} ${formatWidthM(widthM)} м`;
-}
-
-/** Width token inside the sku: width × 10 (`1.5→"15"`, `2→"20"`). */
+/** Width token inside the variant sku: width × 10 (`1.5→"15"`, `2→"20"`). */
 function skuWidthToken(widthM: LinoleumWidthM): string {
   return String(Math.round(widthM * 10));
 }
@@ -203,20 +270,20 @@ function normalizeCode(code: string): string {
   return (base.match(/\d+/g) ?? []).join('');
 }
 
-/** `ln-x<code>-w<width×10>` — see module doc (deterministic, 1:1, slug-safe). */
-export function linoleumSku(code: string, widthM: LinoleumWidthM): string {
-  return `${LINOLEUM_SKU_PREFIX}x${normalizeCode(code)}-w${skuWidthToken(widthM)}`;
+/** Групування за дизайном: trim + lowercase + без пробілів (як normalizeCode,
+ *  але БЕЗ digits-фолбэка — кириличні імена дизайнів не схлопуються). */
+export function designKey(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, '');
 }
 
-/** specifications payload for a create: `[Ціна за м², Ширина]`. */
-function buildSpecifications(
-  priceSqm: number,
-  widthM: LinoleumWidthM
-): SpecificationEntry[] {
-  return [
-    { name: PRICE_SQM_SPEC_NAME, value: formatPriceSqmValue(priceSqm) },
-    { name: WIDTH_SPEC_NAME, value: formatWidthM(widthM) },
-  ];
+/** `ln-x<code>` — sku КОНСОЛІДОВАНОЇ карточки (дизайн, без width-токена). */
+export function linoleumSku(code: string): string {
+  return `${LINOLEUM_SKU_PREFIX}x${normalizeCode(code)}`;
+}
+
+/** `{productSku}-w<width×10>` — sku варіанта, UNIQUE у product_variants. */
+export function linoleumVariantSku(productSku: string, widthM: LinoleumWidthM): string {
+  return `${productSku}-w${skuWidthToken(widthM)}`;
 }
 
 /** Stored «Ціна за м²» value, or undefined when the entry is absent. */
@@ -242,6 +309,37 @@ export function withPriceSqmSpec(
     out.push({ name: PRICE_SQM_SPEC_NAME, value });
   }
   return out;
+}
+
+/**
+ * Канонічні specifications консолідованої карточки поверх збережених: старі
+ * записи «Ширина» знімаються (список ширин — ДАНІ карточки), «Ціна за м²»
+ * replace-in-place, ширини дописуються в кінці в канонічному порядку
+ * LINOLEUM_WIDTHS_M (сортуються тут — незалежно від порядку входу).
+ * Інші записи («Клас зносу» тощо) і їх порядок зберігаються.
+ */
+export function buildConsolidatedSpecifications(
+  stored: readonly SpecificationEntry[],
+  priceSqmValue: string,
+  widths: readonly LinoleumWidthM[]
+): SpecificationEntry[] {
+  const withoutWidths = stored.filter((s) => s.name !== WIDTH_SPEC_NAME);
+  const withPrice = withPriceSqmSpec(withoutWidths, priceSqmValue);
+  const sorted = [...widths].sort(
+    (a, b) => widthOrder(a) - widthOrder(b)
+  );
+  return [
+    ...withPrice,
+    ...sorted.map((w) => ({ name: WIDTH_SPEC_NAME, value: formatWidthM(w) })),
+  ];
+}
+
+/** Strict equality of specification lists (entries are flat name/value). */
+export function specificationListsEqual(
+  a: readonly SpecificationEntry[],
+  b: readonly SpecificationEntry[]
+): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 // ---------------------------------------------------------------------------
@@ -276,12 +374,34 @@ export function planRootCategory(
 }
 
 // ---------------------------------------------------------------------------
-// the planner
+// the planner (consolidated: one card per design, widths = variants)
 // ---------------------------------------------------------------------------
+
+/** Canonical width ordering index (1.5 → 4). */
+function widthOrder(widthM: LinoleumWidthM): number {
+  const idx = (LINOLEUM_WIDTHS_M as readonly LinoleumWidthM[]).indexOf(widthM);
+  return idx === -1 ? LINOLEUM_WIDTHS_M.length : idx;
+}
+
+/** Variant plan row for one feed row of a design. */
+function buildVariantPlanRow(
+  productSku: string,
+  row: LinoleumRow
+): LinoleumVariantPlanRow {
+  return {
+    sku: linoleumVariantSku(productSku, row.widthM),
+    name: formatWidthM(row.widthM),
+    price: runningMeterPrice(row.priceSqm, row.widthM),
+    stockQuantity: row.qtyM,
+    availability: row.qtyM > 0 ? 'in_stock' : 'out_of_stock',
+    isActive: true,
+  };
+}
 
 export function planLinoleumImport(
   existing: Map<string, ExistingProduct>,
-  rows: LinoleumRow[]
+  rows: LinoleumRow[],
+  existingVariants: ReadonlyMap<string, ExistingVariant>
 ): LinoleumPlan {
   // Dedup by (code, width_m): last row for a key wins; JS Map keeps the
   // first-appearance order, which makes the plan deterministic. The `|`
@@ -291,44 +411,108 @@ export function planLinoleumImport(
   const byKey = new Map<string, LinoleumRow>();
   for (const row of rows) byKey.set(`${row.code}|${row.widthM}`, row);
 
+  // Group by DESIGN (name from the feed): one card per design, widths are
+  // variants. Groups keep first-appearance order; the display name is the
+  // first-seen row's name.
+  const groups = new Map<string, { name: string; rows: LinoleumRow[] }>();
+  for (const row of byKey.values()) {
+    const key = designKey(row.name);
+    const group = groups.get(key);
+    if (group === undefined) groups.set(key, { name: row.name, rows: [row] });
+    else group.rows.push(row);
+  }
+
+  // Existing variants indexed by parent product (missing-variant detection).
+  const variantsByProduct = new Map<string, ExistingVariant[]>();
+  for (const variant of existingVariants.values()) {
+    const list = variantsByProduct.get(variant.productId);
+    if (list === undefined) variantsByProduct.set(variant.productId, [variant]);
+    else list.push(variant);
+  }
+
   const creates: LinoleumPlanRow[] = [];
   const updates: LinoleumPlanUpdate[] = [];
-  const missing: { id: string }[] = [];
+  const variantCreates: LinoleumVariantCreate[] = [];
+  const variantUpdates: LinoleumVariantUpdate[] = [];
+  const missingProducts: { id: string }[] = [];
+  const missingVariants: { id: string }[] = [];
   const noops: string[] = [];
   const conflicts: string[] = [];
-  // Skus already decided this run (matched an existing row or claimed by a
-  // create) — used to resolve collisions with a `-N` suffix.
+  // Product skus already decided this run (matched an existing row or claimed
+  // by a create) — used to resolve collisions with a `-N` suffix.
   const claimed = new Set<string>();
 
-  for (const row of byKey.values()) {
-    const baseSku = linoleumSku(row.code, row.widthM);
-    // Only the FIRST row of this run may claim an existing product; later
-    // rows with the same derived sku are new sibling products (suffix below),
-    // never silent re-writes of the same DB row.
-    if (!claimed.has(baseSku)) {
-      const found = existing.get(baseSku);
-      if (found !== undefined) {
-        claimed.add(baseSku);
-        const expectedPrice = runningMeterPrice(row.priceSqm, row.widthM);
-        const expectedSqm = formatPriceSqmValue(row.priceSqm);
-        const storedSqm = findSpecValue(found.specifications, PRICE_SQM_SPEC_NAME);
-        const fields: LinoleumPlanUpdate['fields'] = {};
-        if (found.price !== expectedPrice) fields.price = expectedPrice;
-        if (storedSqm !== expectedSqm) {
-          fields.specifications = withPriceSqmSpec(found.specifications, expectedSqm);
-        }
-        if (found.stockQuantity !== row.qtyM) fields.stock_quantity = row.qtyM;
-        if (
-          fields.price === undefined &&
-          fields.stock_quantity === undefined &&
-          fields.specifications === undefined
-        ) {
-          noops.push(baseSku);
-        } else {
-          updates.push({ id: found.id, fields });
-        }
-        continue;
+  for (const group of groups.values()) {
+    // Within a design the variant identity IS the width: two codes of the
+    // same design+width are indistinguishable on the card (variant name =
+    // «Ширина»), so same-width rows collapse last-wins, mirroring the
+    // (code,width) dedup above. Then canonical ascending width order.
+    const byWidth = new Map<LinoleumWidthM, LinoleumRow>();
+    for (const row of group.rows) byWidth.set(row.widthM, row);
+    const widthRows = [...byWidth.values()].sort(
+      (a, b) => widthOrder(a.widthM) - widthOrder(b.widthM)
+    );
+    // Сама вузька ширина групи дає код для product sku (детерміновано,
+    // незалежно від порядку стрічок викачки).
+    const narrowest = widthRows[0]!;
+    const baseSku = linoleumSku(narrowest.code);
+    // Only the FIRST group of this run may claim an existing product.
+    const found = claimed.has(baseSku) ? undefined : existing.get(baseSku);
+
+    if (found !== undefined) {
+      claimed.add(baseSku);
+      const variantRows = widthRows.map((r) => buildVariantPlanRow(baseSku, r));
+      const expectedPrice = Math.min(...variantRows.map((v) => v.price));
+      const expectedSum = variantRows.reduce((sum, v) => sum + v.stockQuantity, 0);
+      const minSqm = Math.min(...widthRows.map((r) => r.priceSqm));
+      const expectedSpecs = buildConsolidatedSpecifications(
+        found.specifications,
+        formatPriceSqmValue(minSqm),
+        widthRows.map((r) => r.widthM)
+      );
+
+      const fields: LinoleumPlanUpdate['fields'] = {};
+      if (found.price !== expectedPrice) fields.price = expectedPrice;
+      if (!specificationListsEqual(found.specifications, expectedSpecs)) {
+        fields.specifications = expectedSpecs;
       }
+      if (found.stockQuantity !== expectedSum) fields.stock_quantity = expectedSum;
+      if (
+        fields.price === undefined &&
+        fields.stock_quantity === undefined &&
+        fields.specifications === undefined
+      ) {
+        noops.push(baseSku);
+      } else {
+        updates.push({ id: found.id, fields });
+      }
+
+      const plannedVariantSkus = new Set<string>();
+      for (const variant of variantRows) {
+        plannedVariantSkus.add(variant.sku);
+        const ev = existingVariants.get(variant.sku);
+        if (ev === undefined) {
+          variantCreates.push({ productId: found.id, variant });
+          continue;
+        }
+        const vFields: LinoleumVariantUpdate['fields'] = {};
+        if (ev.price !== variant.price) vFields.price = variant.price;
+        if (ev.stockQuantity !== variant.stockQuantity) {
+          vFields.stock_quantity = variant.stockQuantity;
+        }
+        if (vFields.price === undefined && vFields.stock_quantity === undefined) {
+          noops.push(variant.sku);
+        } else {
+          variantUpdates.push({ id: ev.id, fields: vFields });
+        }
+      }
+      // Ширини, що зникли з дизайну: варіант зводиться в 0 (ніколи DELETE).
+      for (const ev of variantsByProduct.get(found.id) ?? []) {
+        if (plannedVariantSkus.has(ev.sku)) continue;
+        if (ev.stockQuantity !== 0) missingVariants.push({ id: ev.id });
+        else noops.push(ev.sku);
+      }
+      continue;
     }
 
     let sku = baseSku;
@@ -338,26 +522,54 @@ export function planLinoleumImport(
       n += 1;
     }
     claimed.add(sku);
+    const variantRows = widthRows.map((r) => buildVariantPlanRow(sku, r));
+    const minSqm = Math.min(...widthRows.map((r) => r.priceSqm));
+    const stockSum = variantRows.reduce((sum, v) => sum + v.stockQuantity, 0);
     creates.push({
       sku,
       slug: sku,
-      name: linoleumCardName(row.name, row.widthM),
-      price: runningMeterPrice(row.priceSqm, row.widthM),
-      stockQuantity: row.qtyM,
-      availability: row.qtyM > 0 ? 'in_stock' : 'out_of_stock',
+      name: group.name,
+      price: expectedMinPrice(variantRows),
+      stockQuantity: stockSum,
+      availability: stockSum > 0 ? 'in_stock' : 'out_of_stock',
       isActive: false,
-      specifications: buildSpecifications(row.priceSqm, row.widthM),
+      specifications: [
+        { name: PRICE_SQM_SPEC_NAME, value: formatPriceSqmValue(minSqm) },
+        ...widthRows.map((r) => ({
+          name: WIDTH_SPEC_NAME,
+          value: formatWidthM(r.widthM),
+        })),
+      ],
+      variants: variantRows,
     });
   }
 
-  // Positions that left the feed: report them for the OOS write until the
-  // stock actually reached 0; already-reconciled ones are plain noops.
+  // Positions that left the feed: product stock → 0 AND all its variant
+  // stocks → 0 (never DELETE); already-reconciled ones are plain noops.
   for (const [sku, product] of existing) {
     if (!sku.startsWith(LINOLEUM_SKU_PREFIX)) continue; // defensive: pre-filtered upstream
     if (claimed.has(sku)) continue;
-    if (product.stockQuantity !== 0) missing.push({ id: product.id });
+    if (product.stockQuantity !== 0) missingProducts.push({ id: product.id });
     else noops.push(sku);
+    for (const ev of variantsByProduct.get(product.id) ?? []) {
+      if (ev.stockQuantity !== 0) missingVariants.push({ id: ev.id });
+      else noops.push(ev.sku);
+    }
   }
 
-  return { creates, updates, missing, noops, conflicts };
+  return {
+    creates,
+    updates,
+    variantCreates,
+    variantUpdates,
+    missingProducts,
+    missingVariants,
+    noops,
+    conflicts,
+  };
+}
+
+/** MIN грн/пог.м по варіантах групи (бейдж «від X грн»). */
+function expectedMinPrice(variantRows: readonly LinoleumVariantPlanRow[]): number {
+  return Math.min(...variantRows.map((v) => v.price));
 }

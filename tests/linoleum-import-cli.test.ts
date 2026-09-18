@@ -1,23 +1,26 @@
 /**
- * Лінолеум, батч 2: CLI-исполнитель scripts/linoleum-import.ts
- * (зеркало tests/wallpaper-import-cli.test.ts + tests/wallpaper-publish.test.ts).
+ * Лінолеум: CLI-исполнитель scripts/linoleum-import.ts — консолідована
+ * модель C2 (одна карточка = дизайн, ширини — product_variants).
  *
  * Контракт под тестом (статика — БД тестами НЕ трогается):
  *   - staging читается ПОСТРАНИЧНО (окна PAGE_SIZE = 1000, `.order('id')`,
  *     свежий builder на страницу) из `linoleum_stock` (миграция 052); дедуп
  *     «свежайшая строка на (code,width)» живёт В JS (prepareRows), не в SQL;
- *   - чтение существующих: домен ln-* (sku LIKE 'ln-%' через
- *     LINOLEUM_SKU_LIKE из app/lib/domains.ts);
+ *   - чтение существующих: домен ln-* (sku LIKE 'ln-%') + product_variants
+ *     по product_id-окнам ≤200 (readExistingVariants);
  *   - все sync-записи живут ТОЛЬКО в applyPlan, вызываемом РОВНО ОДИН раз в
  *     ветке `--run`; `--plan` печатает план и возвращает 0 без записей;
  *   - `--publish` — отдельное действие: два батчевых is_active-flip'а внутри
  *     publishLinoleum (фото-гейт: есть ≥1 product_images → активна);
- *   - каждый батч записи ≤ BATCH_SIZE = 200;
+ *   - каждый батч записи ≤ BATCH_SIZE = 200 (products, junction,
+ *     product_variants, updates, variants, history);
  *   - каждое изменение стока → product_stock_history (reason '1c-sync',
- *     source '1c-linoleum');
- *   - НЕТ delete/rpc/upsert; sync НИКОГДА не пишет is_active у существующих
- *     (создаётся невидимым, is_active: false); вітрина принадлежит
- *     --publish;
+ *     source '1c-linoleum'); variant-изменения несут variant_id (схема
+ *     final_001, паттерн place_order 006);
+ *   - НЕТ delete/rpc/upsert; sync НИКОГДА не пишет is_active существующих:
+ *     products вставляются невидимыми (is_active: false), варианты приходят
+ *     активными (is_active: true — контракт C2); вітрина products
+ *     принадлежит --publish;
  *   - корневая категория «Лінолеум» (slug linoleum) создаётся/переиспользуется
  *     через planRootCategory; junction product_categories + legacy
  *     products.category_id;
@@ -46,6 +49,7 @@ import {
   productInsertRow,
   publishLinoleum,
   stockHistoryRow,
+  variantInsertRow,
 } from '../scripts/linoleum-import.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -96,6 +100,34 @@ test('CLI: изменения стока пишут product_stock_history (reaso
   assert.equal(HISTORY_SOURCE, '1c-linoleum');
   assert.match(code, /reason: HISTORY_REASON/);
   assert.match(code, /source: HISTORY_SOURCE/);
+  // Variant-level зміни несуть variant_id (final_001: product_stock_history.
+  // variant_id; паттерн place_order — 006 пише (product_id, variant_id, ...)).
+  assert.match(code, /variant_id\?: string/);
+  assert.match(code, /variantId === undefined \? \{\} : \{ variant_id: variantId \}/);
+});
+
+test('CLI: варианты — чтение по product_id-окнам ≤200, INSERT product_variants батчами, update по id', () => {
+  // 4 сайта: readExistingVariants + applyPlan(insert) + variantUpdates + missingVariants
+  assert.equal(
+    (code.match(/\.from\('product_variants'\)/g) ?? []).length,
+    4,
+    'read + insert + update + missing-обновление вариантов'
+  );
+  assert.match(code, /export function variantInsertRow/);
+  assert.match(code, /export async function readExistingVariants/);
+  assert.match(code, /\.in\('product_id', group\)/, 'variant read: окна product_id ≤200');
+  // INSERT идёт через payload-builder и собирает ids (.select('id,sku')):
+  // products-insert + variants-insert — ровно два таких сайта.
+  assert.match(code, /variantInsertRow\(v\.variant, v\.productId\)/);
+  assert.equal(
+    (code.match(/\.select\('id,sku'\)/g) ?? []).length,
+    2,
+    'products insert + product_variants insert собирают ids'
+  );
+  // variant UPDATE / missing — батчируются через chunkRows, построчно по id
+  assert.match(code, /chunkRows\(plan\.variantUpdates, BATCH_SIZE\)/);
+  assert.match(code, /chunkRows\(plan\.variantCreates|variantPayloads, BATCH_SIZE\)/);
+  assert.match(code, /chunkRows\(plan\.missingVariants, BATCH_SIZE\)/);
 });
 
 test('CLI: НЕТ delete / rpc / upsert — только insert+update, план идемпотентен', () => {
@@ -104,7 +136,7 @@ test('CLI: НЕТ delete / rpc / upsert — только insert+update, план
   assert.doesNotMatch(code, /\.upsert\(/);
 });
 
-test('CLI: sync (--plan/--run) НИКОГДА не пишет is_active — вітрина принадлежит --publish', () => {
+test('CLI: sync (--plan/--run) не пишет is_active существующих — вітрина products у --publish', () => {
   // Scope: всё, что sync-режимы могут исполнить, определено ДО publish-исполнителя.
   const publishIdx = code.indexOf('async function publishLinoleum');
   assert.ok(publishIdx !== -1, 'publish executor must exist');
@@ -113,8 +145,12 @@ test('CLI: sync (--plan/--run) НИКОГДА не пишет is_active — ві
   assert.equal(
     (syncPart.match(/is_active: false/g) ?? []).length,
     1,
-    'exactly the products-insert payload sets is_active (new rows stay invisible)'
+    'ровно products-insert payload ставит is_active: false (новые карточки невидимы)'
   );
+  // Варианты приходят АКТИВНЫМИ (контракт C2), но значение берётся из плана
+  // (LinoleumVariantPlanRow.isActive: true — pinned в payload-тесте ниже):
+  // литерала `is_active: true` в sync-части нет, UPDATE is_active — нет.
+  assert.match(syncPart, /is_active: variant\.isActive/);
   assert.doesNotMatch(syncPart, /is_active:\s*true/);
   assert.doesNotMatch(syncPart, /\.update\([^)]*is_active/, 'sync never UPDATEs is_active');
 });
@@ -367,40 +403,54 @@ test('parseArgs: три режима по одному флагу, смешив�
 // ---------------------------------------------------------------------------
 
 const planRow = (over: Partial<LinoleumPlanRow> = {}): LinoleumPlanRow => ({
-  sku: 'ln-xl-100-w25',
-  slug: 'ln-xl-100-w25',
-  name: 'Лінолеум Форум 2,5 м',
-  price: 876.25,
-  stockQuantity: 40,
+  sku: 'ln-xl-100',
+  slug: 'ln-xl-100',
+  name: 'Лінолеум Форум',
+  price: 525.75,
+  stockQuantity: 52,
   availability: 'in_stock',
   isActive: false,
   specifications: [
     { name: 'Ціна за м²', value: '350,50' },
+    { name: 'Ширина', value: '1,5' },
     { name: 'Ширина', value: '2,5' },
+    { name: 'Ширина', value: '3' },
+  ],
+  variants: [
+    {
+      sku: 'ln-xl-100-w15',
+      name: '1,5',
+      price: 525.75,
+      stockQuantity: 12,
+      availability: 'in_stock',
+      isActive: true,
+    },
+    {
+      sku: 'ln-xl-100-w25',
+      name: '2,5',
+      price: 876.25,
+      stockQuantity: 40,
+      availability: 'in_stock',
+      isActive: true,
+    },
   ],
   ...over,
 });
 
-test('productInsertRow: консистентный INSERT (is_active false, UAH, availability, specifications, category_id)', () => {
+test('productInsertRow: консистентный INSERT консолидированной карточки (is_active false, UAH, availability, specifications, category_id)', () => {
   const payload = productInsertRow(
     planRow({ availability: 'out_of_stock', stockQuantity: 0 }),
     'cat-uuid'
   );
-  assert.deepEqual(payload, {
-    sku: 'ln-xl-100-w25',
-    slug: 'ln-xl-100-w25',
-    name: 'Лінолеум Форум 2,5 м',
-    price: 876.25,
-    stock_quantity: 0,
-    availability_status: 'out_of_stock',
-    currency: 'UAH',
-    is_active: false,
-    specifications: [
-      { name: 'Ціна за м²', value: '350,50' },
-      { name: 'Ширина', value: '2,5' },
-    ],
-    category_id: 'cat-uuid',
-  });
+  assert.equal(payload.sku, 'ln-xl-100');
+  assert.equal(payload.name, 'Лінолеум Форум');
+  assert.equal(payload.price, 525.75);
+  assert.equal(payload.stock_quantity, 0);
+  assert.equal(payload.availability_status, 'out_of_stock');
+  assert.equal(payload.currency, 'UAH');
+  assert.equal(payload.is_active, false);
+  assert.deepEqual(payload.specifications, planRow().specifications);
+  assert.equal(payload.category_id, 'cat-uuid');
 });
 
 test('productInsertRow: category_id может быть null (defensive) — никогда голый undefined', () => {
@@ -408,11 +458,33 @@ test('productInsertRow: category_id может быть null (defensive) — н�
   assert.equal(payload.category_id, null);
 });
 
-test('stockHistoryRow: reason 1c-sync, source 1c-linoleum, old→new quantities', () => {
+test('variantInsertRow: product_variants INSERT — активный вариант с qty/ценой пог.м (контракт C2)', () => {
+  const variantPayload = planRow().variants[0]!;
+  const payload = variantInsertRow(variantPayload, 'prod-uuid');
+  assert.deepEqual(payload, {
+    product_id: 'prod-uuid',
+    name: '1,5',
+    sku: 'ln-xl-100-w15',
+    price: 525.75,
+    stock_quantity: 12,
+    availability_status: 'in_stock',
+    is_active: true,
+  });
+});
+
+test('stockHistoryRow: reason 1c-sync, source 1c-linoleum, old→new quantities; variant_id только для variant-уровня', () => {
   assert.deepEqual(stockHistoryRow('p-uuid', 5, 0), {
     product_id: 'p-uuid',
     old_quantity: 5,
     new_quantity: 0,
+    reason: '1c-sync',
+    source: '1c-linoleum',
+  });
+  assert.deepEqual(stockHistoryRow('p-uuid', 40, 35, 'v-uuid'), {
+    product_id: 'p-uuid',
+    variant_id: 'v-uuid',
+    old_quantity: 40,
+    new_quantity: 35,
     reason: '1c-sync',
     source: '1c-linoleum',
   });
