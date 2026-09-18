@@ -6,6 +6,7 @@ import ProductJsonLd from '@/app/components/ProductJsonLd';
 import { fetchActiveBrands, fetchBrandProductCount } from '@/app/lib/catalog';
 import { buildBrandsBreadcrumbJsonLd } from '@/app/lib/schema-org';
 import { SITE_NAME } from '@/app/lib/seo';
+import { pluralProducts } from '@/app/lib/format';
 
 /**
  * /brands — єдина індексована посадочна всіх брендів (SEO-батч
@@ -49,9 +50,6 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-import { pluralProducts } from '@/app/lib/format';
-
-export { pluralProducts };
 
 export default async function BrandsPage() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';

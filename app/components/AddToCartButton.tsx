@@ -175,7 +175,8 @@ export default function AddToCartButton({
         disabled={hasVariants && !selectedVariant}
         onClick={() => {
           if (hasVariants && !selectedVariant) return;
-          const addedOk = addItem(productId, hasVariants ? variantId : null, quantity);
+          const qtyToAdd = Math.max(1, Math.min(quantity || 1, maxQty));
+          const addedOk = addItem(productId, hasVariants ? variantId : null, qtyToAdd);
           // addItem is a no-op (returns false) for an out-of-range quantity
           // or a full cart — showing "У кошику" then would be a lie; the
           // full-cart case gets an explicit notice instead of silence.
@@ -183,6 +184,7 @@ export default function AddToCartButton({
             setLimitNotice(true);
             return;
           }
+          setQuantity(qtyToAdd);
           setLimitNotice(false);
           // Anonymous analytics: product UUID only, no PII.
           trackEvent(ANALYTICS_EVENTS.ADD_TO_CART, { product_id: productId });

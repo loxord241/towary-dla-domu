@@ -63,3 +63,12 @@ test('VARIANT-P0: genuine out-of-stock paths are preserved', () => {
   // The honest disabled state still exists for real stockouts.
   assert.match(btn, /Немає в наявності/);
 });
+
+test('PDP-STEPPER (P2.1): touch stepper buttons - and + around quantity input with 44px targets', () => {
+  assert.match(btn, /aria-label="Зменшити кількість"/);
+  assert.match(btn, /aria-label="Збільшити кількість"/);
+  assert.match(btn, /min-h-\[44px\]/);
+  assert.match(btn, /min-w-\[44px\]/);
+  // Clamping guard: quantity is sanitized to [1, maxQty] before addItem call
+  assert.match(btn, /const qtyToAdd = Math\.max\(1, Math\.min\(quantity \|\| 1, maxQty\)\);/);
+});

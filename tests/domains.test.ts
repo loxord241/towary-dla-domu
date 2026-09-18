@@ -77,3 +77,17 @@ test('DOMAINS: no runtime `wc-` literal left outside the owner module', () => {
     assert.doesNotMatch(code, /'wc-'/, `${rel} must not hardcode the prefix`);
   }
 });
+
+test('DOMAINS: isMeterProduct drives meter units in cart, checkout, and order views', () => {
+  const cart = src('app/cart/page.tsx');
+  assert.match(cart, /import \{[\s\S]*isMeterProduct[\s\S]*\} from '@\/app\/lib\/domains'/);
+  assert.match(cart, /isMeterProduct\(preview\.slug\) \? 'пог\. м' : 'шт'/);
+
+  const summary = src('app/checkout/parts/OrderSummary.tsx');
+  assert.match(summary, /import \{[\s\S]*isMeterProduct[\s\S]*\} from '@\/app\/lib\/domains'/);
+  assert.match(summary, /isMeterProduct\(preview\?\.slug\) \? 'пог\. м' : 'шт'/);
+
+  const orderCard = src('app/components/OrderDetailsCard.tsx');
+  assert.match(orderCard, /import \{[\s\S]*isMeterProduct[\s\S]*\} from '@\/app\/lib\/domains'/);
+  assert.match(orderCard, /isMeterProduct\(item\.sku\) \? 'пог\. м' : 'шт'/);
+});
