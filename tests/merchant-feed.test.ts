@@ -463,6 +463,26 @@ test('FEED: item without additional images emits no g:additional_image_link elem
 
 // ---- route wiring (source invariants) ----
 
+test('FEED: route excludes linoleum (ln-*) at the data level, keeps wallpapers intentionally', () => {
+  const src = routeSrc();
+  // Owner decision 2026-09-18: linoleum is cut-to-length roll goods — the
+  // feed price is грн/пог.м while the landing page shows «від X грн/м²»,
+  // and Google cross-checks feed against landing page, so ln-* must never
+  // enter Merchant listings. Same SQL-side pattern as the catalog lists
+  // (app/lib/catalog/*.ts): exclusion at the DATA layer, NOT in the pure
+  // builder (unlike the _du alias rule, which is unit-testable there).
+  assert.match(src, /\.not\('sku', 'like', LINOLEUM_SKU_LIKE\)/);
+  // The pattern comes from the shared domain vocabulary, not a local literal.
+  assert.match(
+    src,
+    /import\s*\{ LINOLEUM_SKU_LIKE \} from '@\/app\/lib\/domains';/
+  );
+  // Wallpapers (wc-*) REMAIN in the feed on purpose — unit-priced items
+  // with no landing-page mismatch. A wallpaper exclusion here would need a
+  // new owner decision.
+  assert.equal(src.includes('WALLPAPER_SKU_LIKE'), false);
+});
+
 test('FEED: route keeps the storefront eligibility join, ISR window and degradation', () => {
   const src = routeSrc();
   // Same eligibility join as app/sitemap.ts.

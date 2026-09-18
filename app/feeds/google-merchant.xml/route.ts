@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { fetchActiveCategories } from '@/app/lib/catalog';
+import { LINOLEUM_SKU_LIKE } from '@/app/lib/domains';
 import { collectPaged } from '@/app/lib/seo-sitemap';
 import { getPublicImageUrl } from '@/app/lib/supabase-storage';
 import {
@@ -18,13 +19,18 @@ import {
  *
  * Single-file decision: feeds fetched by URL accept up to 50 000 items per
  * XML file, so the whole catalog ships as ONE document (see the file-limit
- * decision in app/lib/merchant-feed.ts). Eligibility, _du exclusion and the
- * honesty rules live in the pure builder app/lib/merchant-feed.ts — this
- * route only owns data access, mirroring app/sitemap.ts:
+ * decision in app/lib/merchant-feed.ts). Eligibility and the honesty rules
+ * live in the pure builder app/lib/merchant-feed.ts (_du aliases are dropped
+ * THERE, unit-testably) — this route only owns data access, mirroring
+ * app/sitemap.ts:
  *   - anonymous Supabase client, RLS decides visibility, service key never
  *     appears here;
  *   - same eligibility join as the sitemap/storefront: is_active=true +
  *     ≥1 photo via product_images!inner;
+ *   - data-level exclusion (owner decision 2026-09-18): linoleum
+ *     (sku ln-*, cut-to-length roll goods priced грн/пог.м vs the landing
+ *     page «від X грн/м²») is filtered SQL-side via .not like
+ *     LINOLEUM_SKU_LIKE — see the query below; wallpapers (wc-*) stay in;
  *   - bounded 1000-row windows with deterministic .order('id') via
  *     collectPaged (PostgREST caps responses at 1000 rows).
  *
@@ -76,6 +82,13 @@ async function fetchFeedProductRows(): Promise<MerchantFeedProductRow[] | null> 
             'pc:product_categories(category_id)'
         )
         .eq('is_active', true)
+        // Owner decision 2026-09-18: linoleum (ln-*) is cut-to-length roll
+        // goods — the feed price is грн/пог.м while the landing page shows
+        // «від X грн/м²», and Google cross-checks feed against the landing
+        // page, so ln-* must never enter Merchant listings (same SQL-side
+        // pattern as the catalog lists). Wallpapers (wc-*) stay in the feed
+        // intentionally: unit-priced, no landing-page mismatch.
+        .not('sku', 'like', LINOLEUM_SKU_LIKE)
         .order('id', { ascending: true })
         .range(from, from + limit - 1);
       if (error) throw new Error(error.message);
