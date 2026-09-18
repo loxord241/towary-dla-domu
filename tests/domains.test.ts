@@ -28,6 +28,13 @@ test('DOMAINS: unit — prefix, like-pattern, slug classification', () => {
   assert.equal(domains.isWallpaperSlug(undefined), false);
   assert.equal(domains.domainOfSlug('wc-1'), 'wallpaper');
   assert.equal(domains.domainOfSlug('anything'), 'tech');
+  assert.equal(domains.isMeterProduct('ln-123'), true);
+  assert.equal(domains.isMeterProduct('ln-tarkett-extra'), true);
+  assert.equal(domains.isMeterProduct('wc-37589'), false);
+  assert.equal(domains.isMeterProduct('UC-12345'), false);
+  assert.equal(domains.isMeterProduct(''), false);
+  assert.equal(domains.isMeterProduct(null), false);
+  assert.equal(domains.isMeterProduct(undefined), false);
   // Pure module: client-safe (checkout imports it), import-free entirely.
   const lib = src('app/lib/domains.ts');
   assert.doesNotMatch(lib, /^import /m, 'pure module must stay import-free');

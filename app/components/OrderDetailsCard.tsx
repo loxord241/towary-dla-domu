@@ -1,4 +1,5 @@
 import { formatPrice } from '@/app/lib/format';
+import { isMeterProduct } from '@/app/lib/domains';
 import ItemReviewForm from './ItemReviewForm';
 
 interface OrderDetails {
@@ -79,7 +80,7 @@ export default function OrderDetailsCard({
                       <p className="text-xs text-gray-500">{item.variant_name}</p>
                     )}
                     <p className="mt-0.5 text-xs text-gray-400">
-                      {item.quantity} шт × {formatPrice(item.price, order.currency)}
+                      {item.quantity} {isMeterProduct(item.sku) ? 'пог. м' : 'шт'} × {formatPrice(item.price, order.currency)}
                     </p>
                     <p className="mt-1 text-sm font-semibold text-gray-900">
                       {formatPrice(item.total, order.currency)}
@@ -107,7 +108,7 @@ export default function OrderDetailsCard({
                     <span className="text-gray-500"> · {item.variant_name}</span>
                   )}
                   <span className="block break-words text-xs text-gray-400 [overflow-wrap:anywhere]">
-                    SKU: {item.sku} · {item.quantity} шт ×{' '}
+                    SKU: {item.sku} · {item.quantity} {isMeterProduct(item.sku) ? 'пог. м' : 'шт'} ×{' '}
                     {formatPrice(item.price, order.currency)}
                   </span>
                 </td>

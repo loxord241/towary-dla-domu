@@ -43,3 +43,9 @@ export function domainOfSlug(slug: string | null | undefined): ProductDomain {
   if (isLinoleumSlug(slug)) return 'linoleum';
   return 'tech';
 }
+
+/** Meter products (running goods sold by running metre, e.g. linoleum `ln-*`). */
+export function isMeterProduct(sku?: string | null): boolean {
+  return typeof sku === 'string' && sku.startsWith(LINOLEUM_SKU_PREFIX);
+}
+

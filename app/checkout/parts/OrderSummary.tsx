@@ -4,6 +4,7 @@ import Image from 'next/image';
 import type { CartItem } from '@/app/lib/cart-context';
 import type { CartPreviewLine } from '@/app/lib/cart-preview';
 import { formatPrice } from '@/app/lib/format';
+import { isMeterProduct } from '@/app/lib/domains';
 import type { DeliveryType } from '../delivery-apis';
 
 interface OrderSummaryProps {
@@ -101,7 +102,9 @@ export default function OrderSummary({
                   {preview?.variantName && (
                     <span className="block text-xs text-gray-500">{preview.variantName}</span>
                   )}
-                  <span className="text-xs text-gray-500">{item.quantity} шт</span>
+                  <span className="text-xs text-gray-500">
+                    {item.quantity} {isMeterProduct(preview?.slug) ? 'пог. м' : 'шт'}
+                  </span>
                 </span>
                  <span className="whitespace-nowrap font-medium">
                    {formatPrice(

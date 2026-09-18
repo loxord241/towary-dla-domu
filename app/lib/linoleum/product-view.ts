@@ -120,13 +120,27 @@ export interface LinoleumMeterInput {
 export interface LinoleumMeterCalculation {
   /** Whole running metres to order, or null when impossible. */
   meters: number | null;
+  /** True when roll width is smaller than both room dimensions and seams are required. */
+  requiresSeam?: boolean;
 }
 
 const CM_PER_M = 100;
-const SQM_IN_SQCM = CM_PER_M * CM_PER_M; // 10 000 см² у м²
 export const DEFAULT_WASTE_PERCENT = 10;
 
 /**
+ * Geometric calculation of running meters for linoleum rolls:
+ * Linoleum is sold as a rectangular cut of roll width (W_roll) × running metres (M).
+ *
+ * 1. Single strip without seams:
+ *    - W_roll >= roomWidthM AND W_roll >= roomLengthM: roll can be oriented either way.
+ *      Choose orientation with fewer running metres: ceil(min(W, L) * (1 + waste)).
+ *    - W_roll >= roomWidthM (and < roomLengthM): cut length ceil(roomLengthM * (1 + waste)).
+ *    - W_roll >= roomLengthM (and < roomWidthM): cut length ceil(roomWidthM * (1 + waste)).
+ * 2. Multi-strip with seams:
+ *    - W_roll < roomWidthM AND W_roll < roomLengthM:
+ *      requiresSeam = true, total meterage is the minimum between strips along length
+ *      and strips along width.
+ *
  * Total function: never throws. Non-finite / non-positive dimensions, a
  * negative waste percent or a roll width outside LINOLEUM_WIDTHS_M degrade
  * to `{ meters: null }` so the caller renders a neutral state instead of a
@@ -157,13 +171,51 @@ export function calcLinoleumMeters(
     return { meters: null };
   }
 
-  // Погонні метри = (площа з запасом) / (ширина рулону). У сантиметрах:
-  // площа (см²) × (100 + запас) — цілочисельно; дільник
-  // SQM_IN_SQCM × rollWidthCm = 10 000 (см² → м²) × ширина (см), при цьому
-  // приховані ÷100 відсотка запасу та ×100 переводу ширини см→м скорочуються.
-  // Стеля — ОДНА, у цілі погонні метри. Числа побутових кімнат
-  // (≤ ~10⁸ см² × 200) та дільник (≤ 4×10⁶) — точні doubles.
-  const areaSqCm = lengthCm * widthCm;
-  const withWasteSqCm = areaSqCm * (100 + wastePercent);
-  return { meters: Math.ceil(withWasteSqCm / (SQM_IN_SQCM * rollWidthCm)) };
+  const fitsWidth = rollWidthCm >= widthCm;
+  const fitsLength = rollWidthCm >= lengthCm;
+
+  if (fitsWidth && fitsLength) {
+    // Рулон покриває кімнату будь-яким боком — обираємо менший відріз
+    const minDimCm = Math.min(widthCm, lengthCm);
+    const cutCm = (minDimCm * (100 + wastePercent)) / 100;
+    return {
+      meters: Math.ceil(cutCm / CM_PER_M),
+      requiresSeam: false,
+    };
+  }
+
+  if (fitsWidth) {
+    // rollWidth >= roomWidthM, відріз уздовж довжини кімнати
+    const cutCm = (lengthCm * (100 + wastePercent)) / 100;
+    return {
+      meters: Math.ceil(cutCm / CM_PER_M),
+      requiresSeam: false,
+    };
+  }
+
+  if (fitsLength) {
+    // rollWidth >= roomLengthM, відріз уздовж ширини кімнати
+    const cutCm = (widthCm * (100 + wastePercent)) / 100;
+    return {
+      meters: Math.ceil(cutCm / CM_PER_M),
+      requiresSeam: false,
+    };
+  }
+
+  // Рулон вужчий за обидві сторони — потрібне стикування смуг
+  // Орієнтація 1: смуги вздовж довжини
+  const stripsAlongLength = Math.ceil(widthCm / rollWidthCm);
+  const totalCmAlongLength =
+    stripsAlongLength * ((lengthCm * (100 + wastePercent)) / 100);
+
+  // Орієнтація 2: смуги вздовж ширини
+  const stripsAlongWidth = Math.ceil(lengthCm / rollWidthCm);
+  const totalCmAlongWidth =
+    stripsAlongWidth * ((widthCm * (100 + wastePercent)) / 100);
+
+  const bestCm = Math.min(totalCmAlongLength, totalCmAlongWidth);
+  return {
+    meters: Math.ceil(bestCm / CM_PER_M),
+    requiresSeam: true,
+  };
 }

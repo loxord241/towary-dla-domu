@@ -11,6 +11,7 @@ import {
   type CartPreviewLine,
 } from '@/app/lib/cart-preview';
 import { formatPrice } from '@/app/lib/format';
+import { isMeterProduct } from '@/app/lib/domains';
 
 function availabilityLabel(status: string | null): string {
   if (status === 'in_stock') return 'В наявності';
@@ -240,7 +241,8 @@ export default function CartPage() {
                           )}
                           {!unavailable ? (
                             <p className="text-sm text-gray-600 mt-1">
-                              {formatPrice(preview.unitPrice ?? 0, preview.currency)} / шт ·{' '}
+                              {formatPrice(preview.unitPrice ?? 0, preview.currency)} /{' '}
+                              {isMeterProduct(preview.slug) ? 'пог. м' : 'шт'} ·{' '}
                               {availabilityLabel(preview.availabilityStatus)}
                             </p>
                           ) : (

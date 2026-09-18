@@ -444,6 +444,11 @@ export default function LinoleumMeterPanel({
             <p className="mt-0.5 text-xs text-gray-500">
               + {DEFAULT_WASTE_PERCENT} % запасу
             </p>
+            {calc.requiresSeam === true && (
+              <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2" role="alert">
+                Ширина рулону менша за обидві сторони кімнати — знадобиться стикування смуг.
+              </p>
+            )}
             <button
               type="button"
               onClick={applyCalculation}
