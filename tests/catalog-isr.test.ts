@@ -134,3 +134,31 @@ test('ISR: buildOboiBreadcrumbJsonLd — Головна → Шпалери on th
   };
   assert.equal(slashed.itemListElement[1]?.item, 'https://towary-dla-domu.com/oboi');
 });
+
+// ---- 4. pagination navigations vs the ISR split (owner P1 2026-09-18) ----
+
+test('ISR: pagination navigates by document — the isSortDocumentNavigation precedent covers ?page too', () => {
+  // Owner revision 2026-09-18: soft navigation loses to the same
+  // segment-cache reuse that broke sorting (owner bug 2026-09-15): a
+  // static prefetch of the ISR path is cached across ALL search param
+  // values, and other storefront links (chips, header) keep that cache
+  // warm — a soft navigation to ?page=N could render the previous page's
+  // products under the new URL. A document navigation always reaches the
+  // server: proxy rewrites the query-carrying URL to the dynamic twin.
+  const nav = src('app/components/PaginationNav.tsx');
+  assert.match(nav, /'use client'/);
+  assert.match(nav, /window\.location\.assign\(href\)/);
+  assert.doesNotMatch(nav, /router\.push|startTransition/);
+  // No RSC prefetch from pagination links — a document navigation never
+  // uses it, and each paginated prefetch would be a real twin render.
+  assert.match(nav, /prefetch=\{false\}/);
+  // Every storefront renders the grid under the anchor the nav dims.
+  for (const shelf of [
+    'app/catalog/CatalogView.tsx',
+    'app/oboi/OboiStorefront.tsx',
+    'app/linoleum/Storefront.tsx',
+  ]) {
+    assert.match(src(shelf), /id="catalog-products"/,
+      `${shelf} must carry the grid anchor for PaginationNav`);
+  }
+});

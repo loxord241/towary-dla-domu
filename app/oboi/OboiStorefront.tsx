@@ -10,6 +10,7 @@ import SiteFooter from '@/app/components/SiteFooter'
 import Announcements from '@/app/components/Announcements'
 import ProductCard from '@/app/components/ProductCard'
 import EmptyState from '@/app/components/EmptyState'
+import PaginationNav from '@/app/components/PaginationNav'
 import { SearchIcon } from '@/app/components/icons'
 import ProductJsonLd from '@/app/components/ProductJsonLd'
 import FaqJsonLd from '@/app/components/FaqJsonLd'
@@ -230,7 +231,10 @@ export default function OboiStorefront({
               }
             />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
+              id="catalog-products"
+            >
               {products.map((product, idx) => (
                 <ProductCard
                   key={product.id}
@@ -242,61 +246,46 @@ export default function OboiStorefront({
             </div>
           )}
 
-          {/* Pagination — same geometry and aria-disabled contract as the
-              /catalog controls (P3-R2). */}
+          {/* Pagination — the shared client component (owner P1 fix
+              2026-09-18): document navigation (isSortDocumentNavigation
+              precedent — soft nav loses to the ISR segment-cache race),
+              pre-unload grid dimming for instant click feedback. URL logic
+              stays here (P3-R2): oboiPageUrl for prev/next/numbers through
+              buildPageWindow. */}
           {maxPage > 1 && (
-            <nav className="mt-6 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-              {currentPage > 1 ? (
-                <Link href={oboiPageUrl(currentPage - 1, base, sortParam)} className={paginationControlClass}>
-                  ← Назад
-                </Link>
-              ) : (
-                <span aria-disabled="true" className={paginationControlClass}>
-                  ← Назад
+            <PaginationNav
+              prevHref={
+                currentPage > 1
+                  ? oboiPageUrl(currentPage - 1, base, sortParam)
+                  : null
+              }
+              nextHref={
+                currentPage < maxPage
+                  ? oboiPageUrl(currentPage + 1, base, sortParam)
+                  : null
+              }
+              items={buildPageWindow(currentPage, maxPage).map((item) =>
+                item === 'ellipsis'
+                  ? { kind: 'ellipsis' as const }
+                  : {
+                      kind: 'page' as const,
+                      page: item,
+                      href: oboiPageUrl(item, base, sortParam),
+                    }
+              )}
+              currentPage={currentPage}
+              anchorId="catalog-products"
+              controlClassName={paginationControlClass}
+              pageLinkClassName={pageNumberLinkClass}
+              currentPageClassName={pageNumberCurrentClass}
+              ellipsisClassName="px-1 text-sm text-gray-500"
+              status={
+                <span className="hidden text-sm text-gray-600 sm:inline">
+                  Сторінка {currentPage} із {maxPage}
+                  <span className="text-gray-500"> · знайдено {total}</span>
                 </span>
-              )}
-              {buildPageWindow(currentPage, maxPage).map((item, idx) =>
-                item === 'ellipsis' ? (
-                  <span
-                    key={`gap-${idx}`}
-                    aria-hidden="true"
-                    className="px-1 text-sm text-gray-500"
-                  >
-                    …
-                  </span>
-                ) : item === currentPage ? (
-                  <span
-                    key={`page-${item}`}
-                    aria-current="page"
-                    className={pageNumberCurrentClass}
-                  >
-                    {item}
-                  </span>
-                ) : (
-                  <Link
-                    key={`page-${item}`}
-                    href={oboiPageUrl(item, base, sortParam)}
-                    aria-label={`Сторінка ${item}`}
-                    className={pageNumberLinkClass}
-                  >
-                    {item}
-                  </Link>
-                )
-              )}
-              <span className="hidden text-sm text-gray-600 sm:inline">
-                Сторінка {currentPage} із {maxPage}
-                <span className="text-gray-500"> · знайдено {total}</span>
-              </span>
-              {currentPage < maxPage ? (
-                <Link href={oboiPageUrl(currentPage + 1, base, sortParam)} className={paginationControlClass}>
-                  Далі →
-                </Link>
-              ) : (
-                <span aria-disabled="true" className={paginationControlClass}>
-                  Далі →
-                </span>
-              )}
-            </nav>
+              }
+            />
           )}
 
           {/* «Часті питання» — ONLY on the indexable view (showFaq gate

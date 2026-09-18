@@ -57,11 +57,14 @@ test('P3-R3: last category card spans the mobile row on odd counts (no orphan)',
 });
 
 test('P3-R2: disabled pagination controls carry aria-disabled', () => {
-  const src = read('app/catalog/CatalogView.tsx');
-  const spans = src.match(/<span aria-disabled="true"/g) ?? [];
+  // Owner P1 fix 2026-09-18: the nav markup moved into the shared client
+  // component (PaginationNav) — the invariant moved with it, unchanged.
+  const nav = read('app/components/PaginationNav.tsx');
+  const spans = nav.match(/<span\s+aria-disabled="true"/g) ?? [];
   assert.equal(spans.length, 2, 'prev+next inactive sides pinned');
-  assert.match(src, /paginationControlClass/);
+  assert.match(nav, /controlClassName/);
   // URL/clamp logic untouched: page param handling still present
+  const src = read('app/catalog/CatalogView.tsx');
   assert.match(src, /catalogPageUrl\(linkParams, page - 1, linkBase\)/);
   assert.match(src, /catalogPageUrl\(linkParams, page \+ 1, linkBase\)/);
 });

@@ -122,6 +122,10 @@ test('LINOLEUM HUB: storefront — one h1 «Лінолеум», width chips, gri
   assert.match(shelf, /formatWidthM/, 'chip labels use the uk comma format canon');
   assert.match(shelf, /<ProductCard/, 'reuses ProductCard unchanged');
   assert.match(shelf, /buildPageWindow/, 'catalog-style page window');
+  // Owner P1 fix 2026-09-18: shared client PaginationNav with the grid
+  // anchor (same contract as /catalog and /oboi).
+  assert.match(shelf, /<PaginationNav/);
+  assert.match(shelf, /anchorId="catalog-products"/);
   assert.match(shelf, /getMainPublicImageUrl/, 'image resolver pattern');
   assert.equal((shelf.match(/<main/g) ?? []).length, 1, 'exactly one main landmark');
   assert.doesNotMatch(shelf, /dangerouslySetInnerHTML/, 'no new HTML sinks');

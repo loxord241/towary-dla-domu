@@ -198,8 +198,12 @@ test('OBOI: page exists with exactly one h1, chips, grid and pagination', () => 
     'chips deep-link into the wallpaper-scoped /catalog views (path form)');
   assert.match(shelf, /<ProductCard/, 'reuses ProductCard');
   assert.match(shelf, /buildPageWindow/, 'catalog-style page window');
-  assert.equal((shelf.match(/<span aria-disabled="true"/g) ?? []).length, 2,
-    'prev+next inactive sides pinned (P3-R2 contract)');
+  // Owner P1 fix 2026-09-18: the interactive nav is the shared client
+  // component; the two aria-disabled spans live in PaginationNav.tsx
+  // (pinned in catalog-pagination/p3-ux), the shelf mounts it with the
+  // grid anchor.
+  assert.match(shelf, /<PaginationNav/);
+  assert.match(shelf, /anchorId="catalog-products"/);
   assert.match(shelf, /<Announcements\s*\/>/);
   assert.doesNotMatch(shelf, /SearchViewTracker|<form/, 'v1: no search on /oboi');
   assert.equal((shelf.match(/<main/g) ?? []).length, 1, 'exactly one main landmark');

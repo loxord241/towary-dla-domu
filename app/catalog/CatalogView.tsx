@@ -51,6 +51,7 @@ import { buildPageWindow } from '@/app/lib/pagination'
 import { formatPrice } from '@/app/lib/format'
 import ProductCard from '@/app/components/ProductCard'
 import EmptyState from '@/app/components/EmptyState'
+import PaginationNav from '@/app/components/PaginationNav'
 import { SearchIcon } from '@/app/components/icons'
 
 /**
@@ -621,7 +622,10 @@ export default async function CatalogView({
                   ctaLabel={hasActiveFilters ? 'Скинути фільтри' : undefined}
                 />
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                <div
+                  className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
+                  id="catalog-products"
+                >
                   {products.map((product, idx) => (
                     <ProductCard
                       key={product.id}
@@ -636,71 +640,47 @@ export default async function CatalogView({
                 </div>
               )}
 
-              {/* Pagination — both controls share one geometry; the inactive
-                  side is a span with aria-disabled (not focusable, announced
-                  as unavailable) so keyboard order and semantics stay correct
-                  without touching URL/clamp logic (P3-R2). Numbers come from
-                  the pure buildPageWindow (±2 around current + first/last);
-                  the current page is aria-current, not a link. */}
+              {/* Pagination — the interactive nav is the shared client
+                  component (owner P1 fix 2026-09-18: dead/rage clicks on
+                  paginated ISR-path views). It navigates by DOCUMENT
+                  (window.location.assign — the isSortDocumentNavigation
+                  precedent 2026-09-15: soft nav loses to the segment-cache
+                  reuse of static ISR prefetches) and dims the grid for
+                  instant pre-unload feedback; this server block only builds
+                  the URL/window data (P3-R2 URL logic unchanged: page ± 1 +
+                  buildPageWindow through catalogPageUrl). */}
               {maxPage > 1 && (
-                <nav className="mt-6 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-                  {page > 1 ? (
-                    <Link
-                      href={catalogPageUrl(linkParams, page - 1, linkBase)}
-                      className={paginationControlClass}
-                    >
-                      ← Назад
-                    </Link>
-                  ) : (
-                    <span aria-disabled="true" className={paginationControlClass}>
-                      ← Назад
+                <PaginationNav
+                  prevHref={
+                    page > 1 ? catalogPageUrl(linkParams, page - 1, linkBase) : null
+                  }
+                  nextHref={
+                    page < maxPage
+                      ? catalogPageUrl(linkParams, page + 1, linkBase)
+                      : null
+                  }
+                  items={buildPageWindow(page, maxPage).map((item) =>
+                    item === 'ellipsis'
+                      ? { kind: 'ellipsis' as const }
+                      : {
+                          kind: 'page' as const,
+                          page: item,
+                          href: catalogPageUrl(linkParams, item, linkBase),
+                        }
+                  )}
+                  currentPage={page}
+                  anchorId="catalog-products"
+                  controlClassName={paginationControlClass}
+                  pageLinkClassName={pageNumberLinkClass}
+                  currentPageClassName={pageNumberCurrentClass}
+                  ellipsisClassName="px-1 text-sm text-gray-400"
+                  status={
+                    <span className="hidden text-sm text-gray-600 sm:inline">
+                      Сторінка {page} із {maxPage}
+                      <span className="text-gray-400"> · знайдено {total}</span>
                     </span>
-                  )}
-                  {buildPageWindow(page, maxPage).map((item, idx) =>
-                    item === 'ellipsis' ? (
-                      <span
-                        key={`gap-${idx}`}
-                        aria-hidden="true"
-                        className="px-1 text-sm text-gray-400"
-                      >
-                        …
-                      </span>
-                    ) : item === page ? (
-                      <span
-                        key={`page-${item}`}
-                        aria-current="page"
-                        className={pageNumberCurrentClass}
-                      >
-                        {item}
-                      </span>
-                    ) : (
-                      <Link
-                        key={`page-${item}`}
-                        href={catalogPageUrl(linkParams, item, linkBase)}
-                        aria-label={`Сторінка ${item}`}
-                        className={pageNumberLinkClass}
-                      >
-                        {item}
-                      </Link>
-                    )
-                  )}
-                  <span className="hidden text-sm text-gray-600 sm:inline">
-                    Сторінка {page} із {maxPage}
-                    <span className="text-gray-400"> · знайдено {total}</span>
-                  </span>
-                  {page < maxPage ? (
-                    <Link
-                      href={catalogPageUrl(linkParams, page + 1, linkBase)}
-                      className={paginationControlClass}
-                    >
-                      Далі →
-                    </Link>
-                  ) : (
-                    <span aria-disabled="true" className={paginationControlClass}>
-                      Далі →
-                    </span>
-                  )}
-                </nav>
+                  }
+                />
               )}
 
               {/* «Часті питання» — wallpaper categories only, page 1 only
