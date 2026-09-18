@@ -36,7 +36,7 @@ import { buildProductMetaDescription, buildProductTitleName } from '@/app/lib/se
 import { shouldRenderDescriptionSection } from '@/app/lib/product-description'
 import { formatPrice } from '@/app/lib/format'
 import { LINOLEUM_SKU_PREFIX } from '@/app/lib/domains'
-import { extractPricePerSqm } from '@/app/lib/linoleum/product-view'
+import { extractPricePerSqm, mergeSpecEntries } from '@/app/lib/linoleum/product-view'
 
 // On-demand ISR (Task #5B 2026-08-31): the route no longer touches any
 // request-time API — reviews pagination beyond the SSR-rendered page 1 is
@@ -175,6 +175,21 @@ export default async function ProductPage({
           availabilityStatus: v.availability_status,
         }))
     : []
+
+  // L11 (display-вимога власника 2026-09-18): у БД ln-* специфікації
+  // «Ширина» лишаються ПО ОДНІЙ на ширину (контракт даних: фільтр ширин
+  // хаба — jsonb contains у linoleum-listing.ts, importer
+  // buildConsolidatedSpecifications), але блок характеристик мусить
+  // показувати ОДИН рядок «Ширина: 1,5, 2, 2,5, 3, 3,5, 4». Злиття —
+  // display-only, одним decision point'ом для всіх ТЬОХ місць відображення
+  // нижче (ProductIntro, inline-таблиця, повноширинна таблиця); іншим
+  // доменам — сирі specifications як були. LinoleumMeterPanel НАВМИСНО
+  // отримує сирі specifications: він не рендерить таблицю, а читає першу
+  // «Ширина» як fallback ширини калькулятора — злитий рядок парсер
+  // ширини не розпізнав би.
+  const displaySpecifications = isLinoleum
+    ? mergeSpecEntries(product.specifications)
+    : product.specifications
 
   // Supplementary content (perf audit Step 2 2026-08-28): reviews, summary
   // and related products depend ONLY on `product`, so they all run in ONE
@@ -466,7 +481,7 @@ export default async function ProductPage({
             <ProductIntro
               name={product.name}
               brandName={product.brand?.name ?? null}
-              specifications={product.specifications}
+              specifications={displaySpecifications}
               categorySlug={product.category?.slug ?? null}
               hasRealDescription={renderDescription}
             />
@@ -488,7 +503,7 @@ export default async function ProductPage({
               </div>
             ) : (
               <ProductSpecifications
-                specifications={product.specifications}
+                specifications={displaySpecifications}
                 variant="inline"
               />
             )}
@@ -567,7 +582,7 @@ export default async function ProductPage({
             «Опис» section is shown; otherwise specs already render in its
             slot inside the details card (no duplicate block). */}
         {renderDescription && (
-          <ProductSpecifications specifications={product.specifications} />
+          <ProductSpecifications specifications={displaySpecifications} />
         )}
 
         {/* Product Variants — НЕ для ln-* (orchestrator add-on to C3,

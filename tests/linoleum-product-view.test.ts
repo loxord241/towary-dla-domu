@@ -80,6 +80,69 @@ test('extractWidthLabel: читає «Ширина» (uk-формат formatWidt
   assert.equal(mod.extractWidthLabel([]), null);
 });
 
+// ---- spec display merge (L11, display-вимога власника 2026-09-18) --------------
+
+test('mergeSpecEntries: кілька «Ширина» → ОДИН рядок «1,5, 2, 2,5, 3, 3,5, 4» на позиції першого входження', () => {
+  // Реальний payload імпортера (import-plan buildConsolidatedSpecifications):
+  // «Ціна за м²» + по запису «Ширина» на кожну ширину сітки. У БД записи
+  // лишаються ПОЗАЇНДИВІДУАЛЬНО (фільтр ширин хаба — jsonb contains,
+  // linoleum-listing.ts) — зливається ТІЛЬКИ відображення.
+  const merged = mod.mergeSpecEntries([
+    { name: 'Ціна за м²', value: '410,00' },
+    { name: 'Ширина', value: '1,5' },
+    { name: 'Ширина', value: '2' },
+    { name: 'Ширина', value: '2,5' },
+    { name: 'Ширина', value: '3' },
+    { name: 'Ширина', value: '3,5' },
+    { name: 'Ширина', value: '4' },
+  ]);
+  assert.deepEqual(merged, [
+    { name: 'Ціна за м²', value: '410,00' },
+    { name: 'Ширина', value: '1,5, 2, 2,5, 3, 3,5, 4' },
+  ]);
+});
+
+test('mergeSpecEntries: порядок значень — вихідний масив, не сортування (ні лексичне, ні числове)', () => {
+  assert.deepEqual(
+    mod.mergeSpecEntries([
+      { name: 'Ширина', value: '4' },
+      { name: 'Ширина', value: '1,5' },
+    ]),
+    [{ name: 'Ширина', value: '4, 1,5' }]
+  );
+});
+
+test('mergeSpecEntries: 0 і 1 «Ширина» — тотожність (решта записів не чіпається)', () => {
+  const noWidth = [
+    { name: 'Ціна за м²', value: '410,00' },
+    { name: 'Клас зносостійкості', value: '32' },
+  ];
+  assert.deepEqual(mod.mergeSpecEntries(noWidth), noWidth);
+  const oneWidth = [{ name: 'Ширина', value: '2,5' }];
+  assert.deepEqual(mod.mergeSpecEntries(oneWidth), oneWidth);
+});
+
+test('mergeSpecEntries: дублікати ІНШИХ назв лишаються окремими рядками (інваріант побутівки)', () => {
+  const rows = [
+    { name: 'Колір', value: 'червоний' },
+    { name: 'Колір', value: 'синій' },
+    { name: 'Ширина', value: '2' },
+    { name: 'Матеріал', value: 'ПВХ' },
+    { name: 'Матеріал', value: 'на повсті' },
+  ];
+  assert.deepEqual(mod.mergeSpecEntries(rows), rows);
+});
+
+test('mergeSpecEntries: null / undefined / [] / не-масив → [] (блок сховається у рендері)', () => {
+  assert.deepEqual(mod.mergeSpecEntries(null), []);
+  assert.deepEqual(mod.mergeSpecEntries(undefined), []);
+  assert.deepEqual(mod.mergeSpecEntries([]), []);
+  assert.deepEqual(
+    mod.mergeSpecEntries('nope' as unknown as readonly { name: string; value: string }[]),
+    []
+  );
+});
+
 // ---- meter math ---------------------------------------------------------------
 // REGRESSION (ревʼю власника 2026-09-17): калькулятор ігнорував ШИРИНУ
 // РУЛОНУ — 22 м² кімнати при рулоні 2,5 м показував як «22 пог. м»

@@ -44,16 +44,22 @@ function assertPageBranching(): void {
     'при наявності опису рендериться блок «Опис» із ProductDescription'
   );
   // Specs branch: inline variant occupies the description slot (same card).
+  // UPDATE L11 (2026-09-18, display-вимога власника): вираз пропа змінено
+  // product.specifications → displaySpecifications (сторінкове злиття
+  // «Ширина» для ln-*, інші домени — сирі як було). Інваріант під піном —
+  // РОЗТАШУВАННЯ (inline у слоті «Опис» без опису) — не змінено.
   assert.match(
     pageSrc,
-    /: \(\s*<ProductSpecifications\s+specifications=\{product\.specifications\}\s+variant="inline"\s*\/>\s*\)/,
+    /: \(\s*<ProductSpecifications\s+specifications=\{displaySpecifications\}\s+variant="inline"\s*\/>\s*\)/,
     'без опису Характеристики займають слот «Опис» у картці товару'
   );
   // Below-grid section variant renders ONLY when the description is shown
   // (no duplicate blocks on description-less pages).
+  // UPDATE L11 (2026-09-18): та сама зміна виразу пропа
+  // (displaySpecifications) — інваріант розташування без змін.
   assert.match(
     pageSrc,
-    /\{renderDescription && \(\s*<ProductSpecifications specifications=\{product\.specifications\} \/>\s*\)\}/,
+    /\{renderDescription && \(\s*<ProductSpecifications specifications=\{displaySpecifications\} \/>\s*\)\}/,
     'повноширинний блок Характеристик нижче сітки — лише коли є Опис'
   );
   assert.equal(

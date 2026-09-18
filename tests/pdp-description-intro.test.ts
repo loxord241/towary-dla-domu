@@ -75,16 +75,22 @@ test('PDP: монтаж під H1/ціною і ДО існуючого слот
 });
 
 test('PDP: у ProductIntro передаються реальні дані товару + існуюний gate опису', () => {
+  // UPDATE L11 (2026-09-18, display-вимога власника): вираз пропа
+  // specifications змінено product.specifications → displaySpecifications —
+  // сторінкове display-only злиття «Ширина» для ln-* (mergeSpecEntries під
+  // гейтом isLinoleum), іншим доменам — сирі specifications як були.
+  // Інваріант під піном («реальні дані товару») не змінено.
   assert.match(
     pageSrc,
-    /<ProductIntro\s+name=\{product\.name\}\s+brandName=\{product\.brand\?\.name \?\? null\}\s+specifications=\{product\.specifications\}\s+categorySlug=\{product\.category\?\.slug \?\? null\}\s+hasRealDescription=\{renderDescription\}\s*\/>/,
+    /<ProductIntro\s+name=\{product\.name\}\s+brandName=\{product\.brand\?\.name \?\? null\}\s+specifications=\{displaySpecifications\}\s+categorySlug=\{product\.category\?\.slug \?\? null\}\s+hasRealDescription=\{renderDescription\}\s*\/>/,
     'props: name, brand, specifications, category slug з normalizeProduct і результат shouldRenderDescriptionSection'
   );
   //_existing placements preserved: інші гємні тести (pdp-specs-placement) фіксують
   // тернарник «Опис»/inline-характеристики й нижчирегістрову таблицю — тут
   // додатково пінимо, що ProductIntro НЕ замінив жоден з них.
   assert.match(pageSrc, /renderDescription \? \([\s\S]*?>Опис<[\s\S]*?<ProductDescription/);
-  assert.match(pageSrc, /\{renderDescription && \(\s*<ProductSpecifications specifications=\{product\.specifications\} \/>\s*\)\}/);
+  // Та сама зміна виразу пропа, що й вище (UPDATE L11 2026-09-18).
+  assert.match(pageSrc, /\{renderDescription && \(\s*<ProductSpecifications specifications=\{displaySpecifications\} \/>\s*\)\}/);
 });
 
 // ---- ProductIntro component ---------------------------------------------------

@@ -57,6 +57,47 @@ export function extractWidthLabel(
   return specifications.find((s) => s.name === WIDTH_SPEC_NAME)?.value ?? null;
 }
 
+/**
+ * L11 (display-вимога власника 2026-09-18): консолідований ln-* товар несе
+ * в products.specifications ПО ОДНОМУ запису «Ширина» на ширину сітки —
+ * це контракт ДАНИХ (фільтр ширин хаба читає їх jsonb contains,
+ * app/lib/catalog/linoleum-listing.ts; importer buildConsolidatedSpecifications
+ * їх пише), який тут НЕ порушується. Але блок характеристик на PDP мусить
+ * показувати ОДИН рядок «Ширина» зі значенням «1,5, 2, 2,5, 3, 3,5, 4».
+ *
+ * Тому злиття — ТІЛЬКИ відображувальне: усі записи з name === WIDTH_SPEC_NAME
+ * стають одним записом {name: WIDTH_SPEC_NAME, value: values.join(', ')} на
+ * позиції ПЕРШого входження (вихідний порядок масиву — контракт імпортера,
+ * жодного пересортування); усі інші записи (поодинока «Ціна за м²»,
+ * дублікати інших назв — валідні дані побутової техніки) проходять без змін.
+ * Вхід без «Ширина» повертається копією (purity: виклик не може мутувати
+ * вхід через повернене посилання); не-масив → [] — блок сховається
+ * у рендері (той самий degrade, що в sanitizeSpecRows).
+ */
+export function mergeSpecEntries(
+  specifications: readonly SpecEntry[] | null | undefined
+): SpecEntry[] {
+  if (!Array.isArray(specifications)) return [];
+  const widths = specifications
+    .filter((s) => s.name === WIDTH_SPEC_NAME)
+    .map((s) => s.value);
+  if (widths.length === 0) return [...specifications];
+
+  const out: SpecEntry[] = [];
+  let widthsEmitted = false;
+  for (const entry of specifications) {
+    if (entry.name === WIDTH_SPEC_NAME) {
+      if (!widthsEmitted) {
+        widthsEmitted = true;
+        out.push({ name: WIDTH_SPEC_NAME, value: widths.join(', ') });
+      }
+      continue;
+    }
+    out.push(entry);
+  }
+  return out;
+}
+
 export interface LinoleumMeterInput {
   /** Room length along the roll, metres, > 0. */
   roomLengthM: number;

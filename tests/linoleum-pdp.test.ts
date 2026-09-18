@@ -107,7 +107,10 @@ test('linoleum-pdp: у панель прокидаються ШИРИНИ-вар
 test('linoleum-pdp: бейдж «{ціна} грн/м²» біля ціни — зі специфікації «Ціна за м²»', () => {
   assert.match(
     pageSrc,
-    /import \{ extractPricePerSqm \} from '@\/app\/lib\/linoleum\/product-view'/,
+    // UPDATE L11 (2026-09-18): в імпорт додано mergeSpecEntries — пін матчить
+    // список імен, а не точний вираз; інваріант («бейдж читає специфікацію
+    // через pure-хелпер product-view») не змінено.
+    /import \{[^}]*extractPricePerSqm[^}]*\} from '@\/app\/lib\/linoleum\/product-view'/,
     'читання специфікації — через pure-хелпер product-view'
   );
   assert.match(
@@ -159,6 +162,40 @@ test('linoleum-pdp: блок «Варіанти товару» НЕ рендер
     pageSrc,
     /\{!isLinoleum && product\.variants\.length > 0 && \(/,
     'блок «Варіанти товару» загейчений від ln-*'
+  );
+});
+
+test('linoleum-pdp: L11 — таблиця специфікацій бачить ЗЛИТУ «Ширина» (display-only), панель — сирі', () => {
+  // Власник 2026-09-18: у блоці характеристик «Ширина» — ОДИН рядок
+  // («1,5, 2, 2,5, 3, 3,5, 4»), а не шість. У БД записи лишаються
+  // ПОЗАЇНДИВІДУАЛЬНО (фільтр ширин хаба — jsonb contains,
+  // app/lib/catalog/linoleum-listing.ts; importer buildConsolidatedSpecifications)
+  // — зливається ТІЛЬКИ відображення: pure mergeSpecEntries на сторінці
+  // під гейтом isLinoleum, іншим доменам — сирі специфікації як були.
+  assert.match(
+    pageSrc,
+    /import \{[^}]*mergeSpecEntries[^}]*\} from '@\/app\/lib\/linoleum\/product-view'/,
+    'злиття — через pure-хелпер product-view (unit-тести), не інлайн'
+  );
+  assert.match(
+    pageSrc,
+    /const displaySpecifications = isLinoleum\s*\?\s*mergeSpecEntries\(product\.specifications\)\s*:\s*product\.specifications/,
+    'один decision point: ln-* — злиті, інші домени — сирі'
+  );
+  // Усі ТРИ місця відображення специфікацій PDP (лід+«Основні характеристики»,
+  // inline-таблиця у слоті «Опис», повноширинна таблиця нижче сітки):
+  assert.equal(
+    (pageSrc.match(/specifications=\{displaySpecifications\}/g) ?? []).length,
+    3,
+    'злиті специфікації — в усіх трьох місцях відображення (ProductIntro, inline, section)'
+  );
+  // LinoleumMeterPanel отримує СИРІ специфікації: це не відображення таблиці,
+  // а функціональне читання — fallback extractWidthLabel мусить знайти першу
+  // «1,5» (злитий рядок «1,5, 2, …» парсер ширини не зрозуміє).
+  assert.match(
+    pageSrc,
+    /specifications=\{product\.specifications\}\s+variants=\{linoleumWidths\}/,
+    'панель метражу — сирі специфікації (fallback ширини калькулятора)'
   );
 });
 
