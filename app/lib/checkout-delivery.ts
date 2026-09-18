@@ -111,6 +111,29 @@ export const PICKUP_POINTS: readonly PickupPoint[] = [
 export const PICKUP_PAYMENT_INTENTS = ['online', 'cash_on_pickup'] as const;
 export type PickupPaymentIntent = (typeof PICKUP_PAYMENT_INTENTS)[number];
 
+/**
+ * T-C (owner decision 2026-09-18): server-side mirror of the checkout UI
+ * rule — a pickup point is valid for a cart only when it serves AT LEAST
+ * ONE product domain present in the cart (union semantics: a mixed cart
+ * is served by every point whose domain the cart contains — the whole
+ * order waits at the chosen point). sanitizeDelivery itself cannot check
+ * this: the client sends product ids only, no slugs — the orders route
+ * combines this predicate with a server-side slug resolution of the
+ * cart's product ids BEFORE the place_order RPC, so a crafted payload
+ * can no longer place a cart on a point outside its domain.
+ *
+ * Fail-closed: an unknown/missing point id or an empty cart-domain set
+ * returns false.
+ */
+export function pickupPointCoversDomains(
+  pickupPointId: string | null | undefined,
+  cartDomains: ReadonlySet<ProductDomain>
+): boolean {
+  const point = PICKUP_POINTS.find((p) => p.id === pickupPointId);
+  if (!point) return false;
+  return point.domains.some((d) => cartDomains.has(d));
+}
+
 export type SanitizeDeliveryResult =
   | { kind: 'absent' }
   | { kind: 'invalid' }

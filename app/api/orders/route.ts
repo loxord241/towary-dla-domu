@@ -7,7 +7,8 @@ import {
 } from '@/app/lib/order-token';
 import { enforceRateLimit } from '@/app/lib/rate-limit';
 import { assertSameOrigin } from '@/app/lib/request-origin';
-import { sanitizeDelivery } from '@/app/lib/checkout-delivery';
+import { sanitizeDelivery, pickupPointCoversDomains } from '@/app/lib/checkout-delivery';
+import { domainOfSlug } from '@/app/lib/domains';
 import { parseIdempotencyKey } from '@/app/lib/idempotency';
 import { sendTelegramOrderNotification, sendOwnerErrorAlert } from '@/app/lib/notifications/telegram';
 
@@ -232,6 +233,35 @@ export async function POST(request: Request) {
 
     // Whitelist only — price/total/status-like fields are structurally impossible here.
     items.push({ productId, variantId, quantity });
+  }
+
+  // T-C (owner decision 2026-09-18): fail-closed «точка самовивозу ↔ домен
+  // кошика». The UI (CheckoutForm/PickupBlock) only FILTERS the offered
+  // points — the API itself used to accept any whitelisted pickup id for
+  // any cart. sanitizeDelivery cannot check the match: the client sends
+  // product ids only, no slugs — so the cart's domains are resolved
+  // server-side here (a minimal cart-preview-like slug read) and validated
+  // BEFORE the place_order RPC, with the same union rule as the UI: the
+  // point must serve ≥1 domain present in the cart. A mismatch answers 400
+  // and nothing is written. If the slug read fails or resolves nothing,
+  // this check is skipped — place_order rejects unknown products itself
+  // (existing behavior), so such an order still cannot be placed.
+  if (delivery.kind === 'ok' && delivery.value.serviceType === 'pickup') {
+    const { data: slugRows, error: slugError } = await supabase
+      .from('products')
+      .select('id, slug')
+      .in('id', items.map((i) => i.productId));
+    if (!slugError && slugRows && slugRows.length > 0) {
+      const cartDomains = new Set(
+        (slugRows as { slug: string | null }[]).map((r) => domainOfSlug(r.slug))
+      );
+      if (!pickupPointCoversDomains(delivery.value.pickupPointId, cartDomains)) {
+        return NextResponse.json(
+          { error: 'Обрана точка видачі не підходить для товарів у кошику' },
+          { status: 400 }
+        );
+      }
+    }
   }
 
   // ---- place_order RPC ----
