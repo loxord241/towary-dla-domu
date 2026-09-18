@@ -1290,9 +1290,9 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1789736146.5437915,
-    "seen": 1789737001.5226886,
-    "ast_hash": "1b737e7e295698893a66e5db06fa3332",
+    "mtime": 1789750024.881339,
+    "seen": 1789750707.3155499,
+    "ast_hash": "9190d51545c078b4e9456217a1f8300b",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -2172,9 +2172,9 @@
     "semantic_hash": ""
   },
   "tests/catalog-health.test.ts": {
-    "mtime": 1789573530.120939,
-    "seen": 1789577229.8016846,
-    "ast_hash": "0fb79ee0907223bb01220f6d4333e6f0",
+    "mtime": 1789750576.5973501,
+    "seen": 1789750707.3155499,
+    "ast_hash": "b3f63addb818a18e6b7e3d6078375465",
     "semantic_hash": ""
   },
   "tests/checkout-phone-paste.test.ts": {
@@ -2256,21 +2256,21 @@
     "semantic_hash": ""
   },
   "app/lib/du-redirects.json": {
-    "mtime": 1789573530.1194315,
-    "seen": 1789577229.8016846,
-    "ast_hash": "70b5e3eefd0558cb5498a531a0159af5",
+    "mtime": 1789750544.899324,
+    "seen": 1789750707.314042,
+    "ast_hash": "e9b52f9d03e25833154d05424c1926b0",
     "semantic_hash": ""
   },
   "app/lib/du-redirects.ts": {
-    "mtime": 1789573530.1194315,
-    "seen": 1789577229.8016846,
-    "ast_hash": "af07a73735485ffb1b1980c02af53b19",
+    "mtime": 1789750544.897814,
+    "seen": 1789750707.314042,
+    "ast_hash": "c2f8ab5813d296ab21d303d39f990efc",
     "semantic_hash": ""
   },
   "scripts/yugcontract-du-redirect-allowlist.ts": {
-    "mtime": 1789573530.120939,
-    "seen": 1789577229.8016846,
-    "ast_hash": "32bc7674c67c4fd928564d6d66db94f7",
+    "mtime": 1789750539.6926832,
+    "seen": 1789750707.3155499,
+    "ast_hash": "9af68daab4482ea94b18da32b9504342",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-08-31-du-redirects.md": {
@@ -2280,9 +2280,9 @@
     "semantic_hash": ""
   },
   "tests/du-redirects.test.ts": {
-    "mtime": 1789573530.120939,
-    "seen": 1789577229.8016846,
-    "ast_hash": "598dfecf4dfea8bde95eeb488092a31f",
+    "mtime": 1789750587.8363314,
+    "seen": 1789750707.3155499,
+    "ast_hash": "db043de374fe28ee32c58e593f00e5e5",
     "semantic_hash": ""
   },
   "tests/seo-meta-description.test.ts": {
@@ -3996,9 +3996,9 @@
     "semantic_hash": ""
   },
   "ARCHITECTURE.md": {
-    "mtime": 1789648793.7115004,
-    "seen": 1789648933.9704747,
-    "ast_hash": "c5f066c6416b420ff597ed0086d64f56",
+    "mtime": 1789750057.8936944,
+    "seen": 1789750707.3155499,
+    "ast_hash": "92e786c10a829530a35171ede009027b",
     "semantic_hash": ""
   },
   "app/brands/page.tsx": {

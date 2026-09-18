@@ -258,9 +258,9 @@
     "semantic_hash": ""
   },
   "app/api/orders/route.ts": {
-    "mtime": 1789499276.6948037,
-    "seen": 1789563307.5675795,
-    "ast_hash": "2b14e2aeee00f9a3da19e10a33bd22f7",
+    "mtime": 1789749453.9554825,
+    "seen": 1789749739.4162955,
+    "ast_hash": "380fd450c9b3301631a5b9bcc128fae9",
     "semantic_hash": ""
   },
   "app/api/reviews/route.ts": {
@@ -1956,9 +1956,9 @@
     "semantic_hash": ""
   },
   "app/lib/checkout-delivery.ts": {
-    "mtime": 1789661921.5617328,
-    "seen": 1789662378.1714816,
-    "ast_hash": "4be9d979733d21b8ed88f9755dc1003a",
+    "mtime": 1789749436.302052,
+    "seen": 1789749739.4162955,
+    "ast_hash": "e1a3dc18add29006944466993d345684",
     "semantic_hash": ""
   },
   "app/lib/delivery/novapost/streets.ts": {
@@ -4197,6 +4197,12 @@
     "mtime": 1789749082.2483954,
     "seen": 1789749209.005633,
     "ast_hash": "e0a3be58539ef42e34562cc0c37ea746",
+    "semantic_hash": ""
+  },
+  "tests/checkout-pickup-domain.test.ts": {
+    "mtime": 1789749641.2807517,
+    "seen": 1789749739.4178052,
+    "ast_hash": "7f8826e09a59b5c8e5dd1c3f12464a19",
     "semantic_hash": ""
   }
 }
