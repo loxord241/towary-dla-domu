@@ -312,7 +312,19 @@ export default async function ProductPage({
             Головна
           </Link>
           <span className="mx-1.5 text-gray-300">/</span>
-          <Link href="/catalog" className="hover:text-blue-600 hover:underline">Каталог</Link>
+          {isLinoleum ? (
+            <Link href="/linoleum" className="hover:text-blue-600 hover:underline">
+              Лінолеум
+            </Link>
+          ) : isWallpaper ? (
+            <Link href="/oboi" className="hover:text-blue-600 hover:underline">
+              Шпалери
+            </Link>
+          ) : (
+            <Link href="/catalog" className="hover:text-blue-600 hover:underline">
+              Каталог
+            </Link>
+          )}
           {trailCategories.map((cat) => (
             <Fragment key={cat.slug}>
               <span className="mx-1.5 text-gray-300">/</span>

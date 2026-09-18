@@ -49,6 +49,10 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+import { pluralProducts } from '@/app/lib/format';
+
+export { pluralProducts };
+
 export default async function BrandsPage() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
   const breadcrumbJsonLd = buildBrandsBreadcrumbJsonLd(siteUrl);
@@ -100,9 +104,9 @@ export default async function BrandsPage() {
                   {brand.name}
                   {/* Same count that gated the entry; null (kept by the
                       filter as non-empty) renders without a counter. */}
-                  {count !== null && (
+                  {count != null && (
                     <span className="text-xs font-normal text-gray-500">
-                      {count} товарів
+                      {pluralProducts(count)}
                     </span>
                   )}
                 </Link>

@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { formatPrice } = await import('../app/lib/format.ts');
+const { formatPrice, pluralProducts } = await import('../app/lib/format.ts');
 
 test('formatPrice: integer prices get uk-UA thousands grouping', () => {
   assert.equal(formatPrice(7399, 'UAH'), `7\u00A0399 грн`);
@@ -35,3 +35,20 @@ test('formatPrice: null/undefined currency renders the bare number', () => {
   assert.equal(formatPrice(17599, null), `17\u00A0599`);
   assert.equal(formatPrice(17599, ''), `17\u00A0599`);
 });
+
+test('pluralProducts: українська плюралізація (1 товар, 2-4 товари, 5 товарів)', () => {
+  assert.equal(pluralProducts(1), '1 товар');
+  assert.equal(pluralProducts(2), '2 товари');
+  assert.equal(pluralProducts(3), '3 товари');
+  assert.equal(pluralProducts(4), '4 товари');
+  assert.equal(pluralProducts(5), '5 товарів');
+  assert.equal(pluralProducts(11), '11 товарів');
+  assert.equal(pluralProducts(12), '12 товарів');
+  assert.equal(pluralProducts(14), '14 товарів');
+  assert.equal(pluralProducts(21), '21 товар');
+  assert.equal(pluralProducts(22), '22 товари');
+  assert.equal(pluralProducts(25), '25 товарів');
+  assert.equal(pluralProducts(101), '101 товар');
+  assert.equal(pluralProducts(114), '114 товарів');
+});
+

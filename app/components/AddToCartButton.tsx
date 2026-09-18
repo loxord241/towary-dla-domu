@@ -125,24 +125,44 @@ export default function AddToCartButton({
 
       <div className="flex items-center gap-3">
         <span className="text-sm text-gray-700">Кількість:</span>
-        <input
-          type="number"
-          min={1}
-          max={maxQty}
-          step={1}
-          value={quantity}
-          onChange={(e) => {
-            const n = Number(e.target.value);
-            setQuantity(Number.isInteger(n) ? n : 1);
-          }}
-          onBlur={() => {
-            const n = Number.isInteger(quantity)
-              ? Math.max(1, Math.min(quantity, maxQty))
-              : 1;
-            setQuantity(n);
-          }}
-          className="w-20 text-base min-h-[44px] border border-gray-300 rounded-md p-2"
-        />
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="Зменшити кількість"
+            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+            disabled={quantity <= 1}
+            className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-gray-300 text-base text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40 motion-reduce:transition-none"
+          >
+            −
+          </button>
+          <input
+            type="number"
+            min={1}
+            max={maxQty}
+            step={1}
+            value={quantity}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              setQuantity(Number.isInteger(n) ? n : 1);
+            }}
+            onBlur={() => {
+              const n = Number.isInteger(quantity)
+                ? Math.max(1, Math.min(quantity, maxQty))
+                : 1;
+              setQuantity(n);
+            }}
+            className="w-16 text-center text-base min-h-[44px] border border-gray-300 rounded-md p-2"
+          />
+          <button
+            type="button"
+            aria-label="Збільшити кількість"
+            onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
+            disabled={quantity >= maxQty}
+            className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-gray-300 text-base text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40 motion-reduce:transition-none"
+          >
+            +
+          </button>
+        </div>
         {/* Unselected variant = unknown stock: «макс. 99» would be a lie
             (Audit 2026-09-05, item 3). Simple products always have a number. */}
         {effectiveStock !== null && (

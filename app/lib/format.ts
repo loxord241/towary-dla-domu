@@ -32,3 +32,19 @@ export function formatPrice(value: number, currency: string | null | undefined):
   if (!currency) return display;
   return `${display} ${CURRENCY_LABELS[currency] ?? currency}`;
 }
+
+/**
+ * Ukrainian pluralization for products:
+ * 1 товар (21 товар, 101 товар, але 11 товарів)
+ * 2-4 товари (22-24 товари, але 12-14 товарів)
+ * 5-0 товарів (5, 6, 7, 8, 9, 10, 11-14, 20 товарів)
+ */
+export function pluralProducts(count: number): string {
+  const abs = Math.abs(count);
+  const mod10 = abs % 10;
+  const mod100 = abs % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${count} товар`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} товари`;
+  return `${count} товарів`;
+}
+

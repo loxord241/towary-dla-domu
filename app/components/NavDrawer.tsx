@@ -285,7 +285,7 @@ function DrawerPanel({
                   }))
                 )}
                 <Link
-                  href="/catalog"
+                  href="/brands"
                   className={`${linkClass} font-medium text-blue-700`}
                   onClick={closeAfterNavigate}
                 >
