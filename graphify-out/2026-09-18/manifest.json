@@ -4174,5 +4174,11 @@
     "seen": 1789708982.4589465,
     "ast_hash": "79ea05fdc15bd340bc6e36947112806d",
     "semantic_hash": ""
+  },
+  "scripts/1c-export/xls-linoleum-to-ingest-csv.py": {
+    "mtime": 1789738528.114531,
+    "seen": 1789739068.1070282,
+    "ast_hash": "d8c0307f193696107da2e857f2ac1b2f",
+    "semantic_hash": ""
   }
 }
