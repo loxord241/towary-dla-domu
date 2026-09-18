@@ -34,9 +34,11 @@
  *     on any successfully read state; only infrastructure failures (env,
  *     DB) give 500; maxDuration = 30.
  *
- * vercel.json: valid JSON, two crons — the pre-existing reconciliation one
- * plus /api/cron/wallpaper-freshness at "0 15 * * *"; both paths exist in
- * the repo.
+ * vercel.json: valid JSON, three crons — the pre-existing reconciliation
+ * one plus /api/cron/wallpaper-freshness at "0 15 * * *" and
+ * /api/cron/linoleum-freshness (Task T-B, owner GO 2026-09-18); all paths
+ * exist in the repo (the linoleum entry is asserted in detail in
+ * tests/linoleum-freshness.test.ts).
  *
  * The DB is NEVER touched: runtime tests run against fake in-memory clients
  * (project pattern: next/server, @/ aliases and @supabase/supabase-js are
@@ -608,11 +610,11 @@ test('FRESHNESS runtime: infra failure (DB error) → 500 with no internals', as
 // vercel.json — two crons, both paths real
 // ---------------------------------------------------------------------------
 
-test('vercel.json: valid JSON with two crons — reconciliation preserved, freshness added', () => {
+test('vercel.json: valid JSON with three crons — reconciliation preserved, freshness added', () => {
   const vercel = JSON.parse(readFileSync(path.join(root, 'vercel.json'), 'utf8')) as {
     crons: Array<{ path: string; schedule: string }>;
   };
-  assert.equal(vercel.crons.length, 2);
+  assert.equal(vercel.crons.length, 3);
   const reconciliation = vercel.crons.find((c) => c.path === '/api/cron/reconciliation');
   assert.deepEqual(reconciliation, { path: '/api/cron/reconciliation', schedule: '0 6 * * *' });
   const freshness = vercel.crons.find((c) => c.path === '/api/cron/wallpaper-freshness');
