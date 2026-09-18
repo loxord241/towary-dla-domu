@@ -15,8 +15,12 @@
  *       клієнт БД не створюється.
  *   node scripts/linoleum-photos.ts --run [--photos <photos.json>]
  *       Виконання (пише Storage + product_images — GO власника/оркестратора):
- *       для кожного дизайну (a) завантажити imageUrl (fetch, 30с таймаут,
- *       content-type image/*, ≤5 МБ, mime за magic bytes); (b) залити в
+ *       для кожного дизайну (a) джерело фото — РІВНО ОДНЕ з:
+ *         imageUrl (fetch, 30с таймаут, content-type image/*) або localPath
+ *         (шлях від кореня репо, readFileSync; взаємовиключні — валідація в
+ *         loadPhotosFile, ".." та абсолютні шляхи відкидаються);
+ *       далі спільні гарди: ≤5 МБ, mime за magic bytes (localPath не має
+ *       HTTP-заголовків — MIME лише за байтами); (b) залити в
  *       product_images як `linoleum/<slug>.<ext>` (slug через
  *       sanitizeUploadFileName з upload-filename — extension за whitelist
  *       MIME); (c) знайти всі ln-* товари (sku LIKE 'ln-%'), чиє name
@@ -41,7 +45,7 @@
  * Service-role клієнт будуйсться ліниво лише в --run з .env.local / shell env
  * (persistSession: false — патерн scripts/wallpaper-import.ts).
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -79,13 +83,43 @@ const USAGE = `Використання:
 // Pure helpers (exported for tests/linoleum-photos.test.ts)
 // ---------------------------------------------------------------------------
 
-export interface DesignPhoto {
+export interface DesignPhotoBase {
   design: string;
-  imageUrl: string;
   sourcePage: string;
 }
 
-/** Strict whitelist parse of the seed JSON ({photos:[{design,imageUrl,sourcePage}]}). */
+/** Джерело — http(s) URL (fetch). */
+export interface UrlDesignPhoto extends DesignPhotoBase {
+  imageUrl: string;
+  localPath?: undefined;
+}
+
+/** Джерело — локальний файл (шлях від кореня репо, readFileSync). */
+export interface LocalDesignPhoto extends DesignPhotoBase {
+  imageUrl?: undefined;
+  localPath: string;
+}
+
+/** Рівно одне джерело на запис: imageUrl XOR localPath (валідація в loadPhotosFile). */
+export type DesignPhoto = UrlDesignPhoto | LocalDesignPhoto;
+
+/**
+ * Resolves a repo-root-relative `localPath` to an absolute path.
+ * Rejects traversal (".." segments) and absolute paths — a seed record can
+ * only point INSIDE the repository. Pure (no I/O); throws with a message
+ * the caller may wrap with photos[i] context.
+ */
+export function resolveLocalPhotoPath(baseDir: string, localPath: string): string {
+  if (path.isAbsolute(localPath)) {
+    throw new Error(`"localPath" має бути відносним шляхом від кореня репо: ${localPath}`);
+  }
+  if (localPath.split(/[\\/]+/).includes('..')) {
+    throw new Error(`"localPath" не може виходити за корінь репо (".."): ${localPath}`);
+  }
+  return path.join(baseDir, localPath);
+}
+
+/** Strict whitelist parse of the seed JSON ({photos:[{design,imageUrl|localPath,sourcePage}]}). */
 export function loadPhotosFile(photosPath: string): DesignPhoto[] {
   let raw: string;
   try {
@@ -112,26 +146,49 @@ export function loadPhotosFile(photosPath: string): DesignPhoto[] {
   const out: DesignPhoto[] = [];
   for (const [i, entry] of photos.entries()) {
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
-      throw new Error(`photos[${i}]: має бути обʼєктом {design,imageUrl,sourcePage}`);
+      throw new Error(`photos[${i}]: має бути обʼєктом {design,imageUrl|localPath,sourcePage}`);
     }
     const rec = entry as Record<string, unknown>;
     const design = rec['design'];
     const imageUrl = rec['imageUrl'];
+    const localPath = rec['localPath'];
     const sourcePage = rec['sourcePage'];
     if (typeof design !== 'string' || design.trim() === '') {
       throw new Error(`photos[${i}]: "design" має бути непорожнім рядком`);
     }
-    if (typeof imageUrl !== 'string' || !/^https?:\/\//i.test(imageUrl)) {
-      throw new Error(`photos[${i}] (${design}): "imageUrl" має бути http(s)-URL`);
+    if ((imageUrl === undefined) === (localPath === undefined)) {
+      throw new Error(
+        `photos[${i}] (${design}): має бути задано РІВНО ОДНЕ з "imageUrl" (http-URL) або "localPath"`,
+      );
     }
-    if (typeof sourcePage !== 'string') {
-      throw new Error(`photos[${i}] (${design}): "sourcePage" має бути рядком`);
+    if (imageUrl !== undefined) {
+      if (typeof imageUrl !== 'string' || !/^https?:\/\//i.test(imageUrl)) {
+        throw new Error(`photos[${i}] (${design}): "imageUrl" має бути http(s)-URL`);
+      }
+      if (typeof sourcePage !== 'string') {
+        throw new Error(`photos[${i}] (${design}): "sourcePage" має бути рядком`);
+      }
+      out.push({ design, imageUrl, sourcePage });
+    } else {
+      if (typeof localPath !== 'string' || localPath.trim() === '') {
+        throw new Error(`photos[${i}] (${design}): "localPath" має бути непорожнім рядком`);
+      }
+      try {
+        resolveLocalPhotoPath(root, localPath);
+      } catch (err) {
+        throw new Error(
+          `photos[${i}] (${design}): ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+      if (typeof sourcePage !== 'string') {
+        throw new Error(`photos[${i}] (${design}): "sourcePage" має бути рядком`);
+      }
+      out.push({ design, localPath, sourcePage });
     }
     if (seen.has(design)) {
       throw new Error(`photos[${i}]: дублікат дизайну "${design}"`);
     }
     seen.add(design);
-    out.push({ design, imageUrl, sourcePage });
   }
   return out;
 }
@@ -419,7 +476,22 @@ export function planPhotos(photosPath: string, log: (line: string) => void): voi
     const slugPath = storagePathForDesign(photo.design, 'image/jpeg') ?? STORAGE_PREFIX;
     const publicUrl = getPublicImageUrl(slugPath);
     log(`[plan] ${i + 1}/${photos.length} ${photo.design}`);
-    log(`[plan]   imageUrl: ${photo.imageUrl}`);
+    if (photo.localPath !== undefined) {
+      // Валідація --plan: локальний файл має існувати ще ДО --run.
+      const abs = resolveLocalPhotoPath(root, photo.localPath);
+      let stat: { isFile: () => boolean; size: number };
+      try {
+        stat = statSync(abs);
+      } catch {
+        throw new Error(`--plan: локальний файл не знайдено: ${photo.localPath} (${abs})`);
+      }
+      if (!stat.isFile()) {
+        throw new Error(`--plan: localPath не є файлом: ${photo.localPath} (${abs})`);
+      }
+      log(`[plan]   localPath: ${photo.localPath} (${stat.size} байт, існує)`);
+    } else {
+      log(`[plan]   imageUrl: ${photo.imageUrl}`);
+    }
     log(`[plan]   sourcePage: ${photo.sourcePage}`);
     log(
       `[plan]   Storage: ${STORAGE_BUCKET}/${slugPath} ` +
@@ -494,6 +566,23 @@ export async function fetchImageWithContentType(url: string): Promise<FetchedIma
   };
 }
 
+/**
+ * Local-file read for `localPath` seed records (задача L10). No HTTP
+ * headers here — the MIME comes from magic bytes only (detectImageMime),
+ * extension from the MIME whitelist.
+ */
+export function readLocalImage(absPath: string): Uint8Array {
+  let bytes: Buffer;
+  try {
+    bytes = readFileSync(absPath);
+  } catch (err) {
+    throw new Error(
+      `не вдалося прочитати локальний файл ${absPath}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+}
+
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -547,21 +636,32 @@ export async function runPhotos(
       const matched = matchDesignProducts(photo.design, products);
       stat.matchedProducts = matched.length;
 
-      await throttle();
-      const fetched = await fetchImage(photo.imageUrl);
-      if (!fetched.contentType.startsWith('image/')) {
+      let bytes: Uint8Array;
+      let source: string;
+      if (photo.localPath !== undefined) {
+        // Локальний файл: без мережі (throttle не потрібен), HTTP-заголовків
+        // немає — MIME визначиться нижче лише за magic bytes.
+        bytes = readLocalImage(resolveLocalPhotoPath(root, photo.localPath));
+        source = photo.localPath;
+      } else {
+        await throttle();
+        const fetched = await fetchImage(photo.imageUrl);
+        if (!fetched.contentType.startsWith('image/')) {
+          throw new Error(
+            `content-type "${fetched.contentType}" не image/* — ${photo.imageUrl}`,
+          );
+        }
+        bytes = fetched.bytes;
+        source = photo.imageUrl;
+      }
+      if (bytes.byteLength > MAX_IMAGE_BYTES) {
         throw new Error(
-          `content-type "${fetched.contentType}" не image/* — ${photo.imageUrl}`,
+          `файл ${bytes.byteLength} байт перевищує ліміт ${MAX_IMAGE_BYTES} (5 МБ) — ${source}`,
         );
       }
-      if (fetched.bytes.byteLength > MAX_IMAGE_BYTES) {
-        throw new Error(
-          `файл ${fetched.bytes.byteLength} байт перевищує ліміт ${MAX_IMAGE_BYTES} (5 МБ) — ${photo.imageUrl}`,
-        );
-      }
-      const mime = detectImageMime(fetched.bytes);
+      const mime = detectImageMime(bytes);
       if (mime === null) {
-        throw new Error(`не jpeg/png/webp за magic bytes — ${photo.imageUrl}`);
+        throw new Error(`не jpeg/png/webp за magic bytes — ${source}`);
       }
       const storagePath = storagePathForDesign(photo.design, mime);
       if (storagePath === null) {
@@ -570,7 +670,7 @@ export async function runPhotos(
       }
 
       if (matched.length > 0) {
-        const uploadResult = await uploadViaStorage(client, storagePath, fetched.bytes, mime);
+        const uploadResult = await uploadViaStorage(client, storagePath, bytes, mime);
         if (uploadResult.error !== null && !/already exists/i.test(uploadResult.error.message)) {
           throw new Error(`збій завантаження в Storage ${storagePath}: ${uploadResult.error.message}`);
         }

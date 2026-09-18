@@ -47,6 +47,9 @@ import {
   matchDesignProducts,
   parseArgs,
   planDesignRows,
+  planPhotos,
+  readLocalImage,
+  resolveLocalPhotoPath,
   runLinoleumPhotosCli,
   runPhotos,
   storagePathForDesign,
@@ -65,6 +68,9 @@ const DESIGNS = [
   'CRACKED OAK 906M Лінолеум BEAUFLOUR PURETEX',
   'LIME OAK 679D Лінолеум BEAUFLOUR INSPIRE',
 ];
+
+/** Реальний рядок з data/linoleum-photos.json (L10): запис із localPath. */
+const LOCAL_DESIGN = 'CRACKED OAK 496M Лінолеум BEAUFLOUR PURETEX';
 
 const EXPECTED_SLUGS = [
   'sugar-oak-997l-beauflour-smartex',
@@ -301,6 +307,132 @@ test('loadPhotosFile: бій-кейси -> throw (не масив, кривий 
     } finally {
       rmSync(path.dirname(file), { recursive: true, force: true });
     }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// loadPhotosFile / resolveLocalPhotoPath — localPath (задача L10): XOR з
+// imageUrl, шлях від кореня репо, ".." і абсолютні шляхи відкидаються
+// ---------------------------------------------------------------------------
+
+test('loadPhotosFile: localPath-запис без imageUrl валідний -> {design, localPath, sourcePage}', () => {
+  const photo = {
+    design: LOCAL_DESIGN,
+    localPath: 'data/linoleum-496m.jpg',
+    sourcePage: 'локальное фото владельца',
+  };
+  const file = tmpPhotosFile({ photos: [photo] });
+  try {
+    assert.deepEqual(loadPhotosFile(file), [photo]);
+  } finally {
+    rmSync(path.dirname(file), { recursive: true, force: true });
+  }
+});
+
+test('loadPhotosFile: XOR imageUrl/localPath — обидва або жодного -> throw', () => {
+  const cases: unknown[] = [
+    // обидва:
+    {
+      photos: [
+        {
+          design: 'A',
+          imageUrl: 'https://x.com/a.jpg',
+          localPath: 'data/a.jpg',
+          sourcePage: '',
+        },
+      ],
+    },
+    // жодного:
+    { photos: [{ design: 'A', sourcePage: '' }] },
+  ];
+  for (const [i, payload] of cases.entries()) {
+    const file = tmpPhotosFile(payload);
+    try {
+      assert.throws(
+        () => loadPhotosFile(file),
+        /localPath|imageUrl/,
+        `case ${i}: має кинути (XOR): ${JSON.stringify(payload)}`,
+      );
+    } finally {
+      rmSync(path.dirname(file), { recursive: true, force: true });
+    }
+  }
+});
+
+test('loadPhotosFile: localPath з "..", абсолютний, порожній чи не-рядок -> throw', () => {
+  const bad: unknown[] = [
+    '../escape.jpg',
+    'data/../../escape.jpg',
+    'a\\..\\escape.jpg',
+    '/etc/passwd.jpg',
+    'C:\\abs\\a.jpg',
+    '',
+    '   ',
+    42,
+    null,
+  ];
+  for (const [i, localPath] of bad.entries()) {
+    const file = tmpPhotosFile({
+      photos: [{ design: 'A', localPath, sourcePage: '' }],
+    });
+    try {
+      assert.throws(() => loadPhotosFile(file), `case ${i}: ${JSON.stringify(localPath)} має кинути`);
+    } finally {
+      rmSync(path.dirname(file), { recursive: true, force: true });
+    }
+  }
+});
+
+test('resolveLocalPhotoPath: відносний -> base + шлях; ".." і абсолютні -> throw', () => {
+  const base = path.join('repo', 'root');
+  assert.equal(
+    resolveLocalPhotoPath(base, 'data/linoleum-496m.jpg'),
+    path.join(base, 'data', 'linoleum-496m.jpg'),
+  );
+  assert.throws(() => resolveLocalPhotoPath(base, '../escape.jpg'));
+  assert.throws(() => resolveLocalPhotoPath(base, 'a/../../escape.jpg'));
+  assert.throws(() => resolveLocalPhotoPath(base, 'a\\..\\escape.jpg'));
+  assert.throws(() => resolveLocalPhotoPath(base, '/abs/x.jpg'));
+  if (process.platform === 'win32') {
+    assert.throws(() => resolveLocalPhotoPath(base, 'C:\\abs\\x.jpg'));
+  }
+});
+
+test('readLocalImage: існуючий файл -> байти; відсутній -> throw з внятним повідомленням', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ln-photos-read-'));
+  try {
+    const file = path.join(dir, 'a.jpg');
+    writeFileSync(file, jpeg());
+    const bytes = readLocalImage(file);
+    assert.deepEqual([...bytes], [...jpeg()]);
+    assert.throws(() => readLocalImage(path.join(dir, 'no-such.jpg')), /не вдалося прочитати локальний файл/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('planPhotos: localPath-запис — файл існує -> у плані localPath+розмір; відсутній -> throw', () => {
+  const okFile = tmpPhotosFile({
+    photos: [{ design: LOCAL_DESIGN, localPath: 'public/og-image.png', sourcePage: 'x' }],
+  });
+  const okLog: string[] = [];
+  try {
+    planPhotos(okFile, (line) => okLog.push(line));
+    assert.ok(
+      okLog.some((l) => l.includes('localPath') && l.includes('og-image.png')),
+      'план має згадати localPath',
+    );
+  } finally {
+    rmSync(path.dirname(okFile), { recursive: true, force: true });
+  }
+
+  const missingFile = tmpPhotosFile({
+    photos: [{ design: LOCAL_DESIGN, localPath: 'data/no-such-3b1f.jpg', sourcePage: 'x' }],
+  });
+  try {
+    assert.throws(() => planPhotos(missingFile, () => {}), /локальний файл не знайдено/);
+  } finally {
+    rmSync(path.dirname(missingFile), { recursive: true, force: true });
   }
 });
 
@@ -682,6 +814,113 @@ test('runPhotos: ln-* товарів немає -> 0 мережевих дій �
   assert.equal(fetchCalls, 2, 'design все одно верифікується завантаженням');
   assert.ok(totals.designs.every((d) => d.matchedProducts === 0 && d.attached === 0));
   assert.deepEqual(totals.failed, []);
+});
+
+// ---------------------------------------------------------------------------
+// localPath-гілка (задача L10): readFileSync замість fetch, спільні гарди
+// ---------------------------------------------------------------------------
+
+test('source-pin: runPhotos має гілку localPath (readLocalImage/readFileSync) і спільні гарди після неї', () => {
+  assert.match(code, /if \(photo\.localPath !== undefined\)/);
+  assert.match(code, /readLocalImage\(/);
+  // fetch-шов лишається лише для http-гілки:
+  assert.match(code, /await fetchImage\(photo\.imageUrl\)/);
+  // Гарди розміру та magic bytes — спільні, ПІСЛЯ гілки localPath. Індекси —
+  // по сирому сорсу: naive-стриппер коментарів вище (`code`) ковтає `image/*`
+  // у template-рядку помилки як початок block-коментаря (артефакт стриппера).
+  const branchIdx = src.indexOf('if (photo.localPath !== undefined)');
+  const sizeGuardIdx = src.indexOf('if (bytes.byteLength > MAX_IMAGE_BYTES)');
+  const mimeGuardIdx = src.indexOf('const mime = detectImageMime(bytes);');
+  assert.ok(branchIdx !== -1, 'гілка localPath у runPhotos');
+  assert.ok(sizeGuardIdx > branchIdx, 'гард розміру — спільний (після гілки)');
+  assert.ok(mimeGuardIdx > branchIdx, 'гард magic bytes — спільний (після гілки)');
+});
+
+test('runPhotos: localPath (readFileSync-гілка) — upload за magic bytes, fetchImage НЕ викликається', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ln-photos-local-'));
+  const photosPath = path.join(dir, 'photos.json');
+  // Фікстура — реальний комітований дрібний png у репо (шлях від кореня репо).
+  const localSlug = designSlug(LOCAL_DESIGN);
+  assert.equal(localSlug, 'cracked-oak-496m-beauflour-puretex');
+  writeFileSync(
+    photosPath,
+    JSON.stringify({
+      photos: [
+        { design: LOCAL_DESIGN, localPath: 'public/og-image.png', sourcePage: 'локальное фото' },
+      ],
+    }),
+  );
+  try {
+    const state: FakeDbState = {
+      products: [lnProduct('c25', LOCAL_DESIGN, '2,5')],
+      images: [],
+      storagePaths: [],
+    };
+    const db = makeFakeDb(state);
+    let fetchCalls = 0;
+    const totals = await runPhotos({ photosPath }, {
+      client: db.client,
+      throttleMs: 0,
+      log: () => {},
+      fetchImage: async () => {
+        fetchCalls += 1;
+        return { bytes: jpeg(), contentType: 'image/jpeg' };
+      },
+    });
+    assert.deepEqual(totals.failed, []);
+    assert.equal(fetchCalls, 0, 'localPath не ходить у мережу');
+    assert.deepEqual(totals.designs, [
+      { design: LOCAL_DESIGN, matchedProducts: 1, attached: 1, skipped: 0 },
+    ]);
+    // MIME — за magic bytes PNG (не з розширення джерела), ext .png:
+    assert.deepEqual(db.uploads, [
+      { path: `linoleum/${localSlug}.png`, contentType: 'image/png', upsert: false },
+    ]);
+    assert.deepEqual(db.inserts, [
+      {
+        product_id: 'c25',
+        image_url: `linoleum/${localSlug}.png`,
+        is_main: true,
+        sort_order: 0,
+      },
+    ]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('runPhotos: відсутній локальний файл -> failed дизайн, 0 записів', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ln-photos-miss-'));
+  const photosPath = path.join(dir, 'photos.json');
+  writeFileSync(
+    photosPath,
+    JSON.stringify({
+      photos: [
+        { design: LOCAL_DESIGN, localPath: 'data/no-such-3b1f.jpg', sourcePage: 'x' },
+      ],
+    }),
+  );
+  try {
+    const state: FakeDbState = {
+      products: [lnProduct('c25', LOCAL_DESIGN, '2,5')],
+      images: [],
+      storagePaths: [],
+    };
+    const db = makeFakeDb(state);
+    const totals = await runPhotos({ photosPath }, {
+      client: db.client,
+      throttleMs: 0,
+      log: () => {},
+      fetchImage: async () => ({ bytes: jpeg(), contentType: 'image/jpeg' }),
+    });
+    assert.equal(totals.failed.length, 1);
+    assert.equal(totals.failed[0]?.design, LOCAL_DESIGN);
+    assert.match(totals.failed[0]?.reason ?? '', /не вдалося прочитати локальний файл/);
+    assert.equal(db.uploads.length, 0, 'без upload');
+    assert.equal(db.inserts.length, 0, 'жодних записів');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('runLinoleumPhotosCli: --plan друкує плани і пише НУЛЬ; клієнт не чіпається', async () => {
