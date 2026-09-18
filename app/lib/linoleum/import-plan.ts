@@ -70,11 +70,12 @@
  *     (CLI --publish), ніколи не рішення планувальника; варіанти активні;
  *   - product updates: diff-aware, ONLY fields that actually diverge:
  *       price           — stored MIN-пог.м ≠ computed;
- *       specifications  — переписуються ЦІЛИКОМ (replace-in-place «Ціна за
- *                         м²» + канонічний список «Ширина») при розбіжності:
- *                         список ширин тепер ДАНІ карточки (ширина додалась/
- *                         зникла), інші записи («Клас зносу» тощо) і їх
- *                         порядок зберігаються;
+ *       specifications  — переписуються ЦІЛИКОМ при розбіжності: канон 1С
+ *                         («Ціна за м²» + канонічний список «Ширина») ПЕРШИМ
+ *                         блоком, потім тех-записи сайту як є (L12: імпортер
+ *                         володіє лише каноном — «Клас зносостійкості»,
+ *                         «Товщина», «Виробник» тощо переживають синк;
+ *                         збережені записи з іменами канону не виживають);
  *       stock_quantity  — stored сума ≠ feed-сумі;
  *     name/sku/slug/is_active існуючих не торкаються;
  *   - variant updates: diff price/stock_quantity по variant sku; ім'я
@@ -295,42 +296,33 @@ export function findSpecValue(
 }
 
 /**
- * Deterministic rewrite: the «Ціна за м²» entry is replaced IN PLACE (or
- * appended when absent); every other entry keeps its name, value and order.
- */
-export function withPriceSqmSpec(
-  specs: readonly SpecificationEntry[],
-  value: string
-): SpecificationEntry[] {
-  const out = specs.map((s) =>
-    s.name === PRICE_SQM_SPEC_NAME ? { name: PRICE_SQM_SPEC_NAME, value } : s
-  );
-  if (!specs.some((s) => s.name === PRICE_SQM_SPEC_NAME)) {
-    out.push({ name: PRICE_SQM_SPEC_NAME, value });
-  }
-  return out;
-}
-
-/**
- * Канонічні specifications консолідованої карточки поверх збережених: старі
- * записи «Ширина» знімаються (список ширин — ДАНІ карточки), «Ціна за м²»
- * replace-in-place, ширини дописуються в кінці в канонічному порядку
- * LINOLEUM_WIDTHS_M (сортуються тут — незалежно від порядку входу).
- * Інші записи («Клас зносу» тощо) і їх порядок зберігаються.
+ * Канон specifications консолідованої карточки — ПЕРШИМ блоком, у власному
+ * канонічному порядку: «Ціна за м²» (перерахований MIN) + «Ширина» ×N за
+ * зростанням LINOLEUM_WIDTHS_M (сортуються тут — незалежно від порядку
+ * входу). ПІСЛЯ канону — усі інші записи існуючої карточки («Клас
+ * зносостійкості», «Товщина», «Основа», «Виробник», «Країна виробник» —
+ * джерело: карточки магазинів, не 1С) як є, у вихідному порядку (задача
+ * L12, 2026-09-18: імпортер володіє ЛИШЕ каноном 1С, тех-записи сайту
+ * переживають синк). Збережені записи з іменами канону не виживають:
+ * «Ширина» — дані карточки (список ширин перераховується з фіду),
+ * «Ціна за м²» — перераховується; «extra» з іменем «Ширина» неможливий —
+ * канон перемагає.
  */
 export function buildConsolidatedSpecifications(
   stored: readonly SpecificationEntry[],
   priceSqmValue: string,
   widths: readonly LinoleumWidthM[]
 ): SpecificationEntry[] {
-  const withoutWidths = stored.filter((s) => s.name !== WIDTH_SPEC_NAME);
-  const withPrice = withPriceSqmSpec(withoutWidths, priceSqmValue);
+  const extras = stored.filter(
+    (s) => s.name !== PRICE_SQM_SPEC_NAME && s.name !== WIDTH_SPEC_NAME
+  );
   const sorted = [...widths].sort(
     (a, b) => widthOrder(a) - widthOrder(b)
   );
   return [
-    ...withPrice,
+    { name: PRICE_SQM_SPEC_NAME, value: priceSqmValue },
     ...sorted.map((w) => ({ name: WIDTH_SPEC_NAME, value: formatWidthM(w) })),
+    ...extras,
   ];
 }
 
@@ -340,6 +332,28 @@ export function specificationListsEqual(
   b: readonly SpecificationEntry[]
 ): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * Скільки тех-записів САЙТУ (не-«Ціна за м²», не-«Ширина» — «Клас
+ * зносостійкості», «Товщина», «Основа», «Виробник», «Країна виробник» тощо,
+ * джерело: карточки магазинів, не 1С) план ПЕРЕНОСИТЬ у нові specifications
+ * через оновлення (задача L12, 2026-09-18: імпортер володіє лише каноном 1С
+ * — «Ціна за м²» + «Ширина»×N; решта записів існуючої карточки зберігається
+ * as-is). Оновлення без перезапису specs (тільки price/stock) зберігають
+ * extra тривіально — у лічильник вони не потрапляють. Метрика для друку
+ * --plan у CLI («збережено тех-записей: N»).
+ */
+export function preservedTechSpecCount(plan: LinoleumPlan): number {
+  let count = 0;
+  for (const update of plan.updates) {
+    for (const entry of update.fields.specifications ?? []) {
+      if (entry.name !== PRICE_SQM_SPEC_NAME && entry.name !== WIDTH_SPEC_NAME) {
+        count += 1;
+      }
+    }
+  }
+  return count;
 }
 
 // ---------------------------------------------------------------------------

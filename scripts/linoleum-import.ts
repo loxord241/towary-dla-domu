@@ -61,6 +61,11 @@
  *     (is_active true — контракт C2; вариантный флаг админка/PDP не sync);
  *   - НЕТ DELETE/rpc/upsert; план идемпотентен — упавший батч лечится
  *     повторным --run;
+ *   - L12: specs существующих карточек обновляются только через канон 1С
+ *     («Ціна за м²» + «Ширина»×N); тех-записи, добавленные сайтом («Клас
+ *     зносостійкості», «Товщина», «Основа», «Виробник», «Країна виробник»),
+ *     читаются из products.specifications и переносятся как есть (existing
+ *     specifications читаются — select + toSpecList — и передаются планеру);
  *   - постраничные чтения: окна PAGE_SIZE = 1000 с `.order('id')`;
  *     product_id-окна чтения вариантов ≤ BATCH_SIZE (паттерн semi-join);
  *     DISTINCT-семантика staging (свежайшая строка на (code,width)) — в JS
@@ -91,6 +96,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   planLinoleumImport,
   planRootCategory,
+  preservedTechSpecCount,
   LINOLEUM_ROOT_CATEGORY,
   type ExistingCategoryRow,
   type ExistingProduct,
@@ -498,6 +504,9 @@ function printPlan(plan: LinoleumPlan, stats: PlanStats): void {
     }
     console.log(`  ~ id=${u.id} ${parts.join(', ')}`);
   }
+  // L12: імпортер володіє лише каноном 1С («Ціна за м²» + «Ширина»×N);
+  // тех-записи сайту в існуючих specifications переносяться як є.
+  console.log(`збережено тех-записей: ${preservedTechSpecCount(plan)}`);
   console.log(`variant creates (нові ширини): ${plan.variantCreates.length}`);
   for (const vc of plan.variantCreates.slice(0, 10)) {
     console.log(

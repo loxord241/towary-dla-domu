@@ -24,6 +24,8 @@
  *    availability по qty, is_active true;
  *  - updates diff-aware: product (price/specifications/stock_quantity),
  *    варіант (price/stock_quantity); список ширин у specs — ДАНІ карточки;
+ *    L12: тех-записи сайту в існуючих specs («Виробник», «Клас…») не
+ *    здаються — імпортер оновлює лише канон 1С;
  *  - missing ширина → варіант 0; missing дизайн → product 0 + варіанти 0;
  *    DELETE ніколи; conflicts завжди [].
  */
@@ -42,9 +44,9 @@ import {
   linoleumVariantSku,
   planLinoleumImport,
   planRootCategory,
+  preservedTechSpecCount,
   runningMeterPrice,
   specificationListsEqual,
-  withPriceSqmSpec,
   type ExistingProduct,
   type ExistingVariant,
   type LinoleumPlan,
@@ -247,45 +249,46 @@ test('SKU: designKey — групування за іменем дизайну: 
 // спецификации: helpers
 // ---------------------------------------------------------------------------
 
-test('SPECS: withPriceSqmSpec — replace-in-place, остальные записи и порядок нетронуты', () => {
-  const stored = [
-    { name: 'Клас зносу', value: '23' },
-    { name: PRICE_SQM_SPEC_NAME, value: '300,00' },
-    { name: WIDTH_SPEC_NAME, value: '3' },
-  ];
-  assert.deepEqual(withPriceSqmSpec(stored, '410,00'), [
-    { name: 'Клас зносу', value: '23' },
-    { name: PRICE_SQM_SPEC_NAME, value: '410,00' },
-    { name: WIDTH_SPEC_NAME, value: '3' },
-  ]);
-});
-
-test('SPECS: withPriceSqmSpec — записи нет → добавляется в конец', () => {
-  assert.deepEqual(withPriceSqmSpec([{ name: WIDTH_SPEC_NAME, value: '2' }], '350,00'), [
-    { name: WIDTH_SPEC_NAME, value: '2' },
-    { name: PRICE_SQM_SPEC_NAME, value: '350,00' },
-  ]);
-});
-
 test('SPECS: findSpecValue — находка, отсутствие → undefined', () => {
   const stored = [{ name: PRICE_SQM_SPEC_NAME, value: '300,00' }];
   assert.equal(findSpecValue(stored, PRICE_SQM_SPEC_NAME), '300,00');
   assert.equal(findSpecValue(stored, WIDTH_SPEC_NAME), undefined);
 });
 
-test('SPECS: buildConsolidatedSpecifications — «Ціна за м²» in-place + ШИРИНА НА КОЖНУ ширину в канонічному порядку', () => {
+test('SPECS: buildConsolidatedSpecifications (L12) — канон 1С ПЕРШИЙ блоком («Ціна за м²» + ширини в канонічному порядку), тех-записи сайту — після, як є', () => {
   const stored = [
-    { name: 'Клас зносу', value: '23' },
+    { name: 'Клас зносостійкості', value: '23' },
     { name: PRICE_SQM_SPEC_NAME, value: '300,00' },
+    { name: 'Виробник', value: 'Beauflor' },
     { name: WIDTH_SPEC_NAME, value: '4' },
   ];
   assert.deepEqual(buildConsolidatedSpecifications(stored, '410,00', [2.5, 1.5, 2]), [
-    { name: 'Клас зносу', value: '23' },
     { name: PRICE_SQM_SPEC_NAME, value: '410,00' },
     { name: WIDTH_SPEC_NAME, value: '1,5' },
     { name: WIDTH_SPEC_NAME, value: '2' },
     { name: WIDTH_SPEC_NAME, value: '2,5' },
+    { name: 'Клас зносостійкості', value: '23' },
+    { name: 'Виробник', value: 'Beauflor' },
   ]);
+});
+
+test('SPECS: buildConsolidatedSpecifications — збережений «Ширина»-запис не виживає (канон перемагає), idempotentний перевипуск без дублів', () => {
+  const stored = [
+    { name: PRICE_SQM_SPEC_NAME, value: '410,00' },
+    { name: WIDTH_SPEC_NAME, value: '1,5' },
+    { name: WIDTH_SPEC_NAME, value: '2' },
+    { name: 'Товщина', value: '2,5 мм' },
+    { name: WIDTH_SPEC_NAME, value: '2,5 м' }, // «extra» з канонічним іменем
+  ];
+  const once = buildConsolidatedSpecifications(stored, '410,00', [1.5, 2]);
+  assert.deepEqual(once, [
+    { name: PRICE_SQM_SPEC_NAME, value: '410,00' },
+    { name: WIDTH_SPEC_NAME, value: '1,5' },
+    { name: WIDTH_SPEC_NAME, value: '2' },
+    { name: 'Товщина', value: '2,5 мм' },
+  ]);
+  // Ідемпотентність: повторний виклик поверх власного виходу — без змін.
+  assert.deepEqual(buildConsolidatedSpecifications(once, '410,00', [1.5, 2]), once);
 });
 
 test('SPECS: specificationListsEqual — строгая глубокая равность', () => {
@@ -625,6 +628,168 @@ test('PLAN: исчезнувший дизайн → missingProducts + все е�
     plan.creates.map((c) => c.sku),
     ['ln-xother']
   );
+});
+
+// ---------------------------------------------------------------------------
+// L12: тех-записи сайту в specifications переживают sync (импортер владеет
+// только каноном 1С — «Ціна за м²» + «Ширина»×N)
+// ---------------------------------------------------------------------------
+
+/** Консолідована карточка з тех-записами, доданими сайтом поверх канону 1С
+ *  (джерела — карточки магазинів, не 1С). Канон першим, extra після нього —
+ *  саме так виглядає жива карточка після адмінських доповнень. */
+function consolidatedWithSiteSpecs(): Map<string, ExistingProduct> {
+  return emptyMap([
+    [
+      'ln-xl-100',
+      prod({
+        id: 'id-p1',
+        sku: 'ln-xl-100',
+        name: 'SUGAR OAK 997L',
+        price: 525.75,
+        stockQuantity: 52,
+        specifications: [
+          { name: PRICE_SQM_SPEC_NAME, value: '350,50' },
+          { name: WIDTH_SPEC_NAME, value: '1,5' },
+          { name: WIDTH_SPEC_NAME, value: '2,5' },
+          { name: WIDTH_SPEC_NAME, value: '3' },
+          { name: 'Клас зносостійкості', value: '23' },
+          { name: 'Товщина', value: '2,5 мм' },
+          { name: 'Основа', value: 'Війлок' },
+          { name: 'Виробник', value: 'Beauflor' },
+          { name: 'Країна виробник', value: 'Бельгія' },
+        ],
+      }),
+    ],
+  ]);
+}
+
+test('L12 PLAN: update зберігає тех-записи сайту (Виробник/Клас/…) — канон 1С оновлюється, extra переносяться як є', () => {
+  const rows = sugarOakRows().map((r) => ({ ...r, priceSqm: 410 }));
+  const plan = planLinoleumImport(consolidatedWithSiteSpecs(), rows, consolidatedVariants());
+  assert.deepEqual(plan.updates, [
+    {
+      id: 'id-p1',
+      fields: {
+        price: 615, // MIN: 410 × 1.5
+        specifications: [
+          { name: PRICE_SQM_SPEC_NAME, value: '410,00' },
+          { name: WIDTH_SPEC_NAME, value: '1,5' },
+          { name: WIDTH_SPEC_NAME, value: '2,5' },
+          { name: WIDTH_SPEC_NAME, value: '3' },
+          { name: 'Клас зносостійкості', value: '23' },
+          { name: 'Товщина', value: '2,5 мм' },
+          { name: 'Основа', value: 'Війлок' },
+          { name: 'Виробник', value: 'Beauflor' },
+          { name: 'Країна виробник', value: 'Бельгія' },
+        ],
+      },
+    },
+  ]);
+  assert.equal(preservedTechSpecCount(plan), 5, 'усі 5 тех-записів сайту перенесено');
+});
+
+test('L12 PLAN: CREATE — специфікації лише канонічні (extra-записам узяти нізвідки), preservedTechSpecCount = 0', () => {
+  const plan = planLinoleumImport(emptyMap(), sugarOakRows(), emptyVariants());
+  assert.deepEqual(
+    [...new Set((plan.creates[0]?.specifications ?? []).map((s) => s.name))].sort(),
+    ['Ціна за м²', 'Ширина'],
+    'у create потрапляють тільки імена канону 1С'
+  );
+  assert.equal(preservedTechSpecCount(plan), 0);
+});
+
+test('L12 PLAN: ідемпотентність з тех-записами сайту — оновлений канон + ті самі extra, повтор порожній', () => {
+  const existing = consolidatedWithSiteSpecs();
+  const rows = sugarOakRows().map((r) => ({ ...r, priceSqm: 410 }));
+  const applied = simulateApply(existing, rows, consolidatedVariants());
+  const stored = applied.products.get('ln-xl-100')!.specifications;
+  assert.equal(stored.filter((s) => s.name === 'Виробник').length, 1, 'extra не задублено');
+  assert.deepEqual(
+    stored,
+    [
+      { name: PRICE_SQM_SPEC_NAME, value: '410,00' },
+      { name: WIDTH_SPEC_NAME, value: '1,5' },
+      { name: WIDTH_SPEC_NAME, value: '2,5' },
+      { name: WIDTH_SPEC_NAME, value: '3' },
+      { name: 'Клас зносостійкості', value: '23' },
+      { name: 'Товщина', value: '2,5 мм' },
+      { name: 'Основа', value: 'Війлок' },
+      { name: 'Виробник', value: 'Beauflor' },
+      { name: 'Країна виробник', value: 'Бельгія' },
+    ],
+    'канон оновлено, extra залишились на своїх місцях'
+  );
+  const plan2 = planLinoleumImport(applied.products, rows, applied.variants);
+  assert.deepEqual(plan2.updates, [], 'повторний --run поверх extra — noop');
+  assert.deepEqual(plan2.creates, []);
+  assert.ok(plan2.noops.includes('ln-xl-100'));
+});
+
+test('L12 PLAN: запис з іменем «Ширина» серед збережених не виживає — канон перемагає (edge L12)', () => {
+  const existing = emptyMap([
+    [
+      'ln-xl-100',
+      prod({
+        id: 'id-p1',
+        sku: 'ln-xl-100',
+        name: 'SUGAR OAK 997L',
+        price: 525.75,
+        stockQuantity: 52,
+        specifications: [
+          { name: PRICE_SQM_SPEC_NAME, value: '350,50' },
+          { name: WIDTH_SPEC_NAME, value: '1,5' },
+          { name: WIDTH_SPEC_NAME, value: '2,5' },
+          { name: WIDTH_SPEC_NAME, value: '3' },
+          { name: 'Виробник', value: 'Beauflor' },
+          { name: WIDTH_SPEC_NAME, value: '2,5 м' }, // «extra» з канонічним іменем
+        ],
+      }),
+    ],
+  ]);
+  const plan = planLinoleumImport(existing, sugarOakRows(), consolidatedVariants());
+  assert.equal(plan.updates.length, 1, 'список ширин — дані карточки: оновлюється');
+  const specs = plan.updates[0]!.fields.specifications ?? [];
+  assert.equal(
+    specs.filter((s) => s.name === WIDTH_SPEC_NAME).length,
+    3,
+    'рівно канонічні ширини фіду'
+  );
+  assert.ok(!specs.some((s) => s.value === '2,5 м'), 'збережений «Ширина 2,5 м» не виживає');
+  assert.ok(specs.some((s) => s.name === 'Виробник'), 'справжній extra зберігається');
+});
+
+test('L12 SPECS: preservedTechSpecCount — рахує лише не-канонічні записи в перезаписах specs оновлень', () => {
+  const base = {
+    creates: [],
+    variantCreates: [],
+    variantUpdates: [],
+    missingProducts: [],
+    missingVariants: [],
+    noops: [],
+    conflicts: [],
+  };
+  assert.equal(
+    preservedTechSpecCount({
+      ...base,
+      updates: [
+        {
+          id: 'a',
+          fields: {
+            specifications: [
+              { name: PRICE_SQM_SPEC_NAME, value: '410,00' },
+              { name: WIDTH_SPEC_NAME, value: '2' },
+              { name: 'Виробник', value: 'Beauflor' },
+              { name: 'Товщина', value: '2,5 мм' },
+            ],
+          },
+        },
+        { id: 'b', fields: { price: 100 } }, // specs не переписуються → extra зберігаються тривіально
+      ],
+    }),
+    2
+  );
+  assert.equal(preservedTechSpecCount({ ...base, updates: [] }), 0);
 });
 
 // ---------------------------------------------------------------------------

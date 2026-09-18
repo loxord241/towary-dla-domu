@@ -85,6 +85,21 @@ test('CLI: чтение существующих — только домен ln-
   assert.match(code, /LINOLEUM_SKU_LIKE/, 'константа импортируется из domains.ts');
 });
 
+test('L12 CLI: existing specifications проецируются в планер (select + toSpecList) — путь чтения не теряет тех-записи сайта', () => {
+  assert.match(
+    code,
+    /select\('id,sku,name,price,stock_quantity,is_active,specifications'\)/,
+    'products read: specifications в проекции'
+  );
+  assert.match(code, /specifications: toSpecList\(r\.specifications\)/, 'маппинг в ExistingProduct');
+  assert.match(
+    code,
+    /preservedTechSpecCount/,
+    'планер L12 imported: считается счётчик сохранённых тех-записей'
+  );
+  assert.match(code, /збережено тех-записей/, '--plan печатает «збережено тех-записей: N»');
+});
+
 test('CLI: каждый батч записи ≤200 (creates, junction, updates, missing, history)', () => {
   assert.match(code, /BATCH_SIZE = 200/);
   assert.ok(
