@@ -142,8 +142,12 @@ client fetch — через `lib/cart-preview.ts`; изображения —
 - **DB/RLS**: гранты и RLS-политики — security boundary (миграции 014, 024,
   032, 033, 035, 036, 039). Любая новая таблица: RLS + явные гранты сразу
   (final_001 авто-грантит SELECT → public — footgun). Миграции применяются
-  ВРУЧНУЮ через SQL Editor, из кода DDL недоступен; новый файл миграции —
-  последовательный номер.
+  ВРУЧНУЮ через SQL Editor ИЛИ агентом через Supabase Management API при
+  наличии `SUPABASE_ACCESS_TOKEN` в .env.local (POST
+  `api.supabase.com/v1/projects/{ref}/database/query`, тело `{query: <содержимое
+  файла миграции>}`; ref = поддомен NEXT_PUBLIC_SUPABASE_URL; так применена
+  052, 2026-09-18). Из PostgREST/service-ключа DDL недоступен; новый файл
+  миграции — последовательный номер.
 - **checkout/orders/payments**: клиент шлёт только контакты + идентификаторы;
   деньги/сток считает `place_order()` (SECURITY DEFINER, вызывается
   service-ролью из route — EXECUTE у anon отозван миграцией 036). LiqPay
@@ -154,7 +158,8 @@ client fetch — через `lib/cart-preview.ts`; изображения —
 - **admin**: каждый handler начинается с `requireAdminApi()`; вход валидировать.
 - **webhooks/callbacks**: LiqPay — проверка подписи; Telegram webhook —
   secret header и ВСЕГДА 200 (Telegram ретраит не-2xx); ingest — bearer-ключ.
-- **is_active шпалер** пишет только `wallpaper-import --publish`.
+- **is_active шпалер и линолеума** пишут только `wallpaper-import --publish` и
+  `linoleum-import --publish` соответственно.
 - Порядок deploy миграций с revoke — см. шапки самих миграций (пример: 036
   требует деплой кода ДО применения).
 
@@ -210,6 +215,40 @@ Yugcontract Sync» и «вот выгрузка» — это явные GO на 
    без проверенного `--url-map` (авто-матч по цифрам давал чужие товары).
 6. Проверка: `node scripts/catalog-health-check.ts`. Отчёт: accepted/rejected,
    план (new/updated/missing), publish-счётчики, health RESULT.
+
+### Синк линолеума (Excel 1С)
+
+Триггер: владелец прислал `.xls` с линолеумом («вот выгрузка по линолеуму»).
+Модель: 1 карточка = дизайн, ширины = product_variants (2026-09-18).
+Витрина: `/linoleum` (sku-префикс `ln-`); `is_active` ln-* пишет только
+`linoleum-import --publish`. Секрет: `data/LINOLEUM_INGEST_KEY.txt`.
+
+1. Конвертер xls→CSV — ПЕНДИНГ (пишется по первому реальному файлу; контракт
+   CSV: `code;name;width_m;price_sqm;qty_m`, ширины строго
+   {1.5, 2, 2.5, 3, 3.5, 4} м, `qty_m` — целые погонные метры, коды поставщика
+   могут быть кириллицей — SKU-нормализация есть). До первого реального синка
+   данные сидов — ПЛЕЙСХОЛДЕРЫ (цены=прайс поставщика, наличие придумано):
+   `data/linoleum-seed.csv` (Beauflor) + `data/linoleum-seed-floortex.csv` (IVC).
+2. Ingest: `curl -X POST https://towary-dla-domu.com/api/ingest/1c-linoleum
+   -H "Authorization: Bearer $(cat data/LINOLEUM_INGEST_KEY.txt)"
+   -H "X-Export-Date: ГГГГММДД" --data-binary @data/linoleum-<дата>.csv`
+   → 202 `{accepted, rejected, errors}`; rejected>0 — не сбой канала, доложи.
+   Ключ строго server-side, в чат не печатать.
+3. Импорт: `node scripts/linoleum-import.ts --plan` (dry-run, показать сводку)
+   → `--run`. Идемпотентен, diff-aware; «дизайн исчез из выгрузки» = сток 0 на
+   карточку и все её варианты (никогда DELETE); is_active синком НЕ пишется.
+   Ограничение v1: products.stock_quantity = сумма вариантов на момент импорта,
+   после продаж реальные остатки живут в product_variants.
+4. Видимость: `node scripts/linoleum-import.ts --publish` — ЕДИНСТВЕННЫЙ
+   писатель is_active ln-* (фото-гейт).
+5. Фото: `node scripts/linoleum-photos.ts --run` (карта
+   `data/linoleum-photos.json`: `imageUrl` — http(s), `localPath` — локальный
+   файл владельца; 1 фото на дизайн, все ширины делят его).
+6. Проверка: `node scripts/catalog-health-check.ts`. Отчёт: accepted/rejected,
+   план (creates/updates/missing), publish-счётчики, health RESULT.
+   Одноразовая консолидация старых 34 карточек (при переходе на модель
+   вариантов, 2026-09-18): `node scripts/linoleum-consolidate.ts --plan` →
+   `--run` → затем linoleum-photos `--run` и `--publish`.
 
 ## graphify
 
