@@ -13275,7 +13275,7 @@
       "file_type": "code",
       "norm_label": "samovyvizpage()",
       "source_file": "app/samovyviz/page.tsx",
-      "source_location": "L83"
+      "source_location": "L84"
     },
     {
       "id": "tests_footer_categories_test_cat",
@@ -34350,7 +34350,7 @@
       "file_type": "code",
       "norm_label": "mazepy_83a_photos",
       "source_file": "app/samovyviz/page.tsx",
-      "source_location": "L43"
+      "source_location": "L44"
     },
     {
       "id": "app_samovyviz_page_mazepy_89a_photos",
@@ -34361,7 +34361,7 @@
       "file_type": "code",
       "norm_label": "mazepy_89a_photos",
       "source_file": "app/samovyviz/page.tsx",
-      "source_location": "L50"
+      "source_location": "L51"
     },
     {
       "id": "app_samovyviz_page_mazepy_photos",
@@ -34372,7 +34372,7 @@
       "file_type": "code",
       "norm_label": "mazepy_photos",
       "source_file": "app/samovyviz/page.tsx",
-      "source_location": "L38"
+      "source_location": "L39"
     },
     {
       "id": "app_samovyviz_page_metadata",
@@ -34394,7 +34394,7 @@
       "file_type": "code",
       "norm_label": "points",
       "source_file": "app/samovyviz/page.tsx",
-      "source_location": "L59"
+      "source_location": "L60"
     },
     {
       "id": "tests_footer_categories_test",
@@ -129036,7 +129036,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/samovyviz/page.tsx",
-      "source_location": "L38",
+      "source_location": "L39",
       "weight": 1.0
     },
     {
@@ -129047,7 +129047,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/samovyviz/page.tsx",
-      "source_location": "L43",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -129058,7 +129058,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/samovyviz/page.tsx",
-      "source_location": "L50",
+      "source_location": "L51",
       "weight": 1.0
     },
     {
@@ -129069,7 +129069,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/samovyviz/page.tsx",
-      "source_location": "L59",
+      "source_location": "L60",
       "weight": 1.0
     },
     {
@@ -129080,7 +129080,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/samovyviz/page.tsx",
-      "source_location": "L83",
+      "source_location": "L84",
       "weight": 1.0
     },
     {
