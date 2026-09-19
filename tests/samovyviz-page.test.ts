@@ -1,12 +1,13 @@
 /**
  * «Самовивіз» page (owner task 2026-09-14): indexable /samovyviz with
- * photos of both Кривий Ріг pickup points, wired into every site entrance.
+ * photos of all three Кривий Ріг pickup points, wired into every site
+ * entrance.
  *
  * Source-level pins in the project style (node:test + readFileSync):
  *  1. Route + metadata — indexable (no noindex), self-canonical, unique
  *     title; exactly one <h1>; min-h-[44px] tap targets; phones and the
  *     «дзвінки до 16:00» line.
- *  2. Both points present with photos — every referenced /pickup/*.jpg
+ *  2. All three points present with photos — every referenced /pickup/*.jpg
  *     exists in public/ and respects the ≤200 KB commit invariant.
  *  3. Entrances — footer INFO_LINKS, checkout PickupBlock «Як нас знайти →»
  *     (without touching the point buttons/pins), and the sitemap static
@@ -57,8 +58,7 @@ test('SAMOVYVIZ: all three pickup points with canonical addresses', () => {
   // wallpapers street renamed 2026-09-14: Серафимовича → Мазепи 83А).
   // Третя точка (лінолеум, 89А) — рішення власника 2026-09-17, вона вже в
   // чекауті (пін checkout-pickup.test.ts); сторінка мала розсинхрон «двох
-  // точок». Фото 89А ще не надійшли — картка поки текстова, без фото
-  // (пін нижче забороняє посилання на неіснуючі файли).
+  // точок».
   assert.match(PAGE, /вул\. Гетьмана Івана Мазепи, 87А/);
   assert.match(PAGE, /вул\. Гетьмана Івана Мазепи, 83А/);
   assert.match(PAGE, /вул\. Гетьмана Івана Мазепи, 89А/);
@@ -70,10 +70,8 @@ test('SAMOVYVIZ: all three pickup points with canonical addresses', () => {
   assert.match(PAGE, /одній із трьох точок видачі/);
   assert.match(PAGE, /лінолеум — на Гетьмана Івана Мазепи 89А/);
   assert.doesNotMatch(PAGE, /двох точок/, 'старе «двох точок» не повертається');
-  // Фото для 89А ще НЕ надійшли (очікуються): жодних посилань на
-  // неіснуючі /pickup/mazepy-89a-*.jpg — коли фото прибудуть, цей пін
-  // оновлюється разом із карткою.
-  assert.doesNotMatch(PAGE, /mazepy-89a/);
+  // Фото 89А передано власником 2026-09-19: перше — фасад, див. пін нижче.
+  assert.match(PAGE, /\/pickup\/mazepy-89a-1\.jpg/);
 });
 
 test('SAMOVYVIZ: next/image photos with width/height, files committed ≤200 KB', () => {
@@ -86,12 +84,14 @@ test('SAMOVYVIZ: next/image photos with width/height, files committed ≤200 KB'
   // Photo sets are generated (7 mazepy + 9 mazepy-83a — the wallpapers
   // point, formerly «serafimovycha» files, renamed 2026-09-14): pin the
   // generation contract, then verify every generated file exists on disk
-  // within the ≤200 KB cap.
+  // within the ≤200 KB cap. Третя точка (89А) — явний масив із 6 файлів;
+  // існування та ліміт ≤200 KB для них перевіряє той самий цикл нижче.
   assert.match(PAGE, /Array\.from\(\{ length: 7 \}[\s\S]*?\/pickup\/mazepy-\$\{i \+ 1\}\.jpg/);
   assert.match(PAGE, /Array\.from\(\{ length: 9 \}[\s\S]*?\/pickup\/mazepy-83a-\$\{i \+ 1\}\.jpg/);
   const referenced = [
     ...Array.from({ length: 7 }, (_, i) => `mazepy-${i + 1}.jpg`),
     ...Array.from({ length: 9 }, (_, i) => `mazepy-83a-${i + 1}.jpg`),
+    ...Array.from({ length: 6 }, (_, i) => `mazepy-89a-${i + 1}.jpg`),
   ];
   for (const name of referenced) {
     const file = path.join(root, 'public', 'pickup', name);
